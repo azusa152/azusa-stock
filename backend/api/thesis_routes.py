@@ -20,7 +20,7 @@ def create_thesis_route(
 ) -> dict:
     """為指定股票新增觀點。"""
     try:
-        return add_thesis(session, ticker, payload.content)
+        return add_thesis(session, ticker, payload.content, payload.tags)
     except StockNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

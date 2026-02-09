@@ -20,6 +20,7 @@ from application.services import (
     StockNotFoundError,
     create_stock,
     deactivate_stock,
+    export_stocks,
     get_removal_history,
     list_active_stocks_with_signals,
     list_removed_stocks,
@@ -37,7 +38,9 @@ def create_ticker_route(
 ) -> StockResponse:
     """新增股票到追蹤清單。"""
     try:
-        stock = create_stock(session, payload.ticker, payload.category, payload.thesis)
+        stock = create_stock(
+            session, payload.ticker, payload.category, payload.thesis, payload.tags
+        )
     except StockAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -45,6 +48,7 @@ def create_ticker_route(
         ticker=stock.ticker,
         category=stock.category,
         current_thesis=stock.current_thesis,
+        current_tags=payload.tags,
         is_active=stock.is_active,
     )
 
@@ -56,6 +60,14 @@ def list_stocks_route(
     """取得所有追蹤中股票（含技術指標）。"""
     results = list_active_stocks_with_signals(session)
     return [StockResponse(**r) for r in results]
+
+
+@router.get("/stocks/export")
+def export_stocks_route(
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """匯出所有追蹤中股票（精簡格式，適用於 JSON 下載與匯入）。"""
+    return export_stocks(session)
 
 
 @router.patch("/ticker/{ticker}/category")

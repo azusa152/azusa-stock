@@ -17,6 +17,7 @@ class Stock(SQLModel, table=True):
     ticker: str = Field(primary_key=True, description="股票代號")
     category: StockCategory = Field(description="分類")
     current_thesis: str = Field(default="", description="最新觀點")
+    current_tags: str = Field(default="", description="最新標籤（逗號分隔）")
     is_active: bool = Field(default=True, description="是否追蹤中")
 
 
@@ -26,6 +27,7 @@ class ThesisLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     stock_ticker: str = Field(foreign_key="stock.ticker", description="對應股票代號")
     content: str = Field(description="觀點內容")
+    tags: str = Field(default="", description="該版本的標籤快照（逗號分隔）")
     version: int = Field(description="版本號")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

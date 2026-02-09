@@ -3,6 +3,7 @@ Gooaye Radar — Streamlit 前端 Dashboard
 透過 Backend API 顯示追蹤股票、技術指標與觀點版控。
 """
 
+import json
 import os
 
 import requests
@@ -148,6 +149,13 @@ with st.sidebar:
             }.get(x, x),
         )
         new_thesis = st.text_area("初始觀點", placeholder="寫下你對這檔股票的看法...")
+        new_tags = st.multiselect(
+            "🏷️ 初始標籤",
+            options=[
+                "AI", "Semiconductor", "Cloud", "SaaS",
+                "Hardware", "EC", "Energy", "Crypto",
+            ],
+        )
         submitted = st.form_submit_button("新增")
 
         if submitted:
@@ -160,6 +168,7 @@ with st.sidebar:
                     "ticker": new_ticker.strip().upper(),
                     "category": new_category,
                     "thesis": new_thesis.strip(),
+                    "tags": new_tags,
                 })
                 if result:
                     st.success(f"✅ 已新增 {new_ticker.upper()} 到追蹤清單！")
@@ -219,6 +228,24 @@ with st.sidebar:
 
     st.divider()
 
+    # -- 匯出觀察名單 --
+    st.subheader("📥 匯出觀察名單")
+    export_data = api_get("/stocks/export")
+    if export_data:
+        export_json = json.dumps(export_data, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="📥 下載 JSON",
+            data=export_json,
+            file_name="gooaye_watchlist.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        st.caption(f"共 {len(export_data)} 檔股票（含觀點與標籤）")
+    else:
+        st.caption("目前無追蹤股票可匯出。")
+
+    st.divider()
+
     # -- 重新整理資料 --
     st.subheader("🔄 資料快取")
     st.caption("股票資料每 5 分鐘自動更新。點擊下方按鈕可立即刷新。")
@@ -270,6 +297,14 @@ def render_stock_card(stock: dict) -> None:
         with col1:
             st.subheader(f"📊 {ticker}")
             st.caption(f"分類：{stock['category']}")
+
+            # 動態標籤
+            current_tags = stock.get("current_tags", [])
+            if current_tags:
+                tag_badges = " ".join(
+                    f"`{tag}`" for tag in current_tags
+                )
+                st.markdown(f"🏷️ {tag_badges}")
 
             if "error" in signals:
                 st.warning(signals["error"])
@@ -331,9 +366,14 @@ def render_stock_card(stock: dict) -> None:
                         ver = entry.get("version", "?")
                         content = entry.get("content", "")
                         created = entry.get("created_at", "")
+                        entry_tags = entry.get("tags", [])
                         st.markdown(
                             f"**v{ver}** ({created[:10] if created else '未知日期'})"
                         )
+                        if entry_tags:
+                            st.caption(
+                                "標籤：" + " ".join(f"`{t}`" for t in entry_tags)
+                            )
                         st.text(content)
                         st.divider()
                 else:
@@ -347,14 +387,34 @@ def render_stock_card(stock: dict) -> None:
                     placeholder="寫下你對這檔股票的最新看法...",
                     label_visibility="collapsed",
                 )
+
+                # 標籤編輯
+                default_tag_options = [
+                    "AI", "Semiconductor", "Cloud", "SaaS",
+                    "Hardware", "EC", "Energy", "Crypto",
+                ]
+                all_tag_options = sorted(
+                    set(default_tag_options + current_tags)
+                )
+                selected_tags = st.multiselect(
+                    "🏷️ 設定領域標籤",
+                    options=all_tag_options,
+                    default=current_tags,
+                    key=f"tag_select_{ticker}",
+                )
+
                 if st.button("更新觀點", key=f"thesis_btn_{ticker}"):
                     if new_thesis_content.strip():
                         result = api_post(
                             f"/ticker/{ticker}/thesis",
-                            {"content": new_thesis_content.strip()},
+                            {
+                                "content": new_thesis_content.strip(),
+                                "tags": selected_tags,
+                            },
                         )
                         if result:
                             st.success(result.get("message", "✅ 觀點已更新"))
+                            st.cache_data.clear()
                             st.rerun()
                     else:
                         st.warning("⚠️ 請輸入觀點內容。")
@@ -481,9 +541,14 @@ with tab_archive:
                                 ver = entry.get("version", "?")
                                 content = entry.get("content", "")
                                 created = entry.get("created_at", "")
+                                entry_tags = entry.get("tags", [])
                                 st.markdown(
                                     f"**v{ver}** ({created[:10] if created else '未知日期'})"
                                 )
+                                if entry_tags:
+                                    st.caption(
+                                        "標籤：" + " ".join(f"`{t}`" for t in entry_tags)
+                                    )
                                 st.text(content)
                                 st.divider()
                         else:

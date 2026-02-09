@@ -21,6 +21,21 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Tag 轉換工具
+# ---------------------------------------------------------------------------
+
+
+def _tags_to_str(tags: list[str]) -> str:
+    """將標籤列表轉為逗號分隔字串存入 DB。"""
+    return ",".join(t.strip() for t in tags if t.strip())
+
+
+def _str_to_tags(s: str) -> list[str]:
+    """將 DB 中的逗號分隔字串轉為標籤列表。"""
+    return [t.strip() for t in s.split(",") if t.strip()] if s else []
+
+
 # ===========================================================================
 # Stock Service
 # ===========================================================================
@@ -42,12 +57,20 @@ class CategoryUnchangedError(Exception):
     """分類相同，無需變更。"""
 
 
-def create_stock(session: Session, ticker: str, category: StockCategory, thesis: str) -> Stock:
+def create_stock(
+    session: Session,
+    ticker: str,
+    category: StockCategory,
+    thesis: str,
+    tags: list[str] | None = None,
+) -> Stock:
     """
     新增股票到追蹤清單，同時建立第一筆觀點紀錄。
     """
     ticker_upper = ticker.upper()
-    logger.info("新增股票：%s（分類：%s）", ticker_upper, category.value)
+    tags = tags or []
+    tags_str = _tags_to_str(tags)
+    logger.info("新增股票：%s（分類：%s，標籤：%s）", ticker_upper, category.value, tags)
 
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
@@ -57,6 +80,7 @@ def create_stock(session: Session, ticker: str, category: StockCategory, thesis:
         ticker=ticker_upper,
         category=category,
         current_thesis=thesis,
+        current_tags=tags_str,
         is_active=True,
     )
     session.add(stock)
@@ -64,6 +88,7 @@ def create_stock(session: Session, ticker: str, category: StockCategory, thesis:
     thesis_log = ThesisLog(
         stock_ticker=ticker_upper,
         content=thesis,
+        tags=tags_str,
         version=1,
     )
     repo.create_thesis_log(session, thesis_log)
@@ -88,6 +113,7 @@ def list_active_stocks_with_signals(session: Session) -> list[dict]:
             "ticker": stock.ticker,
             "category": stock.category,
             "current_thesis": stock.current_thesis,
+            "current_tags": _str_to_tags(stock.current_tags),
             "is_active": stock.is_active,
             "signals": signals,
         })
@@ -169,6 +195,21 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     return {"message": f"✅ {ticker_upper} 已從追蹤清單移除。", "reason": reason}
 
 
+def export_stocks(session: Session) -> list[dict]:
+    """匯出所有啟用中股票（精簡格式，適用於 JSON 下載與匯入）。"""
+    logger.info("匯出所有追蹤股票...")
+    stocks = repo.find_active_stocks(session)
+    return [
+        {
+            "ticker": stock.ticker,
+            "category": stock.category.value,
+            "thesis": stock.current_thesis,
+            "tags": _str_to_tags(stock.current_tags),
+        }
+        for stock in stocks
+    ]
+
+
 def list_removed_stocks(session: Session) -> list[dict]:
     """取得所有已移除的股票，含最新移除原因。"""
     logger.info("取得已移除股票清單...")
@@ -216,10 +257,17 @@ def get_removal_history(session: Session, ticker: str) -> list[dict]:
 # ===========================================================================
 
 
-def add_thesis(session: Session, ticker: str, content: str) -> dict:
+def add_thesis(
+    session: Session,
+    ticker: str,
+    content: str,
+    tags: list[str] | None = None,
+) -> dict:
     """為指定股票新增觀點，自動遞增版本號。"""
     ticker_upper = ticker.upper()
-    logger.info("更新觀點：%s", ticker_upper)
+    tags = tags or []
+    tags_str = _tags_to_str(tags)
+    logger.info("更新觀點：%s（標籤：%s）", ticker_upper, tags)
 
     stock = repo.find_stock_by_ticker(session, ticker_upper)
     if not stock:
@@ -231,11 +279,13 @@ def add_thesis(session: Session, ticker: str, content: str) -> dict:
     thesis_log = ThesisLog(
         stock_ticker=ticker_upper,
         content=content,
+        tags=tags_str,
         version=new_version,
     )
     repo.create_thesis_log(session, thesis_log)
 
     stock.current_thesis = content
+    stock.current_tags = tags_str
     repo.update_stock(session, stock)
     session.commit()
 
@@ -245,6 +295,7 @@ def add_thesis(session: Session, ticker: str, content: str) -> dict:
         "message": f"✅ {ticker_upper} 觀點已更新至第 {new_version} 版。",
         "version": new_version,
         "content": content,
+        "tags": tags,
     }
 
 
@@ -261,6 +312,7 @@ def get_thesis_history(session: Session, ticker: str) -> list[dict]:
         {
             "version": log.version,
             "content": log.content,
+            "tags": _str_to_tags(log.tags),
             "created_at": log.created_at.isoformat() if log.created_at else None,
         }
         for log in logs

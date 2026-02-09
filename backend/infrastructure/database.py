@@ -21,14 +21,38 @@ engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
 logger.info("資料庫連線位置：%s", DATABASE_URL)
 
 
+def _run_migrations() -> None:
+    """執行資料庫遷移：為既有資料表新增缺少的欄位。"""
+    from sqlalchemy import text
+
+    migrations = [
+        "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
+        "ALTER TABLE thesislog ADD COLUMN tags VARCHAR DEFAULT '';",
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info("Migration 成功：%s", sql.strip())
+            except Exception:
+                # SQLite 會在欄位已存在時拋出 OperationalError，靜默跳過
+                conn.rollback()
+
+
 def create_db_and_tables() -> None:
-    """建立所有 SQLModel 定義的資料表（若不存在）。"""
+    """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
     import domain.entities  # noqa: F401
 
     logger.info("建立資料表（若不存在）...")
     SQLModel.metadata.create_all(engine)
     logger.info("資料表就緒。")
+
+    logger.info("執行資料庫遷移...")
+    _run_migrations()
+    logger.info("遷移完成。")
 
 
 def get_session() -> Generator[Session, None, None]:

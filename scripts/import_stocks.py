@@ -1,6 +1,8 @@
 """
-Gooaye Radar — 股票觀察名單匯入腳本
+Gooaye Radar — 股票觀察名單匯入腳本（Upsert 模式）
 從 JSON 檔案讀取股票清單，批次匯入至正在運行的 FastAPI 後端。
+- 新股票：透過 POST /ticker 新增
+- 已存在：透過 POST /ticker/{ticker}/thesis 更新觀點與標籤
 
 使用方式：
     python3 scripts/import_stocks.py                              # 使用預設資料檔
@@ -13,7 +15,8 @@ from pathlib import Path
 
 import requests
 
-API_URL = "http://localhost:8000/ticker"
+BASE_URL = "http://localhost:8000"
+API_URL = f"{BASE_URL}/ticker"
 DEFAULT_DATA_FILE = Path(__file__).parent / "data" / "gooaye_watchlist.json"
 
 REQUIRED_FIELDS = {"ticker", "category", "thesis"}
@@ -48,8 +51,55 @@ def load_stock_list(file_path: Path) -> list[dict]:
                 f"必須是 {VALID_CATEGORIES} 之一。"
             )
             sys.exit(1)
+        # tags 為選填，預設為空列表
+        if "tags" not in item:
+            item["tags"] = []
 
     return data
+
+
+def upsert_stock(item: dict) -> str:
+    """
+    嘗試新增股票；若已存在則更新觀點與標籤。
+    回傳狀態：'inserted' / 'updated' / 'failed'
+    """
+    ticker = item["ticker"]
+    tags = item.get("tags", [])
+
+    # 嘗試新增
+    create_payload = {
+        "ticker": ticker,
+        "category": item["category"],
+        "thesis": item["thesis"],
+        "tags": tags,
+    }
+    resp = requests.post(API_URL, json=create_payload, timeout=10)
+
+    if resp.status_code == 200:
+        return "inserted"
+
+    if resp.status_code == 409:
+        # 股票已存在，更新觀點與標籤
+        update_payload = {
+            "content": item["thesis"],
+            "tags": tags,
+        }
+        update_resp = requests.post(
+            f"{API_URL}/{ticker}/thesis",
+            json=update_payload,
+            timeout=10,
+        )
+        if update_resp.status_code == 200:
+            return "updated"
+        else:
+            detail = update_resp.json().get("detail", update_resp.text)
+            print(f"  ❌ {ticker} — 更新失敗（HTTP {update_resp.status_code}）：{detail}")
+            return "failed"
+
+    # 其他錯誤
+    detail = resp.json().get("detail", resp.text)
+    print(f"  ❌ {ticker} — 失敗（HTTP {resp.status_code}）：{detail}")
+    return "failed"
 
 
 def main() -> None:
@@ -62,35 +112,34 @@ def main() -> None:
     stock_list = load_stock_list(data_file)
 
     print("=" * 60)
-    print("  Gooaye Radar — 股票觀察名單匯入")
+    print("  Gooaye Radar — 股票觀察名單匯入（Upsert 模式）")
     print(f"  資料來源：{data_file}")
-    print(f"  目標 API：{API_URL}")
+    print(f"  目標 API：{BASE_URL}")
     print(f"  共 {len(stock_list)} 檔股票")
     print("=" * 60)
     print()
 
-    success = 0
-    skipped = 0
+    inserted = 0
+    updated = 0
     failed = 0
 
     for item in stock_list:
         ticker = item["ticker"]
+        tags_display = f" [{', '.join(item.get('tags', []))}]" if item.get("tags") else ""
         try:
-            resp = requests.post(API_URL, json=item, timeout=10)
+            result = upsert_stock(item)
 
-            if resp.status_code == 200:
-                print(f"  ✅ {ticker} — 匯入成功")
-                success += 1
-            elif resp.status_code == 409:
-                print(f"  ⏭️  {ticker} — 已存在，跳過")
-                skipped += 1
+            if result == "inserted":
+                print(f"  ✅ {ticker} — 新增成功{tags_display}")
+                inserted += 1
+            elif result == "updated":
+                print(f"  🔄 {ticker} — 已更新觀點與標籤{tags_display}")
+                updated += 1
             else:
-                detail = resp.json().get("detail", resp.text)
-                print(f"  ❌ {ticker} — 失敗（HTTP {resp.status_code}）：{detail}")
                 failed += 1
 
         except requests.ConnectionError:
-            print(f"  ❌ {ticker} — 無法連線至 {API_URL}，請確認後端是否啟動。")
+            print(f"  ❌ {ticker} — 無法連線至 {BASE_URL}，請確認後端是否啟動。")
             failed += 1
             break
         except requests.RequestException as e:
@@ -99,7 +148,7 @@ def main() -> None:
 
     print()
     print("-" * 60)
-    print(f"  匯入完成！成功：{success} / 跳過：{skipped} / 失敗：{failed}")
+    print(f"  匯入完成！新增：{inserted} / 更新：{updated} / 失敗：{failed}")
     print("-" * 60)
 
 

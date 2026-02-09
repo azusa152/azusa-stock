@@ -21,12 +21,14 @@ class TickerCreateRequest(BaseModel):
     ticker: str
     category: StockCategory
     thesis: str
+    tags: list[str] = []
 
 
 class ThesisCreateRequest(BaseModel):
     """POST /ticker/{ticker}/thesis 請求 Body。"""
 
     content: str
+    tags: list[str] = []
 
 
 class CategoryUpdateRequest(BaseModel):
@@ -52,6 +54,7 @@ class StockResponse(BaseModel):
     ticker: str
     category: StockCategory
     current_thesis: str
+    current_tags: list[str] = []
     is_active: bool
     signals: Optional[dict] = None
 
