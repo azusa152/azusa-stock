@@ -412,13 +412,36 @@ def run_scan(session: Session) -> dict:
         })
         all_alerts.extend(alerts)
 
-    # === 通知 ===
+    # === 通知（依類別分組） ===
+    category_icon = {
+        "Trend_Setter": "🌊",
+        "Moat": "🏰",
+        "Growth": "🚀",
+        "ETF": "🧺",
+    }
+
     non_normal = [r for r in results if r["signal"] != ScanSignal.NORMAL.value]
     if non_normal:
         logger.warning("掃描發現 %d 檔異常股票。", len(non_normal))
-        header = f"🔔 <b>Azusa Radar V2 掃描</b>\n市場情緒：{market_status_value}\n\n"
-        lines = [a for r in non_normal for a in r["alerts"]]
-        send_telegram_message(header + "\n".join(lines))
+        header = f"🔔 <b>Azusa Radar V2 掃描</b>\n市場情緒：{market_status_value}\n"
+
+        # 依類別分組
+        grouped: dict[str, list[str]] = {}
+        for r in non_normal:
+            cat = r.get("category", "Growth")
+            cat_value = cat.value if hasattr(cat, "value") else str(cat)
+            grouped.setdefault(cat_value, []).extend(r["alerts"])
+
+        body_parts: list[str] = []
+        for cat_key in ["Trend_Setter", "Moat", "Growth", "ETF"]:
+            if cat_key in grouped:
+                icon = category_icon.get(cat_key, "")
+                label = CATEGORY_LABEL.get(cat_key, cat_key)
+                section_header = f"\n{icon} <b>{label}</b>"
+                section_lines = "\n".join(grouped[cat_key])
+                body_parts.append(f"{section_header}\n{section_lines}")
+
+        send_telegram_message(header + "\n".join(body_parts))
     else:
         logger.info("掃描完成，所有股票狀態正常。")
         send_telegram_message(

@@ -244,53 +244,11 @@ with st.sidebar:
 
     # -- 全域掃描 (V2 三層漏斗) --
     st.subheader("🔍 三層漏斗掃描")
+    st.caption("掃描在背景執行，結果將透過 Telegram 推播通知。系統每 30 分鐘自動掃描一次。")
     if st.button("🚀 執行掃描", use_container_width=True):
-        with st.spinner("三層漏斗掃描中，請稍候..."):
-            scan_response = api_post("/scan", {})
-        if scan_response:
-            # 顯示整體市場情緒
-            ms = scan_response.get("market_status", {})
-            ms_status = ms.get("status", "POSITIVE")
-            ms_details = ms.get("details", "")
-            ms_pct = ms.get("below_60ma_pct", 0)
-
-            if ms_status == "CAUTION":
-                st.error(f"🔴 市場情緒：CAUTION（{ms_pct}% 跌破 60MA）")
-            else:
-                st.success(f"🟢 市場情緒：POSITIVE（{ms_pct}% 跌破 60MA）")
-            st.caption(ms_details)
-
-            st.divider()
-
-            # 逐股掃描結果 — signal badges
-            results = scan_response.get("results", [])
-            non_normal = [r for r in results if r.get("signal") != "NORMAL"]
-
-            if non_normal:
-                st.markdown(f"**發現 {len(non_normal)} 檔異常股票：**")
-                for r in non_normal:
-                    sig = r.get("signal", "NORMAL")
-                    tkr = r.get("ticker", "?")
-                    alerts = r.get("alerts", [])
-
-                    if sig == "THESIS_BROKEN":
-                        st.error(f"🔴 **THESIS_BROKEN** — {tkr}")
-                    elif sig == "CONTRARIAN_BUY":
-                        st.success(f"🟢 **CONTRARIAN_BUY** — {tkr}")
-                    elif sig == "OVERHEATED":
-                        st.warning(f"🟠 **OVERHEATED** — {tkr}")
-
-                    for a in alerts:
-                        st.caption(f"  {a}")
-            else:
-                st.success("✅ 掃描完成，所有股票狀態正常。")
-
-            # 顯示所有 NORMAL 股票的簡要列表
-            normal_stocks = [r for r in results if r.get("signal") == "NORMAL"]
-            if normal_stocks:
-                with st.expander(f"⚪ NORMAL 股票（{len(normal_stocks)} 檔）", expanded=False):
-                    for r in normal_stocks:
-                        st.info(f"⚪ **NORMAL** — {r.get('ticker', '?')}")
+        result = api_post("/scan", {})
+        if result:
+            st.success(f"✅ {result.get('message', '掃描已啟動')}")
 
     st.divider()
 
@@ -314,7 +272,7 @@ with st.sidebar:
 
     # -- 重新整理資料 --
     st.subheader("🔄 資料快取")
-    st.caption("股票資料每 5 分鐘自動更新。點擊下方按鈕可立即刷新。")
+    st.caption("股票資料快取 5 分鐘，過期後下次操作時自動重新載入。點擊下方按鈕可立即刷新。")
     if st.button("🔄 立即刷新資料", use_container_width=True):
         st.cache_data.clear()
         st.rerun()

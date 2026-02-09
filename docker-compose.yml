@@ -26,5 +26,19 @@ services:
     environment:
       - BACKEND_URL=http://backend:8000
 
+  scanner:
+    image: alpine:3.19
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        apk add --no-cache curl
+        echo '*/30 * * * * curl -sf -X POST http://backend:8000/scan > /dev/null 2>&1' | crontab -
+        crond -f -l 2
+    restart: unless-stopped
+
 volumes:
   radar-data:

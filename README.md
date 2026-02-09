@@ -12,7 +12,7 @@
 - **拖曳排序** — 透過 drag-and-drop 調整股票顯示順位，順位寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，含完整移除歷史
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，匯入腳本支援 upsert（新增或更新）
-- **Telegram 警報** — 掃描異常時自動推播通知
+- **定時掃描** — 每 30 分鐘自動執行三層漏斗掃描（非同步），異常時依類別分組推播 Telegram 通知
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
 ## 核心邏輯
@@ -94,6 +94,7 @@ docker compose up --build
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:8501
+- **Scanner** — Alpine cron 容器，每 30 分鐘自動呼叫 `POST /scan`
 
 ### 3. 匯入觀察名單
 
@@ -138,7 +139,7 @@ docker compose up --build
 | `PATCH` | `/ticker/{ticker}/category` | 切換股票分類 |
 | `POST` | `/ticker/{ticker}/deactivate` | 移除追蹤（含移除原因） |
 | `GET` | `/ticker/{ticker}/removals` | 取得移除歷史 |
-| `POST` | `/scan` | V2 三層漏斗掃描 + Telegram 警報 |
+| `POST` | `/scan` | V2 三層漏斗掃描（非同步 fire-and-forget），結果透過 Telegram 依類別推播 |
 
 ### 範例：新增股票（含標籤）
 
@@ -185,7 +186,7 @@ azusa-stock/
 ├── .env                              # Telegram Bot 憑證
 ├── .gitignore
 ├── .cursorrules                      # Cursor AI 架構師指引
-├── docker-compose.yml                # Backend + Frontend 服務定義
+├── docker-compose.yml                # Backend + Frontend + Scanner 服務定義
 ├── README.md
 │
 ├── backend/
