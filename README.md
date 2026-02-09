@@ -1,14 +1,48 @@
-# 投資雷達
+# Azusa Radar — 投資雷達
 
-透過三層分類架構，系統化追蹤股票、管理觀點演進、並自動掃描技術面與基本面異常。
+系統化追蹤股票、管理觀點演進、並透過三層漏斗自動掃描技術面與基本面異常。
+
+## 功能特色
+
+- **四大分類追蹤** — 風向球 / 護城河 / 成長夢想 / ETF，各類有專屬分頁
+- **觀點版控 (Thesis Versioning)** — 每次更新觀點自動遞增版號，完整保留歷史演進
+- **動態標籤 (Dynamic Tagging)** — 為股票標記領域標籤（AI、Cloud、SaaS...），標籤隨觀點版控一併快照
+- **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號
+- **護城河健檢** — 毛利率 5 季走勢圖 + YoY 診斷（錯殺機會 / Thesis Broken）
+- **拖曳排序** — 透過 drag-and-drop 調整股票顯示順位，順位寫入資料庫持久化
+- **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，含完整移除歷史
+- **匯出 / 匯入** — JSON 格式匯出觀察名單，匯入腳本支援 upsert（新增或更新）
+- **Telegram 警報** — 掃描異常時自動推播通知
+- **內建 SOP 指引** — Dashboard 內附操作說明書
 
 ## 核心邏輯
 
-| 分類 | 說明 | 掃描規則 |
-|------|------|----------|
-| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | RSI < 30 或跌破 200MA |
-| **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 毛利率 YoY 衰退 |
-| **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 跌破 60MA（動能消失） |
+### 分類與掃描規則
+
+| 分類 | 說明 | Layer 1 參與 |
+|------|------|:------------:|
+| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | 是 |
+| **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
+| **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
+| **ETF** | 指數型基金，被動追蹤市場或主題 | 否 |
+
+### V2 三層漏斗
+
+```mermaid
+flowchart TD
+    L1["Layer 1: 市場情緒"] -->|"風向球跌破 60MA 比例"| Decision{">50%?"}
+    Decision -->|"是"| CAUTION["CAUTION 雨天"]
+    Decision -->|"否"| POSITIVE["POSITIVE 晴天"]
+
+    L2["Layer 2: 護城河趨勢"] -->|"毛利率 YoY"| MoatCheck{"衰退 >2pp?"}
+    MoatCheck -->|"是"| BROKEN["THESIS_BROKEN"]
+    MoatCheck -->|"否"| L3
+
+    L3["Layer 3: 技術面"] -->|"RSI, Bias, Volume Ratio"| TechCheck
+    TechCheck -->|"RSI<35 + 市場正面"| BUY["CONTRARIAN_BUY"]
+    TechCheck -->|"Bias>20%"| HOT["OVERHEATED"]
+    TechCheck -->|"其他"| NORMAL["NORMAL"]
+```
 
 ## 技術架構
 
@@ -28,10 +62,11 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit Dashboard，分頁顯示三類股票與觀點編輯
+- **Frontend** — Streamlit Dashboard，分頁顯示四類股票（+ 已移除封存）與觀點編輯
 - **Database** — SQLite，透過 Docker Volume 持久化
-- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護）
+- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取
 - **通知** — Telegram Bot API
+- **拖曳排序** — `streamlit-sortables` 元件
 
 ## 快速開始
 
@@ -68,38 +103,57 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install requests
 
-# 匯入預設觀察名單（24 檔股票）
+# 匯入預設觀察名單
 python scripts/import_stocks.py
 
 # 或指定自訂 JSON 檔案
 python scripts/import_stocks.py path/to/custom_list.json
 ```
 
+> 匯入腳本支援 upsert：若股票已存在，會自動更新觀點與標籤（版控遞增）。
+
+### 4. 重置資料庫
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+`-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
+
 ## API 參考
 
 | Method | Path | 說明 |
 |--------|------|------|
 | `GET` | `/health` | Health check（Docker 健康檢查用） |
-| `POST` | `/ticker` | 新增追蹤股票（含初始觀點） |
-| `POST` | `/ticker/{ticker}/thesis` | 新增觀點（自動版控，version +1） |
-| `GET` | `/ticker/{ticker}/thesis` | 取得指定股票的觀點歷史 |
-| `GET` | `/stocks` | 取得所有追蹤股票（含最新技術指標） |
-| `POST` | `/scan` | 全域掃描 + Telegram 警報通知 |
+| `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
+| `GET` | `/stocks` | 取得所有追蹤股票（僅 DB 資料） |
+| `PUT` | `/stocks/reorder` | 批次更新股票顯示順位 |
+| `GET` | `/stocks/export` | 匯出所有股票（JSON 格式，含觀點與標籤） |
+| `GET` | `/stocks/removed` | 取得所有已移除股票 |
+| `GET` | `/ticker/{ticker}/signals` | 取得單一股票的技術訊號（yfinance，含快取） |
+| `GET` | `/ticker/{ticker}/moat` | 護城河健檢（毛利率 5 季走勢 + YoY 診斷） |
+| `POST` | `/ticker/{ticker}/thesis` | 新增觀點（自動版控 version +1，含標籤） |
+| `GET` | `/ticker/{ticker}/thesis` | 取得觀點版控歷史 |
+| `PATCH` | `/ticker/{ticker}/category` | 切換股票分類 |
+| `POST` | `/ticker/{ticker}/deactivate` | 移除追蹤（含移除原因） |
+| `GET` | `/ticker/{ticker}/removals` | 取得移除歷史 |
+| `POST` | `/scan` | V2 三層漏斗掃描 + Telegram 警報 |
 
-### 範例：新增股票
+### 範例：新增股票（含標籤）
 
 ```bash
 curl -X POST http://localhost:8000/ticker \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "NVDA", "category": "Moat", "thesis": "賣鏟子給巨頭的王。"}'
+  -d '{"ticker": "NVDA", "category": "Moat", "thesis": "賣鏟子給巨頭的王。", "tags": ["AI", "Semiconductor"]}'
 ```
 
-### 範例：更新觀點
+### 範例：更新觀點（含標籤）
 
 ```bash
 curl -X POST http://localhost:8000/ticker/NVDA/thesis \
   -H "Content-Type: application/json" \
-  -d '{"content": "GB200 需求超預期，上調目標價。"}'
+  -d '{"content": "GB200 需求超預期，上調目標價。", "tags": ["AI", "Semiconductor", "Hardware"]}'
 ```
 
 ### 範例：觸發掃描
@@ -163,12 +217,12 @@ azusa-stock/
 ├── frontend/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   └── app.py                        # Dashboard：三分頁 + 觀點編輯器
+│   └── app.py                        # Dashboard：四分頁 + 封存 + 觀點編輯器
 │
 ├── scripts/
-│   ├── import_stocks.py              # 從 JSON 匯入股票至 API
+│   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
 │   └── data/
-│       └── azusa_watchlist.json      # 預設觀察名單（24 檔）
+│       └── azusa_watchlist.json      # 預設觀察名單
 │
 └── logs/                             # 日誌檔案（bind-mount 自動產生）
     ├── radar.log                     # 當日日誌
@@ -206,14 +260,15 @@ tail -f logs/radar.log
 
 ## 資料檔案格式
 
-匯入用的 JSON 檔案格式如下：
+匯入用的 JSON 檔案格式（`azusa_watchlist.json`）：
 
 ```json
 [
   {
     "ticker": "NVDA",
     "category": "Moat",
-    "thesis": "你對這檔股票的觀點。"
+    "thesis": "你對這檔股票的觀點。",
+    "tags": ["AI", "Semiconductor"]
   }
 ]
 ```
@@ -221,3 +276,4 @@ tail -f logs/radar.log
 - `ticker` — 股票代號（美股）
 - `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`ETF` 之一
 - `thesis` — 初始觀點
+- `tags` — 領域標籤（選填，預設為空陣列）
