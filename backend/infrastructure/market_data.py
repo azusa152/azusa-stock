@@ -106,6 +106,29 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
             ticker, current_price, rsi, ma200, ma60, bias, volume_ratio,
         )
 
+        # 機構持倉 (best-effort，失敗不影響整體回傳)
+        institutional_holders = None
+        try:
+            holders_df = stock.institutional_holders
+            if holders_df is not None and not holders_df.empty:
+                top5 = holders_df.head(5)
+                institutional_holders = []
+                for _, row in top5.iterrows():
+                    holder_entry = {}
+                    for col in top5.columns:
+                        val = row[col]
+                        # 將 Timestamp / NaT 等轉為字串
+                        if hasattr(val, "isoformat"):
+                            holder_entry[col] = val.isoformat()[:10]
+                        elif val is None or (hasattr(val, "item") and str(val) == "NaT"):
+                            holder_entry[col] = "N/A"
+                        else:
+                            holder_entry[col] = val if not hasattr(val, "item") else val.item()
+                    institutional_holders.append(holder_entry)
+                logger.debug("%s 機構持倉：取得 %d 筆", ticker, len(institutional_holders))
+        except Exception as holder_err:
+            logger.debug("%s 機構持倉取得失敗（非致命）：%s", ticker, holder_err)
+
         result = {
             "ticker": ticker,
             "price": current_price,
@@ -115,6 +138,7 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
             "bias": bias,
             "volume_ratio": volume_ratio,
             "status": status_parts,
+            "institutional_holders": institutional_holders,
         }
         _signals_cache[ticker] = result
         return result

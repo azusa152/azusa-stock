@@ -338,18 +338,32 @@ def render_stock_card(stock: dict) -> None:
                     else:
                         st.metric("量比 Vol Ratio", "N/A")
 
-                # WhaleWisdom fallback
-                institutional = signals.get("institutional")
-                if institutional and "N/A failed to get new data" in str(institutional):
-                    st.caption(f"⚠️ {institutional}")
-                    st.link_button(
-                        f"🐋 WhaleWisdom 查詢 {ticker}",
-                        f"https://whalewisdom.com/stock/{ticker.lower()}",
-                    )
-
                 # 狀態列表
                 for s in signals.get("status", []):
                     st.write(s)
+
+            # -- 籌碼面 (13F) --
+            with st.expander(f"🐳 籌碼面 (13F) — {ticker}", expanded=False):
+                st.link_button(
+                    f"🐳 前往 WhaleWisdom 查看大戶動向",
+                    f"https://whalewisdom.com/stock/{ticker.lower()}",
+                    use_container_width=True,
+                )
+                st.caption(
+                    "💡 股癌心法：點擊按鈕查看機構持倉。重點觀察"
+                    "波克夏 (Berkshire)、橋水 (Bridgewater) 等大基金"
+                    "是 'New Buy/Add' (佈局) 還是 'Sold Out' (離場)。"
+                    "跟單要跟「新增」而非庫存。"
+                )
+
+                holders = signals.get("institutional_holders")
+                if holders and isinstance(holders, list) and len(holders) > 0:
+                    st.markdown("**📊 前五大機構持有者：**")
+                    st.dataframe(holders, use_container_width=True, hide_index=True)
+                else:
+                    st.info(
+                        "⚠️ 機構持倉資料暫時無法取得，請點擊上方按鈕前往 WhaleWisdom 查看完整 13F 報告。"
+                    )
 
         with col2:
             st.markdown("**💡 當前觀點：**")
