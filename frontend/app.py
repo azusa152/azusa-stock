@@ -533,77 +533,78 @@ def render_stock_card(stock: dict) -> None:
                         "⚠️ 機構持倉資料暫時無法取得，請點擊上方按鈕前往 WhaleWisdom 查看完整 13F 報告。"
                     )
 
-            # -- 護城河檢測 (Moat Health Check) --
-            with st.expander(f"🏰 護城河檢測 — {ticker}", expanded=False):
-                moat_data = api_get(f"/ticker/{ticker}/moat")
+            # -- 護城河檢測 (Moat Health Check) -- ETF 不適用
+            if stock.get("category") != "ETF":
+                with st.expander(f"🏰 護城河檢測 — {ticker}", expanded=False):
+                    moat_data = api_get(f"/ticker/{ticker}/moat")
 
-                if moat_data and moat_data.get("moat") != "N/A":
-                    # 1) 毛利率指標 + YoY 變化
-                    curr_margin = moat_data.get("current_margin")
-                    margin_change = moat_data.get("change")
+                    if moat_data and moat_data.get("moat") != "N/A":
+                        # 1) 毛利率指標 + YoY 變化
+                        curr_margin = moat_data.get("current_margin")
+                        margin_change = moat_data.get("change")
 
-                    if curr_margin is not None and margin_change is not None:
-                        st.metric(
-                            "最新毛利率 (Gross Margin)",
-                            f"{curr_margin:.1f}%",
-                            delta=f"{margin_change:+.2f} pp (YoY)",
+                        if curr_margin is not None and margin_change is not None:
+                            st.metric(
+                                "最新毛利率 (Gross Margin)",
+                                f"{curr_margin:.1f}%",
+                                delta=f"{margin_change:+.2f} pp (YoY)",
+                            )
+                        else:
+                            st.metric("最新毛利率 (Gross Margin)", "N/A")
+
+                        # 2) 5 季走勢折線圖
+                        trend = moat_data.get("margin_trend", [])
+                        valid_trend = [t for t in trend if t.get("value") is not None]
+                        if valid_trend:
+                            df = pd.DataFrame(valid_trend).set_index("date")
+                            df.columns = ["毛利率 (%)"]
+                            st.line_chart(df)
+                        else:
+                            st.caption("⚠️ 毛利率趨勢資料不足，無法繪圖。")
+
+                        # 3) 投資診斷 (Azusa Diagnosis)
+                        bias_val = signals.get("bias")
+                        price_is_weak = bias_val is not None and bias_val < -5
+                        margin_is_strong = (
+                            margin_change is not None and margin_change > 0
                         )
+                        margin_is_bad = (
+                            margin_change is not None and margin_change < -2
+                        )
+
+                        if margin_is_bad:
+                            st.error(
+                                "🔴 **警報 (Thesis Broken)**："
+                                "護城河受損（毛利 YoY 衰退超過 2 個百分點），"
+                                "基本面轉差，勿接刀。"
+                            )
+                        elif price_is_weak and margin_is_strong:
+                            st.success(
+                                "🟢 **錯殺機會 (Contrarian Buy)**："
+                                "股價回檔但護城河變寬（毛利升），"
+                                "基本面強勁，可留意佈局時機。"
+                            )
+                        elif margin_is_strong:
+                            st.success(
+                                "🟢 **護城河穩固**："
+                                "毛利率 YoY 成長，基本面健康。"
+                            )
+                        elif price_is_weak:
+                            st.warning(
+                                "🟡 **股價偏弱**："
+                                "乖離率偏低但護城河數據持平，留意後續季報。"
+                            )
+                        else:
+                            st.info("⚪ **觀察中**：護城河數據持平，持續觀察。")
+
+                        # 補充詳情
+                        details = moat_data.get("details", "")
+                        if details:
+                            st.caption(f"📊 {details}")
                     else:
-                        st.metric("最新毛利率 (Gross Margin)", "N/A")
-
-                    # 2) 5 季走勢折線圖
-                    trend = moat_data.get("margin_trend", [])
-                    valid_trend = [t for t in trend if t.get("value") is not None]
-                    if valid_trend:
-                        df = pd.DataFrame(valid_trend).set_index("date")
-                        df.columns = ["毛利率 (%)"]
-                        st.line_chart(df)
-                    else:
-                        st.caption("⚠️ 毛利率趨勢資料不足，無法繪圖。")
-
-                    # 3) 投資診斷 (Azusa Diagnosis)
-                    bias_val = signals.get("bias")
-                    price_is_weak = bias_val is not None and bias_val < -5
-                    margin_is_strong = (
-                        margin_change is not None and margin_change > 0
-                    )
-                    margin_is_bad = (
-                        margin_change is not None and margin_change < -2
-                    )
-
-                    if margin_is_bad:
-                        st.error(
-                            "🔴 **警報 (Thesis Broken)**："
-                            "護城河受損（毛利 YoY 衰退超過 2 個百分點），"
-                            "基本面轉差，勿接刀。"
-                        )
-                    elif price_is_weak and margin_is_strong:
-                        st.success(
-                            "🟢 **錯殺機會 (Contrarian Buy)**："
-                            "股價回檔但護城河變寬（毛利升），"
-                            "基本面強勁，可留意佈局時機。"
-                        )
-                    elif margin_is_strong:
-                        st.success(
-                            "🟢 **護城河穩固**："
-                            "毛利率 YoY 成長，基本面健康。"
-                        )
-                    elif price_is_weak:
                         st.warning(
-                            "🟡 **股價偏弱**："
-                            "乖離率偏低但護城河數據持平，留意後續季報。"
+                            "⚠️ 無法取得財報數據（可能是新股），請稍後再試。"
                         )
-                    else:
-                        st.info("⚪ **觀察中**：護城河數據持平，持續觀察。")
-
-                    # 補充詳情
-                    details = moat_data.get("details", "")
-                    if details:
-                        st.caption(f"📊 {details}")
-                else:
-                    st.warning(
-                        "⚠️ 無法取得財報數據（可能是 ETF 或新股），請稍後再試。"
-                    )
 
             # -- 掃描歷史 --
             with st.expander(f"📈 掃描歷史 — {ticker}", expanded=False):

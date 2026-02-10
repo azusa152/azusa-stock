@@ -415,7 +415,10 @@ def run_scan(session: Session) -> dict:
         ticker = stock.ticker
         alerts: list[str] = []
 
-        moat_result = analyze_moat_trend(ticker)
+        if stock.category == StockCategory.ETF:
+            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "ETF 不適用護城河分析"}
+        else:
+            moat_result = analyze_moat_trend(ticker)
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
         moat_details = moat_result.get("details", "")
 

@@ -32,6 +32,8 @@ from application.services import (
     update_display_order,
     update_stock_category,
 )
+from domain.enums import StockCategory
+from infrastructure import repositories as repo
 from infrastructure.database import get_session
 from infrastructure.market_data import (
     analyze_moat_trend,
@@ -98,9 +100,13 @@ def export_stocks_route(
 
 
 @router.get("/ticker/{ticker}/moat")
-def get_moat_route(ticker: str) -> dict:
-    """取得指定股票的護城河趨勢（毛利率 5 季走勢 + YoY 診斷）。"""
-    return analyze_moat_trend(ticker.upper())
+def get_moat_route(ticker: str, session: Session = Depends(get_session)) -> dict:
+    """取得指定股票的護城河趨勢（毛利率 5 季走勢 + YoY 診斷）。ETF 不適用。"""
+    upper_ticker = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper_ticker)
+    if stock and stock.category == StockCategory.ETF:
+        return {"ticker": upper_ticker, "moat": "N/A", "details": "ETF 不適用護城河分析"}
+    return analyze_moat_trend(upper_ticker)
 
 
 @router.patch("/ticker/{ticker}/category")
