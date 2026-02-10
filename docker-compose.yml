@@ -42,8 +42,38 @@ services:
     command:
       - -c
       - |
-        apk add --no-cache curl
-        (echo '*/30 * * * * curl -sf -X POST http://backend:8000/scan > /dev/null 2>&1'; echo '0 18 * * 0 curl -sf -X POST http://backend:8000/digest > /dev/null 2>&1') | crontab -
+        apk add --no-cache curl jq
+
+        # --- smart-scan wrapper: only scan if data is stale (>= 30 min) ---
+        cat > /usr/local/bin/smart-scan.sh << 'SCRIPT'
+        #!/bin/sh
+        BACKEND="http://backend:8000"
+        STALE_SECONDS=1800
+
+        last_epoch=$$(curl -sf "$$BACKEND/scan/last" | jq -r '.epoch // empty')
+        if [ -z "$$last_epoch" ]; then
+          echo "$$(date) No previous scan found, triggering scan..."
+          curl -sf -X POST "$$BACKEND/scan" > /dev/null 2>&1
+          exit 0
+        fi
+
+        now_epoch=$$(date +%s)
+        age=$$(( now_epoch - last_epoch ))
+
+        if [ "$$age" -ge "$$STALE_SECONDS" ]; then
+          echo "$$(date) Last scan was $${age}s ago (>= $${STALE_SECONDS}s), triggering scan..."
+          curl -sf -X POST "$$BACKEND/scan" > /dev/null 2>&1
+        else
+          echo "$$(date) Last scan was $${age}s ago (< $${STALE_SECONDS}s), skipping."
+        fi
+        SCRIPT
+        chmod +x /usr/local/bin/smart-scan.sh
+
+        # Run smart check immediately at startup
+        /usr/local/bin/smart-scan.sh
+
+        # Cron: smart scan every 30 min + weekly digest on Sunday
+        (echo '*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1'; echo '0 18 * * 0 curl -sf -X POST http://backend:8000/digest > /dev/null 2>&1') | crontab -
         crond -f -l 2
     restart: unless-stopped
 

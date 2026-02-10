@@ -30,9 +30,11 @@ from domain.constants import (
     DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
+    DISK_ETF_HOLDINGS_TTL,
     DISK_FOREX_TTL,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
+    DISK_KEY_ETF_HOLDINGS,
     DISK_KEY_FOREX,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
@@ -44,6 +46,9 @@ from domain.constants import (
     DIVIDEND_CACHE_TTL,
     EARNINGS_CACHE_MAXSIZE,
     EARNINGS_CACHE_TTL,
+    ETF_HOLDINGS_CACHE_MAXSIZE,
+    ETF_HOLDINGS_CACHE_TTL,
+    ETF_TOP_N,
     FOREX_CACHE_MAXSIZE,
     FOREX_CACHE_TTL,
     INSTITUTIONAL_HOLDERS_TOP_N,
@@ -100,6 +105,7 @@ _earnings_cache: TTLCache = TTLCache(maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNING
 _dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL)
 _price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL)
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
+_etf_holdings_cache: TTLCache = TTLCache(maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -637,3 +643,74 @@ def get_exchange_rates(
     for cur in set(holding_currencies):
         rates[cur] = get_exchange_rate(display_currency, cur)
     return rates
+
+
+# ---------------------------------------------------------------------------
+# ETF Holdings (for X-Ray portfolio overlap analysis)
+# ---------------------------------------------------------------------------
+
+
+def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
+    """
+    從 yfinance 取得 ETF 前 N 大成分股。
+    回傳 [{"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.072}, ...] 或 None。
+    非 ETF 標的會回傳 None。
+    """
+    _rate_limiter.wait()
+    try:
+        t = yf.Ticker(ticker, session=_get_session())
+        fd = t.funds_data
+        if fd is None:
+            return None
+        top = fd.top_holdings
+        if top is None or top.empty:
+            return None
+
+        cols = list(top.columns)
+        logger.debug("%s top_holdings columns=%s, index=%s", ticker, cols, top.index.name)
+
+        result = []
+        for symbol, row in top.head(ETF_TOP_N).iterrows():
+            # yfinance 欄位名稱可能隨版本不同：
+            # "Holding Percent" (常見) / "% Assets" (舊版)
+            weight = row.get("Holding Percent", row.get("% Assets"))
+            if weight is None or weight == 0:
+                continue
+            name = row.get("Name", row.get("Holding Name", ""))
+            result.append(
+                {
+                    "symbol": str(symbol).strip().upper(),
+                    "name": str(name) if name else "",
+                    "weight": float(weight),
+                }
+            )
+        logger.info(
+            "%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N
+        )
+        return result if result else None
+    except Exception as e:
+        logger.debug("%s 非 ETF 或取得成分股失敗：%s", ticker, e)
+        return None
+
+
+_ETF_NOT_FOUND_SENTINEL: list[dict] = []  # 空 list 作為「非 ETF」的快取標記
+
+
+def get_etf_top_holdings(ticker: str) -> list[dict] | None:
+    """
+    取得 ETF 前 N 大成分股（含 L1 + L2 快取）。
+    非 ETF 標的回傳 None。使用空 list 哨兵避免反覆呼叫 yfinance。
+    """
+
+    def _fetch_with_sentinel(t: str) -> list[dict]:
+        result = _fetch_etf_top_holdings(t)
+        return result if result else _ETF_NOT_FOUND_SENTINEL
+
+    data = _cached_fetch(
+        _etf_holdings_cache,
+        ticker,
+        DISK_KEY_ETF_HOLDINGS,
+        DISK_ETF_HOLDINGS_TTL,
+        _fetch_with_sentinel,
+    )
+    return data if data else None

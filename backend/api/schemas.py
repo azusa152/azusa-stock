@@ -211,6 +211,20 @@ class HoldingDetail(BaseModel):
     current_price: Optional[float] = None
 
 
+class XRayEntry(BaseModel):
+    """X-Ray: 單一標的真實曝險（直接持倉 + ETF 間接曝險）。"""
+
+    symbol: str
+    name: str = ""
+    direct_value: float = 0.0
+    direct_weight_pct: float = 0.0
+    indirect_value: float = 0.0
+    indirect_weight_pct: float = 0.0
+    total_value: float = 0.0
+    total_weight_pct: float = 0.0
+    indirect_sources: list[str] = []  # e.g. ["VTI (5.2%)", "QQQ (8.1%)"]
+
+
 class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
@@ -219,6 +233,8 @@ class RebalanceResponse(BaseModel):
     categories: dict[str, CategoryAllocation]
     advice: list[str]
     holdings_detail: list[HoldingDetail] = []
+    xray: list[XRayEntry] = []
+    calculated_at: str = ""
 
 
 # ---------------------------------------------------------------------------

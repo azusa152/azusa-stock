@@ -27,6 +27,8 @@ from domain.constants import (
     WEBHOOK_MISSING_TICKER,
     WEBHOOK_UNKNOWN_ACTION_TEMPLATE,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
+    XRAY_SINGLE_STOCK_WARN_PCT,
+    XRAY_SKIP_CATEGORIES,
 )
 from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, MarketSentiment, MoatStatus, ScanSignal, StockCategory
@@ -34,6 +36,7 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
+    get_etf_top_holdings,
     get_exchange_rates,
     get_technical_signals,
 )
@@ -1120,4 +1123,105 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     result["holdings_detail"] = holdings_detail
     result["display_currency"] = display_currency
 
+    # 7) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
+    xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
+
+    for ticker, agg in ticker_agg.items():
+        cat = agg["category"]
+        mv = agg["mv"]
+        if cat in XRAY_SKIP_CATEGORIES or mv <= 0:
+            continue
+
+        # 嘗試取得 ETF 成分股
+        constituents = get_etf_top_holdings(ticker)
+        if constituents:
+            # 此 ticker 是 ETF — 計算間接曝險
+            for c in constituents:
+                sym = c["symbol"]
+                weight = c["weight"]
+                indirect_mv = mv * weight
+                if sym not in xray_map:
+                    xray_map[sym] = {
+                        "name": c.get("name", ""),
+                        "direct": 0.0,
+                        "indirect": 0.0,
+                        "sources": [],
+                    }
+                xray_map[sym]["indirect"] += indirect_mv
+                src_pct = round(weight * 100, 2)
+                xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
+        else:
+            # 非 ETF — 記錄為直接持倉
+            if ticker not in xray_map:
+                xray_map[ticker] = {
+                    "name": "",
+                    "direct": 0.0,
+                    "indirect": 0.0,
+                    "sources": [],
+                }
+            xray_map[ticker]["direct"] += mv
+
+    # 組合 X-Ray 結果
+    xray_entries = []
+    for symbol, data in xray_map.items():
+        total_val = data["direct"] + data["indirect"]
+        if total_val <= 0:
+            continue
+        direct_pct = round((data["direct"] / total_value) * 100, 2) if total_value > 0 else 0.0
+        indirect_pct = round((data["indirect"] / total_value) * 100, 2) if total_value > 0 else 0.0
+        total_pct = round((total_val / total_value) * 100, 2) if total_value > 0 else 0.0
+        xray_entries.append(
+            {
+                "symbol": symbol,
+                "name": data["name"],
+                "direct_value": round(data["direct"], 2),
+                "direct_weight_pct": direct_pct,
+                "indirect_value": round(data["indirect"], 2),
+                "indirect_weight_pct": indirect_pct,
+                "total_value": round(total_val, 2),
+                "total_weight_pct": total_pct,
+                "indirect_sources": data["sources"],
+            }
+        )
+
+    xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
+    result["xray"] = xray_entries
+    result["calculated_at"] = datetime.now(timezone.utc).isoformat()
+
     return result
+
+
+def send_xray_warnings(
+    xray_entries: list[dict],
+    display_currency: str,
+    session: Session,
+) -> list[str]:
+    """
+    檢查 X-Ray 結果，對超過單一標的風險門檻的持倉發送 Telegram 警告。
+    回傳已發送的警告訊息列表。
+    """
+    warnings: list[str] = []
+    for entry in xray_entries:
+        total_pct = entry.get("total_weight_pct", 0.0)
+        indirect_val = entry.get("indirect_value", 0.0)
+        if total_pct > XRAY_SINGLE_STOCK_WARN_PCT and indirect_val > 0:
+            symbol = entry["symbol"]
+            direct_pct = entry.get("direct_weight_pct", 0.0)
+            sources = ", ".join(entry.get("indirect_sources", []))
+            msg = (
+                f"⚠️ X-Ray 警告：{symbol} 直接持倉佔 {direct_pct:.1f}%，"
+                f"加上 ETF 間接曝險（{sources}），"
+                f"真實曝險已達 {total_pct:.1f}%，"
+                f"超過單一標的風險建議值 {XRAY_SINGLE_STOCK_WARN_PCT:.0f}%。"
+            )
+            warnings.append(msg)
+
+    if warnings:
+        full_msg = "🔬 穿透式持倉 X-Ray 分析\n\n" + "\n\n".join(warnings)
+        try:
+            send_telegram_message_dual(full_msg, session)
+            logger.info("已發送 X-Ray 警告（%d 筆）", len(warnings))
+        except Exception as e:
+            logger.warning("X-Ray Telegram 警告發送失敗：%s", e)
+
+    return warnings

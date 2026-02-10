@@ -58,6 +58,25 @@ CATEGORY_LABELS = {
     "Bond": "🛡️ 債券 (Bond)",
     "Cash": "💵 現金 (Cash)",
 }
+# ---------------------------------------------------------------------------
+# Category Colors (for pie chart visual grouping)
+# ---------------------------------------------------------------------------
+CATEGORY_COLOR_MAP = {
+    "Trend_Setter": "#3B82F6",  # blue
+    "Moat": "#22C55E",  # green
+    "Growth": "#F97316",  # orange
+    "Bond": "#8B5CF6",  # purple
+    "Cash": "#EAB308",  # yellow
+}
+CATEGORY_ICON_SHORT = {
+    "Trend_Setter": "🌊",
+    "Moat": "🏰",
+    "Growth": "🚀",
+    "Bond": "🛡️",
+    "Cash": "💵",
+}
+CATEGORY_COLOR_FALLBACK = "#9CA3AF"
+
 SKIP_MOAT_CATEGORIES = ["Bond", "Cash"]  # 不顯示護城河檢測的分類
 SKIP_SIGNALS_CATEGORIES = ["Cash"]  # 不取得技術訊號的分類
 DEFAULT_TAG_OPTIONS = [
@@ -146,6 +165,12 @@ SCAN_SIGNAL_ICONS = {
     "NORMAL": "⚪",
 }
 REORDER_MIN_STOCKS = 2
+
+# ---------------------------------------------------------------------------
+# X-Ray (Portfolio Overlap Analysis)
+# ---------------------------------------------------------------------------
+XRAY_WARN_THRESHOLD_PCT = 15.0
+XRAY_TOP_N_DISPLAY = 15
 
 # ---------------------------------------------------------------------------
 # File Names

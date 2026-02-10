@@ -48,8 +48,8 @@ div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
 # Navigation — two-page app
 # ---------------------------------------------------------------------------
 
-radar_page = st.Page("pages/radar.py", title="投資雷達", icon="📡", default=True)
-allocation_page = st.Page("pages/allocation.py", title="個人資產配置", icon="💼")
+radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", default=True)
+allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼")
 
 pg = st.navigation([radar_page, allocation_page])
 pg.run()

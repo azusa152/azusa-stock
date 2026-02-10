@@ -93,6 +93,7 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/ticker/{ticker}/thesis` | 更新觀點 |
 | `PATCH` | `/ticker/{ticker}/category` | 切換分類 |
 | `POST` | `/scan` | 觸發全域掃描 |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳（判斷資料新鮮度） |
 | `POST` | `/digest` | 觸發每週摘要 |
 | `GET` | `/ticker/{ticker}/scan-history` | 掃描歷史 |
 | `GET` | `/ticker/{ticker}/alerts` | 價格警報清單 |
@@ -105,7 +106,8 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/holdings` | 所有持倉 |
 | `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位，currency 預設 USD） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
-| `GET` | `/rebalance` | 再平衡分析，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算） |
+| `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算）。回傳含 `xray` 陣列，揭示 ETF 間接曝險 |
+| `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
@@ -128,6 +130,7 @@ For advanced use, you can call individual endpoints directly:
 - Use `signals` to check if a stock is oversold (RSI < 30) or overheated (Bias > 20%)
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
 - Use `scan` to trigger a full portfolio analysis with Telegram notifications
-- Use `rebalance` to check if portfolio allocation drifts from target
+- Use `rebalance` to check if portfolio allocation drifts from target. The response includes an `xray` array showing true exposure per stock (direct + indirect via ETFs)
 - Add `?display_currency=TWD` to `/rebalance` to see all values in TWD (supports USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
+- Use `POST /rebalance/xray-alert` to trigger Telegram warnings for stocks whose true exposure (direct + ETF indirect) exceeds 15%
 - When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)

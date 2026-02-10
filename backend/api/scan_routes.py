@@ -6,11 +6,12 @@ API — 掃描路由（非同步 fire-and-forget）。
 
 import threading
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from application.services import run_scan, send_weekly_digest
-from infrastructure.database import engine
+from infrastructure import repositories as repo
+from infrastructure.database import engine, get_session
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -38,6 +39,19 @@ def _run_digest_background() -> None:
             send_weekly_digest(session)
     except Exception as e:
         logger.error("每週摘要生成失敗：%s", e, exc_info=True)
+
+
+@router.get("/scan/last")
+def get_last_scan_time(session: Session = Depends(get_session)) -> dict:
+    """取得最近一次掃描的時間戳，用於判斷資料新鮮度。"""
+    logs = repo.find_latest_scan_logs(session, limit=1)
+    if not logs:
+        return {"last_scanned_at": None, "epoch": None}
+    ts = logs[0].scanned_at
+    return {
+        "last_scanned_at": ts.isoformat(),
+        "epoch": int(ts.timestamp()),
+    }
 
 
 @router.post("/scan")

@@ -58,6 +58,7 @@ YFINANCE_RATE_LIMIT_CPS = 2.0  # calls per second
 # Scan & Alerts
 # ---------------------------------------------------------------------------
 SCAN_THREAD_POOL_SIZE = 4
+SCAN_STALE_SECONDS = 1800  # 30 minutes — scanner skips if last scan is fresher
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
 SCAN_HISTORY_DEFAULT_LIMIT = 20
@@ -126,6 +127,20 @@ PRICE_HISTORY_CACHE_TTL = 300  # L1: 5 minutes (same as signals)
 DISK_PRICE_HISTORY_TTL = 1800  # L2: 30 minutes
 
 # ---------------------------------------------------------------------------
+# ETF Holdings Cache (for X-Ray analysis)
+# ---------------------------------------------------------------------------
+ETF_HOLDINGS_CACHE_MAXSIZE = 100
+ETF_HOLDINGS_CACHE_TTL = 86400  # 24 hours (ETF holdings change slowly)
+DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
+ETF_TOP_N = 10  # only resolve top N constituents per ETF
+
+# ---------------------------------------------------------------------------
+# X-Ray (Portfolio Overlap Analysis)
+# ---------------------------------------------------------------------------
+XRAY_SINGLE_STOCK_WARN_PCT = 15.0  # Telegram warning threshold (%)
+XRAY_SKIP_CATEGORIES = ["Cash", "Bond"]  # skip non-equity for X-Ray
+
+# ---------------------------------------------------------------------------
 # Disk Cache Key Prefixes
 # ---------------------------------------------------------------------------
 DISK_KEY_SIGNALS = "signals"
@@ -134,6 +149,7 @@ DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
+DISK_KEY_ETF_HOLDINGS = "etf_holdings"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages

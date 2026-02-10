@@ -21,10 +21,11 @@
 - **拖曳排序** — 勾選排序模式後透過 drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，支援 Dashboard 上傳匯入或 CLI 腳本匯入（upsert）
-- **定時掃描** — 每 30 分鐘自動執行三層漏斗掃描（非同步），僅推播「差異」通知（訊號變化時才發送）
+- **智慧定時掃描** — 每 30 分鐘檢查資料新鮮度，僅在上次掃描超過 30 分鐘時才觸發（容器啟動時立即檢查，避免重複掃描），僅推播「差異」通知
 - **每週摘要** — 每週日自動發送 Telegram 投資組合健康報告（健康分數 + 異常股票 + 本週訊號變化）
 - **yfinance 速率限制** — 內建 Rate Limiter（2 次/秒），避免被 Yahoo Finance 封鎖
 - **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、**多幣別匯率轉換**（支援 USD/TWD/JPY/EUR/GBP/CNY/HKD/SGD/THB）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
+- **穿透式持倉 X-Ray** — 自動解析 ETF 前 10 大成分股，計算直接+間接真實曝險比例，堆疊長條圖視覺化集中度風險，超過門檻自動 Telegram 警告
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類；新股自動加入雷達追蹤，省去重複操作
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
@@ -178,7 +179,7 @@ docker compose up --build
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:8501
-- **Scanner** — Alpine cron 容器，每 30 分鐘自動掃描（`POST /scan`），每週日 18:00 UTC 發送週報（`POST /digest`）
+- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）
 
 ### 3. 匯入觀察名單
 
@@ -238,6 +239,7 @@ docker compose up --build
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
 | `POST` | `/scan` | V2 三層漏斗掃描（非同步），僅推播差異通知 |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳（供 smart-scan 判斷資料新鮮度） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
 | `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
@@ -254,7 +256,8 @@ docker compose up --build
 | `DELETE` | `/holdings/{id}` | 刪除持倉 |
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
-| `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議），支援 `?display_currency=TWD` 指定顯示幣別 |
+| `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
+| `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `GET` | `/ticker/{ticker}/price-history` | 取得股價歷史（前端趨勢圖用） |
 | `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
@@ -348,6 +351,18 @@ curl -s http://localhost:8000/rebalance | python3 -m json.tool
 
 # 以 TWD 為顯示幣別（所有資產換算為台幣）
 curl -s "http://localhost:8000/rebalance?display_currency=TWD" | python3 -m json.tool
+
+# X-Ray 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
+# 回傳 xray 陣列包含每個標的的 direct_weight_pct + indirect_weight_pct
+curl -s http://localhost:8000/rebalance | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for e in data.get('xray', [])[:10]:
+    print(f\"{e['symbol']:6s} 直接:{e['direct_weight_pct']:5.1f}% 間接:{e['indirect_weight_pct']:5.1f}% 真實:{e['total_weight_pct']:5.1f}%\")
+"
+
+# 觸發 X-Ray Telegram 警告（超過 15% 門檻的標的）
+curl -s -X POST "http://localhost:8000/rebalance/xray-alert?display_currency=USD"
 ```
 
 ### 範例：設定自訂 Telegram Bot

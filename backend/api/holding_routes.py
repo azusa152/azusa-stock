@@ -14,7 +14,7 @@ from api.schemas import (
     HoldingResponse,
     RebalanceResponse,
 )
-from application.services import calculate_rebalance
+from application.services import calculate_rebalance, send_xray_warnings
 from domain.constants import DEFAULT_USER_ID
 from domain.entities import Holding
 from infrastructure.database import get_session
@@ -225,3 +225,18 @@ def get_rebalance(
 ) -> RebalanceResponse:
     """計算再平衡分析（目標 vs 實際配置）。可透過 display_currency 指定顯示幣別。"""
     return calculate_rebalance(session, display_currency=display_currency.strip().upper())
+
+
+@router.post("/rebalance/xray-alert")
+def trigger_xray_alert(
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> dict:
+    """觸發 X-Ray 穿透式持倉分析並發送 Telegram 警告。"""
+    rebalance = calculate_rebalance(session, display_currency=display_currency.strip().upper())
+    xray = rebalance.get("xray", [])
+    warnings = send_xray_warnings(xray, display_currency, session)
+    return {
+        "message": f"X-Ray 分析完成，{len(warnings)} 筆警告已發送。",
+        "warnings": warnings,
+    }

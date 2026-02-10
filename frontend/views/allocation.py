@@ -9,6 +9,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from collections import defaultdict
+
 from config import (
     ALLOCATION_CHART_HEIGHT,
     API_POST_TIMEOUT,
@@ -16,6 +18,9 @@ from config import (
     BACKEND_URL,
     CASH_ACCOUNT_TYPE_OPTIONS,
     CASH_CURRENCY_OPTIONS,
+    CATEGORY_COLOR_FALLBACK,
+    CATEGORY_COLOR_MAP,
+    CATEGORY_ICON_SHORT,
     CATEGORY_LABELS,
     CATEGORY_OPTIONS,
     DISPLAY_CURRENCY_OPTIONS,
@@ -25,6 +30,8 @@ from config import (
     STOCK_CATEGORY_OPTIONS,
     STOCK_MARKET_OPTIONS,
     STOCK_MARKET_PLACEHOLDERS,
+    XRAY_TOP_N_DISPLAY,
+    XRAY_WARN_THRESHOLD_PCT,
 )
 from utils import (
     api_delete,
@@ -114,6 +121,7 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - **Drift 長條圖**：各分類的偏移程度（紅色超配 / 綠色低配）
 - **個股持倉明細**：顯示各股原始幣別、數量、現價、平均成本、換算後市值與佔比
 - **再平衡建議**：自動提示偏移超過 5% 的分類，建議加碼或減碼
+- **🔬 穿透式 X-Ray**：自動解析 ETF 前 10 大成分股，計算「直接持倉 + ETF 間接曝險」的真實比例。堆疊長條圖直觀顯示集中度風險，超過 15% 門檻時以橘色警告提示，亦可一鍵發送 Telegram 警告
 
 > 💡 定期（如每季）檢視資產配置，是最重要但最常被忽略的投資紀律。
 
@@ -840,8 +848,15 @@ with tab_warroom:
                     key="display_currency",
                 )
 
-            rebalance = fetch_rebalance(display_currency=display_cur)
+            with st.spinner("載入再平衡分析中..."):
+                rebalance = fetch_rebalance(display_currency=display_cur)
             if rebalance:
+                calc_at = rebalance.get("calculated_at", "")
+                if calc_at:
+                    with cur_cols[1]:
+                        st.caption(
+                            f"🕐 資料更新時間：{calc_at[:19].replace('T', ' ')} UTC"
+                        )
                 st.metric(
                     f"💰 投資組合總市值（{display_cur}）",
                     f"${rebalance['total_value']:,.2f}",
@@ -872,13 +887,33 @@ with tab_warroom:
                     f"${amt:,.0f}" for amt in target_amounts
                 ]
 
-                # --- Actual Pie: per-stock breakdown ---
+                # --- Actual Pie: per-stock breakdown (grouped by category color) ---
+                import plotly.colors as pc
+
                 detail = rebalance.get("holdings_detail", [])
-                actual_labels = [d["ticker"] for d in detail]
-                actual_values = [d["market_value"] for d in detail]
-                actual_text = [
-                    f"${v:,.0f}" for v in actual_values
-                ]
+                cat_groups: dict[str, list] = defaultdict(list)
+                for d in detail:
+                    cat_groups[d["category"]].append(d)
+
+                actual_labels = []
+                actual_values = []
+                actual_text = []
+                actual_colors = []
+                for cat, items in cat_groups.items():
+                    base = CATEGORY_COLOR_MAP.get(cat, CATEGORY_COLOR_FALLBACK)
+                    icon = CATEGORY_ICON_SHORT.get(cat, "")
+                    n = len(items)
+                    if n == 1:
+                        shades = [base]
+                    else:
+                        shades = pc.n_colors(
+                            base, "#FFFFFF", n + 2, colortype="rgb"
+                        )[:-2]
+                    for i, d in enumerate(items):
+                        actual_labels.append(f"{icon} {d['ticker']}")
+                        actual_values.append(d["market_value"])
+                        actual_text.append(f"${d['market_value']:,.0f}")
+                        actual_colors.append(shades[i])
 
                 fig_pie = make_subplots(
                     rows=1,
@@ -890,7 +925,11 @@ with tab_warroom:
                     ],
                 )
 
-                # Target pie — categories with dollar amounts
+                # Target pie — categories with matching base colors
+                target_colors = [
+                    CATEGORY_COLOR_MAP.get(c, CATEGORY_COLOR_FALLBACK)
+                    for c in cat_names
+                ]
                 fig_pie.add_trace(
                     go.Pie(
                         labels=cat_labels,
@@ -899,6 +938,7 @@ with tab_warroom:
                         text=target_text,
                         textinfo="label+text+percent",
                         textposition="auto",
+                        marker=dict(colors=target_colors),
                         hovertemplate=(
                             "<b>%{label}</b><br>"
                             f"目標金額：%{{text}} {display_cur}<br>"
@@ -909,7 +949,7 @@ with tab_warroom:
                     col=1,
                 )
 
-                # Actual pie — individual stocks with dollar amounts
+                # Actual pie — individual stocks with category-colored shades
                 fig_pie.add_trace(
                     go.Pie(
                         labels=actual_labels,
@@ -918,6 +958,7 @@ with tab_warroom:
                         text=actual_text,
                         textinfo="label+text+percent",
                         textposition="auto",
+                        marker=dict(colors=actual_colors),
                         hovertemplate=(
                             "<b>%{label}</b><br>"
                             f"市值：%{{text}} {display_cur}<br>"
@@ -1009,6 +1050,170 @@ with tab_warroom:
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                # ----- X-Ray: Portfolio Overlap Analysis -----
+                xray = rebalance.get("xray", [])
+                if xray:
+                    st.divider()
+                    st.markdown(
+                        f"**🔬 穿透式持倉 X-Ray（{display_cur}）：**"
+                    )
+                    st.caption(
+                        "解析 ETF 成分股，揭示直接持倉與 ETF 間接曝險的真實比例。"
+                    )
+
+                    # -- Warning callouts --
+                    for entry in xray:
+                        if (
+                            entry["total_weight_pct"]
+                            > XRAY_WARN_THRESHOLD_PCT
+                            and entry["indirect_value"] > 0
+                        ):
+                            sources = ", ".join(
+                                entry.get("indirect_sources", [])
+                            )
+                            st.warning(
+                                f"⚠️ **{entry['symbol']}** 直接持倉佔 "
+                                f"{entry['direct_weight_pct']:.1f}%，"
+                                f"加上 ETF 間接曝險（{sources}），"
+                                f"真實曝險已達 "
+                                f"**{entry['total_weight_pct']:.1f}%**，"
+                                f"超過建議值 "
+                                f"{XRAY_WARN_THRESHOLD_PCT:.0f}%。"
+                            )
+
+                    # -- Stacked bar chart (top N) --
+                    top_xray = xray[:XRAY_TOP_N_DISPLAY]
+                    xray_symbols = [
+                        e["symbol"] for e in reversed(top_xray)
+                    ]
+                    xray_direct = [
+                        e["direct_weight_pct"]
+                        for e in reversed(top_xray)
+                    ]
+                    xray_indirect = [
+                        e["indirect_weight_pct"]
+                        for e in reversed(top_xray)
+                    ]
+
+                    fig_xray = go.Figure()
+                    fig_xray.add_trace(
+                        go.Bar(
+                            y=xray_symbols,
+                            x=xray_direct,
+                            name="直接持倉",
+                            orientation="h",
+                            marker_color="#4A90D9",
+                            text=[
+                                f"{v:.1f}%" if v > 0.5 else ""
+                                for v in xray_direct
+                            ],
+                            textposition="inside",
+                        )
+                    )
+                    fig_xray.add_trace(
+                        go.Bar(
+                            y=xray_symbols,
+                            x=xray_indirect,
+                            name="ETF 間接曝險",
+                            orientation="h",
+                            marker_color="#F5A623",
+                            text=[
+                                f"{v:.1f}%" if v > 0.5 else ""
+                                for v in xray_indirect
+                            ],
+                            textposition="inside",
+                        )
+                    )
+                    # Threshold line
+                    fig_xray.add_vline(
+                        x=XRAY_WARN_THRESHOLD_PCT,
+                        line_dash="dash",
+                        line_color="red",
+                        annotation_text=(
+                            f"風險門檻 {XRAY_WARN_THRESHOLD_PCT:.0f}%"
+                        ),
+                        annotation_position="top right",
+                    )
+                    fig_xray.update_layout(
+                        barmode="stack",
+                        height=max(300, len(top_xray) * 28 + 80),
+                        margin=dict(t=30, b=20, l=80, r=20),
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1,
+                        ),
+                        xaxis_title=f"佔比 (%)",
+                    )
+                    st.plotly_chart(
+                        fig_xray, use_container_width=True
+                    )
+
+                    # -- Summary table --
+                    xray_rows = []
+                    for e in xray:
+                        xray_rows.append(
+                            {
+                                "標的": e["symbol"],
+                                "名稱": e.get("name", ""),
+                                "直接 (%)": (
+                                    f"{e['direct_weight_pct']:.1f}"
+                                ),
+                                "間接 (%)": (
+                                    f"{e['indirect_weight_pct']:.1f}"
+                                ),
+                                "真實曝險 (%)": (
+                                    f"{e['total_weight_pct']:.1f}"
+                                ),
+                                f"直接市值({display_cur})": (
+                                    f"${e['direct_value']:,.0f}"
+                                ),
+                                f"間接市值({display_cur})": (
+                                    f"${e['indirect_value']:,.0f}"
+                                ),
+                                "間接來源": ", ".join(
+                                    e.get("indirect_sources", [])
+                                ),
+                            }
+                        )
+                    xray_df = pd.DataFrame(xray_rows)
+                    st.dataframe(
+                        xray_df,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    # -- Telegram alert button --
+                    if st.button(
+                        "📨 發送 X-Ray 警告至 Telegram",
+                        key="xray_tg_btn",
+                    ):
+                        try:
+                            resp = requests.post(
+                                f"{BACKEND_URL}/rebalance/xray-alert",
+                                params={
+                                    "display_currency": display_cur
+                                },
+                                timeout=API_POST_TIMEOUT,
+                            )
+                            if resp.ok:
+                                data = resp.json()
+                                w_count = len(
+                                    data.get("warnings", [])
+                                )
+                                st.success(
+                                    f"✅ {data.get('message', f'{w_count} 筆警告已發送')}"
+                                )
+                            else:
+                                st.error(
+                                    f"❌ 發送失敗：{resp.text}"
+                                )
+                        except Exception as ex:
+                            st.error(f"❌ 發送失敗：{ex}")
+
             else:
                 st.info(
                     "⏳ 無法計算再平衡，"
