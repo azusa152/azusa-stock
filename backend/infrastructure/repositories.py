@@ -67,11 +67,14 @@ def update_stock(session: Session, stock: Stock) -> None:
 
 
 def bulk_update_scan_signals(session: Session, updates: dict[str, str]) -> None:
-    """批次更新多檔股票的 last_scan_signal。"""
-    for ticker, signal in updates.items():
-        stock = session.get(Stock, ticker)
-        if stock:
-            stock.last_scan_signal = signal
+    """批次更新多檔股票的 last_scan_signal（單一 SELECT + 批次寫入）。"""
+    if not updates:
+        return
+    stocks = session.exec(
+        select(Stock).where(Stock.ticker.in_(updates.keys()))
+    ).all()
+    for stock in stocks:
+        stock.last_scan_signal = updates[stock.ticker]
     session.commit()
 
 
@@ -122,6 +125,38 @@ def find_latest_removal(session: Session, ticker: str) -> RemovalLog | None:
         .order_by(RemovalLog.created_at.desc())  # type: ignore[union-attr]
     )
     return session.exec(statement).first()
+
+
+def find_latest_removals_batch(session: Session, tickers: list[str]) -> dict[str, RemovalLog]:
+    """
+    批次取得多檔股票的最新移除紀錄（避免 N+1）。
+    利用子查詢找出每檔股票最新的 removal log。
+    """
+    if not tickers:
+        return {}
+
+    # 子查詢：每檔股票的最大 created_at
+    from sqlmodel import col
+    subq = (
+        select(
+            RemovalLog.stock_ticker,
+            func.max(RemovalLog.created_at).label("max_created"),
+        )
+        .where(RemovalLog.stock_ticker.in_(tickers))  # type: ignore[union-attr]
+        .group_by(RemovalLog.stock_ticker)
+    ).subquery()
+
+    # 主查詢：用 join 取回完整的 RemovalLog
+    statement = (
+        select(RemovalLog)
+        .join(
+            subq,
+            (RemovalLog.stock_ticker == subq.c.stock_ticker)
+            & (RemovalLog.created_at == subq.c.max_created),
+        )
+    )
+    results = session.exec(statement).all()
+    return {r.stock_ticker: r for r in results}
 
 
 def find_removal_history(session: Session, ticker: str) -> list[RemovalLog]:

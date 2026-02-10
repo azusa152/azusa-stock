@@ -101,3 +101,24 @@ class ScanResponse(BaseModel):
 
     market_status: dict
     results: list[ScanResult]
+
+
+# ---------------------------------------------------------------------------
+# Webhook Schemas (for OpenClaw / AI agent)
+# ---------------------------------------------------------------------------
+
+
+class WebhookRequest(BaseModel):
+    """POST /webhook 請求 Body — 統一入口供 AI agent 使用。"""
+
+    action: str  # "summary", "signals", "scan", "moat", "alerts", "add_stock"
+    ticker: str | None = None
+    params: dict = {}
+
+
+class WebhookResponse(BaseModel):
+    """POST /webhook 回傳結構。"""
+
+    success: bool
+    message: str
+    data: dict = {}

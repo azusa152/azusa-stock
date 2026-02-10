@@ -4,14 +4,44 @@ Azusa Radar — Streamlit 前端 Dashboard
 """
 
 import json
-import os
 
 import pandas as pd
 import requests
 import streamlit as st
 from streamlit_sortables import sort_items
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+from config import (
+    API_DELETE_TIMEOUT,
+    API_DIVIDEND_TIMEOUT,
+    API_EARNINGS_TIMEOUT,
+    API_GET_TIMEOUT,
+    API_PATCH_TIMEOUT,
+    API_POST_TIMEOUT,
+    API_PUT_TIMEOUT,
+    API_SIGNALS_TIMEOUT,
+    BACKEND_URL,
+    BIAS_OVERHEATED_UI,
+    BIAS_OVERSOLD_UI,
+    CACHE_TTL_ALERTS,
+    CACHE_TTL_DIVIDEND,
+    CACHE_TTL_EARNINGS,
+    CACHE_TTL_MOAT,
+    CACHE_TTL_REMOVED,
+    CACHE_TTL_SCAN_HISTORY,
+    CACHE_TTL_SIGNALS,
+    CACHE_TTL_STOCKS,
+    CACHE_TTL_THESIS,
+    CATEGORY_LABELS,
+    CATEGORY_OPTIONS,
+    DEFAULT_ALERT_THRESHOLD,
+    DEFAULT_TAG_OPTIONS,
+    EARNINGS_BADGE_DAYS_THRESHOLD,
+    EXPORT_FILENAME,
+    MARGIN_BAD_CHANGE_THRESHOLD,
+    PRICE_WEAK_BIAS_THRESHOLD,
+    SCAN_HISTORY_CARD_LIMIT,
+    WHALEWISDOM_STOCK_URL,
+)
 
 # ---------------------------------------------------------------------------
 # 頁面設定
@@ -169,7 +199,7 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 def api_get(path: str) -> dict | list | None:
     """GET 請求 Backend API。"""
     try:
-        resp = requests.get(f"{BACKEND_URL}{path}", timeout=30)
+        resp = requests.get(f"{BACKEND_URL}{path}", timeout=API_GET_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -180,7 +210,7 @@ def api_get(path: str) -> dict | list | None:
 def api_post(path: str, json_data: dict) -> dict | None:
     """POST 請求 Backend API。"""
     try:
-        resp = requests.post(f"{BACKEND_URL}{path}", json=json_data, timeout=60)
+        resp = requests.post(f"{BACKEND_URL}{path}", json=json_data, timeout=API_POST_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -191,7 +221,7 @@ def api_post(path: str, json_data: dict) -> dict | None:
 def api_patch(path: str, json_data: dict) -> dict | None:
     """PATCH 請求 Backend API。"""
     try:
-        resp = requests.patch(f"{BACKEND_URL}{path}", json=json_data, timeout=30)
+        resp = requests.patch(f"{BACKEND_URL}{path}", json=json_data, timeout=API_PATCH_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -202,7 +232,7 @@ def api_patch(path: str, json_data: dict) -> dict | None:
 def api_put(path: str, json_data: dict) -> dict | None:
     """PUT 請求 Backend API。"""
     try:
-        resp = requests.put(f"{BACKEND_URL}{path}", json=json_data, timeout=30)
+        resp = requests.put(f"{BACKEND_URL}{path}", json=json_data, timeout=API_PUT_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -213,7 +243,7 @@ def api_put(path: str, json_data: dict) -> dict | None:
 def api_delete(path: str) -> dict | None:
     """DELETE 請求 Backend API。"""
     try:
-        resp = requests.delete(f"{BACKEND_URL}{path}", timeout=30)
+        resp = requests.delete(f"{BACKEND_URL}{path}", timeout=API_DELETE_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -221,49 +251,73 @@ def api_delete(path: str) -> dict | None:
         return None
 
 
-@st.cache_data(ttl=300, show_spinner="載入股票資料中...")
+@st.cache_data(ttl=CACHE_TTL_STOCKS, show_spinner="載入股票資料中...")
 def fetch_stocks() -> list | None:
-    """取得所有追蹤股票（僅 DB 資料），結果快取 5 分鐘。"""
+    """取得所有追蹤股票（僅 DB 資料）。"""
     return api_get("/stocks")
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SIGNALS, show_spinner=False)
 def fetch_signals(ticker: str) -> dict | None:
-    """取得單一股票的技術訊號（yfinance），結果快取 5 分鐘。"""
+    """取得單一股票的技術訊號（yfinance）。"""
     try:
-        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/signals", timeout=15)
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/signals", timeout=API_SIGNALS_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
         return None
 
 
-@st.cache_data(ttl=300, show_spinner="載入已移除股票...")
+@st.cache_data(ttl=CACHE_TTL_REMOVED, show_spinner="載入已移除股票...")
 def fetch_removed_stocks() -> list | None:
-    """取得已移除股票清單，結果快取 5 分鐘。"""
+    """取得已移除股票清單。"""
     return api_get("/stocks/removed")
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_EARNINGS, show_spinner=False)
 def fetch_earnings(ticker: str) -> dict | None:
-    """取得財報日期（快取 24 小時）。"""
+    """取得財報日期。"""
     try:
-        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/earnings", timeout=15)
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/earnings", timeout=API_EARNINGS_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
         return None
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_DIVIDEND, show_spinner=False)
 def fetch_dividend(ticker: str) -> dict | None:
-    """取得股息資訊（快取 1 小時）。"""
+    """取得股息資訊。"""
     try:
-        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/dividend", timeout=15)
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/dividend", timeout=API_DIVIDEND_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
         return None
+
+
+@st.cache_data(ttl=CACHE_TTL_MOAT, show_spinner=False)
+def fetch_moat(ticker: str) -> dict | None:
+    """取得護城河分析資料。"""
+    return api_get(f"/ticker/{ticker}/moat")
+
+
+@st.cache_data(ttl=CACHE_TTL_SCAN_HISTORY, show_spinner=False)
+def fetch_scan_history(ticker: str, limit: int = SCAN_HISTORY_CARD_LIMIT) -> list | None:
+    """取得掃描歷史。"""
+    return api_get(f"/ticker/{ticker}/scan-history?limit={limit}")
+
+
+@st.cache_data(ttl=CACHE_TTL_ALERTS, show_spinner=False)
+def fetch_alerts(ticker: str) -> list | None:
+    """取得價格警報列表。"""
+    return api_get(f"/ticker/{ticker}/alerts")
+
+
+@st.cache_data(ttl=CACHE_TTL_THESIS, show_spinner=False)
+def fetch_thesis_history(ticker: str) -> list | None:
+    """取得觀點版控歷史。"""
+    return api_get(f"/ticker/{ticker}/thesis")
 
 
 # ---------------------------------------------------------------------------
@@ -279,21 +333,13 @@ with st.sidebar:
         new_ticker = st.text_input("股票代號", placeholder="例如 AAPL, TSM, NVDA")
         new_category = st.selectbox(
             "分類",
-            options=["Trend_Setter", "Moat", "Growth", "ETF"],
-            format_func=lambda x: {
-                "Trend_Setter": "🌊 風向球 (Trend Setter)",
-                "Moat": "🏰 護城河 (Moat)",
-                "Growth": "🚀 成長夢想 (Growth)",
-                "ETF": "🧺 ETF",
-            }.get(x, x),
+            options=CATEGORY_OPTIONS,
+            format_func=lambda x: CATEGORY_LABELS.get(x, x),
         )
         new_thesis = st.text_area("初始觀點", placeholder="寫下你對這檔股票的看法...")
         new_tags = st.multiselect(
             "🏷️ 初始標籤",
-            options=[
-                "AI", "Semiconductor", "Cloud", "SaaS",
-                "Hardware", "EC", "Energy", "Crypto",
-            ],
+            options=DEFAULT_TAG_OPTIONS,
         )
         submitted = st.form_submit_button("新增")
 
@@ -333,7 +379,7 @@ with st.sidebar:
         st.download_button(
             label="📥 下載 JSON",
             data=export_json,
-            file_name="azusa_watchlist.json",
+            file_name=EXPORT_FILENAME,
             mime="application/json",
             use_container_width=True,
         )
@@ -361,7 +407,7 @@ with st.sidebar:
                         resp = requests.post(
                             f"{BACKEND_URL}/stocks/import",
                             json=import_data,
-                            timeout=60,
+                            timeout=API_POST_TIMEOUT,
                         )
                         resp.raise_for_status()
                         result = resp.json()
@@ -424,6 +470,28 @@ tab_trend, tab_moat, tab_growth, tab_etf, tab_archive = st.tabs([
 ])
 
 
+def render_thesis_history(history: list[dict]) -> None:
+    """渲染觀點版控歷史紀錄（共用於主卡片與已移除卡片）。"""
+    if history:
+        st.markdown("**📜 歷史觀點紀錄：**")
+        for entry in history:
+            ver = entry.get("version", "?")
+            content = entry.get("content", "")
+            created = entry.get("created_at", "")
+            entry_tags = entry.get("tags", [])
+            st.markdown(
+                f"**v{ver}** ({created[:10] if created else '未知日期'})"
+            )
+            if entry_tags:
+                st.caption(
+                    "標籤：" + " ".join(f"`{t}`" for t in entry_tags)
+                )
+            st.text(content)
+            st.divider()
+    else:
+        st.caption("尚無歷史觀點紀錄。")
+
+
 def render_stock_card(stock: dict) -> None:
     """渲染單一股票卡片，包含技術指標與觀點編輯。"""
     ticker = stock["ticker"]
@@ -466,7 +534,7 @@ def render_stock_card(stock: dict) -> None:
                 chip_col1, chip_col2 = st.columns(2)
                 with chip_col1:
                     if bias is not None:
-                        bias_color = "🔴" if bias > 20 else ("🟢" if bias < -20 else "⚪")
+                        bias_color = "🔴" if bias > BIAS_OVERHEATED_UI else ("🟢" if bias < BIAS_OVERSOLD_UI else "⚪")
                         st.metric(f"{bias_color} 乖離率 Bias", f"{bias}%")
                     else:
                         st.metric("乖離率 Bias", "N/A")
@@ -492,7 +560,7 @@ def render_stock_card(stock: dict) -> None:
                     try:
                         ed = dt.strptime(earnings_date_str, "%Y-%m-%d")
                         days_left = (ed - dt.now()).days
-                        badge = f" ({days_left}天)" if 0 < days_left <= 14 else ""
+                        badge = f" ({days_left}天)" if 0 < days_left <= EARNINGS_BADGE_DAYS_THRESHOLD else ""
                         st.caption(f"📅 財報日：{earnings_date_str}{badge}")
                     except ValueError:
                         st.caption(f"📅 財報日：{earnings_date_str}")
@@ -514,7 +582,7 @@ def render_stock_card(stock: dict) -> None:
             with st.expander(f"🐳 籌碼面 (13F) — {ticker}", expanded=False):
                 st.link_button(
                     f"🐳 前往 WhaleWisdom 查看大戶動向",
-                    f"https://whalewisdom.com/stock/{ticker.lower()}",
+                    WHALEWISDOM_STOCK_URL.format(ticker=ticker.lower()),
                     use_container_width=True,
                 )
                 st.caption(
@@ -536,7 +604,7 @@ def render_stock_card(stock: dict) -> None:
             # -- 護城河檢測 (Moat Health Check) -- ETF 不適用
             if stock.get("category") != "ETF":
                 with st.expander(f"🏰 護城河檢測 — {ticker}", expanded=False):
-                    moat_data = api_get(f"/ticker/{ticker}/moat")
+                    moat_data = fetch_moat(ticker)
 
                     if moat_data and moat_data.get("moat") != "N/A":
                         # 1) 毛利率指標 + YoY 變化
@@ -564,12 +632,12 @@ def render_stock_card(stock: dict) -> None:
 
                         # 3) 投資診斷 (Azusa Diagnosis)
                         bias_val = signals.get("bias")
-                        price_is_weak = bias_val is not None and bias_val < -5
+                        price_is_weak = bias_val is not None and bias_val < PRICE_WEAK_BIAS_THRESHOLD
                         margin_is_strong = (
                             margin_change is not None and margin_change > 0
                         )
                         margin_is_bad = (
-                            margin_change is not None and margin_change < -2
+                            margin_change is not None and margin_change < MARGIN_BAD_CHANGE_THRESHOLD
                         )
 
                         if margin_is_bad:
@@ -608,7 +676,7 @@ def render_stock_card(stock: dict) -> None:
 
             # -- 掃描歷史 --
             with st.expander(f"📈 掃描歷史 — {ticker}", expanded=False):
-                scan_hist = api_get(f"/ticker/{ticker}/scan-history?limit=10")
+                scan_hist = fetch_scan_history(ticker)
                 if scan_hist:
                     # 計算連續次數
                     latest_sig = scan_hist[0].get("signal", "NORMAL")
@@ -637,7 +705,7 @@ def render_stock_card(stock: dict) -> None:
 
             # -- 自訂價格警報 --
             with st.expander(f"🔔 價格警報 — {ticker}", expanded=False):
-                alerts = api_get(f"/ticker/{ticker}/alerts")
+                alerts = fetch_alerts(ticker)
                 if alerts:
                     st.markdown("**目前警報：**")
                     for a in alerts:
@@ -683,7 +751,7 @@ def render_stock_card(stock: dict) -> None:
                 with alert_cols[2]:
                     alert_threshold = st.number_input(
                         "門檻",
-                        value=30.0,
+                        value=DEFAULT_ALERT_THRESHOLD,
                         step=1.0,
                         key=f"alert_threshold_{ticker}",
                         label_visibility="collapsed",
@@ -709,26 +777,9 @@ def render_stock_card(stock: dict) -> None:
             # -- 觀點歷史與編輯 --
             with st.expander(f"📝 觀點版控 — {ticker}", expanded=False):
                 # 取得歷史紀錄
-                history = api_get(f"/ticker/{ticker}/thesis")
+                history = fetch_thesis_history(ticker)
 
-                if history:
-                    st.markdown("**📜 歷史觀點紀錄：**")
-                    for entry in history:
-                        ver = entry.get("version", "?")
-                        content = entry.get("content", "")
-                        created = entry.get("created_at", "")
-                        entry_tags = entry.get("tags", [])
-                        st.markdown(
-                            f"**v{ver}** ({created[:10] if created else '未知日期'})"
-                        )
-                        if entry_tags:
-                            st.caption(
-                                "標籤：" + " ".join(f"`{t}`" for t in entry_tags)
-                            )
-                        st.text(content)
-                        st.divider()
-                else:
-                    st.caption("尚無歷史觀點紀錄。")
+                render_thesis_history(history or [])
 
                 # 新增觀點
                 st.markdown("**✏️ 新增觀點：**")
@@ -740,12 +791,8 @@ def render_stock_card(stock: dict) -> None:
                 )
 
                 # 標籤編輯
-                default_tag_options = [
-                    "AI", "Semiconductor", "Cloud", "SaaS",
-                    "Hardware", "EC", "Energy", "Crypto",
-                ]
                 all_tag_options = sorted(
-                    set(default_tag_options + current_tags)
+                    set(DEFAULT_TAG_OPTIONS + current_tags)
                 )
                 selected_tags = st.multiselect(
                     "🏷️ 設定領域標籤",
@@ -773,22 +820,15 @@ def render_stock_card(stock: dict) -> None:
             # -- 切換分類 --
             with st.expander(f"🔄 切換分類 — {ticker}", expanded=False):
                 current_cat = stock.get("category", "Growth")
-                all_categories = ["Trend_Setter", "Moat", "Growth", "ETF"]
-                other_categories = [c for c in all_categories if c != current_cat]
+                other_categories = [c for c in CATEGORY_OPTIONS if c != current_cat]
 
-                cat_labels = {
-                    "Trend_Setter": "🌊 風向球 (Trend Setter)",
-                    "Moat": "🏰 護城河 (Moat)",
-                    "Growth": "🚀 成長夢想 (Growth)",
-                    "ETF": "🧺 ETF",
-                }
-                current_label = cat_labels.get(current_cat, current_cat)
+                current_label = CATEGORY_LABELS.get(current_cat, current_cat)
                 st.caption(f"目前分類：**{current_label}**")
 
                 new_cat = st.selectbox(
                     "新分類",
                     options=other_categories,
-                    format_func=lambda x: cat_labels.get(x, x),
+                    format_func=lambda x: CATEGORY_LABELS.get(x, x),
                     key=f"cat_select_{ticker}",
                     label_visibility="collapsed",
                 )
@@ -842,38 +882,17 @@ def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None
             st.caption("拖曳股票代號以調整顯示順序。")
 
 
-# -- 渲染各 Tab --
-with tab_trend:
-    if category_map["Trend_Setter"]:
-        render_reorder_section("Trend_Setter", category_map["Trend_Setter"])
-        for stock in category_map["Trend_Setter"]:
-            render_stock_card(stock)
-    else:
-        st.info("📭 尚無風向球類股票，請在左側面板新增。")
-
-with tab_moat:
-    if category_map["Moat"]:
-        render_reorder_section("Moat", category_map["Moat"])
-        for stock in category_map["Moat"]:
-            render_stock_card(stock)
-    else:
-        st.info("📭 尚無護城河類股票，請在左側面板新增。")
-
-with tab_growth:
-    if category_map["Growth"]:
-        render_reorder_section("Growth", category_map["Growth"])
-        for stock in category_map["Growth"]:
-            render_stock_card(stock)
-    else:
-        st.info("📭 尚無成長夢想類股票，請在左側面板新增。")
-
-with tab_etf:
-    if category_map["ETF"]:
-        render_reorder_section("ETF", category_map["ETF"])
-        for stock in category_map["ETF"]:
-            render_stock_card(stock)
-    else:
-        st.info("📭 尚無 ETF 類股票，請在左側面板新增。")
+# -- 渲染各 Tab（迴圈化） --
+_category_tabs = [tab_trend, tab_moat, tab_growth, tab_etf]
+for _cat, _tab in zip(CATEGORY_OPTIONS, _category_tabs):
+    with _tab:
+        _stocks = category_map[_cat]
+        if _stocks:
+            render_reorder_section(_cat, _stocks)
+            for stock in _stocks:
+                render_stock_card(stock)
+        else:
+            st.info(f"📭 尚無{CATEGORY_LABELS[_cat]}類股票，請在左側面板新增。")
 
 with tab_archive:
     if removed_list:
@@ -884,12 +903,9 @@ with tab_archive:
 
                 with col1:
                     st.subheader(f"📦 {ticker}")
-                    category_label = {
-                        "Trend_Setter": "🌊 風向球",
-                        "Moat": "🏰 護城河",
-                        "Growth": "🚀 成長夢想",
-                        "ETF": "🧺 ETF",
-                    }.get(removed.get("category", ""), removed.get("category", ""))
+                    category_label = CATEGORY_LABELS.get(
+                        removed.get("category", ""), removed.get("category", "")
+                    )
                     st.caption(f"分類：{category_label}")
                     removed_at = removed.get("removed_at", "")
                     st.caption(f"移除日期：{removed_at[:10] if removed_at else '未知'}")
@@ -917,36 +933,15 @@ with tab_archive:
 
                     # -- 觀點歷史 --
                     with st.expander(f"📝 觀點歷史 — {ticker}", expanded=False):
-                        history = api_get(f"/ticker/{ticker}/thesis")
-                        if history:
-                            for entry in history:
-                                ver = entry.get("version", "?")
-                                content = entry.get("content", "")
-                                created = entry.get("created_at", "")
-                                entry_tags = entry.get("tags", [])
-                                st.markdown(
-                                    f"**v{ver}** ({created[:10] if created else '未知日期'})"
-                                )
-                                if entry_tags:
-                                    st.caption(
-                                        "標籤：" + " ".join(f"`{t}`" for t in entry_tags)
-                                    )
-                                st.text(content)
-                                st.divider()
-                        else:
-                            st.caption("尚無歷史觀點紀錄。")
+                        history = fetch_thesis_history(ticker)
+                        render_thesis_history(history or [])
 
                     # -- 重新啟用 --
                     with st.expander(f"🔄 重新啟用 — {ticker}", expanded=False):
                         reactivate_cat = st.selectbox(
                             "分類",
-                            options=["Trend_Setter", "Moat", "Growth", "ETF"],
-                            format_func=lambda x: {
-                                "Trend_Setter": "🌊 風向球",
-                                "Moat": "🏰 護城河",
-                                "Growth": "🚀 成長夢想",
-                                "ETF": "🧺 ETF",
-                            }.get(x, x),
+                            options=CATEGORY_OPTIONS,
+                            format_func=lambda x: CATEGORY_LABELS.get(x, x),
                             key=f"reactivate_cat_{ticker}",
                         )
                         reactivate_thesis = st.text_area(

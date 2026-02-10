@@ -163,6 +163,10 @@ docker compose up --build
 | `POST` | `/scan` | V2 三層漏斗掃描（非同步），僅推播差異通知 |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
+| `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
+| `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
+| `GET` | `/docs` | Swagger UI（互動式 API 文件） |
+| `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
 ### 範例：新增股票（含標籤）
 
@@ -211,6 +215,75 @@ curl -X POST http://localhost:8000/stocks/import \
   -d '[{"ticker":"AAPL","category":"Moat","thesis":"品牌護城河","tags":["Hardware"]}]'
 ```
 
+## OpenClaw 整合
+
+[OpenClaw](https://docs.openclaw.ai/) 是一個開源 AI agent gateway，讓你可以透過 WhatsApp、Telegram、Discord 等即時通訊工具與 Azusa Radar 互動。
+
+### 前置需求
+
+```bash
+npm install -g openclaw@latest
+openclaw onboard
+```
+
+確保 OpenClaw Gateway 正在運行，且 Azusa Radar 的 Docker Compose 服務已啟動。
+
+### 設定方式
+
+**方式一：使用 Skill 檔案**
+
+將 `scripts/openclaw/azusa-radar/` 資料夾複製到 OpenClaw skills 目錄：
+
+```bash
+cp -r scripts/openclaw/azusa-radar/ ~/.openclaw/skills/azusa-radar/
+```
+
+**方式二：使用 AGENTS.md**
+
+將 `scripts/openclaw/AGENTS.md` 複製到 OpenClaw workspace：
+
+```bash
+cp scripts/openclaw/AGENTS.md ~/.openclaw/workspace/AGENTS.md
+```
+
+### Agent-Friendly Endpoints
+
+| Endpoint | 用途 |
+|----------|------|
+| `GET /summary` | 純文字投資組合摘要，適合 chat 回覆 |
+| `POST /webhook` | 統一入口，接受 `{"action": "...", "ticker": "...", "params": {}}` |
+| `GET /openapi.json` | 自動生成的 OpenAPI 規範 |
+| `GET /docs` | Swagger UI 互動式文件 |
+
+### Webhook Actions
+
+| Action | 說明 | 需要 ticker |
+|--------|------|:-----------:|
+| `summary` | 投資組合健康摘要 | 否 |
+| `signals` | 單一股票技術指標 | 是 |
+| `scan` | 觸發全域掃描 | 否 |
+| `moat` | 護城河分析 | 是 |
+| `alerts` | 查看價格警報 | 是 |
+| `add_stock` | 新增股票 | 是（在 params 中） |
+
+### 範例對話（透過 WhatsApp/Telegram/Discord）
+
+| 你說... | Agent 執行... |
+|---------|---------------|
+| 「目前投資組合狀況如何」 | `curl http://localhost:8000/summary` |
+| 「幫我查 NVDA 的技術指標」 | `POST /webhook {"action":"signals","ticker":"NVDA"}` |
+| 「執行一次全域掃描」 | `POST /webhook {"action":"scan"}` |
+| 「新增 AMD 到護城河分類」 | `POST /webhook {"action":"add_stock","params":{"ticker":"AMD","category":"Moat","thesis":"..."}}` |
+
+### 相關連結
+
+- [OpenClaw 文件](https://docs.openclaw.ai/)
+- [Skills 設定](https://docs.openclaw.ai/tools/skills)
+- [Tools 設定](https://docs.openclaw.ai/tools)
+- [Cron Jobs](https://docs.openclaw.ai/automation/cron-jobs)
+
+---
+
 ## 專案結構（Clean Architecture）
 
 後端採用 Clean Architecture 四層架構，依賴方向由外向內，各層職責明確：
@@ -232,6 +305,8 @@ graph TB
 ```
 azusa-stock/
 ├── .env                              # Telegram Bot 憑證
+├── .env.example                      # 環境變數範本
+├── .dockerignore                     # Docker build 排除清單
 ├── .gitignore
 ├── .cursorrules                      # Cursor AI 架構師指引
 ├── docker-compose.yml                # Backend + Frontend + Scanner 服務定義
@@ -244,34 +319,40 @@ azusa-stock/
 │   ├── logging_config.py             # 集中式日誌（跨層共用）
 │   │
 │   ├── domain/                       # 領域層：純業務邏輯，無框架依賴
+│   │   ├── constants.py              #   集中管理閾值、快取設定、共用訊息
 │   │   ├── enums.py                  #   分類、狀態列舉 + 常數
 │   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert)
 │   │   └── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
-│   │   └── services.py               #   Stock / Thesis / Scan 服務
+│   │   └── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
 │   │
 │   ├── infrastructure/               # 基礎設施層：外部適配器
 │   │   ├── database.py               #   SQLite engine + session 管理
-│   │   ├── repositories.py           #   Repository Pattern（集中 DB 查詢）
+│   │   ├── repositories.py           #   Repository Pattern（集中 DB 查詢，含批次操作）
 │   │   ├── market_data.py            #   yfinance 適配器（含快取 + Rate Limiter）
 │   │   └── notification.py           #   Telegram Bot 適配器
 │   │
 │   └── api/                          # API 層：薄控制器
-│       ├── schemas.py                #   Pydantic 請求/回應 Schema
-│       ├── stock_routes.py           #   股票管理路由
+│       ├── schemas.py                #   Pydantic 請求/回應 Schema（含 Webhook）
+│       ├── stock_routes.py           #   股票管理 + /summary + /webhook 路由
 │       ├── thesis_routes.py          #   觀點版控路由
-│       └── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由
+│       └── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
 │
 ├── frontend/
 │   ├── Dockerfile
 │   ├── requirements.txt
+│   ├── config.py                     # 前端集中常數與設定
 │   └── app.py                        # Dashboard：四分頁 + 封存 + 觀點編輯器
 │
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
-│   └── data/
-│       └── azusa_watchlist.json      # 預設觀察名單
+│   ├── data/
+│   │   └── azusa_watchlist.json      # 預設觀察名單
+│   └── openclaw/
+│       ├── AGENTS.md                 # OpenClaw workspace 指令範本
+│       └── azusa-radar/
+│           └── SKILL.md              # OpenClaw Skill 定義檔
 │
 └── logs/                             # 日誌檔案（bind-mount 自動產生）
     ├── radar.log                     # 當日日誌

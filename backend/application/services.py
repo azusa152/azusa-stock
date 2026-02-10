@@ -11,6 +11,13 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
+from domain.constants import (
+    ETF_MOAT_NA_MESSAGE,
+    PRICE_ALERT_COOLDOWN_HOURS,
+    SCAN_HISTORY_DEFAULT_LIMIT,
+    SCAN_THREAD_POOL_SIZE,
+    WEEKLY_DIGEST_LOOKBACK_DAYS,
+)
 from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, MoatStatus, ScanSignal, StockCategory
 from infrastructure import repositories as repo
@@ -261,25 +268,35 @@ def export_stocks(session: Session) -> list[dict]:
 
 
 def update_display_order(session: Session, ordered_tickers: list[str]) -> dict:
-    """批次更新股票顯示順位。ordered_tickers 的 index 即為新順位。"""
+    """批次更新股票顯示順位（單一 SELECT + 批次寫入）。"""
     logger.info("更新顯示順位，共 %d 檔股票。", len(ordered_tickers))
-    for index, ticker in enumerate(ordered_tickers):
-        stock = repo.find_stock_by_ticker(session, ticker.upper())
-        if stock:
-            stock.display_order = index
-            repo.update_stock(session, stock)
+    upper_tickers = [t.upper() for t in ordered_tickers]
+    from sqlmodel import select as sql_select
+    from domain.entities import Stock as StockEntity
+    stocks = session.exec(
+        sql_select(StockEntity).where(StockEntity.ticker.in_(upper_tickers))
+    ).all()
+    stock_map = {s.ticker: s for s in stocks}
+    for index, ticker in enumerate(upper_tickers):
+        s = stock_map.get(ticker)
+        if s:
+            s.display_order = index
     session.commit()
     return {"message": f"✅ 已更新 {len(ordered_tickers)} 檔股票的顯示順位。"}
 
 
 def list_removed_stocks(session: Session) -> list[dict]:
-    """取得所有已移除的股票，含最新移除原因。"""
+    """取得所有已移除的股票，含最新移除原因（批次查詢，避免 N+1）。"""
     logger.info("取得已移除股票清單...")
     stocks = repo.find_inactive_stocks(session)
 
+    # 一次性取得所有已移除股票的最新移除紀錄
+    tickers = [s.ticker for s in stocks]
+    removal_map = repo.find_latest_removals_batch(session, tickers)
+
     results: list[dict] = []
     for stock in stocks:
-        latest_removal = repo.find_latest_removal(session, stock.ticker)
+        latest_removal = removal_map.get(stock.ticker)
         results.append({
             "ticker": stock.ticker,
             "category": stock.category,
@@ -416,7 +433,7 @@ def run_scan(session: Session) -> dict:
         alerts: list[str] = []
 
         if stock.category == StockCategory.ETF:
-            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "ETF 不適用護城河分析"}
+            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": ETF_MOAT_NA_MESSAGE}
         else:
             moat_result = analyze_moat_trend(ticker)
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
@@ -469,7 +486,7 @@ def run_scan(session: Session) -> dict:
         }
 
     results: list[dict] = []
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=SCAN_THREAD_POOL_SIZE) as executor:
         futures = {
             executor.submit(_analyze_single_stock, s, market_status_value): s
             for s in all_stocks
@@ -602,9 +619,9 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
         if not triggered:
             continue
 
-        # 冷卻檢查（4 小時）
+        # 冷卻檢查
         if alert.last_triggered_at:
-            cooldown = timedelta(hours=4)
+            cooldown = timedelta(hours=PRICE_ALERT_COOLDOWN_HOURS)
             if now - alert.last_triggered_at < cooldown:
                 continue
 
@@ -629,7 +646,7 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
 # ===========================================================================
 
 
-def get_scan_history(session: Session, ticker: str, limit: int = 20) -> list[dict]:
+def get_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DEFAULT_LIMIT) -> list[dict]:
     """取得指定股票的掃描歷史。"""
     ticker_upper = ticker.upper()
     stock = repo.find_stock_by_ticker(session, ticker_upper)
@@ -748,7 +765,7 @@ def send_weekly_digest(session: Session) -> dict:
     health_score = round(normal_count / total * 100, 1)
 
     # 過去 7 天的訊號變化
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
     recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
 
     # 統計每檔股票的訊號變化次數
@@ -786,6 +803,40 @@ def send_weekly_digest(session: Session) -> dict:
     logger.info("每週摘要已發送。")
 
     return {"message": "每週摘要已發送。", "health_score": health_score}
+
+
+# ===========================================================================
+# Portfolio Summary Service (for OpenClaw / chat)
+# ===========================================================================
+
+
+def get_portfolio_summary(session: Session) -> str:
+    """
+    產生純文字投資組合摘要，專為 chat / AI agent 設計。
+    """
+    stocks = repo.find_active_stocks(session)
+    if not stocks:
+        return "Azusa Radar — 目前無追蹤股票。"
+
+    non_normal = [s for s in stocks if s.last_scan_signal != "NORMAL"]
+    health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
+
+    lines: list[str] = [f"Azusa Radar — Health: {health}%", ""]
+
+    for cat in ["Trend_Setter", "Moat", "Growth", "ETF"]:
+        group = [s for s in stocks if s.category.value == cat]
+        if group:
+            label = CATEGORY_LABEL.get(cat, cat)
+            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+
+    if non_normal:
+        lines += ["", "Abnormal:"]
+        for s in non_normal:
+            lines.append(f"  {s.ticker} -> {s.last_scan_signal}")
+    else:
+        lines += ["", "All signals normal."]
+
+    return "\n".join(lines)
 
 
 # ===========================================================================

@@ -6,6 +6,14 @@ Domain — 純粹的分析計算函式。
 
 from typing import Optional
 
+from domain.constants import (
+    BIAS_OVERHEATED_THRESHOLD,
+    MARKET_CAUTION_BELOW_60MA_PCT,
+    MOAT_MARGIN_DETERIORATION_THRESHOLD,
+    RSI_CONTRARIAN_BUY_THRESHOLD,
+    VOLUME_RATIO_LONG_DAYS,
+    VOLUME_RATIO_SHORT_DAYS,
+)
 from domain.enums import MarketSentiment, MoatStatus, ScanSignal
 
 
@@ -51,10 +59,10 @@ def compute_bias(price: float, ma60: float) -> Optional[float]:
 
 def compute_volume_ratio(volumes: list[float]) -> Optional[float]:
     """計算量比：近 5 日均量 / 近 20 日均量。需至少 20 筆資料。"""
-    if len(volumes) < 20:
+    if len(volumes) < VOLUME_RATIO_LONG_DAYS:
         return None
-    avg_vol_5 = sum(volumes[-5:]) / 5
-    avg_vol_20 = sum(volumes[-20:]) / 20
+    avg_vol_5 = sum(volumes[-VOLUME_RATIO_SHORT_DAYS:]) / VOLUME_RATIO_SHORT_DAYS
+    avg_vol_20 = sum(volumes[-VOLUME_RATIO_LONG_DAYS:]) / VOLUME_RATIO_LONG_DAYS
     if avg_vol_20 > 0:
         return round(avg_vol_5 / avg_vol_20, 2)
     return None
@@ -85,7 +93,7 @@ def determine_moat_status(
 
     change = round(current_margin - previous_margin, 2)
 
-    if change < -2:
+    if change < MOAT_MARGIN_DETERIORATION_THRESHOLD:
         return MoatStatus.DETERIORATING, change
 
     return MoatStatus.STABLE, change
@@ -109,7 +117,7 @@ def determine_market_sentiment(
 
     pct = round(below_count / valid_count * 100, 1)
 
-    if pct > 50:
+    if pct > MARKET_CAUTION_BELOW_60MA_PCT:
         return MarketSentiment.CAUTION, pct
 
     return MarketSentiment.POSITIVE, pct
@@ -144,11 +152,11 @@ def determine_scan_signal(
         market_status == MarketSentiment.POSITIVE.value
         and moat != MoatStatus.DETERIORATING.value
         and rsi is not None
-        and rsi < 35
+        and rsi < RSI_CONTRARIAN_BUY_THRESHOLD
     ):
         return ScanSignal.CONTRARIAN_BUY
 
-    if bias is not None and bias > 20:
+    if bias is not None and bias > BIAS_OVERHEATED_THRESHOLD:
         return ScanSignal.OVERHEATED
 
     return ScanSignal.NORMAL

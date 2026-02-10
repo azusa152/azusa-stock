@@ -7,6 +7,7 @@ import os
 
 import requests as http_requests
 
+from domain.constants import TELEGRAM_API_URL, TELEGRAM_REQUEST_TIMEOUT
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -21,12 +22,12 @@ def send_telegram_message(text: str) -> None:
         logger.debug("Telegram Token 未設定，跳過發送通知。")
         return
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    url = TELEGRAM_API_URL.format(token=token)
     try:
         http_requests.post(
             url,
             json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=10,
+            timeout=TELEGRAM_REQUEST_TIMEOUT,
         )
         logger.info("Telegram 通知已發送。")
     except Exception as e:

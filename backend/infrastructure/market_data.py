@@ -8,6 +8,7 @@ import threading
 import time
 from typing import Optional
 
+import diskcache
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -19,6 +20,34 @@ from domain.analysis import (
     compute_volume_ratio,
     determine_market_sentiment,
     determine_moat_status,
+)
+from domain.constants import (
+    BIAS_OVERHEATED_THRESHOLD,
+    BIAS_OVERSOLD_THRESHOLD,
+    CURL_CFFI_IMPERSONATE,
+    DISK_CACHE_DIR,
+    DISK_CACHE_SIZE_LIMIT,
+    DISK_DIVIDEND_TTL,
+    DISK_EARNINGS_TTL,
+    DISK_MOAT_TTL,
+    DISK_SIGNALS_TTL,
+    DIVIDEND_CACHE_MAXSIZE,
+    DIVIDEND_CACHE_TTL,
+    EARNINGS_CACHE_MAXSIZE,
+    EARNINGS_CACHE_TTL,
+    INSTITUTIONAL_HOLDERS_TOP_N,
+    MA200_WINDOW,
+    MA60_WINDOW,
+    MARGIN_TREND_QUARTERS,
+    MIN_HISTORY_DAYS_FOR_SIGNALS,
+    MOAT_CACHE_MAXSIZE,
+    MOAT_CACHE_TTL,
+    RSI_OVERBOUGHT,
+    RSI_OVERSOLD,
+    SIGNALS_CACHE_MAXSIZE,
+    SIGNALS_CACHE_TTL,
+    YFINANCE_HISTORY_PERIOD,
+    YFINANCE_RATE_LIMIT_CPS,
 )
 from domain.enums import MarketSentiment, MoatStatus
 from logging_config import get_logger
@@ -34,7 +63,7 @@ logger = get_logger(__name__)
 class RateLimiter:
     """Thread-safe rate limiter，確保呼叫間隔不低於 min_interval。"""
 
-    def __init__(self, calls_per_second: float = 2.0):
+    def __init__(self, calls_per_second: float = YFINANCE_RATE_LIMIT_CPS):
         self._min_interval = 1.0 / calls_per_second
         self._lock = threading.Lock()
         self._last_call = 0.0
@@ -48,20 +77,43 @@ class RateLimiter:
             self._last_call = time.monotonic()
 
 
-_rate_limiter = RateLimiter(calls_per_second=2.0)
+_rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 
 
 # ---------------------------------------------------------------------------
-# TTL 快取：避免每次頁面載入都重複呼叫 yfinance（預設 5 分鐘）
+# L1 快取（記憶體）：避免每次頁面載入都重複呼叫 yfinance
 # ---------------------------------------------------------------------------
-_signals_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
-_moat_cache: TTLCache = TTLCache(maxsize=200, ttl=3600)  # 1 小時：季報不會頻繁變動
-_earnings_cache: TTLCache = TTLCache(maxsize=200, ttl=86400)  # 24 小時：財報日不常變動
+_signals_cache: TTLCache = TTLCache(maxsize=SIGNALS_CACHE_MAXSIZE, ttl=SIGNALS_CACHE_TTL)
+_moat_cache: TTLCache = TTLCache(maxsize=MOAT_CACHE_MAXSIZE, ttl=MOAT_CACHE_TTL)
+_earnings_cache: TTLCache = TTLCache(maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNINGS_CACHE_TTL)
+_dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL)
+
+
+# ---------------------------------------------------------------------------
+# L2 快取（磁碟）：容器重啟後仍可使用，避免冷啟動時大量呼叫 yfinance
+# ---------------------------------------------------------------------------
+_disk_cache = diskcache.Cache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
+
+
+def _disk_get(key: str):
+    """從磁碟快取 (L2) 讀取。失敗時回傳 None（非致命）。"""
+    try:
+        return _disk_cache.get(key)
+    except Exception:
+        return None
+
+
+def _disk_set(key: str, value, ttl: int) -> None:
+    """寫入磁碟快取 (L2)。失敗時靜默跳過（非致命）。"""
+    try:
+        _disk_cache.set(key, value, expire=ttl)
+    except Exception:
+        pass
 
 
 def _get_session() -> cffi_requests.Session:
     """建立模擬 Chrome 瀏覽器的 Session，以繞過 Yahoo Finance 的 bot 防護。"""
-    return cffi_requests.Session(impersonate="chrome")
+    return cffi_requests.Session(impersonate=CURL_CFFI_IMPERSONATE)
 
 
 # ===========================================================================
@@ -76,17 +128,25 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
     """
     cached = _signals_cache.get(ticker)
     if cached is not None:
-        logger.debug("%s 技術訊號命中快取。", ticker)
+        logger.debug("%s 技術訊號命中 L1 快取。", ticker)
         return cached
 
+    # L2: 磁碟快取
+    disk_key = f"signals:{ticker}"
+    disk_cached = _disk_get(disk_key)
+    if disk_cached is not None:
+        logger.debug("%s 技術訊號命中 L2 磁碟快取。", ticker)
+        _signals_cache[ticker] = disk_cached
+        return disk_cached
+
     try:
-        logger.debug("取得 %s 技術訊號（快取未命中）...", ticker)
+        logger.debug("取得 %s 技術訊號（L1+L2 皆未命中）...", ticker)
         _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
         _rate_limiter.wait()
-        hist = stock.history(period="1y")
+        hist = stock.history(period=YFINANCE_HISTORY_PERIOD)
 
-        if hist.empty or len(hist) < 60:
+        if hist.empty or len(hist) < MIN_HISTORY_DAYS_FOR_SIGNALS:
             logger.warning("%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist))
             return {"error": f"⚠️ {ticker} 歷史資料不足，無法計算技術指標。"}
 
@@ -96,8 +156,8 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
 
         # 使用 domain 層的純計算函式
         rsi = compute_rsi(closes)
-        ma200 = compute_moving_average(closes, 200)
-        ma60 = compute_moving_average(closes, 60)
+        ma200 = compute_moving_average(closes, MA200_WINDOW)
+        ma60 = compute_moving_average(closes, MA60_WINDOW)
         bias = compute_bias(current_price, ma60) if ma60 else None
         volume_ratio = compute_volume_ratio(volumes)
 
@@ -105,9 +165,9 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
         status_parts: list[str] = []
 
         if rsi is not None:
-            if rsi < 30:
+            if rsi < RSI_OVERSOLD:
                 status_parts.append(f"🟢 RSI={rsi} 超賣區間（可能是機會）")
-            elif rsi > 70:
+            elif rsi > RSI_OVERBOUGHT:
                 status_parts.append(f"🔴 RSI={rsi} 超買區間（留意回檔）")
             else:
                 status_parts.append(f"⚪ RSI={rsi} 中性")
@@ -117,8 +177,8 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
                 status_parts.append(f"🔴 股價 {current_price} 跌破 200MA ({ma200})")
             else:
                 status_parts.append(f"🟢 股價 {current_price} 站穩 200MA ({ma200})")
-        else:
-            status_parts.append("⚠️ 資料不足 200 天，無法計算 200MA")
+            else:
+                status_parts.append(f"⚠️ 資料不足 {MA200_WINDOW} 天，無法計算 200MA")
 
         if ma60 is not None:
             if current_price < ma60:
@@ -127,9 +187,9 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
                 status_parts.append(f"🟢 股價 {current_price} 站穩 60MA ({ma60})")
 
         if bias is not None:
-            if bias > 20:
+            if bias > BIAS_OVERHEATED_THRESHOLD:
                 status_parts.append(f"🔴 乖離率 {bias}% 過熱")
-            elif bias < -20:
+            elif bias < BIAS_OVERSOLD_THRESHOLD:
                 status_parts.append(f"🟢 乖離率 {bias}% 超跌")
 
         logger.info(
@@ -143,7 +203,7 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
             _rate_limiter.wait()
             holders_df = stock.institutional_holders
             if holders_df is not None and not holders_df.empty:
-                top5 = holders_df.head(5)
+                top5 = holders_df.head(INSTITUTIONAL_HOLDERS_TOP_N)
                 institutional_holders = []
                 for _, row in top5.iterrows():
                     holder_entry = {}
@@ -173,6 +233,7 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
             "institutional_holders": institutional_holders,
         }
         _signals_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_SIGNALS_TTL)
         return result
 
     except Exception as e:
@@ -192,11 +253,19 @@ def analyze_moat_trend(ticker: str) -> dict:
     """
     cached = _moat_cache.get(ticker)
     if cached is not None:
-        logger.debug("%s 護城河分析命中快取。", ticker)
+        logger.debug("%s 護城河分析命中 L1 快取。", ticker)
         return cached
 
+    # L2: 磁碟快取
+    disk_key = f"moat:{ticker}"
+    disk_cached = _disk_get(disk_key)
+    if disk_cached is not None:
+        logger.debug("%s 護城河分析命中 L2 磁碟快取。", ticker)
+        _moat_cache[ticker] = disk_cached
+        return disk_cached
+
     try:
-        logger.debug("分析 %s 護城河（毛利率 YoY，快取未命中）...", ticker)
+        logger.debug("分析 %s 護城河（L1+L2 皆未命中）...", ticker)
         _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
         _rate_limiter.wait()
@@ -206,6 +275,7 @@ def analyze_moat_trend(ticker: str) -> dict:
             logger.warning("%s 無法取得季報資料。", ticker)
             result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
             _moat_cache[ticker] = result
+            _disk_set(disk_key, result, DISK_MOAT_TTL)
             return result
 
         columns = financials.columns.tolist()
@@ -214,6 +284,7 @@ def analyze_moat_trend(ticker: str) -> dict:
             logger.warning("%s 季報資料不足（%d 季），無法分析。", ticker, len(columns))
             result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
             _moat_cache[ticker] = result
+            _disk_set(disk_key, result, DISK_MOAT_TTL)
             return result
 
         def _get_gross_margin(col) -> Optional[float]:
@@ -233,7 +304,7 @@ def analyze_moat_trend(ticker: str) -> dict:
             return str(col)[:7]
 
         # --- 5 季毛利率走勢（防呆：取實際可用筆數與 5 取小）---
-        quarters_to_fetch = min(len(columns), 5)
+        quarters_to_fetch = min(len(columns), MARGIN_TREND_QUARTERS)
         margin_trend: list[dict] = []
         for col in columns[:quarters_to_fetch]:
             gm = _get_gross_margin(col)
@@ -245,8 +316,8 @@ def analyze_moat_trend(ticker: str) -> dict:
         current_margin = _get_gross_margin(latest_col)
 
         # 優先拿第 5 季（去年同期），不足則拿最舊一季
-        if len(columns) >= 5:
-            yoy_col = columns[4]
+        if len(columns) >= MARGIN_TREND_QUARTERS:
+            yoy_col = columns[MARGIN_TREND_QUARTERS - 1]
         else:
             yoy_col = columns[-1]
         previous_margin = _get_gross_margin(yoy_col)
@@ -262,6 +333,7 @@ def analyze_moat_trend(ticker: str) -> dict:
                 "margin_trend": margin_trend,
             }
             _moat_cache[ticker] = result
+            _disk_set(disk_key, result, DISK_MOAT_TTL)
             return result
 
         result: dict = {
@@ -295,12 +367,14 @@ def analyze_moat_trend(ticker: str) -> dict:
             )
 
         _moat_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_MOAT_TTL)
         return result
 
     except Exception as e:
         logger.error("無法分析 %s 護城河：%s", ticker, e, exc_info=True)
         result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
         _moat_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_MOAT_TTL)
         return result
 
 
@@ -372,8 +446,16 @@ def get_earnings_date(ticker: str) -> dict:
     if cached is not None:
         return cached
 
+    # L2: 磁碟快取
+    disk_key = f"earnings:{ticker}"
+    disk_cached = _disk_get(disk_key)
+    if disk_cached is not None:
+        logger.debug("%s 財報日期命中 L2 磁碟快取。", ticker)
+        _earnings_cache[ticker] = disk_cached
+        return disk_cached
+
     try:
-        logger.debug("取得 %s 財報日期（快取未命中）...", ticker)
+        logger.debug("取得 %s 財報日期（L1+L2 皆未命中）...", ticker)
         _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
         _rate_limiter.wait()
@@ -406,12 +488,14 @@ def get_earnings_date(ticker: str) -> dict:
             result["earnings_date"] = None
 
         _earnings_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_EARNINGS_TTL)
         return result
 
     except Exception as e:
         logger.debug("無法取得 %s 財報日期：%s", ticker, e)
         result = {"ticker": ticker, "earnings_date": None}
         _earnings_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_EARNINGS_TTL)
         return result
 
 
@@ -422,10 +506,21 @@ def get_earnings_date(ticker: str) -> dict:
 
 def get_dividend_info(ticker: str) -> dict:
     """
-    從已快取的 signals 中提取股息資訊（不額外呼叫 yfinance）。
-    若 signals 未快取，則直接從 yf.Ticker.info 取得。
+    取得股息資訊。結果快取避免重複呼叫 yfinance。
     """
-    # 嘗試複用 signals cache 中的 Ticker（避免重複呼叫）
+    cached = _dividend_cache.get(ticker)
+    if cached is not None:
+        logger.debug("%s 股息資訊命中 L1 快取。", ticker)
+        return cached
+
+    # L2: 磁碟快取
+    disk_key = f"dividend:{ticker}"
+    disk_cached = _disk_get(disk_key)
+    if disk_cached is not None:
+        logger.debug("%s 股息資訊命中 L2 磁碟快取。", ticker)
+        _dividend_cache[ticker] = disk_cached
+        return disk_cached
+
     try:
         _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
@@ -450,12 +545,18 @@ def get_dividend_info(ticker: str) -> dict:
             except Exception:
                 ex_dividend_date = str(ex_date_raw)[:10]
 
-        return {
+        result = {
             "ticker": ticker,
             "dividend_yield": round(dividend_yield * 100, 2) if dividend_yield else None,
             "ex_dividend_date": ex_dividend_date,
         }
+        _dividend_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_DIVIDEND_TTL)
+        return result
 
     except Exception as e:
         logger.debug("無法取得 %s 股息資訊：%s", ticker, e)
-        return {"ticker": ticker, "dividend_yield": None, "ex_dividend_date": None}
+        result = {"ticker": ticker, "dividend_yield": None, "ex_dividend_date": None}
+        _dividend_cache[ticker] = result
+        _disk_set(disk_key, result, DISK_DIVIDEND_TTL)
+        return result
