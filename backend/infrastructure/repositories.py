@@ -64,6 +64,15 @@ def update_stock(session: Session, stock: Stock) -> None:
     session.add(stock)
 
 
+def bulk_update_scan_signals(session: Session, updates: dict[str, str]) -> None:
+    """批次更新多檔股票的 last_scan_signal。"""
+    for ticker, signal in updates.items():
+        stock = session.get(Stock, ticker)
+        if stock:
+            stock.last_scan_signal = signal
+    session.commit()
+
+
 # ===========================================================================
 # ThesisLog Repository
 # ===========================================================================

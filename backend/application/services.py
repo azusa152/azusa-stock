@@ -355,6 +355,7 @@ def run_scan(session: Session) -> dict:
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine ===
     all_stocks = repo.find_active_stocks(session)
+    stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
     logger.info("掃描對象：%d 檔股票。", len(all_stocks))
 
     results: list[dict] = []
@@ -412,7 +413,7 @@ def run_scan(session: Session) -> dict:
         })
         all_alerts.extend(alerts)
 
-    # === 通知（依類別分組） ===
+    # === 差異比對 + 通知 ===
     category_icon = {
         "Trend_Setter": "🌊",
         "Moat": "🏰",
@@ -420,32 +421,62 @@ def run_scan(session: Session) -> dict:
         "ETF": "🧺",
     }
 
-    non_normal = [r for r in results if r["signal"] != ScanSignal.NORMAL.value]
-    if non_normal:
-        logger.warning("掃描發現 %d 檔異常股票。", len(non_normal))
-        header = f"🔔 <b>Azusa Radar V2 掃描</b>\n市場情緒：{market_status_value}\n"
+    # 比對每檔股票的 current signal vs last_scan_signal
+    new_or_changed: list[dict] = []  # signal 從 NORMAL→非 NORMAL，或非 NORMAL 類型改變
+    resolved: list[dict] = []        # signal 從非 NORMAL→NORMAL
+    signal_updates: dict[str, str] = {}
 
-        # 依類別分組
-        grouped: dict[str, list[str]] = {}
-        for r in non_normal:
-            cat = r.get("category", "Growth")
-            cat_value = cat.value if hasattr(cat, "value") else str(cat)
-            grouped.setdefault(cat_value, []).extend(r["alerts"])
+    for r in results:
+        ticker = r["ticker"]
+        current_signal = r["signal"]
+        stock_obj = stock_map.get(ticker)
+        prev_signal = stock_obj.last_scan_signal if stock_obj else ScanSignal.NORMAL.value
 
+        signal_updates[ticker] = current_signal
+
+        if current_signal == prev_signal:
+            continue  # 無變化，不通知
+        if current_signal != ScanSignal.NORMAL.value:
+            new_or_changed.append(r)
+        else:
+            resolved.append(r)
+
+    # 持久化所有股票的最新 signal（不論是否有變化）
+    repo.bulk_update_scan_signals(session, signal_updates)
+
+    has_changes = bool(new_or_changed) or bool(resolved)
+
+    if has_changes:
+        logger.warning(
+            "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
+            len(new_or_changed), len(resolved),
+        )
+        header = f"🔔 <b>Azusa Radar V2 掃描（差異通知）</b>\n市場情緒：{market_status_value}\n"
+
+        # 新增/惡化的股票依類別分組
         body_parts: list[str] = []
-        for cat_key in ["Trend_Setter", "Moat", "Growth", "ETF"]:
-            if cat_key in grouped:
-                icon = category_icon.get(cat_key, "")
-                label = CATEGORY_LABEL.get(cat_key, cat_key)
-                section_header = f"\n{icon} <b>{label}</b>"
-                section_lines = "\n".join(grouped[cat_key])
-                body_parts.append(f"{section_header}\n{section_lines}")
+        if new_or_changed:
+            grouped: dict[str, list[str]] = {}
+            for r in new_or_changed:
+                cat = r.get("category", "Growth")
+                cat_value = cat.value if hasattr(cat, "value") else str(cat)
+                grouped.setdefault(cat_value, []).extend(r["alerts"])
+
+            for cat_key in ["Trend_Setter", "Moat", "Growth", "ETF"]:
+                if cat_key in grouped:
+                    icon = category_icon.get(cat_key, "")
+                    label = CATEGORY_LABEL.get(cat_key, cat_key)
+                    section_header = f"\n{icon} <b>{label}</b>"
+                    section_lines = "\n".join(grouped[cat_key])
+                    body_parts.append(f"{section_header}\n{section_lines}")
+
+        # 恢復正常的股票
+        if resolved:
+            resolved_tickers = ", ".join(r["ticker"] for r in resolved)
+            body_parts.append(f"\n✅ <b>已恢復正常</b>\n{resolved_tickers}")
 
         send_telegram_message(header + "\n".join(body_parts))
     else:
-        logger.info("掃描完成，所有股票狀態正常。")
-        send_telegram_message(
-            f"✅ Azusa Radar V2 掃描完成\n市場情緒：{market_status_value}\n目前全部正常。"
-        )
+        logger.info("掃描完成，訊號無變化，跳過通知。")
 
     return {"market_status": market_sentiment, "results": results}

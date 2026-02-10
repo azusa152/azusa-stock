@@ -29,6 +29,7 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
         "ALTER TABLE thesislog ADD COLUMN tags VARCHAR DEFAULT '';",
         "ALTER TABLE stock ADD COLUMN display_order INTEGER DEFAULT 0;",
+        "ALTER TABLE stock ADD COLUMN last_scan_signal VARCHAR DEFAULT 'NORMAL';",
     ]
 
     with engine.connect() as conn:

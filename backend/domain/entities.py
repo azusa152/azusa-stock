@@ -19,6 +19,7 @@ class Stock(SQLModel, table=True):
     current_thesis: str = Field(default="", description="最新觀點")
     current_tags: str = Field(default="", description="最新標籤（逗號分隔）")
     display_order: int = Field(default=0, description="顯示順位（數字越小越前面）")
+    last_scan_signal: str = Field(default="NORMAL", description="上次掃描訊號")
     is_active: bool = Field(default=True, description="是否追蹤中")
 
 
