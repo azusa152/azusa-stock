@@ -126,8 +126,13 @@ STOCK_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth"]
 # ---------------------------------------------------------------------------
 # Cash Form Options
 # ---------------------------------------------------------------------------
-CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD"]
+CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 CASH_ACCOUNT_TYPE_OPTIONS = ["活存", "定存", "貨幣市場基金", "其他"]
+
+# ---------------------------------------------------------------------------
+# Display Currency Options (for rebalance analysis)
+# ---------------------------------------------------------------------------
+DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 
 # ---------------------------------------------------------------------------
 # UI Constants (shared across pages)
@@ -178,6 +183,15 @@ HOLDING_IMPORT_TEMPLATE = json.dumps(
             "quantity": 10,
             "cost_basis": 120.50,
             "broker": "Firstrade",
+            "currency": "USD",
+        },
+        {
+            "ticker": "2330.TW",
+            "category": "Moat",
+            "quantity": 100,
+            "cost_basis": 580.00,
+            "broker": "永豐金",
+            "currency": "TWD",
         },
         {
             "ticker": "TLT",
@@ -185,12 +199,26 @@ HOLDING_IMPORT_TEMPLATE = json.dumps(
             "quantity": 50,
             "cost_basis": 92.00,
             "broker": "永豐金",
+            "currency": "USD",
         },
         {
             "ticker": "USD",
             "category": "Cash",
             "quantity": 50000,
             "cost_basis": None,
+            "broker": "台新銀行",
+            "account_type": "活存",
+            "currency": "USD",
+            "is_cash": True,
+        },
+        {
+            "ticker": "TWD",
+            "category": "Cash",
+            "quantity": 100000,
+            "cost_basis": None,
+            "broker": "中國信託",
+            "account_type": "定存",
+            "currency": "TWD",
             "is_cash": True,
         },
     ],

@@ -103,9 +103,9 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/profiles` | 目前啟用的投資組合配置 |
 | `POST` | `/profiles` | 建立投資組合配置 |
 | `GET` | `/holdings` | 所有持倉 |
-| `POST` | `/holdings` | 新增持倉（含可選 broker 欄位） |
+| `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位，currency 預設 USD） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
-| `GET` | `/rebalance` | 再平衡分析 |
+| `GET` | `/rebalance` | 再平衡分析，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算） |
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
@@ -129,3 +129,5 @@ For advanced use, you can call individual endpoints directly:
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
 - Use `scan` to trigger a full portfolio analysis with Telegram notifications
 - Use `rebalance` to check if portfolio allocation drifts from target
+- Add `?display_currency=TWD` to `/rebalance` to see all values in TWD (supports USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
+- When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)

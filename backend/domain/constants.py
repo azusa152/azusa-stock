@@ -107,6 +107,18 @@ DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
 
 # ---------------------------------------------------------------------------
+# Forex Cache
+# ---------------------------------------------------------------------------
+FOREX_CACHE_MAXSIZE = 50
+FOREX_CACHE_TTL = 3600  # 1 hour
+DISK_FOREX_TTL = 86400  # 24 hours
+
+# ---------------------------------------------------------------------------
+# Supported Currencies
+# ---------------------------------------------------------------------------
+SUPPORTED_CURRENCIES = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+
+# ---------------------------------------------------------------------------
 # Price History Cache
 # ---------------------------------------------------------------------------
 PRICE_HISTORY_CACHE_MAXSIZE = 200
@@ -121,6 +133,7 @@ DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_PRICE_HISTORY = "price_history"
+DISK_KEY_FOREX = "forex"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages

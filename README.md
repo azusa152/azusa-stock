@@ -24,7 +24,7 @@
 - **定時掃描** — 每 30 分鐘自動執行三層漏斗掃描（非同步），僅推播「差異」通知（訊號變化時才發送）
 - **每週摘要** — 每週日自動發送 Telegram 投資組合健康報告（健康分數 + 異常股票 + 本週訊號變化）
 - **yfinance 速率限制** — 內建 Rate Limiter（2 次/秒），避免被 Yahoo Finance 封鎖
-- **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
+- **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、**多幣別匯率轉換**（支援 USD/TWD/JPY/EUR/GBP/CNY/HKD/SGD/THB）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類；新股自動加入雷達追蹤，省去重複操作
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
@@ -248,13 +248,13 @@ docker compose up --build
 | `PUT` | `/profiles/{id}` | 更新投資組合配置 |
 | `DELETE` | `/profiles/{id}` | 停用投資組合配置 |
 | `GET` | `/holdings` | 取得所有持倉 |
-| `POST` | `/holdings` | 新增持倉（含可選 broker 欄位） |
+| `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
 | `PUT` | `/holdings/{id}` | 更新持倉 |
 | `DELETE` | `/holdings/{id}` | 刪除持倉 |
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
-| `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議） |
+| `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議），支援 `?display_currency=TWD` 指定顯示幣別 |
 | `GET` | `/ticker/{ticker}/price-history` | 取得股價歷史（前端趨勢圖用） |
 | `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
@@ -324,21 +324,30 @@ curl -X POST http://localhost:8000/profiles \
 ### 範例：新增持倉
 
 ```bash
-# 新增股票持倉（broker 為選填）
+# 新增美股持倉（broker、currency 為選填，currency 預設 USD）
 curl -X POST http://localhost:8000/holdings \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade"}'
+  -d '{"ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade", "currency": "USD"}'
+
+# 新增台股持倉（指定 TWD 幣別）
+curl -X POST http://localhost:8000/holdings \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "2330.TW", "category": "Moat", "quantity": 100, "cost_basis": 580.0, "broker": "永豐金", "currency": "TWD"}'
 
 # 新增現金持倉
 curl -X POST http://localhost:8000/holdings/cash \
   -H "Content-Type: application/json" \
-  -d '{"currency": "USD", "amount": 50000}'
+  -d '{"currency": "TWD", "amount": 100000}'
 ```
 
 ### 範例：再平衡分析
 
 ```bash
+# 預設以 USD 為顯示幣別
 curl -s http://localhost:8000/rebalance | python3 -m json.tool
+
+# 以 TWD 為顯示幣別（所有資產換算為台幣）
+curl -s "http://localhost:8000/rebalance?display_currency=TWD" | python3 -m json.tool
 ```
 
 ### 範例：設定自訂 Telegram Bot

@@ -6,6 +6,7 @@ API helpers, cached data fetchers, and reusable UI rendering functions.
 from datetime import datetime as dt
 
 import pandas as pd
+import plotly.graph_objects as go
 import requests
 import streamlit as st
 from streamlit_sortables import sort_items
@@ -272,11 +273,13 @@ def fetch_holdings() -> list | None:
 
 
 @st.cache_data(ttl=CACHE_TTL_REBALANCE, show_spinner=False)
-def fetch_rebalance() -> dict | None:
-    """Fetch rebalance analysis."""
+def fetch_rebalance(display_currency: str = "USD") -> dict | None:
+    """Fetch rebalance analysis with optional display currency conversion."""
     try:
         resp = requests.get(
-            f"{BACKEND_URL}/rebalance", timeout=API_REBALANCE_TIMEOUT
+            f"{BACKEND_URL}/rebalance",
+            params={"display_currency": display_currency},
+            timeout=API_REBALANCE_TIMEOUT,
         )
         if resp.status_code == 200:
             return resp.json()
@@ -316,13 +319,18 @@ def render_stock_card(stock: dict) -> None:
         {} if cat in SKIP_SIGNALS_CATEGORIES else (fetch_signals(ticker) or {})
     )
 
-    with st.container(border=True):
+    # Build expander header with signal icon, ticker, category, and price
+    last_signal = stock.get("last_scan_signal", "NORMAL")
+    signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
+    cat_label_short = CATEGORY_LABELS.get(cat, cat).split("(")[0].strip()
+    price = signals.get("price", "")
+    price_str = f" | ${price}" if price and price != "N/A" else ""
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}"
+
+    with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            last_signal = stock.get("last_scan_signal", "NORMAL")
-            signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
-            st.subheader(f"{signal_icon} {ticker}")
             cat_label = CATEGORY_LABELS.get(cat, cat)
             st.caption(f"分類：{cat_label}")
 
@@ -402,8 +410,16 @@ def render_stock_card(stock: dict) -> None:
                     else:
                         st.caption("💰 殖利率：N/A")
 
+            # -- Sub-sections via tabs (avoid nested expanders) --
+            _tab_labels = ["🐳 籌碼面", "📈 掃描歷史", "🔔 價格警報"]
+            _show_moat = stock.get("category") not in SKIP_MOAT_CATEGORIES
+            if _show_moat:
+                _tab_labels.insert(1, "🏰 護城河")
+            _tabs = st.tabs(_tab_labels)
+            _tab_idx = 0
+
             # -- 13F Institutional Holdings --
-            with st.expander(f"🐳 籌碼面 (13F) — {ticker}", expanded=False):
+            with _tabs[_tab_idx]:
                 st.link_button(
                     "🐳 前往 WhaleWisdom 查看大戶動向",
                     WHALEWISDOM_STOCK_URL.format(ticker=ticker.lower()),
@@ -425,10 +441,11 @@ def render_stock_card(stock: dict) -> None:
                         "⚠️ 機構持倉資料暫時無法取得，"
                         "請點擊上方按鈕前往 WhaleWisdom 查看完整 13F 報告。"
                     )
+            _tab_idx += 1
 
             # -- Moat Health Check (skip for Bond / Cash) --
-            if stock.get("category") not in SKIP_MOAT_CATEGORIES:
-                with st.expander(f"🏰 護城河檢測 — {ticker}", expanded=False):
+            if _show_moat:
+                with _tabs[_tab_idx]:
                     moat_data = fetch_moat(ticker)
 
                     if moat_data and moat_data.get("moat") != "N/A":
@@ -500,9 +517,10 @@ def render_stock_card(stock: dict) -> None:
                         st.warning(
                             "⚠️ 無法取得財報數據（可能是新股），請稍後再試。"
                         )
+                _tab_idx += 1
 
             # -- Scan History --
-            with st.expander(f"📈 掃描歷史 — {ticker}", expanded=False):
+            with _tabs[_tab_idx]:
                 scan_hist = fetch_scan_history(ticker)
                 if scan_hist:
                     latest_sig = scan_hist[0].get("signal", "NORMAL")
@@ -525,9 +543,10 @@ def render_stock_card(stock: dict) -> None:
                         st.caption(f"{sig_icon} {sig} — {date_str}")
                 else:
                     st.caption("尚無掃描紀錄。")
+            _tab_idx += 1
 
             # -- Price Alerts --
-            with st.expander(f"🔔 價格警報 — {ticker}", expanded=False):
+            with _tabs[_tab_idx]:
                 alerts = fetch_alerts(ticker)
                 if alerts:
                     st.markdown("**目前警報：**")
@@ -599,7 +618,7 @@ def render_stock_card(stock: dict) -> None:
             st.markdown("**💡 當前觀點：**")
             st.info(stock.get("current_thesis", "尚無觀點"))
 
-            # -- Price Trend Chart --
+            # -- Price Trend Chart (brokerage-style) --
             price_data = fetch_price_history(ticker)
             if price_data and len(price_data) > 5:
                 period_tabs = list(PRICE_CHART_PERIODS.keys())
@@ -614,16 +633,84 @@ def render_stock_card(stock: dict) -> None:
                 )
                 n_days = PRICE_CHART_PERIODS[period_label]
                 sliced = price_data[-n_days:]
-                df = pd.DataFrame(sliced).set_index("date")
-                df.columns = ["收盤價"]
-                if len(df) >= 60:
-                    df["60MA"] = df["收盤價"].rolling(window=60).mean()
-                st.line_chart(df, height=PRICE_CHART_HEIGHT)
+
+                dates = [p["date"] for p in sliced]
+                prices = [p["close"] for p in sliced]
+
+                # Green if price went up over the period, red if down
+                is_up = prices[-1] >= prices[0]
+                line_color = "#00C805" if is_up else "#FF5252"
+                fill_color = (
+                    "rgba(0,200,5,0.1)" if is_up else "rgba(255,82,82,0.1)"
+                )
+
+                fig = go.Figure()
+                fig.add_trace(
+                    go.Scatter(
+                        x=dates,
+                        y=prices,
+                        mode="lines",
+                        line=dict(color=line_color, width=2),
+                        fill="tozeroy",
+                        fillcolor=fill_color,
+                        hovertemplate="%{x}<br>$%{y:.2f}<extra></extra>",
+                        name="收盤價",
+                    )
+                )
+
+                # 60MA overlay if enough data
+                if len(sliced) >= 60:
+                    df_ma = pd.DataFrame(sliced)
+                    ma60 = (
+                        df_ma["close"].rolling(window=60).mean().tolist()
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=dates,
+                            y=ma60,
+                            mode="lines",
+                            line=dict(color="#888", width=1, dash="dot"),
+                            name="60MA",
+                            hovertemplate=(
+                                "%{x}<br>60MA: $%{y:.2f}<extra></extra>"
+                            ),
+                        )
+                    )
+
+                y_min = min(prices)
+                y_max = max(prices)
+                y_range = y_max - y_min
+                padding = y_range * 0.05 if y_range > 0 else y_max * 0.02
+
+                fig.update_layout(
+                    height=PRICE_CHART_HEIGHT,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    yaxis=dict(
+                        range=[y_min - padding, y_max + padding],
+                        showgrid=True,
+                        gridcolor="rgba(128,128,128,0.15)",
+                    ),
+                    xaxis=dict(showgrid=False),
+                    showlegend=False,
+                    hovermode="x unified",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                )
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
             else:
                 st.caption("📉 價格趨勢資料不足。")
 
+            # -- Management tabs (avoid nested expanders) --
+            _mgmt_tab_thesis, _mgmt_tab_cat, _mgmt_tab_remove = st.tabs(
+                ["📝 觀點版控", "🔄 切換分類", "🗑️ 移除追蹤"]
+            )
+
             # -- Thesis History & Editor --
-            with st.expander(f"📝 觀點版控 — {ticker}", expanded=False):
+            with _mgmt_tab_thesis:
                 history = fetch_thesis_history(ticker)
                 render_thesis_history(history or [])
 
@@ -659,7 +746,7 @@ def render_stock_card(stock: dict) -> None:
                         st.warning("⚠️ 請輸入觀點內容。")
 
             # -- Category Switch --
-            with st.expander(f"🔄 切換分類 — {ticker}", expanded=False):
+            with _mgmt_tab_cat:
                 current_cat = stock.get("category", "Growth")
                 other_categories = [
                     c for c in CATEGORY_OPTIONS if c != current_cat
@@ -685,7 +772,7 @@ def render_stock_card(stock: dict) -> None:
                         refresh_ui()
 
             # -- Remove Stock --
-            with st.expander(f"🗑️ 移除追蹤 — {ticker}", expanded=False):
+            with _mgmt_tab_remove:
                 st.warning(
                     "⚠️ 移除後股票將移至「已移除」分頁，可隨時查閱歷史紀錄。"
                 )

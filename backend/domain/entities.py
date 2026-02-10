@@ -123,6 +123,8 @@ class Holding(SQLModel, table=True):
     quantity: float = Field(description="持有數量（股數或金額）")
     cost_basis: Optional[float] = Field(default=None, description="成本基礎（每單位）")
     broker: Optional[str] = Field(default=None, description="券商名稱")
+    currency: str = Field(default="USD", description="持倉幣別（如 USD, TWD, JPY）")
+    account_type: Optional[str] = Field(default=None, description="帳戶類型（活存/定存/貨幣市場基金）")
     is_cash: bool = Field(default=False, description="是否為現金類資產")
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

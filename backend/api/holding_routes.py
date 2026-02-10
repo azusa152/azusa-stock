@@ -33,6 +33,8 @@ def _holding_to_response(h: Holding) -> HoldingResponse:
         quantity=h.quantity,
         cost_basis=h.cost_basis,
         broker=h.broker,
+        currency=h.currency,
+        account_type=h.account_type,
         is_cash=h.is_cash,
         updated_at=h.updated_at.isoformat(),
     )
@@ -65,6 +67,8 @@ def create_holding(
         quantity=payload.quantity,
         cost_basis=payload.cost_basis,
         broker=payload.broker,
+        currency=payload.currency.strip().upper(),
+        account_type=payload.account_type,
         is_cash=payload.is_cash,
     )
     session.add(holding)
@@ -82,12 +86,16 @@ def create_cash_holding(
     """新增現金持倉（簡化入口）。"""
     from domain.enums import StockCategory
 
+    currency_upper = payload.currency.strip().upper()
     holding = Holding(
         user_id=DEFAULT_USER_ID,
-        ticker=payload.currency.strip().upper(),
+        ticker=currency_upper,
         category=StockCategory.CASH,
         quantity=payload.amount,
         cost_basis=1.0,
+        broker=payload.broker,
+        currency=currency_upper,
+        account_type=payload.account_type,
         is_cash=True,
     )
     session.add(holding)
@@ -112,6 +120,8 @@ def update_holding(
     holding.quantity = payload.quantity
     holding.cost_basis = payload.cost_basis
     holding.broker = payload.broker
+    holding.currency = payload.currency.strip().upper()
+    holding.account_type = payload.account_type
     holding.is_cash = payload.is_cash
     holding.updated_at = datetime.now(timezone.utc)
     session.commit()
@@ -153,6 +163,8 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
             "quantity": h.quantity,
             "cost_basis": h.cost_basis,
             "broker": h.broker,
+            "currency": h.currency,
+            "account_type": h.account_type,
             "is_cash": h.is_cash,
         }
         for h in holdings
@@ -183,6 +195,8 @@ def import_holdings(
                 quantity=item["quantity"],
                 cost_basis=item.get("cost_basis"),
                 broker=item.get("broker"),
+                currency=item.get("currency", "USD").strip().upper(),
+                account_type=item.get("account_type"),
                 is_cash=item.get("is_cash", False),
             )
             session.add(holding)
@@ -205,6 +219,9 @@ def import_holdings(
 
 
 @router.get("/rebalance", response_model=RebalanceResponse)
-def get_rebalance(session: Session = Depends(get_session)) -> RebalanceResponse:
-    """計算再平衡分析（目標 vs 實際配置）。"""
-    return calculate_rebalance(session)
+def get_rebalance(
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> RebalanceResponse:
+    """計算再平衡分析（目標 vs 實際配置）。可透過 display_currency 指定顯示幣別。"""
+    return calculate_rebalance(session, display_currency=display_currency.strip().upper())

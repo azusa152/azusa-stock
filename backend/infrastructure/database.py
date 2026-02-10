@@ -32,6 +32,18 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN last_scan_signal VARCHAR DEFAULT 'NORMAL';",
         # Phase: ETF -> Trend_Setter 分類遷移（新五類分類系統）
         "UPDATE stock SET category = 'Trend_Setter' WHERE category = 'ETF';",
+        # Holding: 新增券商欄位
+        "ALTER TABLE holding ADD COLUMN broker VARCHAR;",
+        # Holding: 新增幣別欄位
+        "ALTER TABLE holding ADD COLUMN currency VARCHAR DEFAULT 'USD';",
+        # Holding: 根據 ticker 後綴回填幣別
+        "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
+        "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
+        "UPDATE holding SET currency = 'HKD' WHERE ticker LIKE '%.HK' AND currency = 'USD';",
+        # Holding: 現金持倉以 ticker 作為幣別
+        "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
+        # Holding: 新增帳戶類型欄位
+        "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
     ]
 
     with engine.connect() as conn:

@@ -34,6 +34,7 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
+    get_exchange_rates,
     get_technical_signals,
 )
 from infrastructure.notification import send_telegram_message_dual
@@ -993,13 +994,14 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
 # ===========================================================================
 
 
-def calculate_rebalance(session: Session) -> dict:
+def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict:
     """
     計算再平衡分析：比較目標配置與實際持倉。
     1. 讀取啟用中的 UserInvestmentProfile（目標配置）
     2. 讀取所有 Holding（實際持倉）
-    3. 對非現金持倉查詢即時價格
-    4. 委託 domain.rebalance 純函式計算偏移與建議
+    3. 取得匯率，將所有持倉轉換為 display_currency
+    4. 對非現金持倉查詢即時價格
+    5. 委託 domain.rebalance 純函式計算偏移與建議
     """
     import json as _json
 
@@ -1027,22 +1029,95 @@ def calculate_rebalance(session: Session) -> dict:
     if not holdings:
         raise StockNotFoundError("尚未輸入任何持倉，請先新增資產。")
 
-    # 3) 計算各持倉的市值
+    # 3) 取得匯率：收集所有持倉幣別，批次取得相對 display_currency 的匯率
+    holding_currencies = list({h.currency for h in holdings})
+    fx_rates = get_exchange_rates(display_currency, holding_currencies)
+    logger.info(
+        "匯率轉換（→ %s）：%s",
+        display_currency,
+        {k: round(v, 4) for k, v in fx_rates.items()},
+    )
+
+    # 4) 計算各持倉的市值（已換算為 display_currency），同時建立個股明細
     category_values: dict[str, float] = {}
+    ticker_agg: dict[str, dict] = {}
+
     for h in holdings:
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
+        fx = fx_rates.get(h.currency, 1.0)
+        price: float | None = None
+
         if h.is_cash:
-            market_value = h.quantity
+            # 現金持倉：quantity 即面額，需以匯率換算
+            market_value = h.quantity * fx
+            price = 1.0
         else:
             signals = get_technical_signals(h.ticker)
             price = signals.get("price") if signals else None
             if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price
+                market_value = h.quantity * price * fx
             elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis
+                market_value = h.quantity * h.cost_basis * fx
             else:
                 market_value = 0.0
+
         category_values[cat] = category_values.get(cat, 0.0) + market_value
 
-    # 4) 委託 domain 純函式計算
-    return _pure_rebalance(category_values, target_config)
+        # Aggregate by ticker (merge across brokers)
+        key = h.ticker
+        if key not in ticker_agg:
+            ticker_agg[key] = {
+                "category": cat,
+                "currency": h.currency,
+                "qty": 0.0,
+                "mv": 0.0,
+                "cost_sum": 0.0,
+                "cost_qty": 0.0,
+                "price": price,
+                "fx": fx,
+            }
+        ticker_agg[key]["qty"] += h.quantity
+        ticker_agg[key]["mv"] += market_value
+        if h.cost_basis is not None:
+            ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
+            ticker_agg[key]["cost_qty"] += h.quantity
+
+    # 5) 委託 domain 純函式計算
+    result = _pure_rebalance(category_values, target_config)
+
+    # 6) 建立個股明細（含佔比）
+    total_value = result["total_value"]
+    holdings_detail = []
+    for ticker, agg in ticker_agg.items():
+        avg_cost = (
+            round(agg["cost_sum"] / agg["cost_qty"], 2)
+            if agg["cost_qty"] > 0
+            else None
+        )
+        weight_pct = (
+            round((agg["mv"] / total_value) * 100, 2) if total_value > 0 else 0.0
+        )
+        cur_price = agg["price"]
+        holdings_detail.append(
+            {
+                "ticker": ticker,
+                "category": agg["category"],
+                "currency": agg["currency"],
+                "quantity": round(agg["qty"], 4),
+                "market_value": round(agg["mv"], 2),
+                "weight_pct": weight_pct,
+                "avg_cost": avg_cost,
+                "current_price": (
+                    round(cur_price, 2)
+                    if cur_price is not None and isinstance(cur_price, (int, float))
+                    else None
+                ),
+            }
+        )
+
+    # Sort by weight descending (largest positions first)
+    holdings_detail.sort(key=lambda x: x["weight_pct"], reverse=True)
+    result["holdings_detail"] = holdings_detail
+    result["display_currency"] = display_currency
+
+    return result

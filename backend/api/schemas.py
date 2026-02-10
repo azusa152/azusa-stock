@@ -160,6 +160,8 @@ class HoldingRequest(BaseModel):
     quantity: float
     cost_basis: Optional[float] = None
     broker: Optional[str] = None
+    currency: str = "USD"
+    account_type: Optional[str] = None
     is_cash: bool = False
 
 
@@ -168,6 +170,8 @@ class CashHoldingRequest(BaseModel):
 
     currency: str  # e.g. "USD", "TWD"
     amount: float
+    broker: Optional[str] = None
+    account_type: Optional[str] = None
 
 
 class HoldingResponse(BaseModel):
@@ -179,6 +183,8 @@ class HoldingResponse(BaseModel):
     quantity: float
     cost_basis: Optional[float] = None
     broker: Optional[str] = None
+    currency: str = "USD"
+    account_type: Optional[str] = None
     is_cash: bool
     updated_at: str
 
@@ -192,12 +198,27 @@ class CategoryAllocation(BaseModel):
     market_value: float
 
 
+class HoldingDetail(BaseModel):
+    """再平衡分析中的個股明細（同 ticker 跨券商合併）。"""
+
+    ticker: str
+    category: str
+    currency: str = "USD"
+    quantity: float
+    market_value: float
+    weight_pct: float
+    avg_cost: Optional[float] = None
+    current_price: Optional[float] = None
+
+
 class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
     total_value: float
+    display_currency: str = "USD"
     categories: dict[str, CategoryAllocation]
     advice: list[str]
+    holdings_detail: list[HoldingDetail] = []
 
 
 # ---------------------------------------------------------------------------

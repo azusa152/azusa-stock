@@ -18,6 +18,7 @@ from config import (
     CASH_CURRENCY_OPTIONS,
     CATEGORY_LABELS,
     CATEGORY_OPTIONS,
+    DISPLAY_CURRENCY_OPTIONS,
     DRIFT_CHART_HEIGHT,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
@@ -107,8 +108,11 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 ### Step 3 — 再平衡分析
 
+- **幣別切換**：透過下拉選單選擇顯示幣別（USD / TWD / JPY / EUR / GBP / CNY / HKD / SGD / THB），所有資產市值將自動以選定幣別計算
+- **即時匯率**：系統透過 yfinance 取得即時匯率（快取 1 小時），確保跨幣別資產正確換算
 - **雙餅圖**：目標配置 vs 實際配置
 - **Drift 長條圖**：各分類的偏移程度（紅色超配 / 綠色低配）
+- **個股持倉明細**：顯示各股原始幣別、數量、現價、平均成本、換算後市值與佔比
 - **再平衡建議**：自動提示偏移超過 5% 的分類，建議加碼或減碼
 
 > 💡 定期（如每季）檢視資產配置，是最重要但最常被忽略的投資紀律。
@@ -234,6 +238,7 @@ with st.sidebar:
                             "broker": (
                                 sb_broker.strip() if sb_broker.strip() else None
                             ),
+                            "currency": market_info["currency"],
                             "is_cash": False,
                         },
                     )
@@ -327,6 +332,7 @@ with st.sidebar:
                                 if sb_bond_broker.strip()
                                 else None
                             ),
+                            "currency": sb_bond_currency,
                             "is_cash": False,
                         },
                     )
@@ -379,6 +385,16 @@ with st.sidebar:
                         {
                             "currency": cash_currency,
                             "amount": cash_amount,
+                            "broker": (
+                                cash_bank.strip()
+                                if cash_bank.strip()
+                                else None
+                            ),
+                            "account_type": (
+                                cash_account_type
+                                if cash_account_type != "（不指定）"
+                                else None
+                            ),
                         },
                     )
                     if result:
@@ -643,10 +659,14 @@ with tab_warroom:
             # Build DataFrame with raw API values for round-trip editing
             rows = []
             for h in holdings:
+                is_cash = h.get("is_cash", False)
                 rows.append(
                     {
                         "ID": h["id"],
-                        "ticker": h["ticker"],
+                        "ticker": (
+                            "" if is_cash else h["ticker"]
+                        ),
+                        "raw_ticker": h["ticker"],
                         "category": h["category"],
                         "quantity": float(h["quantity"]),
                         "cost_basis": (
@@ -655,7 +675,9 @@ with tab_warroom:
                             else None
                         ),
                         "broker": h.get("broker") or "",
-                        "is_cash": h.get("is_cash", False),
+                        "currency": h.get("currency", "USD"),
+                        "account_type": h.get("account_type") or "",
+                        "is_cash": is_cash,
                     }
                 )
             df = pd.DataFrame(rows)
@@ -664,6 +686,7 @@ with tab_warroom:
                 df,
                 column_config={
                     "ID": None,  # hidden
+                    "raw_ticker": None,  # hidden
                     "ticker": st.column_config.TextColumn(
                         "代號", disabled=True
                     ),
@@ -678,7 +701,15 @@ with tab_warroom:
                     "cost_basis": st.column_config.NumberColumn(
                         "平均成本", min_value=0.0, format="%.2f"
                     ),
-                    "broker": st.column_config.TextColumn("券商"),
+                    "broker": st.column_config.TextColumn(
+                        "銀行/券商"
+                    ),
+                    "currency": st.column_config.TextColumn(
+                        "幣別", disabled=True
+                    ),
+                    "account_type": st.column_config.TextColumn(
+                        "帳戶類型"
+                    ),
                     "is_cash": st.column_config.CheckboxColumn(
                         "現金", disabled=True
                     ),
@@ -689,16 +720,10 @@ with tab_warroom:
                 key="holdings_editor",
             )
 
-            # Save & Delete row
-            btn_cols = st.columns([1, 1, 2])
-            with btn_cols[0]:
-                save_clicked = st.button(
-                    "💾 儲存變更", key="save_holdings_btn"
-                )
-            with btn_cols[1]:
-                delete_clicked = st.button(
-                    "🗑️ 刪除", key="del_holding_btn"
-                )
+            # --- Save button ---
+            save_clicked = st.button(
+                "💾 儲存變更", key="save_holdings_btn"
+            )
 
             # --- Save logic: diff edited vs original ---
             if save_clicked:
@@ -712,13 +737,16 @@ with tab_warroom:
                         orig["category"] != edit["category"]
                         or orig["quantity"] != edit["quantity"]
                         or orig["cost_basis"] != edit["cost_basis"]
-                        or (orig["broker"] or "") != (edit["broker"] or "")
+                        or (orig["broker"] or "")
+                        != (edit["broker"] or "")
+                        or (orig["account_type"] or "")
+                        != (edit["account_type"] or "")
                     ):
                         h_id = int(orig["ID"])
                         result = api_put(
                             f"/holdings/{h_id}",
                             {
-                                "ticker": edit["ticker"],
+                                "ticker": orig["raw_ticker"],
                                 "category": edit["category"],
                                 "quantity": float(edit["quantity"]),
                                 "cost_basis": (
@@ -731,13 +759,23 @@ with tab_warroom:
                                     if edit["broker"]
                                     else None
                                 ),
+                                "currency": edit.get(
+                                    "currency", "USD"
+                                ),
+                                "account_type": (
+                                    edit["account_type"]
+                                    if edit["account_type"]
+                                    else None
+                                ),
                                 "is_cash": bool(edit["is_cash"]),
                             },
                         )
                         if result:
                             changed += 1
                         else:
-                            errors.append(edit["ticker"])
+                            errors.append(
+                                orig["raw_ticker"]
+                            )
                 if changed > 0:
                     st.success(f"✅ 已更新 {changed} 筆持倉")
                 if errors:
@@ -750,27 +788,35 @@ with tab_warroom:
                     st.cache_data.clear()
                     st.rerun()
 
-            # --- Delete logic ---
-            del_id = st.selectbox(
-                "選擇要刪除的持倉",
-                options=[h["id"] for h in holdings],
-                format_func=lambda x: next(
-                    (
-                        f"{h['ticker']} ({h['quantity']})"
-                        for h in holdings
-                        if h["id"] == x
+            # --- Delete logic: selector first, then button ---
+            st.divider()
+            del_cols = st.columns([3, 1])
+            with del_cols[0]:
+                del_id = st.selectbox(
+                    "選擇要刪除的持倉",
+                    options=[h["id"] for h in holdings],
+                    format_func=lambda x: next(
+                        (
+                            f"{h['ticker']} ({h['quantity']})"
+                            for h in holdings
+                            if h["id"] == x
+                        ),
+                        str(x),
                     ),
-                    str(x),
-                ),
-                key="del_holding_id",
-                label_visibility="collapsed",
-            )
-            if delete_clicked:
-                result = api_delete(f"/holdings/{del_id}")
-                if result:
-                    st.success(result.get("message", "✅ 已刪除"))
-                    st.cache_data.clear()
-                    st.rerun()
+                    key="del_holding_id",
+                )
+            with del_cols[1]:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button(
+                    "🗑️ 刪除", key="del_holding_btn"
+                ):
+                    result = api_delete(f"/holdings/{del_id}")
+                    if result:
+                        st.success(
+                            result.get("message", "✅ 已刪除")
+                        )
+                        st.cache_data.clear()
+                        st.rerun()
         else:
             st.caption(
                 "目前無持倉資料，請透過左側面板新增股票、債券或現金。"
@@ -784,10 +830,20 @@ with tab_warroom:
         st.subheader("📊 Step 3 — 再平衡分析")
 
         if profile and holdings:
-            rebalance = fetch_rebalance()
+            # Currency selector
+            cur_cols = st.columns([2, 4])
+            with cur_cols[0]:
+                display_cur = st.selectbox(
+                    "顯示幣別",
+                    options=DISPLAY_CURRENCY_OPTIONS,
+                    index=0,
+                    key="display_currency",
+                )
+
+            rebalance = fetch_rebalance(display_currency=display_cur)
             if rebalance:
                 st.metric(
-                    "💰 投資組合總市值",
+                    f"💰 投資組合總市值（{display_cur}）",
                     f"${rebalance['total_value']:,.2f}",
                 )
 
@@ -800,39 +856,78 @@ with tab_warroom:
                     CATEGORY_LABELS.get(c, c).split("(")[0].strip()
                     for c in cat_names
                 ]
-                target_vals = [
-                    cats_data[c]["target_pct"] for c in cat_names
+                total_val = rebalance["total_value"]
+
+                # --- Target Pie: category + target dollar amount ---
+                target_amounts = [
+                    round(
+                        total_val
+                        * cats_data[c]["target_pct"]
+                        / 100,
+                        2,
+                    )
+                    for c in cat_names
                 ]
-                current_vals = [
-                    cats_data[c]["current_pct"] for c in cat_names
+                target_text = [
+                    f"${amt:,.0f}" for amt in target_amounts
+                ]
+
+                # --- Actual Pie: per-stock breakdown ---
+                detail = rebalance.get("holdings_detail", [])
+                actual_labels = [d["ticker"] for d in detail]
+                actual_values = [d["market_value"] for d in detail]
+                actual_text = [
+                    f"${v:,.0f}" for v in actual_values
                 ]
 
                 fig_pie = make_subplots(
                     rows=1,
                     cols=2,
                     specs=[[{"type": "pie"}, {"type": "pie"}]],
-                    subplot_titles=["🎯 目標配置", "📊 實際配置"],
+                    subplot_titles=[
+                        f"🎯 目標配置（{display_cur}）",
+                        f"📊 實際配置（{display_cur}）",
+                    ],
                 )
+
+                # Target pie — categories with dollar amounts
                 fig_pie.add_trace(
                     go.Pie(
                         labels=cat_labels,
-                        values=target_vals,
+                        values=target_amounts,
                         hole=0.4,
-                        textinfo="label+percent",
+                        text=target_text,
+                        textinfo="label+text+percent",
+                        textposition="auto",
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            f"目標金額：%{{text}} {display_cur}<br>"
+                            "佔比：%{percent}<extra></extra>"
+                        ),
                     ),
                     row=1,
                     col=1,
                 )
+
+                # Actual pie — individual stocks with dollar amounts
                 fig_pie.add_trace(
                     go.Pie(
-                        labels=cat_labels,
-                        values=current_vals,
+                        labels=actual_labels,
+                        values=actual_values,
                         hole=0.4,
-                        textinfo="label+percent",
+                        text=actual_text,
+                        textinfo="label+text+percent",
+                        textposition="auto",
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            f"市值：%{{text}} {display_cur}<br>"
+                            "佔比：%{percent}<extra></extra>"
+                        ),
                     ),
                     row=1,
                     col=2,
                 )
+
                 fig_pie.update_layout(
                     height=ALLOCATION_CHART_HEIGHT,
                     margin=dict(t=40, b=20, l=20, r=20),
@@ -868,6 +963,52 @@ with tab_warroom:
                 st.markdown("**💡 再平衡建議：**")
                 for adv in rebalance.get("advice", []):
                     st.write(adv)
+
+                # Holdings breakdown (merged by ticker)
+                detail = rebalance.get("holdings_detail", [])
+                if detail:
+                    st.divider()
+                    st.markdown(
+                        f"**📋 個股持倉明細（{display_cur}）：**"
+                    )
+                    detail_rows = []
+                    for d in detail:
+                        cat_lbl = (
+                            CATEGORY_LABELS.get(
+                                d["category"], d["category"]
+                            )
+                            .split("(")[0]
+                            .strip()
+                        )
+                        orig_cur = d.get("currency", "USD")
+                        detail_rows.append(
+                            {
+                                "代號": d["ticker"],
+                                "分類": cat_lbl,
+                                "原幣": orig_cur,
+                                "數量": d["quantity"],
+                                "現價": (
+                                    f"${d['current_price']:,.2f}"
+                                    if d.get("current_price")
+                                    else "—"
+                                ),
+                                "平均成本": (
+                                    f"${d['avg_cost']:,.2f}"
+                                    if d.get("avg_cost")
+                                    else "—"
+                                ),
+                                f"市值({display_cur})": (
+                                    f"${d['market_value']:,.2f}"
+                                ),
+                                "佔比": f"{d['weight_pct']:.1f}%",
+                            }
+                        )
+                    detail_df = pd.DataFrame(detail_rows)
+                    st.dataframe(
+                        detail_df,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
             else:
                 st.info(
                     "⏳ 無法計算再平衡，"

@@ -30,8 +30,10 @@ from domain.constants import (
     DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
+    DISK_FOREX_TTL,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
+    DISK_KEY_FOREX,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_SIGNALS,
@@ -42,6 +44,8 @@ from domain.constants import (
     DIVIDEND_CACHE_TTL,
     EARNINGS_CACHE_MAXSIZE,
     EARNINGS_CACHE_TTL,
+    FOREX_CACHE_MAXSIZE,
+    FOREX_CACHE_TTL,
     INSTITUTIONAL_HOLDERS_TOP_N,
     MA200_WINDOW,
     MA60_WINDOW,
@@ -95,6 +99,7 @@ _moat_cache: TTLCache = TTLCache(maxsize=MOAT_CACHE_MAXSIZE, ttl=MOAT_CACHE_TTL)
 _earnings_cache: TTLCache = TTLCache(maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNINGS_CACHE_TTL)
 _dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL)
 _price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL)
+_forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -554,3 +559,81 @@ def get_dividend_info(ticker: str) -> dict:
     return _cached_fetch(
         _dividend_cache, ticker, DISK_KEY_DIVIDEND, DISK_DIVIDEND_TTL, _fetch_dividend_from_yf
     )
+
+
+# ===========================================================================
+# 外匯匯率（Forex Rates）
+# ===========================================================================
+
+
+def _fetch_forex_rate(pair_key: str) -> float:
+    """
+    從 yfinance 取得單一匯率（供 _cached_fetch 使用）。
+    pair_key 格式為 "DISPLAY_CURRENCY:HOLDING_CURRENCY"，例如 "USD:TWD"。
+    回傳值為：1 單位 holding_currency = ? 單位 display_currency 的匯率。
+    """
+    try:
+        display_cur, holding_cur = pair_key.split(":")
+        if display_cur == holding_cur:
+            return 1.0
+
+        # yfinance 使用 {FROM}{TO}=X 格式，回傳 1 FROM = ? TO
+        # 我們要的是 1 holding_cur = ? display_cur
+        # 所以用 {HOLDING}{DISPLAY}=X
+        yf_ticker = f"{holding_cur}{display_cur}=X"
+        _rate_limiter.wait()
+        session = _get_session()
+        ticker_obj = yf.Ticker(yf_ticker, session=session)
+        hist = ticker_obj.history(period="5d")
+
+        if hist is not None and not hist.empty:
+            rate = float(hist["Close"].dropna().iloc[-1])
+            logger.info("匯率 %s → %s = %.4f", holding_cur, display_cur, rate)
+            return rate
+
+        # 嘗試反向查詢
+        yf_ticker_rev = f"{display_cur}{holding_cur}=X"
+        _rate_limiter.wait()
+        ticker_obj_rev = yf.Ticker(yf_ticker_rev, session=session)
+        hist_rev = ticker_obj_rev.history(period="5d")
+
+        if hist_rev is not None and not hist_rev.empty:
+            rev_rate = float(hist_rev["Close"].dropna().iloc[-1])
+            rate = 1.0 / rev_rate if rev_rate > 0 else 1.0
+            logger.info(
+                "匯率 %s → %s = %.4f（反向查詢）", holding_cur, display_cur, rate
+            )
+            return rate
+
+        logger.warning("無法取得匯率 %s → %s，使用 1.0", holding_cur, display_cur)
+        return 1.0
+
+    except Exception as e:
+        logger.warning("取得匯率失敗（%s）：%s，使用 1.0", pair_key, e)
+        return 1.0
+
+
+def get_exchange_rate(display_currency: str, holding_currency: str) -> float:
+    """
+    取得匯率：1 單位 holding_currency = ? 單位 display_currency。
+    結果透過 L1 + L2 快取。
+    """
+    if display_currency == holding_currency:
+        return 1.0
+    pair_key = f"{display_currency}:{holding_currency}"
+    return _cached_fetch(
+        _forex_cache, pair_key, DISK_KEY_FOREX, DISK_FOREX_TTL, _fetch_forex_rate
+    )
+
+
+def get_exchange_rates(
+    display_currency: str, holding_currencies: list[str]
+) -> dict[str, float]:
+    """
+    批次取得匯率：各 holding_currency → display_currency。
+    回傳 dict[holding_currency, rate]，rate 表示 1 單位 holding = ? 單位 display。
+    """
+    rates: dict[str, float] = {}
+    for cur in set(holding_currencies):
+        rates[cur] = get_exchange_rate(display_currency, cur)
+    return rates
