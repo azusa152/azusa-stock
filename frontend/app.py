@@ -50,12 +50,15 @@ div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
 # ---------------------------------------------------------------------------
 
 if "browser_tz" not in st.session_state:
-    tz = streamlit_js_eval(
-        js_expressions="Intl.DateTimeFormat().resolvedOptions().timeZone",
-        key="browser_tz",
-    )
-    if tz:
-        st.session_state["browser_tz"] = tz
+    try:
+        tz = streamlit_js_eval(
+            js_expressions="Intl.DateTimeFormat().resolvedOptions().timeZone",
+            key="browser_tz",
+        )
+        if tz:
+            st.session_state["browser_tz"] = tz
+    except Exception:
+        pass  # Safari may block JS eval iframe; gracefully fall back to UTC
 
 # ---------------------------------------------------------------------------
 # Navigation — two-page app
