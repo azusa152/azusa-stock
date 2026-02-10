@@ -4,6 +4,7 @@ Uses st.navigation to switch between the Radar and Asset Allocation pages.
 """
 
 import streamlit as st
+from streamlit_js_eval import streamlit_js_eval
 
 # ---------------------------------------------------------------------------
 # Page Config (must be the first Streamlit command)
@@ -43,6 +44,18 @@ div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
 """,
     unsafe_allow_html=True,
 )
+
+# ---------------------------------------------------------------------------
+# Browser Timezone Detection (once per session)
+# ---------------------------------------------------------------------------
+
+if "browser_tz" not in st.session_state:
+    tz = streamlit_js_eval(
+        js_expressions="Intl.DateTimeFormat().resolvedOptions().timeZone",
+        key="browser_tz",
+    )
+    if tz:
+        st.session_state["browser_tz"] = tz
 
 # ---------------------------------------------------------------------------
 # Navigation — two-page app

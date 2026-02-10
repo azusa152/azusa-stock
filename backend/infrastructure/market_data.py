@@ -6,6 +6,7 @@ Infrastructure — 市場資料適配器 (yfinance)。
 
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Callable, Optional, TypeVar
 
 T = TypeVar("T")
@@ -234,6 +235,7 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
             "bias": bias,
             "volume_ratio": volume_ratio,
             "institutional_holders": institutional_holders,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
         }
         return {**raw_signals, "status": build_signal_status(raw_signals)}
 
@@ -537,8 +539,6 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
 
         ex_dividend_date = None
         if ex_date_raw:
-            from datetime import datetime, timezone
-
             try:
                 if isinstance(ex_date_raw, (int, float)):
                     ex_dividend_date = datetime.fromtimestamp(

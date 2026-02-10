@@ -43,6 +43,7 @@ from utils import (
     fetch_profile,
     fetch_rebalance,
     fetch_templates,
+    format_utc_timestamp,
     refresh_ui,
 )
 
@@ -52,6 +53,12 @@ from utils import (
 # ---------------------------------------------------------------------------
 
 _MARKET_KEYS = list(STOCK_MARKET_OPTIONS.keys())
+
+
+def _hex_to_rgb_str(hex_color: str) -> str:
+    """Convert '#RRGGBB' to 'rgb(r, g, b)' for plotly.colors.n_colors."""
+    h = hex_color.lstrip("#")
+    return f"rgb({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)})"
 
 
 def _market_label(key: str) -> str:
@@ -848,14 +855,27 @@ with tab_warroom:
                     key="display_currency",
                 )
 
-            with st.spinner("載入再平衡分析中..."):
+            with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
                 rebalance = fetch_rebalance(display_currency=display_cur)
+                if rebalance:
+                    _rb_status.update(
+                        label="✅ 再平衡分析載入完成",
+                        state="complete",
+                        expanded=False,
+                    )
+                else:
+                    _rb_status.update(
+                        label="⚠️ 載入失敗或無持倉資料",
+                        state="error",
+                        expanded=True,
+                    )
             if rebalance:
                 calc_at = rebalance.get("calculated_at", "")
                 if calc_at:
                     with cur_cols[1]:
+                        browser_tz = st.session_state.get("browser_tz")
                         st.caption(
-                            f"🕐 資料更新時間：{calc_at[:19].replace('T', ' ')} UTC"
+                            f"🕐 資料更新時間：{format_utc_timestamp(calc_at, browser_tz)}"
                         )
                 st.metric(
                     f"💰 投資組合總市值（{display_cur}）",
@@ -907,7 +927,10 @@ with tab_warroom:
                         shades = [base]
                     else:
                         shades = pc.n_colors(
-                            base, "#FFFFFF", n + 2, colortype="rgb"
+                            _hex_to_rgb_str(base),
+                            "rgb(255, 255, 255)",
+                            n + 2,
+                            colortype="rgb",
                         )[:-2]
                     for i, d in enumerate(items):
                         actual_labels.append(f"{icon} {d['ticker']}")

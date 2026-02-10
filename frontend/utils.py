@@ -4,6 +4,8 @@ API helpers, cached data fetchers, and reusable UI rendering functions.
 """
 
 from datetime import datetime as dt
+from datetime import timezone
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -54,6 +56,8 @@ from config import (
     SCAN_SIGNAL_ICONS,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
+    TICKER_DEFAULT_MARKET,
+    TICKER_SUFFIX_TO_MARKET,
     WHALEWISDOM_STOCK_URL,
 )
 
@@ -67,6 +71,26 @@ def refresh_ui() -> None:
     """Clear all caches and rerun the page."""
     st.cache_data.clear()
     st.rerun()
+
+
+def format_utc_timestamp(iso_str: str, tz_name: str | None = None) -> str:
+    """Convert UTC ISO timestamp to 'YYYY-MM-DD HH:MM:SS (TZ)' in user timezone."""
+    try:
+        utc_dt = dt.fromisoformat(iso_str).replace(tzinfo=timezone.utc)
+        if tz_name:
+            local_dt = utc_dt.astimezone(ZoneInfo(tz_name))
+            return f"{local_dt.strftime('%Y-%m-%d %H:%M:%S')} ({tz_name})"
+        return f"{iso_str[:19].replace('T', ' ')} (UTC)"
+    except Exception:
+        return f"{iso_str[:19].replace('T', ' ')} (UTC)"
+
+
+def infer_market_label(ticker: str) -> str:
+    """Infer market label from ticker suffix (e.g. '.TW' -> '🇹🇼 台股')."""
+    for suffix, label in TICKER_SUFFIX_TO_MARKET.items():
+        if ticker.upper().endswith(suffix):
+            return label
+    return TICKER_DEFAULT_MARKET
 
 
 # ---------------------------------------------------------------------------
@@ -319,13 +343,14 @@ def render_stock_card(stock: dict) -> None:
         {} if cat in SKIP_SIGNALS_CATEGORIES else (fetch_signals(ticker) or {})
     )
 
-    # Build expander header with signal icon, ticker, category, and price
+    # Build expander header with signal icon, ticker, category, price, and market
     last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
     cat_label_short = CATEGORY_LABELS.get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")
     price_str = f" | ${price}" if price and price != "N/A" else ""
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}"
+    market_label = infer_market_label(ticker)
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str} | {market_label}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])
@@ -377,6 +402,13 @@ def render_stock_card(stock: dict) -> None:
 
                 for s in signals.get("status", []):
                     st.write(s)
+
+                fetched_at = signals.get("fetched_at")
+                if fetched_at:
+                    browser_tz = st.session_state.get("browser_tz")
+                    st.caption(
+                        f"🕐 資料更新：{format_utc_timestamp(fetched_at, browser_tz)}"
+                    )
 
             # -- Earnings & Dividend --
             info_cols = st.columns(2)

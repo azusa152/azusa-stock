@@ -140,6 +140,13 @@ STOCK_MARKET_PLACEHOLDERS = {
     "JP": "7203",
     "HK": "0700",
 }
+# Reverse-lookup: ticker suffix -> market label (for display on stock cards)
+TICKER_SUFFIX_TO_MARKET = {
+    ".TW": "🇹🇼 台股",
+    ".T": "🇯🇵 日股",
+    ".HK": "🇭🇰 港股",
+}
+TICKER_DEFAULT_MARKET = "🇺🇸 美股"
 STOCK_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth"]
 
 # ---------------------------------------------------------------------------

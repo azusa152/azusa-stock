@@ -380,17 +380,23 @@ with st.sidebar:
 # Main Dashboard: Stock Tabs
 # ---------------------------------------------------------------------------
 
-stocks_data = fetch_stocks()
-removed_data = fetch_removed_stocks()
-
-if stocks_data is None:
-    st.markdown("---")
-    st.warning("⏳ 無法連線至後端服務，可能正在啟動中。")
-    st.caption("後端服務通常需要 10–30 秒完成初始化，請點擊下方按鈕重試。")
-    if st.button("🔄 重試連線", type="primary"):
-        st.cache_data.clear()
-        st.rerun()
-    st.stop()
+with st.status("📡 載入股票資料中...", expanded=True) as _load_status:
+    stocks_data = fetch_stocks()
+    removed_data = fetch_removed_stocks()
+    if stocks_data is None:
+        _load_status.update(
+            label="❌ 無法連線至後端服務", state="error", expanded=True
+        )
+        st.caption("後端服務通常需要 10–30 秒完成初始化，請點擊下方按鈕重試。")
+        if st.button("🔄 重試連線", type="primary"):
+            st.cache_data.clear()
+            st.rerun()
+        st.stop()
+    _load_status.update(
+        label=f"✅ 已載入 {len(stocks_data)} 檔股票",
+        state="complete",
+        expanded=False,
+    )
 
 # Group stocks by category (radar categories only)
 category_map = {cat: [] for cat in RADAR_CATEGORY_OPTIONS}
