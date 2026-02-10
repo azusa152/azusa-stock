@@ -8,7 +8,7 @@
 
 - **雙頁面架構** — 「投資雷達」負責股票追蹤與掃描，「個人資產配置」負責持倉管理與再平衡，透過左側導覽列切換
 - **五大分類追蹤** — 風向球 / 護城河 / 成長夢想 / 債券 / 現金
-- **多市場支援** — 側邊欄新增資產支援美股、台股、日股、港股，自動帶入市場後綴與幣別
+- **多市場支援** — 側邊欄新增資產支援美股、台股、日股、港股，自動帶入市場後綴與幣別，股票卡片標題顯示市場旗幟徽章（🇺🇸 / 🇹🇼 / 🇯🇵 / 🇭🇰）
 - **觀點版控 (Thesis Versioning)** — 每次更新觀點自動遞增版號，完整保留歷史演進
 - **動態標籤 (Dynamic Tagging)** — 為股票標記領域標籤（AI、Cloud、SaaS...），標籤隨觀點版控一併快照
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號（並行掃描 4 股同時）
@@ -18,6 +18,8 @@
 - **財報日曆** — 自動顯示下次財報日期，14 天內倒數提醒
 - **股息資訊** — 護城河與債券類股票顯示殖利率與除息日
 - **即時訊號燈號** — 每張股票卡片標題自動顯示最新掃描訊號（🟢🟠🔴⚪），一目瞭然
+- **資料更新時間** — 每張股票卡片與再平衡分析皆顯示資料取得時間，自動偵測瀏覽器時區並以本地時間顯示
+- **載入狀態指示器** — 頁面載入時以顯眼的 spinner → checkmark 動畫取代原本不明顯的「RUNNING...」提示
 - **拖曳排序** — 勾選排序模式後透過 drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，支援 Dashboard 上傳匯入或 CLI 腳本匯入（upsert）
@@ -84,7 +86,7 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit 雙頁面 Dashboard（`st.navigation`），投資雷達頁（股票分頁 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增
+- **Frontend** — Streamlit 雙頁面 Dashboard（`st.navigation`），投資雷達頁（股票分頁 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增；使用 `streamlit-js-eval` 偵測瀏覽器時區自動顯示本地時間，`st.status` 提供載入狀態視覺回饋
 - **Database** — SQLite，透過 Docker Volume 持久化（含 Stock、ScanLog、PriceAlert、Holding、UserInvestmentProfile、UserTelegramSettings 等資料表）
 - **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + `diskcache` 持久快取 + Rate Limiter（2 次/秒）
 - **通知** — Telegram Bot API 雙模式（系統預設 Bot 或自訂 Bot Token），支援差異通知、價格警報、每週摘要
@@ -514,8 +516,8 @@ azusa-stock/
 │   ├── requirements.txt
 │   ├── config.py                     # 前端集中常數與設定
 │   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
-│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS
-│   └── pages/
+│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測
+│   └── views/
 │       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
 │       └── allocation.py             # 個人資產配置頁（War Room + Telegram 設定）
 │
