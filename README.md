@@ -266,15 +266,30 @@ docker compose up --build
 ### 5. 執行測試
 
 ```bash
-# 建立虛擬環境（首次）
+# 首次安裝依賴
+make install
+
+# 執行所有測試
+make test
+
+# Lint + Format
+make lint
+make format
+```
+
+<details>
+<summary>手動執行（不使用 Make）</summary>
+
+```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 執行所有測試
 LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v --tb=short
 ```
+
+</details>
 
 > 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
 > CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。

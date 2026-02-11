@@ -1,5 +1,7 @@
 """Tests for POST /webhook — AI agent unified entry point."""
 
+from unittest.mock import patch
+
 
 class TestWebhookHelp:
     """Tests for the 'help' action (discoverability)."""
@@ -79,8 +81,9 @@ class TestWebhookScan:
     """Tests for the 'scan' action."""
 
     def test_scan_should_accept_background_job(self, client):
-        # Act
-        resp = client.post("/webhook", json={"action": "scan"})
+        # Act — mock Thread so _bg_scan doesn't run against the test DB
+        with patch("threading.Thread"):
+            resp = client.post("/webhook", json={"action": "scan"})
 
         # Assert
         assert resp.status_code == 200
