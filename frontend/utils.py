@@ -532,9 +532,51 @@ def _render_moat_section(ticker: str, signals: dict) -> None:
         trend = moat_data.get("margin_trend", [])
         valid_trend = [t for t in trend if t.get("value") is not None]
         if valid_trend:
-            df = pd.DataFrame(valid_trend).set_index("date")
-            df.columns = ["毛利率 (%)"]
-            st.line_chart(df)
+            dates = [t["date"] for t in valid_trend]
+            values = [t["value"] for t in valid_trend]
+
+            is_up = values[-1] >= values[0]
+            line_color = "#00C805" if is_up else "#FF5252"
+            fill_color = "rgba(0,200,5,0.1)" if is_up else "rgba(255,82,82,0.1)"
+
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=values,
+                    mode="lines+markers",
+                    line=dict(color=line_color, width=2),
+                    marker=dict(size=5, color=line_color),
+                    fill="tozeroy",
+                    fillcolor=fill_color,
+                    hovertemplate="%{x}<br>毛利率: %{y:.1f}%<extra></extra>",
+                    name="毛利率",
+                )
+            )
+
+            y_min = min(values)
+            y_max = max(values)
+            y_range = y_max - y_min
+            padding = y_range * 0.05 if y_range > 0 else y_max * 0.02
+
+            fig.update_layout(
+                height=PRICE_CHART_HEIGHT,
+                margin=dict(l=0, r=0, t=0, b=0),
+                yaxis=dict(
+                    range=[y_min - padding, y_max + padding],
+                    showgrid=True,
+                    gridcolor="rgba(128,128,128,0.15)",
+                    ticksuffix="%",
+                ),
+                xaxis=dict(showgrid=False),
+                showlegend=False,
+                hovermode="x unified",
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(
+                fig, use_container_width=True, config={"displayModeBar": False}
+            )
         else:
             st.caption("⚠️ 毛利率趨勢資料不足，無法繪圖。")
 

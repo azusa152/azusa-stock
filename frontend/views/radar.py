@@ -436,9 +436,9 @@ _load_placeholder.success(f"✅ 已載入 {len(stocks_data)} 檔股票")
 
 # Data freshness indicator
 _last_scan = fetch_last_scan()
-if _last_scan and _last_scan.get("scanned_at"):
+if _last_scan and _last_scan.get("last_scanned_at"):
     _browser_tz = st.session_state.get("browser_tz")
-    _scan_time = format_utc_timestamp(_last_scan["scanned_at"], _browser_tz)
+    _scan_time = format_utc_timestamp(_last_scan["last_scanned_at"], _browser_tz)
     st.caption(f"🕐 最近掃描時間：{_scan_time}")
 else:
     st.caption("🕐 尚未執行過掃描。")
