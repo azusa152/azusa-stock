@@ -40,11 +40,13 @@ from domain.constants import (
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
+    DISK_FOREX_HISTORY_TTL,
     DISK_FOREX_TTL,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
     DISK_KEY_FOREX,
+    DISK_KEY_FOREX_HISTORY,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_SIGNALS,
@@ -60,6 +62,9 @@ from domain.constants import (
     ETF_TOP_N,
     FOREX_CACHE_MAXSIZE,
     FOREX_CACHE_TTL,
+    FOREX_HISTORY_CACHE_MAXSIZE,
+    FOREX_HISTORY_CACHE_TTL,
+    FX_HISTORY_PERIOD,
     INSTITUTIONAL_HOLDERS_TOP_N,
     MA200_WINDOW,
     MA60_WINDOW,
@@ -136,6 +141,7 @@ _dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEN
 _price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL)
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
 _etf_holdings_cache: TTLCache = TTLCache(maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL)
+_forex_history_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -729,6 +735,81 @@ def get_exchange_rates(
     for cur in set(holding_currencies):
         rates[cur] = get_exchange_rate(display_currency, cur)
     return rates
+
+
+# ---------------------------------------------------------------------------
+# Forex History (for Currency Exposure Monitor)
+# ---------------------------------------------------------------------------
+
+
+def _fetch_forex_history(pair_key: str) -> list[dict]:
+    """
+    從 yfinance 取得匯率歷史（供 _cached_fetch 使用）。
+    pair_key 格式為 "BASE:QUOTE"，例如 "USD:TWD"。
+    回傳 [{"date": "2026-02-05", "close": 32.15}, ...] 按日期升序。
+    """
+    try:
+        base, quote = pair_key.split(":")
+        if base == quote:
+            return []
+
+        yf_ticker = f"{base}{quote}=X"
+        hist = _yf_history_short(yf_ticker, FX_HISTORY_PERIOD)
+
+        if hist is not None and not hist.empty:
+            return [
+                {"date": idx.strftime("%Y-%m-%d"), "close": round(float(row["Close"]), 4)}
+                for idx, row in hist.iterrows()
+                if not _is_nan(row.get("Close"))
+            ]
+
+        # 嘗試反向查詢
+        yf_ticker_rev = f"{quote}{base}=X"
+        hist_rev = _yf_history_short(yf_ticker_rev, FX_HISTORY_PERIOD)
+
+        if hist_rev is not None and not hist_rev.empty:
+            return [
+                {"date": idx.strftime("%Y-%m-%d"), "close": round(1.0 / float(row["Close"]), 4)}
+                for idx, row in hist_rev.iterrows()
+                if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
+            ]
+
+        logger.warning("無法取得匯率歷史 %s/%s", base, quote)
+        return []
+
+    except Exception as e:
+        logger.warning("取得匯率歷史失敗（%s）：%s", pair_key, e)
+        return []
+
+
+def get_forex_history(base: str, quote: str) -> list[dict]:
+    """
+    取得匯率歷史：1 base = ? quote 的每日收盤價。
+    回傳 [{"date": "2026-02-05", "close": 32.15}, ...]。
+    結果透過 L1 + L2 快取。
+    """
+    if base == quote:
+        return []
+    pair_key = f"{base}:{quote}"
+    result = _cached_fetch(
+        _forex_history_cache,
+        pair_key,
+        DISK_KEY_FOREX_HISTORY,
+        DISK_FOREX_HISTORY_TTL,
+        _fetch_forex_history,
+    )
+    return result if result else []
+
+
+def _is_nan(val) -> bool:
+    """安全判斷 NaN（支援 None / float）。"""
+    if val is None:
+        return True
+    try:
+        import math
+        return math.isnan(float(val))
+    except (TypeError, ValueError):
+        return True
 
 
 # ---------------------------------------------------------------------------

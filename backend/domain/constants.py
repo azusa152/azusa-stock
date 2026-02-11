@@ -135,6 +135,18 @@ DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
 ETF_TOP_N = 10  # only resolve top N constituents per ETF
 
 # ---------------------------------------------------------------------------
+# Currency Exposure Monitor
+# ---------------------------------------------------------------------------
+FX_SIGNIFICANT_CHANGE_PCT = 3.0  # alert threshold: 3% change over period
+FX_HIGH_CONCENTRATION_PCT = 70.0  # "high" risk if >70% non-home currency
+FX_MEDIUM_CONCENTRATION_PCT = 40.0  # "medium" risk if >40% non-home currency
+FX_HISTORY_PERIOD = "5d"  # yfinance period for FX movement detection
+DISK_KEY_FOREX_HISTORY = "forex_history"
+DISK_FOREX_HISTORY_TTL = 3600  # 1 hour
+FOREX_HISTORY_CACHE_MAXSIZE = 50
+FOREX_HISTORY_CACHE_TTL = 3600  # 1 hour
+
+# ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
 # ---------------------------------------------------------------------------
 XRAY_SINGLE_STOCK_WARN_PCT = 15.0  # Telegram warning threshold (%)

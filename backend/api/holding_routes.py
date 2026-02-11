@@ -10,6 +10,8 @@ from sqlmodel import Session, select
 
 from api.schemas import (
     CashHoldingRequest,
+    CurrencyExposureResponse,
+    FXAlertResponse,
     HoldingRequest,
     HoldingResponse,
     ImportResponse,
@@ -17,7 +19,12 @@ from api.schemas import (
     RebalanceResponse,
     XRayAlertResponse,
 )
-from application.services import calculate_rebalance, send_xray_warnings
+from application.services import (
+    calculate_currency_exposure,
+    calculate_rebalance,
+    send_fx_alerts,
+    send_xray_warnings,
+)
 from domain.constants import DEFAULT_USER_ID, ERROR_HOLDING_NOT_FOUND
 from domain.entities import Holding
 from infrastructure.database import get_session
@@ -242,4 +249,29 @@ def trigger_xray_alert(
     return {
         "message": f"X-Ray 分析完成，{len(warnings)} 筆警告已發送。",
         "warnings": warnings,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Currency Exposure Monitor
+# ---------------------------------------------------------------------------
+
+
+@router.get("/currency-exposure", response_model=CurrencyExposureResponse, summary="Calculate currency exposure")
+def get_currency_exposure(
+    session: Session = Depends(get_session),
+) -> CurrencyExposureResponse:
+    """計算匯率曝險分析：幣別分佈、匯率變動、風險等級與建議。"""
+    return calculate_currency_exposure(session)
+
+
+@router.post("/currency-exposure/alert", response_model=FXAlertResponse, summary="Trigger FX alert via Telegram")
+def trigger_fx_alert(
+    session: Session = Depends(get_session),
+) -> dict:
+    """檢查匯率曝險並發送 Telegram 警報。"""
+    alerts = send_fx_alerts(session)
+    return {
+        "message": f"匯率曝險檢查完成，{len(alerts)} 筆警報已發送。",
+        "alerts": alerts,
     }

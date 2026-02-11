@@ -25,6 +25,8 @@ from config import (
     CATEGORY_OPTIONS,
     DISPLAY_CURRENCY_OPTIONS,
     DRIFT_CHART_HEIGHT,
+    FX_HIGH_CONCENTRATION_PCT,
+    FX_MEDIUM_CONCENTRATION_PCT,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
     PRIVACY_MASK,
@@ -41,6 +43,7 @@ from utils import (
     api_post,
     api_put,
     build_radar_lookup,
+    fetch_currency_exposure,
     fetch_holdings,
     fetch_profile,
     fetch_rebalance,
@@ -170,6 +173,23 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - **🔬 穿透式 X-Ray**：自動解析 ETF 前 10 大成分股，計算「直接持倉 + ETF 間接曝險」的真實比例。堆疊長條圖直觀顯示集中度風險，超過 15% 門檻時以橘色警告提示，亦可一鍵發送 Telegram 警告
 
 > 💡 定期（如每季）檢視資產配置，是最重要但最常被忽略的投資紀律。
+
+---
+
+### Step 4 — 匯率曝險監控 (Currency Exposure Monitor)
+
+- **本幣設定**：在 Step 4 區域右上角可直接切換本幣（如 TWD → USD），系統會以此作為匯率曝險計算的基準
+- **雙分頁檢視**：
+  - **💵 現金幣別曝險**（預設）：僅分析現金部位的幣別分佈，匯率風險對現金的影響最直接
+  - **📊 全資產幣別曝險**：分析整體投資組合（含股票、債券、現金）的幣別分佈
+- **幣別分佈餅圖**：以甜甜圈圖顯示各幣別的市值比例
+- **風險等級**：根據非本幣佔比自動判定（🟢 低風險 / 🟡 中風險 / 🔴 高風險）
+  - 低於 40%：低風險
+  - 40% ~ 70%：中風險
+  - 超過 70%：高風險
+- **近期匯率變動**：顯示各外幣對本幣的近 5 日匯率變動百分比，以 📈📉 標示方向
+- **智慧建議**：系統會特別標示現金部位受匯率影響的金額，幫助您聚焦最需要關注的部分
+- **Telegram 警報**：當匯率變動超過 3% 門檻時發送 Telegram 通知（含現金曝險金額）。系統每 6 小時自動檢查，亦可手動點擊「📨 發送匯率曝險警報至 Telegram」
 
 ---
 
@@ -546,10 +566,11 @@ with tab_warroom:
         st.subheader("🎯 Step 1 — 設定目標配置")
 
         if profile:
-            prof_cols = st.columns([4, 1])
+            prof_cols = st.columns([5, 1])
             with prof_cols[0]:
+                home_cur = profile.get("home_currency", "TWD")
                 st.success(
-                    f"✅ 目前使用配置：**{profile['name']}**"
+                    f"✅ 目前使用配置：**{profile['name']}** ｜ 🏠 本幣：{home_cur}"
                 )
             with prof_cols[1]:
                 switch_clicked = st.button(
@@ -608,6 +629,7 @@ with tab_warroom:
                                                     "id"
                                                 ],
                                                 "config": cfg,
+                                                "home_currency": profile.get("home_currency", "TWD"),
                                             },
                                         )
                                         if result:
@@ -659,6 +681,14 @@ with tab_warroom:
                 "📋 尚未設定投資組合目標，請選擇一個投資人格範本開始："
             )
 
+            init_home_cur = st.selectbox(
+                "🏠 本幣 (Home Currency)",
+                options=DISPLAY_CURRENCY_OPTIONS,
+                index=DISPLAY_CURRENCY_OPTIONS.index("TWD") if "TWD" in DISPLAY_CURRENCY_OPTIONS else 0,
+                key="init_home_currency",
+                help="用於匯率曝險計算的基準幣別。",
+            )
+
             if templates:
                 template_cols = st.columns(3)
                 for idx, tmpl in enumerate(templates):
@@ -691,6 +721,7 @@ with tab_warroom:
                                         "name": tmpl["name"],
                                         "source_template_id": tmpl["id"],
                                         "config": cfg,
+                                        "home_currency": init_home_cur,
                                     },
                                 )
                                 if result:
@@ -1339,6 +1370,247 @@ with tab_warroom:
                                 )
                         except Exception as ex:
                             st.error(f"❌ 發送失敗：{ex}")
+
+                # -----------------------------------------------------------
+                # Section 4: Currency Exposure Monitor
+                # -----------------------------------------------------------
+                st.divider()
+                st.subheader("💱 Step 4 — 匯率曝險監控")
+
+                with st.status("💱 載入匯率曝險分析中...", expanded=True) as _fx_status:
+                    fx_data = fetch_currency_exposure()
+                    if fx_data:
+                        _fx_status.update(
+                            label="✅ 匯率曝險分析載入完成",
+                            state="complete",
+                            expanded=False,
+                        )
+                    else:
+                        _fx_status.update(
+                            label="⚠️ 匯率曝險分析載入失敗",
+                            state="error",
+                            expanded=True,
+                        )
+
+                if fx_data:
+                    fx_calc_at = fx_data.get("calculated_at", "")
+                    fx_home = fx_data.get("home_currency", "TWD")
+
+                    # --- Home currency selector (inline in Step 4) ---
+                    _fx_hdr_cols = st.columns([3, 1])
+                    with _fx_hdr_cols[0]:
+                        if fx_calc_at:
+                            browser_tz = st.session_state.get("browser_tz")
+                            st.caption(
+                                f"🕐 分析時間：{format_utc_timestamp(fx_calc_at, browser_tz)}"
+                            )
+                    with _fx_hdr_cols[1]:
+                        _fx_cur_idx = (
+                            DISPLAY_CURRENCY_OPTIONS.index(fx_home)
+                            if fx_home in DISPLAY_CURRENCY_OPTIONS
+                            else 0
+                        )
+                        new_fx_home = st.selectbox(
+                            "🏠 本幣",
+                            options=DISPLAY_CURRENCY_OPTIONS,
+                            index=_fx_cur_idx,
+                            key="fx_home_currency_selector",
+                        )
+                        if new_fx_home != fx_home and profile:
+                            result = api_put(
+                                f"/profiles/{profile['id']}",
+                                {"home_currency": new_fx_home},
+                            )
+                            if result:
+                                st.cache_data.clear()
+                                st.rerun()
+
+                    # --- Shared data ---
+                    risk_colors = {"low": "🟢", "medium": "🟡", "high": "🔴"}
+                    risk_labels_map = {"low": "低風險", "medium": "中風險", "high": "高風險"}
+                    fx_movements = fx_data.get("fx_movements", [])
+
+                    _CUR_COLORS = {
+                        "USD": "#3B82F6", "TWD": "#10B981", "JPY": "#F59E0B",
+                        "EUR": "#8B5CF6", "GBP": "#EF4444", "CNY": "#EC4899",
+                        "HKD": "#F97316", "SGD": "#14B8A6", "THB": "#6366F1",
+                    }
+
+                    def _render_fx_donut(bd_data: list[dict], title: str, home: str) -> None:
+                        """Render a currency breakdown donut chart."""
+                        if not bd_data:
+                            st.info("暫無資料。")
+                            return
+                        import plotly.graph_objects as go
+
+                        bd_labels = [b["currency"] for b in bd_data]
+                        bd_values = [b["value"] for b in bd_data]
+                        bd_text = [_mask_money(b["value"], "${:,.0f}") for b in bd_data]
+                        bd_colors = [_CUR_COLORS.get(b["currency"], "#6B7280") for b in bd_data]
+
+                        fig = go.Figure(
+                            go.Pie(
+                                labels=bd_labels,
+                                values=bd_values,
+                                hole=0.45,
+                                text=bd_text,
+                                textinfo=(
+                                    "label+percent"
+                                    if _is_privacy()
+                                    else "label+text+percent"
+                                ),
+                                textposition="auto",
+                                marker=dict(colors=bd_colors),
+                                hovertemplate=(
+                                    "<b>%{label}</b><br>"
+                                    "佔比：%{percent}<extra></extra>"
+                                    if _is_privacy()
+                                    else (
+                                        "<b>%{label}</b><br>"
+                                        f"市值：%{{text}} {home}<br>"
+                                        "佔比：%{percent}<extra></extra>"
+                                    )
+                                ),
+                            )
+                        )
+                        fig.update_layout(
+                            title=title,
+                            height=380,
+                            margin=dict(t=40, b=20, l=20, r=20),
+                            showlegend=True,
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    def _render_fx_movements(movements: list[dict]) -> None:
+                        """Render the FX movements table."""
+                        if not movements:
+                            return
+                        st.markdown("**📉📈 近期匯率變動：**")
+                        mv_rows = []
+                        for mv in movements:
+                            direction_icon = (
+                                "📈" if mv["direction"] == "up"
+                                else ("📉" if mv["direction"] == "down" else "➡️")
+                            )
+                            mv_rows.append({
+                                "": direction_icon,
+                                "貨幣對": mv["pair"],
+                                "現價": f"{mv['current_rate']:.4f}",
+                                "變動": f"{mv['change_pct']:+.2f}%",
+                            })
+                        st.dataframe(
+                            pd.DataFrame(mv_rows),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
+                    # --- Two tabs: Cash vs Total ---
+                    fx_tab_cash, fx_tab_total = st.tabs(
+                        ["💵 現金幣別曝險", "📊 全資產幣別曝險"]
+                    )
+
+                    # === Cash tab ===
+                    with fx_tab_cash:
+                        cash_bd = fx_data.get("cash_breakdown", [])
+                        cash_nhp = fx_data.get("cash_non_home_pct", 0.0)
+                        total_cash = fx_data.get("total_cash_home", 0.0)
+
+                        if not cash_bd:
+                            st.info("尚無現金部位，請先在 Step 2 輸入現金持倉。")
+                        else:
+                            # Risk level for cash
+                            if cash_nhp >= FX_HIGH_CONCENTRATION_PCT:
+                                cash_risk = "high"
+                            elif cash_nhp >= FX_MEDIUM_CONCENTRATION_PCT:
+                                cash_risk = "medium"
+                            else:
+                                cash_risk = "low"
+
+                            cash_m_cols = st.columns(3)
+                            with cash_m_cols[0]:
+                                st.metric(
+                                    f"💰 現金總額（{fx_home}）",
+                                    _mask_money(total_cash),
+                                )
+                            with cash_m_cols[1]:
+                                st.metric("🌍 現金非本幣佔比", f"{cash_nhp:.1f}%")
+                            with cash_m_cols[2]:
+                                c_icon = risk_colors.get(cash_risk, "⚪")
+                                c_label = risk_labels_map.get(cash_risk, cash_risk)
+                                st.metric("風險等級", f"{c_icon} {c_label}")
+
+                            _render_fx_donut(
+                                cash_bd,
+                                f"現金幣別分佈（{fx_home}）",
+                                fx_home,
+                            )
+                            _render_fx_movements(fx_movements)
+
+                            # Cash-focused advice
+                            advice = fx_data.get("advice", [])
+                            cash_advice = [
+                                a for a in advice
+                                if "現金" in a or "💵" in a
+                            ]
+                            if cash_advice:
+                                st.markdown("**💡 現金幣別建議：**")
+                                for adv in cash_advice:
+                                    st.write(adv)
+
+                            # Telegram alert button
+                            if st.button(
+                                "📨 發送匯率曝險警報至 Telegram",
+                                key="fx_alert_tg_cash_btn",
+                            ):
+                                try:
+                                    resp = requests.post(
+                                        f"{BACKEND_URL}/currency-exposure/alert",
+                                        timeout=API_POST_TIMEOUT,
+                                    )
+                                    if resp.ok:
+                                        data = resp.json()
+                                        a_count = len(data.get("alerts", []))
+                                        st.success(
+                                            f"✅ {data.get('message', f'{a_count} 筆警報已發送')}"
+                                        )
+                                    else:
+                                        st.error(f"❌ 發送失敗：{resp.text}")
+                                except Exception as ex:
+                                    st.error(f"❌ 發送失敗：{ex}")
+
+                    # === Total tab ===
+                    with fx_tab_total:
+                        all_bd = fx_data.get("breakdown", [])
+                        all_nhp = fx_data.get("non_home_pct", 0.0)
+                        total_home = fx_data.get("total_value_home", 0.0)
+                        risk_level = fx_data.get("risk_level", "low")
+
+                        total_m_cols = st.columns(3)
+                        with total_m_cols[0]:
+                            st.metric(
+                                f"💰 投資組合總市值（{fx_home}）",
+                                _mask_money(total_home),
+                            )
+                        with total_m_cols[1]:
+                            st.metric("🌍 非本幣佔比", f"{all_nhp:.1f}%")
+                        with total_m_cols[2]:
+                            t_icon = risk_colors.get(risk_level, "⚪")
+                            t_label = risk_labels_map.get(risk_level, risk_level)
+                            st.metric("風險等級", f"{t_icon} {t_label}")
+
+                        _render_fx_donut(
+                            all_bd,
+                            f"全資產幣別分佈（{fx_home}）",
+                            fx_home,
+                        )
+                        _render_fx_movements(fx_movements)
+
+                        # Full advice
+                        advice = fx_data.get("advice", [])
+                        if advice:
+                            st.markdown("**💡 匯率曝險建議：**")
+                            for adv in advice:
+                                st.write(adv)
 
             else:
                 st.info(

@@ -17,6 +17,9 @@ from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     DEFAULT_USER_ID,
     DEFAULT_WEBHOOK_THESIS,
+    FX_HIGH_CONCENTRATION_PCT,
+    FX_MEDIUM_CONCENTRATION_PCT,
+    FX_SIGNIFICANT_CHANGE_PCT,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     PRICE_ALERT_COOLDOWN_HOURS,
     REMOVAL_REASON_UNKNOWN,
@@ -38,6 +41,7 @@ from infrastructure.market_data import (
     analyze_moat_trend,
     get_etf_top_holdings,
     get_exchange_rates,
+    get_forex_history,
     get_technical_signals,
 )
 from infrastructure.notification import send_telegram_message_dual
@@ -1241,3 +1245,310 @@ def send_xray_warnings(
             logger.warning("X-Ray Telegram 警告發送失敗：%s", e)
 
     return warnings
+
+
+# ===========================================================================
+# Currency Exposure Monitor
+# ===========================================================================
+
+
+def calculate_currency_exposure(session: Session, home_currency: str | None = None) -> dict:
+    """
+    計算匯率曝險分析：
+    1. 讀取使用者 Profile 的 home_currency（或使用參數覆寫）
+    2. 將所有持倉按幣別分組，計算以本幣計價的市值
+    3. 偵測近期匯率變動
+    4. 產出風險等級與建議
+    """
+    from domain.entities import Holding, UserInvestmentProfile
+
+    # 1) 決定本幣
+    if not home_currency:
+        profile = session.exec(
+            select(UserInvestmentProfile)
+            .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
+            .where(UserInvestmentProfile.is_active == True)  # noqa: E712
+        ).first()
+        home_currency = profile.home_currency if profile else "TWD"
+
+    # 2) 取得所有持倉
+    holdings = session.exec(
+        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
+    ).all()
+
+    if not holdings:
+        return {
+            "home_currency": home_currency,
+            "total_value_home": 0.0,
+            "breakdown": [],
+            "non_home_pct": 0.0,
+            "cash_breakdown": [],
+            "cash_non_home_pct": 0.0,
+            "total_cash_home": 0.0,
+            "fx_movements": [],
+            "risk_level": "low",
+            "advice": ["尚無持倉資料。"],
+            "calculated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    # 3) 取得匯率（all currencies → home_currency）
+    holding_currencies = list({h.currency for h in holdings})
+    fx_rates = get_exchange_rates(home_currency, holding_currencies)
+    logger.info("匯率曝險分析 → %s：%s", home_currency, {k: round(v, 4) for k, v in fx_rates.items()})
+
+    # 4) 按幣別分組計算市值（以本幣計價）— 同時追蹤現金部位
+    currency_values: dict[str, float] = {}
+    cash_currency_values: dict[str, float] = {}
+    for h in holdings:
+        fx = fx_rates.get(h.currency, 1.0)
+        if h.is_cash:
+            market_value = h.quantity * fx
+            cash_currency_values[h.currency] = (
+                cash_currency_values.get(h.currency, 0.0) + market_value
+            )
+        else:
+            signals = get_technical_signals(h.ticker)
+            price = signals.get("price") if signals else None
+            if price is None:
+                # 無法取得價格，使用成本估算
+                price = h.cost_basis or 0.0
+            market_value = h.quantity * price * fx
+
+        currency_values[h.currency] = currency_values.get(h.currency, 0.0) + market_value
+
+    total_value_home = sum(currency_values.values())
+    total_cash_home = sum(cash_currency_values.values())
+
+    # 5) 建立幣別分佈（全資產）
+    breakdown = []
+    for cur, val in sorted(currency_values.items(), key=lambda x: x[1], reverse=True):
+        pct = round((val / total_value_home) * 100, 2) if total_value_home > 0 else 0.0
+        breakdown.append({
+            "currency": cur,
+            "value": round(val, 2),
+            "percentage": pct,
+            "is_home": cur == home_currency,
+        })
+
+    non_home_pct = round(
+        sum(b["percentage"] for b in breakdown if not b["is_home"]),
+        2,
+    )
+
+    # 5b) 建立現金幣別分佈
+    cash_breakdown = []
+    for cur, val in sorted(cash_currency_values.items(), key=lambda x: x[1], reverse=True):
+        pct = round((val / total_cash_home) * 100, 2) if total_cash_home > 0 else 0.0
+        cash_breakdown.append({
+            "currency": cur,
+            "value": round(val, 2),
+            "percentage": pct,
+            "is_home": cur == home_currency,
+        })
+
+    cash_non_home_pct = round(
+        sum(b["percentage"] for b in cash_breakdown if not b["is_home"]),
+        2,
+    )
+
+    # 6) 偵測近期匯率變動（非本幣 → 本幣）
+    fx_movements = []
+    non_home_currencies = [cur for cur in currency_values if cur != home_currency]
+    for cur in non_home_currencies:
+        history = get_forex_history(cur, home_currency)
+        if len(history) >= 2:
+            first_close = history[0]["close"]
+            last_close = history[-1]["close"]
+            if first_close > 0:
+                change_pct = round(((last_close - first_close) / first_close) * 100, 2)
+                direction = "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
+                fx_movements.append({
+                    "pair": f"{cur}/{home_currency}",
+                    "current_rate": last_close,
+                    "change_pct": change_pct,
+                    "direction": direction,
+                })
+
+    # 7) 風險等級
+    if non_home_pct >= FX_HIGH_CONCENTRATION_PCT:
+        risk_level = "high"
+    elif non_home_pct >= FX_MEDIUM_CONCENTRATION_PCT:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+
+    # 8) 建議（包含現金部位資訊）
+    advice = _generate_fx_advice(
+        home_currency,
+        breakdown,
+        non_home_pct,
+        risk_level,
+        fx_movements,
+        cash_breakdown=cash_breakdown,
+        cash_non_home_pct=cash_non_home_pct,
+        total_cash_home=total_cash_home,
+    )
+
+    return {
+        "home_currency": home_currency,
+        "total_value_home": round(total_value_home, 2),
+        "breakdown": breakdown,
+        "non_home_pct": non_home_pct,
+        "cash_breakdown": cash_breakdown,
+        "cash_non_home_pct": cash_non_home_pct,
+        "total_cash_home": round(total_cash_home, 2),
+        "fx_movements": fx_movements,
+        "risk_level": risk_level,
+        "advice": advice,
+        "calculated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _generate_fx_advice(
+    home_currency: str,
+    breakdown: list[dict],
+    non_home_pct: float,
+    risk_level: str,
+    fx_movements: list[dict],
+    *,
+    cash_breakdown: list[dict] | None = None,
+    cash_non_home_pct: float = 0.0,
+    total_cash_home: float = 0.0,
+) -> list[str]:
+    """根據匯率曝險分析結果產出建議文字。"""
+    advice: list[str] = []
+
+    # 集中度建議
+    if risk_level == "high":
+        top_foreign = [b for b in breakdown if not b["is_home"]]
+        if top_foreign:
+            top_cur = top_foreign[0]["currency"]
+            top_pct = top_foreign[0]["percentage"]
+            advice.append(
+                f"⚠️ 非本幣（{home_currency}）資產佔比達 {non_home_pct:.1f}%，"
+                f"其中 {top_cur} 佔 {top_pct:.1f}%，匯率風險較高。"
+                f"建議評估是否需要調整幣別配置以降低單一貨幣曝險。"
+            )
+    elif risk_level == "medium":
+        advice.append(
+            f"📊 非本幣資產佔比 {non_home_pct:.1f}%，處於中等水準。"
+            f"持續關注主要外幣匯率走勢。"
+        )
+    else:
+        advice.append(
+            f"✅ 非本幣資產佔比 {non_home_pct:.1f}%，匯率風險較低。"
+        )
+
+    # 現金部位專屬建議
+    if cash_breakdown:
+        foreign_cash = [b for b in cash_breakdown if not b["is_home"]]
+        if foreign_cash and cash_non_home_pct > 0:
+            top_cash_cur = foreign_cash[0]["currency"]
+            top_cash_val = foreign_cash[0]["value"]
+            advice.append(
+                f"💵 您的現金部位中，{cash_non_home_pct:.1f}% 為非本幣。"
+                f"最大外幣現金為 {top_cash_cur}（約 {top_cash_val:,.0f} {home_currency}），"
+                f"受匯率波動直接影響。"
+            )
+
+    # 匯率變動建議（含現金金額）
+    cash_by_cur = {b["currency"]: b["value"] for b in (cash_breakdown or [])}
+    for mv in fx_movements:
+        abs_change = abs(mv["change_pct"])
+        if abs_change >= FX_SIGNIFICANT_CHANGE_PCT:
+            pair = mv["pair"]
+            base_cur = pair.split("/")[0]
+            cash_amt = cash_by_cur.get(base_cur, 0.0)
+            cash_note = (
+                f"（其中 {base_cur} 現金約 {cash_amt:,.0f} {home_currency} 直接受影響）"
+                if cash_amt > 0
+                else ""
+            )
+            if mv["direction"] == "up":
+                advice.append(
+                    f"📈 {pair} 近期升值 {mv['change_pct']:+.2f}%，"
+                    f"您持有的 {base_cur} 資產以 {home_currency} 計價正在增值。"
+                    f"{cash_note}"
+                )
+            else:
+                advice.append(
+                    f"📉 {pair} 近期貶值 {mv['change_pct']:+.2f}%，"
+                    f"您持有的 {base_cur} 資產以 {home_currency} 計價正在縮水，"
+                    f"建議留意是否需要避險。{cash_note}"
+                )
+
+    return advice
+
+
+def check_fx_alerts(session: Session) -> list[str]:
+    """
+    檢查匯率曝險警報：偵測顯著匯率變動，產出 Telegram 通知文字。
+    回傳警報訊息列表（強調現金部位影響）。
+    """
+    exposure = calculate_currency_exposure(session)
+    alerts: list[str] = []
+
+    home_cur = exposure["home_currency"]
+    cash_by_cur = {
+        b["currency"]: b["value"]
+        for b in exposure.get("cash_breakdown", [])
+    }
+
+    # 匯率變動警報（含現金金額）
+    for mv in exposure.get("fx_movements", []):
+        abs_change = abs(mv["change_pct"])
+        if abs_change >= FX_SIGNIFICANT_CHANGE_PCT:
+            pair = mv["pair"]
+            base_cur = pair.split("/")[0]
+            cash_amt = cash_by_cur.get(base_cur, 0.0)
+            cash_note = (
+                f"\n💵 其中 {base_cur} 現金約 {cash_amt:,.0f} {home_cur} 直接受影響。"
+                if cash_amt > 0
+                else ""
+            )
+            if mv["direction"] == "up":
+                alerts.append(
+                    f"📈 {pair} 升值 {mv['change_pct']:+.2f}%（現價 {mv['current_rate']:.4f}）。"
+                    f"您的 {base_cur} 購買力上升。{cash_note}"
+                )
+            else:
+                alerts.append(
+                    f"📉 {pair} 貶值 {mv['change_pct']:+.2f}%（現價 {mv['current_rate']:.4f}）。"
+                    f"您的 {base_cur} 資產以 {home_cur} 計價正在縮水。{cash_note}"
+                )
+
+    # 高集中度警報（整體 + 現金）
+    non_home_pct = exposure.get("non_home_pct", 0.0)
+    cash_non_home_pct = exposure.get("cash_non_home_pct", 0.0)
+    if non_home_pct >= FX_HIGH_CONCENTRATION_PCT:
+        alerts.append(
+            f"⚠️ 非本幣資產佔比高達 {non_home_pct:.1f}%，匯率風險顯著。"
+            f"建議評估是否需要降低外幣曝險。"
+        )
+    if cash_non_home_pct >= FX_HIGH_CONCENTRATION_PCT:
+        total_cash = exposure.get("total_cash_home", 0.0)
+        alerts.append(
+            f"💵 現金部位中非本幣佔 {cash_non_home_pct:.1f}%"
+            f"（現金總額約 {total_cash:,.0f} {home_cur}），"
+            f"匯率風險直接影響您的流動性資產。"
+        )
+
+    return alerts
+
+
+def send_fx_alerts(session: Session) -> list[str]:
+    """
+    執行匯率曝險檢查，若有警報則發送 Telegram 通知。
+    回傳已發送的警報列表。
+    """
+    alerts = check_fx_alerts(session)
+
+    if alerts:
+        full_msg = "💱 匯率曝險監控\n\n" + "\n\n".join(alerts)
+        try:
+            send_telegram_message_dual(full_msg, session)
+            logger.info("已發送匯率曝險警報（%d 筆）", len(alerts))
+        except Exception as e:
+            logger.warning("匯率曝險 Telegram 警報發送失敗：%s", e)
+
+    return alerts

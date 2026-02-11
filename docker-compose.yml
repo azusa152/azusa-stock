@@ -72,8 +72,8 @@ services:
         # Run smart check immediately at startup
         /usr/local/bin/smart-scan.sh
 
-        # Cron: smart scan every 30 min + weekly digest on Sunday
-        (echo '*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1'; echo '0 18 * * 0 curl -sf -X POST http://backend:8000/digest > /dev/null 2>&1') | crontab -
+        # Cron: smart scan every 30 min + weekly digest on Sunday + FX alert every 6 hours
+        (echo '*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1'; echo '0 18 * * 0 curl -sf -X POST http://backend:8000/digest > /dev/null 2>&1'; echo '0 */6 * * * curl -sf -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1') | crontab -
         crond -f -l 2
     restart: unless-stopped
 

@@ -69,6 +69,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/settings/preferences` | User preferences (privacy mode, etc.) |
 | `PUT` | `/settings/preferences` | Update user preferences (upsert) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment |
+| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown`, FX movements, risk level |
+| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert (includes cash exposure amounts) |
 
 ### Docs
 

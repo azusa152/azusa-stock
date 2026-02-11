@@ -314,6 +314,21 @@ def fetch_rebalance(display_currency: str = "USD") -> dict | None:
         return None
 
 
+@st.cache_data(ttl=CACHE_TTL_REBALANCE, show_spinner=False)
+def fetch_currency_exposure() -> dict | None:
+    """Fetch currency exposure analysis."""
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/currency-exposure",
+            timeout=API_REBALANCE_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except requests.RequestException:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Dashboard — Cached API Helpers
 # ---------------------------------------------------------------------------

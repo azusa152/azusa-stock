@@ -46,6 +46,8 @@ MARGIN_BAD_CHANGE_THRESHOLD = -2
 EARNINGS_BADGE_DAYS_THRESHOLD = 14
 SCAN_HISTORY_CARD_LIMIT = 10
 DEFAULT_ALERT_THRESHOLD = 30.0
+FX_HIGH_CONCENTRATION_PCT = 70.0  # matches backend constant
+FX_MEDIUM_CONCENTRATION_PCT = 40.0  # matches backend constant
 
 # ---------------------------------------------------------------------------
 # Category Labels & Tags

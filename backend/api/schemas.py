@@ -304,6 +304,7 @@ class ProfileCreateRequest(BaseModel):
     name: str = ""
     source_template_id: Optional[str] = None
     config: dict[str, float]  # {"Bond": 50, "Trend_Setter": 30, ...}
+    home_currency: str = "TWD"
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -311,6 +312,7 @@ class ProfileUpdateRequest(BaseModel):
 
     name: Optional[str] = None
     config: Optional[dict[str, float]] = None
+    home_currency: Optional[str] = None
 
 
 class ProfileResponse(BaseModel):
@@ -320,6 +322,7 @@ class ProfileResponse(BaseModel):
     user_id: str
     name: str
     source_template_id: Optional[str] = None
+    home_currency: str = "TWD"
     config: dict
     is_active: bool
     created_at: str
@@ -414,6 +417,52 @@ class RebalanceResponse(BaseModel):
     holdings_detail: list[HoldingDetail] = []
     xray: list[XRayEntry] = []
     calculated_at: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Currency Exposure Schemas
+# ---------------------------------------------------------------------------
+
+
+class CurrencyBreakdown(BaseModel):
+    """幣別曝險分析：單一幣別的持倉分佈。"""
+
+    currency: str
+    value: float  # 以本幣計算的市值
+    percentage: float  # 佔總投資組合的百分比
+    is_home: bool
+
+
+class FXMovement(BaseModel):
+    """近期匯率變動。"""
+
+    pair: str  # e.g. "USD/TWD"
+    current_rate: float
+    change_pct: float  # 期間內百分比變動
+    direction: str  # "up" / "down" / "flat"
+
+
+class CurrencyExposureResponse(BaseModel):
+    """GET /currency-exposure 回傳的匯率曝險分析。"""
+
+    home_currency: str
+    total_value_home: float
+    breakdown: list[CurrencyBreakdown]
+    non_home_pct: float
+    cash_breakdown: list[CurrencyBreakdown] = []
+    cash_non_home_pct: float = 0.0
+    total_cash_home: float = 0.0
+    fx_movements: list[FXMovement]
+    risk_level: str  # "low" / "medium" / "high"
+    advice: list[str]
+    calculated_at: str = ""
+
+
+class FXAlertResponse(BaseModel):
+    """POST /currency-exposure/alert 回應。"""
+
+    message: str
+    alerts: list[str] = []
 
 
 # ---------------------------------------------------------------------------

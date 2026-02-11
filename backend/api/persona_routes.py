@@ -84,6 +84,7 @@ def create_profile(
         user_id=DEFAULT_USER_ID,
         name=payload.name,
         source_template_id=payload.source_template_id,
+        home_currency=payload.home_currency,
         config=json.dumps(payload.config),
         is_active=True,
     )
@@ -108,6 +109,8 @@ def update_profile(
         profile.name = payload.name
     if payload.config is not None:
         profile.config = json.dumps(payload.config)
+    if payload.home_currency is not None:
+        profile.home_currency = payload.home_currency
     profile.updated_at = datetime.now(timezone.utc)
     session.commit()
     session.refresh(profile)
@@ -135,6 +138,7 @@ def _profile_to_response(profile: UserInvestmentProfile) -> ProfileResponse:
         user_id=profile.user_id,
         name=profile.name,
         source_template_id=profile.source_template_id,
+        home_currency=profile.home_currency,
         config=json.loads(profile.config),
         is_active=profile.is_active,
         created_at=profile.created_at.isoformat(),

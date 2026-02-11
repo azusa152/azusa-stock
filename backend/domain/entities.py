@@ -102,6 +102,7 @@ class UserInvestmentProfile(SQLModel, table=True):
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     name: str = Field(default="", description="配置名稱")
     source_template_id: Optional[str] = Field(default=None, description="來源範本 ID")
+    home_currency: str = Field(default="TWD", description="使用者的本幣（用於匯率曝險計算）")
     config: str = Field(default="{}", description="配置（JSON 字串，如 {\"Bond\": 50, ...}）")
     is_active: bool = Field(default=True, description="是否為啟用中的配置")
     created_at: datetime = Field(

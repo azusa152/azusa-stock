@@ -46,6 +46,8 @@ def _run_migrations() -> None:
         "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
         # ScanLog: 新增市場情緒原因說明欄位
         "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
+        # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
+        "ALTER TABLE userinvestmentprofile ADD COLUMN home_currency VARCHAR DEFAULT 'TWD';",
     ]
 
     with engine.connect() as conn:
