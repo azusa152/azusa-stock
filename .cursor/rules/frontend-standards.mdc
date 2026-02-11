@@ -21,3 +21,27 @@ globs: ["frontend/**"]
 
 ## API Calls
 -   All backend calls go through helper functions in `frontend/utils.py`. Never call `requests` directly in view files.
+
+## Privacy Mode
+
+The app supports a cross-device privacy toggle that masks all sensitive monetary values.
+
+### Rules
+- **Monetary values** (prices, market values, totals, costs) MUST be formatted through `_mask_money(value, fmt)`, never with raw f-strings or `.format()`.
+- **Quantities** (share counts, unit amounts) MUST be formatted through `_mask_qty(value, fmt)`.
+- **Backend-generated text** that embeds monetary amounts (e.g., advice strings from `_generate_fx_advice`) MUST be rendered through `_render_advice(lines)`, never raw `st.write()`.
+- **Exchange rates and other numeric table columns** that could reveal portfolio details MUST check `_is_privacy()` and substitute `PRIVACY_MASK` when active.
+- The privacy state is checked via `_is_privacy()` which reads `st.session_state["privacy_mode"]`.
+- The mask placeholder is `PRIVACY_MASK` from `frontend/config.py`.
+
+### Existing helpers (defined in `frontend/views/allocation.py` and `frontend/views/dashboard.py`)
+- `_mask_money(value, fmt="${:,.2f}")` -- formats or masks a monetary value
+- `_mask_qty(value, fmt="{:,.4f}")` -- formats or masks a quantity
+- `_render_advice(lines)` -- renders advice strings, regex-masking embedded amounts
+- `_is_privacy()` -- returns True when privacy toggle is active
+
+### Checklist for new features
+- Every `st.metric()` showing money or quantities: use `_mask_money()` / `_mask_qty()`
+- Every `st.dataframe()` column with amounts: use `_mask_money()` per cell
+- Every `st.write()` of backend-generated text with numbers: use `_render_advice()`
+- Plotly chart `textinfo` and `hovertemplate`: conditionally hide values (see `_render_fx_donut` pattern)

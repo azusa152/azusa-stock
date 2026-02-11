@@ -4,6 +4,7 @@ Holdings management, rebalancing, and Telegram settings.
 """
 
 import json
+import re
 
 import pandas as pd
 import requests
@@ -95,6 +96,22 @@ def _mask_qty(value: float, fmt: str = "{:,.4f}") -> str:
     if _is_privacy():
         return PRIVACY_MASK
     return fmt.format(value)
+
+
+# Regex: match numeric amounts (e.g. "50,000", "1,234.56") followed by a currency code
+_CURRENCY_AMOUNT_RE = re.compile(
+    r"[\d,]+(?:\.\d+)?(?=\s*(?:TWD|USD|JPY|EUR|GBP|CNY|HKD|SGD|THB))"
+)
+
+
+def _render_advice(advice_lines: list[str]) -> None:
+    """Render advice lines, masking monetary amounts in privacy mode."""
+    for adv in advice_lines:
+        if _is_privacy():
+            masked = _CURRENCY_AMOUNT_RE.sub(PRIVACY_MASK, adv)
+            st.write(masked)
+        else:
+            st.write(adv)
 
 
 # ---------------------------------------------------------------------------
@@ -1495,7 +1512,7 @@ with tab_warroom:
                             mv_rows.append({
                                 "": direction_icon,
                                 "貨幣對": mv["pair"],
-                                "現價": f"{mv['current_rate']:.4f}",
+                                "現價": PRIVACY_MASK if _is_privacy() else f"{mv['current_rate']:.4f}",
                                 "變動": f"{mv['change_pct']:+.2f}%",
                             })
                         st.dataframe(
@@ -1554,8 +1571,7 @@ with tab_warroom:
                             ]
                             if cash_advice:
                                 st.markdown("**💡 現金幣別建議：**")
-                                for adv in cash_advice:
-                                    st.write(adv)
+                                _render_advice(cash_advice)
 
                             # Telegram alert button
                             if st.button(
@@ -1609,8 +1625,7 @@ with tab_warroom:
                         advice = fx_data.get("advice", [])
                         if advice:
                             st.markdown("**💡 匯率曝險建議：**")
-                            for adv in advice:
-                                st.write(adv)
+                            _render_advice(advice)
 
             else:
                 st.info(
