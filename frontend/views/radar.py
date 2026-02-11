@@ -23,9 +23,14 @@ from utils import (
     api_get,
     api_get_silent,
     api_post,
+    fetch_enriched_stocks,
+    fetch_last_scan,
     fetch_removed_stocks,
     fetch_stocks,
     fetch_thesis_history,
+    format_utc_timestamp,
+    invalidate_all_caches,
+    invalidate_stock_caches,
     refresh_ui,
     render_reorder_section,
     render_stock_card,
@@ -288,6 +293,7 @@ with st.sidebar:
                     )
                     if result:
                         st.success(f"✅ 已新增 {full_ticker} 到追蹤清單！")
+                        invalidate_stock_caches()
                         refresh_ui()
 
     else:  # Bond mode
@@ -330,6 +336,7 @@ with st.sidebar:
                             f"✅ 已新增 {bond_ticker.strip().upper()}"
                             " 到追蹤清單！"
                         )
+                        invalidate_stock_caches()
                         refresh_ui()
 
     st.divider()
@@ -385,6 +392,7 @@ with st.sidebar:
                         if result.get("errors"):
                             for err in result["errors"]:
                                 st.warning(f"⚠️ {err}")
+                        invalidate_stock_caches()
                         refresh_ui()
             else:
                 st.warning("⚠️ JSON 格式錯誤，預期為陣列。")
@@ -403,6 +411,7 @@ with st.sidebar:
 
     # -- Refresh --
     if st.button("🔄 重新整理畫面", use_container_width=True):
+        invalidate_all_caches()
         refresh_ui()
 
 
@@ -419,11 +428,20 @@ if stocks_data is None:
     st.error("❌ 無法連線至後端服務")
     st.caption("後端服務通常需要 10–30 秒完成初始化，請點擊下方按鈕重試。")
     if st.button("🔄 重試連線", type="primary"):
-        st.cache_data.clear()
+        invalidate_all_caches()
         st.rerun()
     st.stop()
 
 _load_placeholder.success(f"✅ 已載入 {len(stocks_data)} 檔股票")
+
+# Data freshness indicator
+_last_scan = fetch_last_scan()
+if _last_scan and _last_scan.get("scanned_at"):
+    _browser_tz = st.session_state.get("browser_tz")
+    _scan_time = format_utc_timestamp(_last_scan["scanned_at"], _browser_tz)
+    st.caption(f"🕐 最近掃描時間：{_scan_time}")
+else:
+    st.caption("🕐 尚未執行過掃描。")
 
 # Group stocks by category (radar categories only)
 category_map = {cat: [] for cat in RADAR_CATEGORY_OPTIONS}
@@ -433,6 +451,11 @@ for stock in stocks_data or []:
         category_map[cat].append(stock)
 
 removed_list = removed_data or []
+
+# Batch-fetch enriched data (signals, earnings, dividends) in a single API call
+# to avoid N+1 individual requests when rendering stock cards.
+_enriched_list = fetch_enriched_stocks() or []
+_enriched_map: dict[str, dict] = {e["ticker"]: e for e in _enriched_list if "ticker" in e}
 
 # Build tab labels
 tab_labels = [
@@ -453,7 +476,7 @@ for _cat, _tab in zip(RADAR_CATEGORY_OPTIONS, _category_tabs):
         if _stocks:
             render_reorder_section(_cat, _stocks)
             for stock in _stocks:
-                render_stock_card(stock)
+                render_stock_card(stock, enrichment=_enriched_map.get(stock["ticker"]))
         else:
             st.info(
                 f"📭 尚無{CATEGORY_LABELS[_cat]}類股票，請在左側面板新增。"
@@ -539,6 +562,7 @@ with tab_archive:
                                 st.success(
                                     result.get("message", "✅ 已重新啟用")
                                 )
+                                invalidate_stock_caches()
                                 refresh_ui()
     else:
         st.info("📭 目前沒有已移除的股票。")

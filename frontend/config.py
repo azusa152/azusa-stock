@@ -22,6 +22,7 @@ API_DELETE_TIMEOUT = 30
 API_SIGNALS_TIMEOUT = 15
 API_EARNINGS_TIMEOUT = 15
 API_DIVIDEND_TIMEOUT = 15
+API_GET_ENRICHED_TIMEOUT = 10  # short: page loads fast; warm cache responds in time
 
 # ---------------------------------------------------------------------------
 # Streamlit Cache TTLs (seconds)

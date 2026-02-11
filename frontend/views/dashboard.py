@@ -22,7 +22,7 @@ from config import (
     HEALTH_SCORE_WARN_THRESHOLD,
     MARKET_SENTIMENT_DEFAULT_LABEL,
     MARKET_SENTIMENT_LABELS,
-    PRIVACY_MASK,
+    PRIVACY_MASK,  # still used directly in the holdings table
     PRIVACY_TOGGLE_LABEL,
     SCAN_SIGNAL_ICONS,
 )
@@ -34,32 +34,12 @@ from utils import (
     fetch_rebalance,
     fetch_stocks,
     format_utc_timestamp,
+    invalidate_all_caches,
+    is_privacy as _is_privacy,
+    mask_money as _mask_money,
+    on_privacy_change as _on_privacy_change,
     refresh_ui,
-    save_privacy_mode,
 )
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _is_privacy() -> bool:
-    """Return True when the privacy toggle is active."""
-    return bool(st.session_state.get("privacy_mode"))
-
-
-def _mask_money(value: float, fmt: str = "${:,.2f}") -> str:
-    """Format a monetary value, or return the mask placeholder in privacy mode."""
-    if _is_privacy():
-        return PRIVACY_MASK
-    return fmt.format(value)
-
-
-def _on_privacy_change() -> None:
-    """Callback: persist privacy mode to backend and backing key."""
-    new_val = st.session_state.get("privacy_mode", False)
-    st.session_state["_privacy_mode_value"] = new_val
-    save_privacy_mode(new_val)
 
 
 def _compute_health_score(stocks: list) -> tuple[float, int, int]:
@@ -98,6 +78,7 @@ with _title_cols[1]:
     st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode", on_change=_on_privacy_change)
 with _title_cols[2]:
     if st.button("🔄 重新整理", use_container_width=True):
+        invalidate_all_caches()
         refresh_ui()
 
 

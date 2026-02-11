@@ -83,6 +83,7 @@ from domain.constants import (
     MOAT_CACHE_TTL,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
+    SCAN_THREAD_POOL_SIZE,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
     VIX_HISTORY_PERIOD,
@@ -367,6 +368,27 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
         _signals_cache, ticker, DISK_KEY_SIGNALS, DISK_SIGNALS_TTL,
         _fetch_signals_from_yf, is_error=_is_error_dict,
     )
+
+
+def prewarm_signals_batch(tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE) -> dict[str, dict | None]:
+    """
+    並行預熱多檔股票的技術訊號快取。
+    已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
+    回傳 {ticker: signals_dict} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, dict | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_technical_signals, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error("預熱 %s 訊號失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results
 
 
 # ===========================================================================
@@ -893,6 +915,26 @@ def get_etf_top_holdings(ticker: str) -> list[dict] | None:
         _fetch_with_sentinel,
     )
     return data if data else None
+
+
+def prewarm_etf_holdings_batch(tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE) -> dict[str, list[dict] | None]:
+    """
+    並行預熱多檔 ETF 的成分股快取。
+    回傳 {ticker: holdings_list_or_None} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, list[dict] | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_etf_top_holdings, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results
 
 
 # ===========================================================================

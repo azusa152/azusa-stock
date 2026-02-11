@@ -1,6 +1,7 @@
 """
 Infrastructure — 通知適配器 (Telegram Bot API)。
 支援雙模式：系統預設 Bot（env）或使用者自訂 Bot（DB）。
+支援通知偏好：依使用者設定過濾特定類型的通知。
 """
 
 import os
@@ -12,6 +13,24 @@ from domain.constants import DEFAULT_USER_ID, TELEGRAM_API_URL, TELEGRAM_REQUEST
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def is_notification_enabled(session: Session, notification_type: str) -> bool:
+    """檢查指定類型的通知是否已啟用（依使用者偏好）。
+
+    Args:
+        session: DB session.
+        notification_type: 通知類型 key（如 'scan_alerts', 'price_alerts'）。
+
+    Returns:
+        True 表示應發送通知，False 表示使用者已停用此類通知。
+    """
+    from domain.entities import UserPreferences
+
+    prefs = session.get(UserPreferences, DEFAULT_USER_ID)
+    if not prefs:
+        return True  # 無偏好設定時預設全部啟用
+    return prefs.get_notification_prefs().get(notification_type, True)
 
 
 def _send(token: str, chat_id: str, text: str) -> None:

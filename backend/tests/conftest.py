@@ -103,25 +103,61 @@ def _clean_tables():
         session.commit()
 
 
+# All external service patches — collected as a list to avoid Python's
+# "too many statically nested blocks" limit with the `with` statement.
+_MOCK_EARNINGS = {"ticker": "NVDA", "next_earnings_date": None}
+_MOCK_DIVIDEND = {"ticker": "NVDA", "dividend_yield": None}
+_MOCK_FX_RATES = {"USD": 1.0, "TWD": 0.032}
+
+_PATCHES: list[tuple[str, object]] = [
+    # Infrastructure layer
+    ("infrastructure.market_data.get_technical_signals", MOCK_SIGNALS),
+    ("infrastructure.market_data.get_price_history", []),
+    ("infrastructure.market_data.get_earnings_date", _MOCK_EARNINGS),
+    ("infrastructure.market_data.get_dividend_info", _MOCK_DIVIDEND),
+    ("infrastructure.market_data.get_fear_greed_index", MOCK_FEAR_GREED),
+    ("infrastructure.notification.send_telegram_message", None),
+    ("infrastructure.notification.send_telegram_message_dual", None),
+    # scan_service
+    ("application.scan_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.scan_service.analyze_moat_trend", MOCK_MOAT),
+    ("application.scan_service.get_fear_greed_index", MOCK_FEAR_GREED),
+    # rebalance_service
+    ("application.rebalance_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
+    ("application.rebalance_service.get_etf_top_holdings", []),
+    ("application.rebalance_service.get_forex_history", []),
+    ("application.rebalance_service.prewarm_signals_batch", {}),
+    ("application.rebalance_service.prewarm_etf_holdings_batch", {}),
+    # webhook_service
+    ("application.webhook_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.webhook_service.analyze_moat_trend", MOCK_MOAT),
+    ("application.webhook_service.get_fear_greed_index", MOCK_FEAR_GREED),
+    # notification_service
+    ("application.notification_service.get_fear_greed_index", MOCK_FEAR_GREED),
+    # stock_service
+    ("application.stock_service.analyze_moat_trend", MOCK_MOAT),
+    ("application.stock_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.stock_service.get_earnings_date", _MOCK_EARNINGS),
+    ("application.stock_service.get_dividend_info", _MOCK_DIVIDEND),
+    # API routes
+    ("api.scan_routes.get_fear_greed_index", MOCK_FEAR_GREED),
+]
+
+
 @pytest.fixture()
 def client() -> Generator[TestClient, None, None]:
     """TestClient with overridden DB session and mocked external services."""
     app.dependency_overrides[get_session] = _override_get_session
 
-    with (
-        patch("infrastructure.market_data.get_technical_signals", return_value=MOCK_SIGNALS),
-        patch("infrastructure.market_data.get_price_history", return_value=[]),
-        patch("infrastructure.market_data.get_earnings_date", return_value={"ticker": "NVDA", "next_earnings_date": None}),
-        patch("infrastructure.market_data.get_dividend_info", return_value={"ticker": "NVDA", "dividend_yield": None}),
-        patch("infrastructure.notification.send_telegram_message", return_value=None),
-        patch("infrastructure.notification.send_telegram_message_dual", return_value=None),
-        patch("application.services.get_technical_signals", return_value=MOCK_SIGNALS),
-        patch("application.services.analyze_moat_trend", return_value=MOCK_MOAT),
-        patch("infrastructure.market_data.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
-        patch("api.scan_routes.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
-        patch("application.services.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
-    ):
-        with TestClient(app) as c:
-            yield c
+    patchers = [patch(target, return_value=rv) for target, rv in _PATCHES]
+    for p in patchers:
+        p.start()
+
+    with TestClient(app) as c:
+        yield c
+
+    for p in patchers:
+        p.stop()
 
     app.dependency_overrides.clear()

@@ -46,12 +46,20 @@ from utils import (
     build_radar_lookup,
     fetch_currency_exposure,
     fetch_holdings,
+    fetch_preferences,
     fetch_profile,
     fetch_rebalance,
     fetch_templates,
     format_utc_timestamp,
+    invalidate_all_caches,
+    invalidate_holding_caches,
+    invalidate_profile_caches,
+    invalidate_stock_caches,
+    is_privacy as _is_privacy,
+    mask_money as _mask_money,
+    mask_qty as _mask_qty,
+    on_privacy_change as _on_privacy_change,
     refresh_ui,
-    save_privacy_mode,
 )
 
 
@@ -70,32 +78,6 @@ def _hex_to_rgb_str(hex_color: str) -> str:
 
 def _market_label(key: str) -> str:
     return STOCK_MARKET_OPTIONS[key]["label"]
-
-
-def _is_privacy() -> bool:
-    """Return True when the privacy toggle is active."""
-    return bool(st.session_state.get("privacy_mode"))
-
-
-def _on_privacy_change() -> None:
-    """Callback: persist privacy mode to backend and backing key."""
-    new_val = st.session_state.get("privacy_mode", False)
-    st.session_state["_privacy_mode_value"] = new_val
-    save_privacy_mode(new_val)
-
-
-def _mask_money(value: float, fmt: str = "${:,.2f}") -> str:
-    """Format a monetary value, or return the mask placeholder in privacy mode."""
-    if _is_privacy():
-        return PRIVACY_MASK
-    return fmt.format(value)
-
-
-def _mask_qty(value: float, fmt: str = "{:,.4f}") -> str:
-    """Format a quantity, or return the mask placeholder in privacy mode."""
-    if _is_privacy():
-        return PRIVACY_MASK
-    return fmt.format(value)
 
 
 # Regex: match numeric amounts (e.g. "50,000", "1,234.56") followed by a currency code
@@ -349,6 +331,8 @@ with st.sidebar:
                             )
                             if radar_result:
                                 st.info("📡 已自動加入雷達追蹤")
+                                invalidate_stock_caches()
+                        invalidate_holding_caches()
                         refresh_ui()
 
     # ---- Bond holding form ----
@@ -443,6 +427,8 @@ with st.sidebar:
                             )
                             if radar_result:
                                 st.info("📡 已自動加入雷達追蹤")
+                                invalidate_stock_caches()
+                        invalidate_holding_caches()
                         refresh_ui()
 
     # ---- Cash holding form ----
@@ -496,6 +482,7 @@ with st.sidebar:
                             f"✅ 已新增 {' - '.join(label_parts)}"
                             f" {cash_amount:,.0f}"
                         )
+                        invalidate_holding_caches()
                         refresh_ui()
 
     st.divider()
@@ -536,7 +523,7 @@ with st.sidebar:
                         st.success(
                             result.get("message", "✅ 匯入完成")
                         )
-                        st.cache_data.clear()
+                        invalidate_holding_caches()
                         st.rerun()
             else:
                 st.warning("⚠️ JSON 格式錯誤，預期為陣列。")
@@ -555,6 +542,7 @@ with st.sidebar:
 
     # -- Refresh --
     if st.button("🔄 重新整理畫面", use_container_width=True):
+        invalidate_all_caches()
         refresh_ui()
 
 
@@ -653,7 +641,7 @@ with tab_warroom:
                                             st.success(
                                                 f"✅ 已切換至「{tmpl['name']}」"
                                             )
-                                            st.cache_data.clear()
+                                            invalidate_profile_caches()
                                             st.rerun()
                     else:
                         st.warning("⚠️ 無法載入範本。")
@@ -691,7 +679,7 @@ with tab_warroom:
                         )
                         if result:
                             st.success("✅ 配置已更新")
-                            st.cache_data.clear()
+                            invalidate_profile_caches()
                             st.rerun()
         else:
             st.info(
@@ -745,7 +733,7 @@ with tab_warroom:
                                     st.success(
                                         f"✅ 已套用「{tmpl['name']}」"
                                     )
-                                    st.cache_data.clear()
+                                    invalidate_profile_caches()
                                     st.rerun()
             else:
                 st.warning("⚠️ 無法載入範本，請確認後端服務。")
@@ -912,7 +900,7 @@ with tab_warroom:
                 if changed == 0 and not errors:
                     st.info("ℹ️ 沒有偵測到變更")
                 if changed > 0:
-                    st.cache_data.clear()
+                    invalidate_holding_caches()
                     st.rerun()
 
             # --- Delete logic: selector first, then button ---
@@ -947,7 +935,7 @@ with tab_warroom:
                         st.success(
                             result.get("message", "✅ 已刪除")
                         )
-                        st.cache_data.clear()
+                        invalidate_holding_caches()
                         st.rerun()
         else:
             st.caption(
@@ -963,7 +951,7 @@ with tab_warroom:
 
         if profile and holdings:
             # Currency selector
-            cur_cols = st.columns([2, 4])
+            cur_cols = st.columns([2, 2, 2])
             with cur_cols[0]:
                 display_cur = st.selectbox(
                     "顯示幣別",
@@ -971,21 +959,35 @@ with tab_warroom:
                     index=0,
                     key="display_currency",
                 )
+            with cur_cols[1]:
+                st.write("")  # vertical spacer
+                _do_load = st.button(
+                    "📊 載入再平衡分析",
+                    type="primary",
+                    key="btn_load_rebalance",
+                )
+            # Persist loaded state so currency change doesn't lose data
+            if _do_load:
+                st.session_state["rebalance_loaded"] = True
 
-            with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
-                rebalance = fetch_rebalance(display_currency=display_cur)
-                if rebalance:
-                    _rb_status.update(
-                        label="✅ 再平衡分析載入完成",
-                        state="complete",
-                        expanded=False,
-                    )
-                else:
-                    _rb_status.update(
-                        label="⚠️ 載入失敗或無持倉資料",
-                        state="error",
-                        expanded=True,
-                    )
+            rebalance = None
+            if st.session_state.get("rebalance_loaded"):
+                with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
+                    rebalance = fetch_rebalance(display_currency=display_cur)
+                    if rebalance:
+                        _rb_status.update(
+                            label="✅ 再平衡分析載入完成",
+                            state="complete",
+                            expanded=False,
+                        )
+                    else:
+                        _rb_status.update(
+                            label="⚠️ 載入失敗或無持倉資料",
+                            state="error",
+                            expanded=True,
+                        )
+            else:
+                st.info("💡 點擊上方「載入再平衡分析」按鈕以取得最新資料。")
             if rebalance:
                 calc_at = rebalance.get("calculated_at", "")
                 if calc_at:
@@ -1184,6 +1186,35 @@ with tab_warroom:
                             .strip()
                         )
                         orig_cur = d.get("currency", "USD")
+
+                        # 計算未實現損益
+                        cur_price = d.get("current_price")
+                        avg_cost = d.get("avg_cost")
+                        qty = d.get("quantity", 0)
+                        fx = d.get("fx", 1.0)
+
+                        pl_value = None
+                        pl_pct = None
+                        if (
+                            cur_price is not None
+                            and avg_cost is not None
+                            and avg_cost > 0
+                        ):
+                            pl_value = (cur_price - avg_cost) * qty * fx
+                            pl_pct = ((cur_price - avg_cost) / avg_cost) * 100
+
+                        # 格式化 P/L 顯示
+                        if _is_privacy():
+                            pl_display = PRIVACY_MASK
+                            pl_pct_display = PRIVACY_MASK
+                        elif pl_value is not None:
+                            sign = "+" if pl_value >= 0 else ""
+                            pl_display = f"{sign}${pl_value:,.2f}"
+                            pl_pct_display = f"{sign}{pl_pct:.2f}%"
+                        else:
+                            pl_display = "—"
+                            pl_pct_display = "—"
+
                         detail_rows.append(
                             {
                                 "代號": d["ticker"],
@@ -1209,6 +1240,8 @@ with tab_warroom:
                                         d["market_value"]
                                     )
                                 ),
+                                "未實現損益": pl_display,
+                                "損益%": pl_pct_display,
                                 "佔比": f"{d['weight_pct']:.1f}%",
                             }
                         )
@@ -1439,7 +1472,7 @@ with tab_warroom:
                                 {"home_currency": new_fx_home},
                             )
                             if result:
-                                st.cache_data.clear()
+                                invalidate_profile_caches()
                                 st.rerun()
 
                     # --- Shared data ---
@@ -1716,7 +1749,6 @@ with tab_telegram:
                     )
                     if resp.status_code == 200:
                         st.success("✅ Telegram 設定已儲存")
-                        st.cache_data.clear()
                         st.rerun()
                     else:
                         st.error(f"❌ 儲存失敗：{resp.text}")
@@ -1742,5 +1774,56 @@ with tab_telegram:
                         else resp.text
                     )
                     st.error(f"❌ {detail}")
+            except requests.RequestException as e:
+                st.error(f"❌ 請求失敗：{e}")
+
+    # -------------------------------------------------------------------
+    # Notification Preferences — selective alert toggles
+    # -------------------------------------------------------------------
+    st.divider()
+    st.subheader("🔕 通知偏好")
+    st.caption("選擇要接收哪些類型的 Telegram 通知。停用的通知仍會在系統中執行，但不會發送訊息。")
+
+    _NOTIF_LABELS: dict[str, tuple[str, str]] = {
+        "scan_alerts": ("🔔 掃描訊號通知", "THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY 等掃描結果變化"),
+        "price_alerts": ("⚡ 自訂價格警報", "當股價突破你設定的門檻時觸發"),
+        "weekly_digest": ("📊 每週投資摘要", "每週一次的投資組合健康分數與訊號彙整"),
+        "xray_alerts": ("🔬 X-Ray 集中度警告", "穿透式持倉分析發現集中度過高時"),
+        "fx_alerts": ("💱 匯率曝險警報", "匯率風險等級異常或匯率大幅波動時"),
+    }
+
+    prefs_resp = api_get_silent("/settings/preferences")
+    current_notif_prefs = (prefs_resp or {}).get(
+        "notification_preferences",
+        {k: True for k in _NOTIF_LABELS},
+    )
+    current_privacy = (prefs_resp or {}).get("privacy_mode", False)
+
+    with st.form("notification_preferences_form"):
+        new_prefs: dict[str, bool] = {}
+        for key, (label, help_text) in _NOTIF_LABELS.items():
+            new_prefs[key] = st.checkbox(
+                label,
+                value=current_notif_prefs.get(key, True),
+                help=help_text,
+                key=f"notif_pref_{key}",
+            )
+
+        if st.form_submit_button("💾 儲存通知偏好"):
+            try:
+                resp = requests.put(
+                    f"{BACKEND_URL}/settings/preferences",
+                    json={
+                        "privacy_mode": current_privacy,
+                        "notification_preferences": new_prefs,
+                    },
+                    timeout=API_PUT_TIMEOUT,
+                )
+                if resp.status_code == 200:
+                    st.success("✅ 通知偏好已儲存")
+                    fetch_preferences.clear()
+                    st.rerun()
+                else:
+                    st.error(f"❌ 儲存失敗：{resp.text}")
             except requests.RequestException as e:
                 st.error(f"❌ 請求失敗：{e}")

@@ -531,12 +531,14 @@ class PreferencesRequest(BaseModel):
     """PUT /settings/preferences 請求 Body。"""
 
     privacy_mode: bool
+    notification_preferences: Optional[dict[str, bool]] = None
 
 
 class PreferencesResponse(BaseModel):
     """GET /settings/preferences 回應。"""
 
     privacy_mode: bool
+    notification_preferences: dict[str, bool]
 
 
 # ---------------------------------------------------------------------------

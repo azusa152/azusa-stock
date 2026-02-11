@@ -48,6 +48,8 @@ def _run_migrations() -> None:
         "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
         # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
         "ALTER TABLE userinvestmentprofile ADD COLUMN home_currency VARCHAR DEFAULT 'TWD';",
+        # UserPreferences: 新增通知偏好 JSON 欄位
+        "ALTER TABLE userpreferences ADD COLUMN notification_preferences VARCHAR DEFAULT '{}';",
     ]
 
     with engine.connect() as conn:

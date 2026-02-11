@@ -3,12 +3,13 @@ Domain — 資料庫實體 (SQLModel Tables)。
 定義核心業務實體及資產配置相關資料表。
 """
 
+import json as _json
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Column, Field, SQLModel, String
 
-from domain.constants import DEFAULT_USER_ID
+from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES, DEFAULT_USER_ID
 from domain.enums import ScanSignal, StockCategory
 
 
@@ -148,3 +149,21 @@ class UserPreferences(SQLModel, table=True):
 
     user_id: str = Field(default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID")
     privacy_mode: bool = Field(default=False, description="是否啟用隱私模式")
+    notification_preferences: str = Field(
+        default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),
+        sa_column=Column(String, default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES)),
+        description="通知偏好 JSON（各類通知的啟用/停用）",
+    )
+
+    def get_notification_prefs(self) -> dict[str, bool]:
+        """解析通知偏好 JSON，缺少的 key 以預設值填補。"""
+        try:
+            stored = _json.loads(self.notification_preferences)
+        except (TypeError, _json.JSONDecodeError):
+            stored = {}
+        return {**DEFAULT_NOTIFICATION_PREFERENCES, **stored}
+
+    def set_notification_prefs(self, prefs: dict[str, bool]) -> None:
+        """合併並序列化通知偏好。"""
+        merged = {**DEFAULT_NOTIFICATION_PREFERENCES, **prefs}
+        self.notification_preferences = _json.dumps(merged)

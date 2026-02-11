@@ -41,6 +41,7 @@ from application.services import (
     update_display_order,
     update_stock_category,
 )
+from application.stock_service import get_enriched_stocks
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
     ERROR_STOCK_ALREADY_ACTIVE,
@@ -90,6 +91,14 @@ def list_stocks_route(
     """取得所有追蹤中股票（僅 DB 資料，不含技術訊號）。"""
     results = list_active_stocks(session)
     return [StockResponse(**r) for r in results]
+
+
+@router.get("/stocks/enriched", summary="Get all active stocks with signals, earnings, and dividends")
+def list_enriched_stocks_route(
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """批次取得所有啟用中股票，附帶技術訊號、財報日期、股息資訊。"""
+    return get_enriched_stocks(session)
 
 
 @router.put("/stocks/reorder", response_model=MessageResponse, summary="Reorder stock display positions")

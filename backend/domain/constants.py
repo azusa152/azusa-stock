@@ -58,6 +58,8 @@ YFINANCE_RATE_LIMIT_CPS = 2.0  # calls per second
 # Scan & Alerts
 # ---------------------------------------------------------------------------
 SCAN_THREAD_POOL_SIZE = 4
+ENRICHED_THREAD_POOL_SIZE = 8  # 批次豐富資料用較大執行緒池
+ENRICHED_PER_TICKER_TIMEOUT = 15  # 每檔股票豐富資料超時（秒）
 SCAN_STALE_SECONDS = 1800  # 30 minutes — scanner skips if last scan is fresher
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
@@ -245,6 +247,18 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": False,
     },
 }
+
+# ---------------------------------------------------------------------------
+# Notification Preferences — toggleable notification types
+# ---------------------------------------------------------------------------
+NOTIFICATION_TYPES = {
+    "scan_alerts": "掃描訊號通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
+    "price_alerts": "自訂價格警報觸發通知",
+    "weekly_digest": "每週投資摘要",
+    "xray_alerts": "X-Ray 集中度警告",
+    "fx_alerts": "匯率曝險警報",
+}
+DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {k: True for k in NOTIFICATION_TYPES}
 
 # ---------------------------------------------------------------------------
 # Error Codes — machine-readable slugs for AI agent error handling

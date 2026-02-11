@@ -24,8 +24,16 @@ def get_preferences(
     """取得目前的使用者偏好設定。"""
     prefs = session.get(UserPreferences, DEFAULT_USER_ID)
     if not prefs:
-        return PreferencesResponse(privacy_mode=False)
-    return PreferencesResponse(privacy_mode=prefs.privacy_mode)
+        from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES
+
+        return PreferencesResponse(
+            privacy_mode=False,
+            notification_preferences=DEFAULT_NOTIFICATION_PREFERENCES,
+        )
+    return PreferencesResponse(
+        privacy_mode=prefs.privacy_mode,
+        notification_preferences=prefs.get_notification_prefs(),
+    )
 
 
 @router.put("/settings/preferences", response_model=PreferencesResponse, summary="Update user preferences")
@@ -38,17 +46,24 @@ def update_preferences(
         prefs = session.get(UserPreferences, DEFAULT_USER_ID)
         if prefs:
             prefs.privacy_mode = payload.privacy_mode
+            if payload.notification_preferences is not None:
+                prefs.set_notification_prefs(payload.notification_preferences)
         else:
             prefs = UserPreferences(
                 user_id=DEFAULT_USER_ID,
                 privacy_mode=payload.privacy_mode,
             )
+            if payload.notification_preferences is not None:
+                prefs.set_notification_prefs(payload.notification_preferences)
             session.add(prefs)
 
         session.commit()
         session.refresh(prefs)
         logger.info("使用者偏好已更新：privacy_mode=%s", prefs.privacy_mode)
-        return PreferencesResponse(privacy_mode=prefs.privacy_mode)
+        return PreferencesResponse(
+            privacy_mode=prefs.privacy_mode,
+            notification_preferences=prefs.get_notification_prefs(),
+        )
     except Exception as e:
         logger.error("使用者偏好更新失敗：%s", e)
         raise HTTPException(
