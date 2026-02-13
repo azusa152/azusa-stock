@@ -38,7 +38,9 @@ class TestGetFearGreedEndpoint:
             "fetched_at": "2025-06-15T10:00:00+00:00",
         }
 
-        with patch("api.scan_routes.get_fear_greed_index", return_value=mock_fg_vix_only):
+        with patch(
+            "api.scan_routes.get_fear_greed_index", return_value=mock_fg_vix_only
+        ):
             # Act
             resp = client.get("/market/fear-greed")
 

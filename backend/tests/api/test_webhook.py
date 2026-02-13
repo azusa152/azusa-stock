@@ -53,9 +53,10 @@ class TestWebhookSignals:
 
     def test_signals_should_return_data_with_ticker(self, client):
         # Arrange — add a stock first
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.post("/webhook", json={"action": "signals", "ticker": "NVDA"})
@@ -119,9 +120,10 @@ class TestWebhookAlerts:
 
     def test_alerts_should_return_empty_for_new_stock(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "AAPL", "category": "Moat", "thesis": "Ecosystem"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "AAPL", "category": "Moat", "thesis": "Ecosystem"},
+        )
 
         # Act
         resp = client.post("/webhook", json={"action": "alerts", "ticker": "AAPL"})
@@ -145,15 +147,18 @@ class TestWebhookAddStock:
 
     def test_add_stock_should_create_new_stock(self, client):
         # Act
-        resp = client.post("/webhook", json={
-            "action": "add_stock",
-            "params": {
-                "ticker": "AMD",
-                "category": "Growth",
-                "thesis": "ASIC competitor",
-                "tags": ["AI", "Semiconductor"],
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_stock",
+                "params": {
+                    "ticker": "AMD",
+                    "category": "Growth",
+                    "thesis": "ASIC competitor",
+                    "tags": ["AI", "Semiconductor"],
+                },
             },
-        })
+        )
 
         # Assert
         body = resp.json()
@@ -162,16 +167,26 @@ class TestWebhookAddStock:
 
     def test_add_stock_should_fail_for_duplicate(self, client):
         # Arrange
-        client.post("/webhook", json={
-            "action": "add_stock",
-            "params": {"ticker": "AMD", "category": "Growth", "thesis": "Test"},
-        })
+        client.post(
+            "/webhook",
+            json={
+                "action": "add_stock",
+                "params": {"ticker": "AMD", "category": "Growth", "thesis": "Test"},
+            },
+        )
 
         # Act
-        resp = client.post("/webhook", json={
-            "action": "add_stock",
-            "params": {"ticker": "AMD", "category": "Growth", "thesis": "Duplicate"},
-        })
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_stock",
+                "params": {
+                    "ticker": "AMD",
+                    "category": "Growth",
+                    "thesis": "Duplicate",
+                },
+            },
+        )
 
         # Assert
         body = resp.json()

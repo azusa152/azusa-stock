@@ -17,7 +17,11 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/settings/preferences", response_model=PreferencesResponse, summary="Get user preferences")
+@router.get(
+    "/settings/preferences",
+    response_model=PreferencesResponse,
+    summary="Get user preferences",
+)
 def get_preferences(
     session: Session = Depends(get_session),
 ) -> PreferencesResponse:
@@ -36,7 +40,11 @@ def get_preferences(
     )
 
 
-@router.put("/settings/preferences", response_model=PreferencesResponse, summary="Update user preferences")
+@router.put(
+    "/settings/preferences",
+    response_model=PreferencesResponse,
+    summary="Update user preferences",
+)
 def update_preferences(
     payload: PreferencesRequest,
     session: Session = Depends(get_session),
@@ -68,5 +76,8 @@ def update_preferences(
         logger.error("使用者偏好更新失敗：%s", e)
         raise HTTPException(
             status_code=500,
-            detail={"error_code": ERROR_PREFERENCES_UPDATE_FAILED, "detail": f"偏好設定更新失敗：{e}"},
+            detail={
+                "error_code": ERROR_PREFERENCES_UPDATE_FAILED,
+                "detail": f"偏好設定更新失敗：{e}",
+            },
         ) from e

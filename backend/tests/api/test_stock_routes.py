@@ -6,12 +6,15 @@ class TestCreateStock:
 
     def test_create_stock_should_return_201_equivalent(self, client):
         # Act
-        resp = client.post("/ticker", json={
-            "ticker": "NVDA",
-            "category": "Growth",
-            "thesis": "AI leader",
-            "tags": ["AI", "GPU"],
-        })
+        resp = client.post(
+            "/ticker",
+            json={
+                "ticker": "NVDA",
+                "category": "Growth",
+                "thesis": "AI leader",
+                "tags": ["AI", "GPU"],
+            },
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -23,14 +26,16 @@ class TestCreateStock:
 
     def test_create_stock_should_return_409_when_duplicate(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
-        resp = client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "Duplicate"
-        })
+        resp = client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "Duplicate"},
+        )
 
         # Assert
         assert resp.status_code == 409
@@ -58,9 +63,10 @@ class TestListStocks:
 
     def test_list_stocks_should_return_added_stocks(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.get("/stocks")
@@ -77,9 +83,10 @@ class TestDeactivateStock:
 
     def test_deactivate_should_succeed(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.post("/ticker/NVDA/deactivate", json={"reason": "Overvalued"})
@@ -98,13 +105,16 @@ class TestDeactivateStock:
 
     def test_deactivate_should_return_409_when_already_inactive(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
         client.post("/ticker/NVDA/deactivate", json={"reason": "First deactivation"})
 
         # Act
-        resp = client.post("/ticker/NVDA/deactivate", json={"reason": "Second deactivation"})
+        resp = client.post(
+            "/ticker/NVDA/deactivate", json={"reason": "Second deactivation"}
+        )
 
         # Assert
         assert resp.status_code == 409
@@ -116,9 +126,10 @@ class TestReactivateStock:
 
     def test_reactivate_should_succeed(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
         client.post("/ticker/NVDA/deactivate", json={"reason": "Test"})
 
         # Act
@@ -129,9 +140,10 @@ class TestReactivateStock:
 
     def test_reactivate_should_return_409_when_already_active(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.post("/ticker/NVDA/reactivate", json={})
@@ -146,9 +158,10 @@ class TestUpdateCategory:
 
     def test_update_category_should_succeed(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.patch("/ticker/NVDA/category", json={"category": "Moat"})
@@ -166,9 +179,10 @@ class TestUpdateCategory:
 
     def test_update_category_should_return_409_when_unchanged(self, client):
         # Arrange
-        client.post("/ticker", json={
-            "ticker": "NVDA", "category": "Growth", "thesis": "AI leader"
-        })
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
 
         # Act
         resp = client.patch("/ticker/NVDA/category", json={"category": "Growth"})

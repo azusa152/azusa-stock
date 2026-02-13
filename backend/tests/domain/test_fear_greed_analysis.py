@@ -1,7 +1,5 @@
 """Tests for Fear & Greed pure analysis functions in domain/analysis.py."""
 
-import pytest
-
 from domain.analysis import (
     classify_cnn_fear_greed,
     classify_vix,

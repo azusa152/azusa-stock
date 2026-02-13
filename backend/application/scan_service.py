@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 
 from application.formatters import format_fear_greed_label
-from application.stock_service import StockNotFoundError, _get_stock_or_raise
+from application.stock_service import _get_stock_or_raise
 from domain.analysis import determine_scan_signal
 from domain.constants import (
     CATEGORY_DISPLAY_ORDER,
@@ -23,7 +23,13 @@ from domain.constants import (
     SKIP_SIGNALS_CATEGORIES,
 )
 from domain.entities import PriceAlert, ScanLog, Stock
-from domain.enums import CATEGORY_LABEL, MarketSentiment, MoatStatus, ScanSignal, StockCategory
+from domain.enums import (
+    CATEGORY_LABEL,
+    MarketSentiment,
+    MoatStatus,
+    ScanSignal,
+    StockCategory,
+)
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
@@ -31,7 +37,10 @@ from infrastructure.market_data import (
     get_fear_greed_index,
     get_technical_signals,
 )
-from infrastructure.notification import is_notification_enabled, send_telegram_message_dual
+from infrastructure.notification import (
+    is_notification_enabled,
+    send_telegram_message_dual,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -53,14 +62,18 @@ def run_scan(session: Session) -> dict:
     logger.info("三層漏斗掃描啟動...")
 
     # === Layer 1: 市場情緒 ===
-    trend_stocks = repo.find_active_stocks_by_category(session, StockCategory.TREND_SETTER)
+    trend_stocks = repo.find_active_stocks_by_category(
+        session, StockCategory.TREND_SETTER
+    )
     trend_tickers = [s.ticker for s in trend_stocks]
     logger.info("Layer 1 — 風向球股票：%s", trend_tickers)
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
     market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)
     market_status_details_value = market_sentiment.get("details", "")
-    logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value)
+    logger.info(
+        "Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value
+    )
 
     # === Fear & Greed Index（與 Layer 1 並列的市場概況） ===
     fear_greed = get_fear_greed_index()
@@ -80,7 +93,11 @@ def run_scan(session: Session) -> dict:
         alerts: list[str] = []
 
         if stock.category.value in SKIP_MOAT_CATEGORIES:
-            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": f"{stock.category.value} 不適用護城河分析"}
+            moat_result = {
+                "ticker": ticker,
+                "moat": MoatStatus.NOT_AVAILABLE.value,
+                "details": f"{stock.category.value} 不適用護城河分析",
+            }
         else:
             moat_result = analyze_moat_trend(ticker)
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
@@ -120,7 +137,12 @@ def run_scan(session: Session) -> dict:
 
         logger.info(
             "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
-            ticker, signal.value, moat_value, rsi, bias, volume_ratio,
+            ticker,
+            signal.value,
+            moat_value,
+            rsi,
+            bias,
+            volume_ratio,
         )
 
         return {
@@ -169,14 +191,16 @@ def run_scan(session: Session) -> dict:
 
     # 比對每檔股票的 current signal vs last_scan_signal
     new_or_changed: list[dict] = []  # signal 從 NORMAL→非 NORMAL，或非 NORMAL 類型改變
-    resolved: list[dict] = []        # signal 從非 NORMAL→NORMAL
+    resolved: list[dict] = []  # signal 從非 NORMAL→NORMAL
     signal_updates: dict[str, str] = {}
 
     for r in results:
         ticker = r["ticker"]
         current_signal = r["signal"]
         stock_obj = stock_map.get(ticker)
-        prev_signal = stock_obj.last_scan_signal if stock_obj else ScanSignal.NORMAL.value
+        prev_signal = (
+            stock_obj.last_scan_signal if stock_obj else ScanSignal.NORMAL.value
+        )
 
         signal_updates[ticker] = current_signal
 
@@ -195,7 +219,8 @@ def run_scan(session: Session) -> dict:
     if has_changes:
         logger.warning(
             "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
-            len(new_or_changed), len(resolved),
+            len(new_or_changed),
+            len(resolved),
         )
         header = (
             f"🔔 <b>Folio 掃描（差異通知）</b>\n"
@@ -306,7 +331,9 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
 # ===========================================================================
 
 
-def get_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DEFAULT_LIMIT) -> list[dict]:
+def get_scan_history(
+    session: Session, ticker: str, limit: int = SCAN_HISTORY_DEFAULT_LIMIT
+) -> list[dict]:
     """取得指定股票的掃描歷史。"""
     stock = _get_stock_or_raise(session, ticker)
     logs = repo.find_scan_history(session, stock.ticker, limit)
@@ -321,7 +348,9 @@ def get_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DE
     ]
 
 
-def get_latest_scan_logs(session: Session, limit: int = LATEST_SCAN_LOGS_DEFAULT_LIMIT) -> list[dict]:
+def get_latest_scan_logs(
+    session: Session, limit: int = LATEST_SCAN_LOGS_DEFAULT_LIMIT
+) -> list[dict]:
     """取得最近的掃描紀錄。"""
     logs = repo.find_latest_scan_logs(session, limit)
     return [

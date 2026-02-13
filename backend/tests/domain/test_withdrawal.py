@@ -5,7 +5,7 @@ Domain — 聰明提款機 (Smart Withdrawal) 純函式單元測試。
 
 import pytest
 
-from domain.withdrawal import HoldingData, WithdrawalPlan, plan_withdrawal
+from domain.withdrawal import HoldingData, plan_withdrawal
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +83,9 @@ class TestPlanWithdrawalEdgeCases:
         holdings = [h]
 
         # Act
-        plan = plan_withdrawal(1000.0, holdings, {"Growth": 10.0}, 1000.0, {"Growth": 100})
+        plan = plan_withdrawal(
+            1000.0, holdings, {"Growth": 10.0}, 1000.0, {"Growth": 100}
+        )
 
         # Assert
         assert len(plan.recommendations) >= 1
@@ -101,8 +103,12 @@ class TestPriority1Rebalancing:
 
     def test_overweight_category_should_sell_first(self):
         # Arrange — Growth 超配 20%，目標只需 500
-        h_growth = _make_holding(ticker="NVDA", category="Growth", quantity=10, current_price=100)  # mv=1000
-        h_bond = _make_holding(ticker="SGOV", category="Bond", quantity=50, current_price=100)  # mv=5000
+        h_growth = _make_holding(
+            ticker="NVDA", category="Growth", quantity=10, current_price=100
+        )  # mv=1000
+        h_bond = _make_holding(
+            ticker="SGOV", category="Bond", quantity=50, current_price=100
+        )  # mv=5000
         holdings = [h_growth, h_bond]
         drifts = {"Growth": 20.0, "Bond": -20.0}  # Growth 超配 20%
         target = {"Growth": 10, "Bond": 90}
@@ -120,7 +126,9 @@ class TestPriority1Rebalancing:
 
     def test_overweight_partial_sell_should_not_exceed_drift_cap(self):
         # Arrange — Growth 超配 5%，總市值 10000 → 最多賣 500 元
-        h = _make_holding(ticker="NVDA", category="Growth", quantity=100, current_price=100)  # mv=10000
+        h = _make_holding(
+            ticker="NVDA", category="Growth", quantity=100, current_price=100
+        )  # mv=10000
         holdings = [h]
         drifts = {"Growth": 5.0}  # 超配 5%
         target = {"Growth": 95}
@@ -144,8 +152,20 @@ class TestPriority2TaxLossHarvesting:
 
     def test_loss_holding_should_be_sold_for_tax_benefit(self):
         # Arrange — 沒有超配，但有虧損持倉
-        h_loss = _make_holding(ticker="INTC", category="Moat", quantity=20, cost_basis=50.0, current_price=30.0)  # mv=600, loss
-        h_gain = _make_holding(ticker="NVDA", category="Growth", quantity=10, cost_basis=80.0, current_price=120.0)  # mv=1200, gain
+        h_loss = _make_holding(
+            ticker="INTC",
+            category="Moat",
+            quantity=20,
+            cost_basis=50.0,
+            current_price=30.0,
+        )  # mv=600, loss
+        h_gain = _make_holding(
+            ticker="NVDA",
+            category="Growth",
+            quantity=10,
+            cost_basis=80.0,
+            current_price=120.0,
+        )  # mv=1200, gain
         holdings = [h_loss, h_gain]
         drifts = {"Moat": 0.0, "Growth": 0.0}  # 沒有超配
         target = {"Moat": 50, "Growth": 50}
@@ -164,8 +184,20 @@ class TestPriority2TaxLossHarvesting:
 
     def test_largest_loss_should_be_sold_first(self):
         # Arrange — 兩檔都虧損，大虧的先賣
-        h_big_loss = _make_holding(ticker="INTC", category="Moat", quantity=20, cost_basis=100.0, current_price=50.0)  # mv=1000
-        h_small_loss = _make_holding(ticker="F", category="Growth", quantity=10, cost_basis=20.0, current_price=15.0)  # mv=150
+        h_big_loss = _make_holding(
+            ticker="INTC",
+            category="Moat",
+            quantity=20,
+            cost_basis=100.0,
+            current_price=50.0,
+        )  # mv=1000
+        h_small_loss = _make_holding(
+            ticker="F",
+            category="Growth",
+            quantity=10,
+            cost_basis=20.0,
+            current_price=15.0,
+        )  # mv=150
         holdings = [h_small_loss, h_big_loss]
         drifts = {"Moat": 0.0, "Growth": 0.0}
         target = {"Moat": 50, "Growth": 50}
@@ -189,8 +221,21 @@ class TestPriority3LiquidityOrder:
 
     def test_cash_should_be_sold_before_bond(self):
         # Arrange — 沒有超配也沒有虧損
-        h_cash = _make_holding(ticker="TWD", category="Cash", quantity=10000, cost_basis=1.0, current_price=1.0, is_cash=True)
-        h_bond = _make_holding(ticker="SGOV", category="Bond", quantity=100, cost_basis=100.0, current_price=100.0)
+        h_cash = _make_holding(
+            ticker="TWD",
+            category="Cash",
+            quantity=10000,
+            cost_basis=1.0,
+            current_price=1.0,
+            is_cash=True,
+        )
+        h_bond = _make_holding(
+            ticker="SGOV",
+            category="Bond",
+            quantity=100,
+            cost_basis=100.0,
+            current_price=100.0,
+        )
         holdings = [h_bond, h_cash]  # 故意倒序
         drifts = {"Cash": 0.0, "Bond": 0.0}
         target = {"Cash": 50, "Bond": 50}
@@ -205,8 +250,20 @@ class TestPriority3LiquidityOrder:
 
     def test_trend_setter_should_be_sold_last(self):
         # Arrange
-        h_trend = _make_holding(ticker="AAPL", category="Trend_Setter", quantity=5, cost_basis=150.0, current_price=200.0)  # mv=1000
-        h_growth = _make_holding(ticker="NVDA", category="Growth", quantity=5, cost_basis=100.0, current_price=200.0)  # mv=1000
+        h_trend = _make_holding(
+            ticker="AAPL",
+            category="Trend_Setter",
+            quantity=5,
+            cost_basis=150.0,
+            current_price=200.0,
+        )  # mv=1000
+        h_growth = _make_holding(
+            ticker="NVDA",
+            category="Growth",
+            quantity=5,
+            cost_basis=100.0,
+            current_price=200.0,
+        )  # mv=1000
         holdings = [h_trend, h_growth]
         drifts = {"Trend_Setter": 0.0, "Growth": 0.0}
         target = {"Trend_Setter": 50, "Growth": 50}
@@ -221,7 +278,14 @@ class TestPriority3LiquidityOrder:
 
     def test_liquidity_reason_text_should_mention_liquidity(self):
         # Arrange
-        h_cash = _make_holding(ticker="TWD", category="Cash", quantity=5000, cost_basis=1.0, current_price=1.0, is_cash=True)
+        h_cash = _make_holding(
+            ticker="TWD",
+            category="Cash",
+            quantity=5000,
+            cost_basis=1.0,
+            current_price=1.0,
+            is_cash=True,
+        )
         holdings = [h_cash]
         drifts = {"Cash": 0.0}
         target = {"Cash": 100}
@@ -245,13 +309,37 @@ class TestMixedPriorities:
     def test_amount_spanning_all_three_priorities(self):
         # Arrange
         # Priority 1: Growth 超配 10%，總市值 10000 → 可賣 1000
-        h_growth = _make_holding(ticker="NVDA", category="Growth", quantity=30, cost_basis=80.0, current_price=100.0)  # mv=3000
+        h_growth = _make_holding(
+            ticker="NVDA",
+            category="Growth",
+            quantity=30,
+            cost_basis=80.0,
+            current_price=100.0,
+        )  # mv=3000
         # Priority 2: Moat 有虧損
-        h_loss = _make_holding(ticker="INTC", category="Moat", quantity=10, cost_basis=50.0, current_price=30.0)  # mv=300
+        h_loss = _make_holding(
+            ticker="INTC",
+            category="Moat",
+            quantity=10,
+            cost_basis=50.0,
+            current_price=30.0,
+        )  # mv=300
         # Priority 3: Bond 流動性高
-        h_bond = _make_holding(ticker="SGOV", category="Bond", quantity=50, cost_basis=100.0, current_price=100.0)  # mv=5000
+        h_bond = _make_holding(
+            ticker="SGOV",
+            category="Bond",
+            quantity=50,
+            cost_basis=100.0,
+            current_price=100.0,
+        )  # mv=5000
         # Trend Setter 應最後賣
-        h_trend = _make_holding(ticker="AAPL", category="Trend_Setter", quantity=10, cost_basis=150.0, current_price=170.0)  # mv=1700
+        h_trend = _make_holding(
+            ticker="AAPL",
+            category="Trend_Setter",
+            quantity=10,
+            cost_basis=150.0,
+            current_price=170.0,
+        )  # mv=1700
 
         holdings = [h_growth, h_loss, h_bond, h_trend]
         drifts = {"Growth": 10.0, "Moat": -5.0, "Bond": 0.0, "Trend_Setter": -5.0}
@@ -280,7 +368,9 @@ class TestShortfall:
 
     def test_shortfall_when_portfolio_too_small(self):
         # Arrange — 總市值 1000，但要提 5000
-        h = _make_holding(ticker="NVDA", category="Growth", quantity=10, current_price=100.0)  # mv=1000
+        h = _make_holding(
+            ticker="NVDA", category="Growth", quantity=10, current_price=100.0
+        )  # mv=1000
         holdings = [h]
         drifts = {"Growth": 0.0}
         target = {"Growth": 100}
@@ -304,8 +394,12 @@ class TestPostSellDrifts:
 
     def test_post_sell_drifts_should_be_populated(self):
         # Arrange
-        h_growth = _make_holding(ticker="NVDA", category="Growth", quantity=10, current_price=100.0)  # mv=1000
-        h_bond = _make_holding(ticker="SGOV", category="Bond", quantity=50, current_price=100.0)  # mv=5000
+        h_growth = _make_holding(
+            ticker="NVDA", category="Growth", quantity=10, current_price=100.0
+        )  # mv=1000
+        h_bond = _make_holding(
+            ticker="SGOV", category="Bond", quantity=50, current_price=100.0
+        )  # mv=5000
         holdings = [h_growth, h_bond]
         drifts = {"Growth": 10.0, "Bond": -10.0}
         target = {"Growth": 20, "Bond": 80}
@@ -330,7 +424,13 @@ class TestMissingData:
 
     def test_holding_without_cost_basis_should_still_sell(self):
         # Arrange — 沒有成本資訊
-        h = _make_holding(ticker="NVDA", category="Growth", quantity=10, cost_basis=None, current_price=100.0)
+        h = _make_holding(
+            ticker="NVDA",
+            category="Growth",
+            quantity=10,
+            cost_basis=None,
+            current_price=100.0,
+        )
         holdings = [h]
         drifts = {"Growth": 0.0}
         target = {"Growth": 100}
@@ -344,7 +444,13 @@ class TestMissingData:
 
     def test_holding_without_price_should_fallback_to_cost_basis(self):
         # Arrange — 沒有即時價格，使用成本
-        h = _make_holding(ticker="NVDA", category="Growth", quantity=10, cost_basis=100.0, current_price=None)
+        h = _make_holding(
+            ticker="NVDA",
+            category="Growth",
+            quantity=10,
+            cost_basis=100.0,
+            current_price=None,
+        )
         holdings = [h]
         drifts = {"Growth": 0.0}
         target = {"Growth": 100}

@@ -76,7 +76,12 @@ def send_telegram_message_dual(text: str, session: Session) -> None:
 
     settings = session.get(UserTelegramSettings, DEFAULT_USER_ID)
 
-    if settings and settings.use_custom_bot and settings.custom_bot_token and settings.telegram_chat_id:
+    if (
+        settings
+        and settings.use_custom_bot
+        and settings.custom_bot_token
+        and settings.telegram_chat_id
+    ):
         logger.info("使用自訂 Bot 發送 Telegram 通知。")
         _send(settings.custom_bot_token, settings.telegram_chat_id, text)
         return

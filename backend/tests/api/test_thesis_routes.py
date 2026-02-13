@@ -3,11 +3,14 @@
 
 def _create_stock(client, ticker="NVDA", category="Growth", thesis="AI leader"):
     """Helper: create a tracked stock."""
-    resp = client.post("/ticker", json={
-        "ticker": ticker,
-        "category": category,
-        "thesis": thesis,
-    })
+    resp = client.post(
+        "/ticker",
+        json={
+            "ticker": ticker,
+            "category": category,
+            "thesis": thesis,
+        },
+    )
     assert resp.status_code == 200
     return resp.json()
 
@@ -20,10 +23,13 @@ class TestCreateThesis:
         _create_stock(client)
 
         # Act
-        resp = client.post("/ticker/NVDA/thesis", json={
-            "content": "Upgraded: data center revenue accelerating",
-            "tags": ["AI", "DC"],
-        })
+        resp = client.post(
+            "/ticker/NVDA/thesis",
+            json={
+                "content": "Upgraded: data center revenue accelerating",
+                "tags": ["AI", "DC"],
+            },
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -32,10 +38,13 @@ class TestCreateThesis:
 
     def test_add_thesis_should_return_404_for_unknown_stock(self, client):
         # Act
-        resp = client.post("/ticker/UNKNOWN/thesis", json={
-            "content": "Some thesis",
-            "tags": [],
-        })
+        resp = client.post(
+            "/ticker/UNKNOWN/thesis",
+            json={
+                "content": "Some thesis",
+                "tags": [],
+            },
+        )
 
         # Assert
         assert resp.status_code == 404
@@ -53,9 +62,12 @@ class TestCreateThesis:
         _create_stock(client)
 
         # Act
-        resp = client.post("/ticker/NVDA/thesis", json={
-            "content": "Updated view without tags",
-        })
+        resp = client.post(
+            "/ticker/NVDA/thesis",
+            json={
+                "content": "Updated view without tags",
+            },
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -80,10 +92,13 @@ class TestGetThesisHistory:
     def test_get_history_should_include_added_thesis(self, client):
         # Arrange
         _create_stock(client, thesis="First view")
-        client.post("/ticker/NVDA/thesis", json={
-            "content": "Second view: upgraded",
-            "tags": ["upgrade"],
-        })
+        client.post(
+            "/ticker/NVDA/thesis",
+            json={
+                "content": "Second view: upgraded",
+                "tags": ["upgrade"],
+            },
+        )
 
         # Act
         resp = client.get("/ticker/NVDA/thesis")

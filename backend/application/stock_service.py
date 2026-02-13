@@ -7,7 +7,6 @@ from sqlmodel import Session
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from domain.constants import (
-    CATEGORY_DISPLAY_ORDER,
     DEFAULT_IMPORT_CATEGORY,
     ENRICHED_PER_TICKER_TIMEOUT,
     ENRICHED_THREAD_POOL_SIZE,
@@ -119,7 +118,9 @@ def create_stock(
     ticker_upper = ticker.upper()
     tags = tags or []
     tags_str = _tags_to_str(tags)
-    logger.info("新增股票：%s（分類：%s，標籤：%s）", ticker_upper, category.value, tags)
+    logger.info(
+        "新增股票：%s（分類：%s，標籤：%s）", ticker_upper, category.value, tags
+    )
 
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
@@ -168,7 +169,9 @@ def list_active_stocks(session: Session) -> list[dict]:
     ]
 
 
-def update_stock_category(session: Session, ticker: str, new_category: StockCategory) -> dict:
+def update_stock_category(
+    session: Session, ticker: str, new_category: StockCategory
+) -> dict:
     """
     切換股票分類，並在觀點歷史中記錄變更。
     """
@@ -292,17 +295,21 @@ def list_removed_stocks(session: Session) -> list[dict]:
     results: list[dict] = []
     for stock in stocks:
         latest_removal = removal_map.get(stock.ticker)
-        results.append({
-            "ticker": stock.ticker,
-            "category": stock.category,
-            "current_thesis": stock.current_thesis,
-            "removal_reason": latest_removal.reason if latest_removal else REMOVAL_REASON_UNKNOWN,
-            "removed_at": (
-                latest_removal.created_at.isoformat()
-                if latest_removal and latest_removal.created_at
-                else None
-            ),
-        })
+        results.append(
+            {
+                "ticker": stock.ticker,
+                "category": stock.category,
+                "current_thesis": stock.current_thesis,
+                "removal_reason": latest_removal.reason
+                if latest_removal
+                else REMOVAL_REASON_UNKNOWN,
+                "removed_at": (
+                    latest_removal.created_at.isoformat()
+                    if latest_removal and latest_removal.created_at
+                    else None
+                ),
+            }
+        )
 
     logger.info("共 %d 檔已移除股票。", len(results))
     return results
@@ -456,7 +463,11 @@ def get_moat_for_ticker(session: Session, ticker: str) -> dict:
     upper_ticker = ticker.upper()
     stock = repo.find_stock_by_ticker(session, upper_ticker)
     if stock and stock.category.value in SKIP_MOAT_CATEGORIES:
-        return {"ticker": upper_ticker, "moat": "N/A", "details": f"{stock.category.value} 不適用護城河分析"}
+        return {
+            "ticker": upper_ticker,
+            "moat": "N/A",
+            "details": f"{stock.category.value} 不適用護城河分析",
+        }
     return analyze_moat_trend(upper_ticker)
 
 
@@ -481,7 +492,9 @@ def get_enriched_stocks(session: Session) -> list[dict]:
     for stock in stocks:
         enriched[stock.ticker] = {
             "ticker": stock.ticker,
-            "category": stock.category.value if hasattr(stock.category, "value") else str(stock.category),
+            "category": stock.category.value
+            if hasattr(stock.category, "value")
+            else str(stock.category),
             "current_thesis": stock.current_thesis,
             "current_tags": _str_to_tags(stock.current_tags),
             "display_order": stock.display_order,
@@ -492,7 +505,9 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             "dividend": None,
         }
 
-    def _fetch_enrichment(ticker: str, cat_value: str) -> tuple[str, dict | None, dict | None, dict | None]:
+    def _fetch_enrichment(
+        ticker: str, cat_value: str
+    ) -> tuple[str, dict | None, dict | None, dict | None]:
         """並行取得單一股票的附加資料。"""
         signals = None
         earnings = None
@@ -517,8 +532,11 @@ def get_enriched_stocks(session: Session) -> list[dict]:
     with ThreadPoolExecutor(max_workers=ENRICHED_THREAD_POOL_SIZE) as executor:
         futures = {
             executor.submit(
-                _fetch_enrichment, stock.ticker,
-                stock.category.value if hasattr(stock.category, "value") else str(stock.category),
+                _fetch_enrichment,
+                stock.ticker,
+                stock.category.value
+                if hasattr(stock.category, "value")
+                else str(stock.category),
             ): stock.ticker
             for stock in stocks
         }
@@ -533,7 +551,11 @@ def get_enriched_stocks(session: Session) -> list[dict]:
                     enriched[ticker]["earnings"] = earnings
                     enriched[ticker]["dividend"] = dividend
             except TimeoutError:
-                logger.warning("批次取得 %s 豐富資料超時（%ds），跳過。", t, ENRICHED_PER_TICKER_TIMEOUT)
+                logger.warning(
+                    "批次取得 %s 豐富資料超時（%ds），跳過。",
+                    t,
+                    ENRICHED_PER_TICKER_TIMEOUT,
+                )
             except Exception as exc:
                 logger.error("批次取得 %s 豐富資料失敗：%s", t, exc, exc_info=True)
 

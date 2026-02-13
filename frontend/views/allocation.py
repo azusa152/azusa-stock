@@ -26,8 +26,6 @@ from config import (
     CATEGORY_OPTIONS,
     DISPLAY_CURRENCY_OPTIONS,
     DRIFT_CHART_HEIGHT,
-    FX_HIGH_CONCENTRATION_PCT,
-    FX_MEDIUM_CONCENTRATION_PCT,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
     PRIVACY_MASK,
@@ -182,13 +180,14 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
   - **💵 現金幣別曝險**（預設）：僅分析現金部位的幣別分佈，匯率風險對現金的影響最直接
   - **📊 全資產幣別曝險**：分析整體投資組合（含股票、債券、現金）的幣別分佈
 - **幣別分佈餅圖**：以甜甜圈圖顯示各幣別的市值比例
-- **風險等級**：根據非本幣佔比自動判定（🟢 低風險 / 🟡 中風險 / 🔴 高風險）
-  - 低於 40%：低風險
-  - 40% ~ 70%：中風險
-  - 超過 70%：高風險
+- **風險等級**：根據匯率變動警報嚴重程度自動判定
+  - 🟢 低風險：無顯著匯率警報
+  - 🟡 中風險：偵測到短期（5 日）波段變動
+  - 🔴 高風險：偵測到單日劇烈波動
 - **近期匯率變動**：顯示各外幣對本幣的近 5 日匯率變動百分比，以 📈📉 標示方向
+- **匯率變動警報**：三層級偵測（🔴 單日 >1.5% / 🟡 5日 >2% / 🔵 3月 >8%），以色彩標籤分級顯示
 - **智慧建議**：系統會特別標示現金部位受匯率影響的金額，幫助您聚焦最需要關注的部分
-- **Telegram 警報**：當匯率變動超過 3% 門檻時發送 Telegram 通知（含現金曝險金額）。系統每 6 小時自動檢查，亦可手動點擊「📨 發送匯率曝險警報至 Telegram」
+- **Telegram 警報**：當匯率變動超過三層門檻時發送 Telegram 通知（含現金曝險金額）。系統每 6 小時自動檢查，亦可手動點擊「📨 發送匯率曝險警報至 Telegram」
 
 ---
 
@@ -1554,6 +1553,40 @@ with tab_warroom:
                             hide_index=True,
                         )
 
+                    _ALERT_TYPE_BADGES = {
+                        "daily_spike": ("🔴", "單日劇烈波動"),
+                        "short_term_swing": ("🟡", "短期波段變動"),
+                        "long_term_trend": ("🔵", "長期趨勢變動"),
+                    }
+
+                    def _render_fx_rate_alerts(rate_alerts: list[dict]) -> None:
+                        """Render FX rate change alerts with colored badges."""
+                        if not rate_alerts:
+                            return
+                        st.markdown("**⚡ 匯率變動警報：**")
+                        alert_rows = []
+                        for a in rate_alerts:
+                            badge, label = _ALERT_TYPE_BADGES.get(
+                                a["alert_type"], ("⚪", a["alert_type"])
+                            )
+                            direction_icon = "📈" if a["direction"] == "up" else "📉"
+                            alert_rows.append({
+                                "": f"{badge} {direction_icon}",
+                                "類型": label,
+                                "貨幣對": a["pair"],
+                                "期間": a["period_label"],
+                                "變動": f"{a['change_pct']:+.2f}%",
+                                "現價": (
+                                    PRIVACY_MASK if _is_privacy()
+                                    else f"{a['current_rate']:.4f}"
+                                ),
+                            })
+                        st.dataframe(
+                            pd.DataFrame(alert_rows),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
                     # --- Two tabs: Cash vs Total ---
                     fx_tab_cash, fx_tab_total = st.tabs(
                         ["💵 現金幣別曝險", "📊 全資產幣別曝險"]
@@ -1568,13 +1601,8 @@ with tab_warroom:
                         if not cash_bd:
                             st.info("尚無現金部位，請先在 Step 2 輸入現金持倉。")
                         else:
-                            # Risk level for cash
-                            if cash_nhp >= FX_HIGH_CONCENTRATION_PCT:
-                                cash_risk = "high"
-                            elif cash_nhp >= FX_MEDIUM_CONCENTRATION_PCT:
-                                cash_risk = "medium"
-                            else:
-                                cash_risk = "low"
+                            # Risk level from backend (based on alert severity)
+                            cash_risk = fx_data.get("risk_level", "low")
 
                             cash_m_cols = st.columns(3)
                             with cash_m_cols[0]:
@@ -1595,6 +1623,7 @@ with tab_warroom:
                                 fx_home,
                             )
                             _render_fx_movements(fx_movements)
+                            _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
 
                             # Cash-focused advice
                             advice = fx_data.get("advice", [])
@@ -1653,6 +1682,7 @@ with tab_warroom:
                             fx_home,
                         )
                         _render_fx_movements(fx_movements)
+                        _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
 
                         # Full advice
                         advice = fx_data.get("advice", [])

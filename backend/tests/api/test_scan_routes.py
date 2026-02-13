@@ -24,11 +24,14 @@ class TestGetLastScan:
 
     def test_scan_last_should_include_market_status_after_scan(self, client):
         # Arrange — create a stock, then insert a ScanLog directly
-        client.post("/ticker", json={
-            "ticker": "AAPL",
-            "category": "Trend_Setter",
-            "thesis": "Big tech leader",
-        })
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "AAPL",
+                "category": "Trend_Setter",
+                "thesis": "Big tech leader",
+            },
+        )
 
         from domain.entities import ScanLog
 
@@ -58,11 +61,14 @@ class TestGetLastScan:
 
     def test_scan_last_should_return_latest_scan_market_status(self, client):
         # Arrange — create stock and two scan logs with different market_status
-        client.post("/ticker", json={
-            "ticker": "MSFT",
-            "category": "Trend_Setter",
-            "thesis": "Cloud leader",
-        })
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "MSFT",
+                "category": "Trend_Setter",
+                "thesis": "Cloud leader",
+            },
+        )
 
         from domain.entities import ScanLog
 

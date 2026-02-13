@@ -21,7 +21,9 @@ class Stock(SQLModel, table=True):
     current_thesis: str = Field(default="", description="最新觀點")
     current_tags: str = Field(default="", description="最新標籤（逗號分隔）")
     display_order: int = Field(default=0, description="顯示順位（數字越小越前面）")
-    last_scan_signal: str = Field(default=ScanSignal.NORMAL.value, description="上次掃描訊號")
+    last_scan_signal: str = Field(
+        default=ScanSignal.NORMAL.value, description="上次掃描訊號"
+    )
     is_active: bool = Field(default=True, description="是否追蹤中")
 
 
@@ -88,7 +90,9 @@ class PriceAlert(SQLModel, table=True):
 class SystemTemplate(SQLModel, table=True):
     """系統預設的投資組合人格範本（唯讀參考資料）。"""
 
-    id: str = Field(primary_key=True, description="範本 ID（如 conservative, balanced）")
+    id: str = Field(
+        primary_key=True, description="範本 ID（如 conservative, balanced）"
+    )
     name: str = Field(description="範本名稱")
     description: str = Field(default="", description="範本說明")
     quote: str = Field(default="", description="引言")
@@ -103,8 +107,12 @@ class UserInvestmentProfile(SQLModel, table=True):
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     name: str = Field(default="", description="配置名稱")
     source_template_id: Optional[str] = Field(default=None, description="來源範本 ID")
-    home_currency: str = Field(default="TWD", description="使用者的本幣（用於匯率曝險計算）")
-    config: str = Field(default="{}", description="配置（JSON 字串，如 {\"Bond\": 50, ...}）")
+    home_currency: str = Field(
+        default="TWD", description="使用者的本幣（用於匯率曝險計算）"
+    )
+    config: str = Field(
+        default="{}", description='配置（JSON 字串，如 {"Bond": 50, ...}）'
+    )
     is_active: bool = Field(default=True, description="是否為啟用中的配置")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -127,7 +135,9 @@ class Holding(SQLModel, table=True):
     cost_basis: Optional[float] = Field(default=None, description="成本基礎（每單位）")
     broker: Optional[str] = Field(default=None, description="券商名稱")
     currency: str = Field(default="USD", description="持倉幣別（如 USD, TWD, JPY）")
-    account_type: Optional[str] = Field(default=None, description="帳戶類型（活存/定存/貨幣市場基金）")
+    account_type: Optional[str] = Field(
+        default=None, description="帳戶類型（活存/定存/貨幣市場基金）"
+    )
     is_cash: bool = Field(default=False, description="是否為現金類資產")
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -138,7 +148,9 @@ class Holding(SQLModel, table=True):
 class UserTelegramSettings(SQLModel, table=True):
     """使用者的 Telegram 通知設定（支援自訂 Bot）。"""
 
-    user_id: str = Field(default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID")
+    user_id: str = Field(
+        default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID"
+    )
     telegram_chat_id: str = Field(default="", description="Telegram Chat ID")
     custom_bot_token: Optional[str] = Field(default=None, description="自訂 Bot Token")
     use_custom_bot: bool = Field(default=False, description="是否使用自訂 Bot")
@@ -147,7 +159,9 @@ class UserTelegramSettings(SQLModel, table=True):
 class UserPreferences(SQLModel, table=True):
     """使用者偏好設定（跨裝置同步）。"""
 
-    user_id: str = Field(default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID")
+    user_id: str = Field(
+        default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID"
+    )
     privacy_mode: bool = Field(default=False, description="是否啟用隱私模式")
     notification_preferences: str = Field(
         default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),
@@ -167,3 +181,31 @@ class UserPreferences(SQLModel, table=True):
         """合併並序列化通知偏好。"""
         merged = {**DEFAULT_NOTIFICATION_PREFERENCES, **prefs}
         self.notification_preferences = _json.dumps(merged)
+
+
+class FXWatchConfig(SQLModel, table=True):
+    """外匯換匯時機監控配置。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    base_currency: str = Field(description="基礎貨幣，例如 USD")
+    quote_currency: str = Field(description="報價貨幣，例如 TWD")
+    recent_high_days: int = Field(default=30, description="回溯天數（近期高點判定）")
+    consecutive_increase_days: int = Field(default=3, description="連續上漲天數門檻")
+    alert_on_recent_high: bool = Field(default=True, description="是否啟用近期高點警報")
+    alert_on_consecutive_increase: bool = Field(
+        default=True, description="是否啟用連續上漲警報"
+    )
+    reminder_interval_hours: int = Field(
+        default=24, description="提醒間隔（小時），避免重複通知"
+    )
+    is_active: bool = Field(default=True, description="是否啟用")
+    last_alerted_at: Optional[datetime] = Field(
+        default=None, description="上次警報時間"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="建立時間"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="更新時間"
+    )

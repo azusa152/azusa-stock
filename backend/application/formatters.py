@@ -133,7 +133,9 @@ _PRIORITY_LABEL: dict[int, str] = {
 }
 
 
-def format_withdrawal_telegram(plan: "WithdrawalPlan", display_currency: str = "USD") -> str:  # noqa: F821
+def format_withdrawal_telegram(
+    plan: "WithdrawalPlan", display_currency: str = "USD"
+) -> str:  # noqa: F821
     """
     將 WithdrawalPlan 格式化為 Telegram HTML 訊息。
 
@@ -174,8 +176,6 @@ def format_withdrawal_telegram(plan: "WithdrawalPlan", display_currency: str = "
     parts.append(f"\n💰 總賣出金額：{plan.total_sell_value:,.2f} {display_currency}")
 
     if plan.shortfall > 0:
-        parts.append(
-            f"⚠️ 持倉不足，缺口：{plan.shortfall:,.2f} {display_currency}"
-        )
+        parts.append(f"⚠️ 持倉不足，缺口：{plan.shortfall:,.2f} {display_currency}")
 
     return "\n".join(parts)

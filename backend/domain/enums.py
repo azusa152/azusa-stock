@@ -68,3 +68,18 @@ CATEGORY_LABEL: dict[str, str] = {
     "Bond": "債券",
     "Cash": "現金",
 }
+
+
+class FXAlertType(str, Enum):
+    """匯率變動警報類型"""
+
+    DAILY_SPIKE = "daily_spike"
+    SHORT_TERM_SWING = "short_term_swing"
+    LONG_TERM_TREND = "long_term_trend"
+
+
+FX_ALERT_LABEL: dict[str, str] = {
+    "daily_spike": "單日劇烈波動",
+    "short_term_swing": "短期波段變動",
+    "long_term_trend": "長期趨勢變動",
+}

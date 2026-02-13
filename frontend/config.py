@@ -38,6 +38,30 @@ CACHE_TTL_ALERTS = 300  # 5 minutes
 CACHE_TTL_THESIS = 300  # 5 minutes
 
 # ---------------------------------------------------------------------------
+# FX Watch Configuration
+# ---------------------------------------------------------------------------
+CACHE_TTL_FX_WATCH = 60  # 1 minute (watches update frequently)
+API_FX_WATCH_TIMEOUT = 15  # FX watch API timeout
+
+# Currency options for FX Watch (align with backend SUPPORTED_CURRENCIES)
+FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+
+# ---------------------------------------------------------------------------
+# FX Chart Configuration
+# ---------------------------------------------------------------------------
+FX_CHART_HEIGHT = 280  # Matches price chart height for consistency
+FX_CHART_PERIODS = {
+    "1 個月": 30,
+    "2 個月": 60,
+    "3 個月": 90,
+}
+FX_CHART_DEFAULT_PERIOD = "3 個月"  # Show full available data by default
+
+# Cache TTL for FX history (align with backend L1 cache)
+CACHE_TTL_FX_HISTORY = 7200  # 2 hours
+API_FX_HISTORY_TIMEOUT = 20  # Longer timeout for potential yfinance delays
+
+# ---------------------------------------------------------------------------
 # UI Thresholds & Display
 # ---------------------------------------------------------------------------
 BIAS_OVERHEATED_UI = 20
@@ -47,8 +71,6 @@ MARGIN_BAD_CHANGE_THRESHOLD = -2
 EARNINGS_BADGE_DAYS_THRESHOLD = 14
 SCAN_HISTORY_CARD_LIMIT = 10
 DEFAULT_ALERT_THRESHOLD = 30.0
-FX_HIGH_CONCENTRATION_PCT = 70.0  # matches backend constant
-FX_MEDIUM_CONCENTRATION_PCT = 40.0  # matches backend constant
 
 # ---------------------------------------------------------------------------
 # Category Labels & Tags

@@ -19,18 +19,19 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Navigation — two-page app (must be registered before any widgets that may
-# trigger a rerun, otherwise Streamlit falls back to legacy pages/ routing)
+# Navigation — MUST be registered before any widgets that may trigger a rerun,
+# otherwise Streamlit falls back to legacy pages/ routing
 # ---------------------------------------------------------------------------
 
-dashboard_page = st.Page("views/dashboard.py", title="投資組合總覽", icon="📊", default=True)
-radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡")
-allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼")
+dashboard_page = st.Page("views/dashboard.py", title="投資組合總覽", icon="📊", default=True, url_path="dashboard")
+radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", url_path="radar")
+allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼", url_path="allocation")
+fx_watch_page = st.Page("views/fx_watch.py", title="外匯監控", icon="💱", url_path="fx_watch")
 
-pg = st.navigation([dashboard_page, radar_page, allocation_page])
+pg = st.navigation([dashboard_page, radar_page, allocation_page, fx_watch_page])
 
 # ---------------------------------------------------------------------------
-# Custom CSS — global styles shared across all pages
+# Custom CSS — global styles shared across all pages (safe after navigation)
 # ---------------------------------------------------------------------------
 
 st.markdown(
@@ -59,7 +60,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
 )
 
 # ---------------------------------------------------------------------------
-# Browser Timezone Detection (once per session)
+# Browser Timezone Detection (once per session, safe after navigation)
 # ---------------------------------------------------------------------------
 
 if "browser_tz" not in st.session_state:
@@ -75,6 +76,7 @@ if "browser_tz" not in st.session_state:
 
 # ---------------------------------------------------------------------------
 # Load Persisted Privacy Mode (once per session, then re-hydrate every rerun)
+# Safe after navigation setup
 # ---------------------------------------------------------------------------
 
 if "_privacy_mode_value" not in st.session_state:

@@ -1,12 +1,12 @@
 ---
 name: folio
-description: Folio 智能資產配置 — 股票追蹤、掃描與警報系統
-version: 1.0.0
+description: Folio 智能資產配置 — 股票追蹤、掃描、警報與外匯監控系統
+version: 1.1.0
 ---
 
 # Folio Skill
 
-Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、以及 Telegram 通知。
+Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、外匯換匯時機監控、以及 Telegram 通知。
 
 ## Prerequisites
 
@@ -54,6 +54,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `fear_greed` | 恐懼與貪婪指數 (VIX + CNN 綜合) | No | `{"action": "fear_greed"}` |
 | `add_stock` | 新增股票到觀察名單 | Yes (in params) | See below |
 | `withdraw` | 聰明提款建議 (Liquidity Waterfall) | No | See below |
+| `fx_watch` | 外匯監控：檢查所有監控配置並發送 Telegram 警報 | No | `{"action": "fx_watch"}` |
 
 > **Tip:** Use `help` first to discover all supported actions and their parameters at runtime.
 
@@ -84,6 +85,16 @@ curl -s -X POST http://localhost:8000/webhook \
 ```
 
 Returns a prioritized sell plan: (1) overweight rebalancing, (2) tax-loss harvesting, (3) liquidity order. Each recommendation includes ticker, quantity, sell value, reason, and unrealized P/L.
+
+### fx_watch Example
+
+```json
+{
+  "action": "fx_watch"
+}
+```
+
+Analyzes all active FX watch configurations and sends Telegram alerts for currency pairs meeting alert conditions (near recent high or consecutive increases). Response includes `total_watches`, `triggered_alerts`, and `sent_alerts` counts. Subject to cooldown mechanism — same config won't re-alert within its `reminder_interval_hours`.
 
 ### Response Format
 
@@ -145,9 +156,15 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/holdings/cash` | 新增現金持倉 |
 | `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算）。回傳含 `xray` 陣列，揭示 ETF 間接曝險 |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
-| `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`cash_non_home_pct`、匯率變動、建議 |
-| `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（含現金曝險金額） |
+| `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`fx_rate_alerts`（三層級警報）、匯率變動、建議 |
+| `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（三層級偵測：單日 >1.5% / 5日 >2% / 3月 >8%，含現金曝險金額） |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），body: `{"target_amount": 50000, "display_currency": "TWD", "notify": true}` |
+| `GET` | `/fx-watch` | 所有外匯監控配置，支援 `?active_only=true` 篩選啟用中 |
+| `POST` | `/fx-watch` | 新增外匯監控配置，body: `{"base_currency": "USD", "quote_currency": "TWD", "recent_high_days": 30, "consecutive_increase_days": 3, "alert_on_recent_high": true, "alert_on_consecutive_increase": true, "reminder_interval_hours": 24}` |
+| `PATCH` | `/fx-watch/{watch_id}` | 更新外匯監控配置（部分更新），可更新 `recent_high_days`、`consecutive_increase_days`、`alert_on_recent_high`、`alert_on_consecutive_increase`、`reminder_interval_hours`、`is_active` |
+| `DELETE` | `/fx-watch/{watch_id}` | 刪除外匯監控配置 |
+| `POST` | `/fx-watch/check` | 分析所有啟用中的外匯監控（不發送通知），回傳每筆配置的換匯建議、當前匯率、是否達高點、連續上漲天數 |
+| `POST` | `/fx-watch/alert` | 分析外匯監控並發送 Telegram 警報（受冷卻機制限制），回傳 `total_watches`、`triggered_alerts`、`sent_alerts` |
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
@@ -177,6 +194,10 @@ For advanced use, you can call individual endpoints directly:
 - Add `?display_currency=TWD` to `/rebalance` to see all values in TWD (supports USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
 - Use `POST /rebalance/xray-alert` to trigger Telegram warnings for stocks whose true exposure (direct + ETF indirect) exceeds 15%
 - When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)
-- Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only) and `breakdown` (full portfolio) for separate analysis
-- Use `POST /currency-exposure/alert` to trigger Telegram alerts for significant FX movements (>3% change), alerts now include cash exposure amounts
+- Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only), `breakdown` (full portfolio), and `fx_rate_alerts` (three-tier rate-change alerts) for separate analysis
+- Use `POST /currency-exposure/alert` to trigger Telegram alerts for three-tier FX rate changes (daily spike >1.5%, 5-day swing >2%, 3-month trend >8%), alerts include cash exposure amounts
+- Use `POST /fx-watch` to set up FX timing monitors — supports 9 currencies (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB) in any pair combination
+- Use `POST /fx-watch/check` to analyze all active monitors without sending notifications — good for quick market checks
+- Use `POST /fx-watch/alert` to trigger Telegram alerts for FX timing opportunities (near recent high or consecutive increases); subject to cooldown (`reminder_interval_hours`)
+- Use `PATCH /fx-watch/{id}` with `{"is_active": false}` to temporarily pause a monitor without deleting it
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order

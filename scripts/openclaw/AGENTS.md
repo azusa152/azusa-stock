@@ -38,6 +38,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `fear_greed` | Fear & Greed Index (VIX + CNN composite score) |
 | `add_stock` | Add stock with `params: {ticker, category, thesis, tags}` |
 | `withdraw` | Smart withdrawal plan with `params: {amount, currency}` |
+| `fx_watch` | Check FX exchange timing alerts & send Telegram notifications (monitors custom currency pairs with cooldown) |
 
 > **Start with `help`** — call `POST /webhook {"action": "help"}` to discover all available actions at runtime.
 
@@ -72,8 +73,14 @@ curl -s -X POST http://localhost:8000/webhook \
 | `PUT` | `/settings/preferences` | Update user preferences (upsert) |
 | `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
-| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown`, FX movements, risk level |
-| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert (includes cash exposure amounts) |
+| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
+| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert — three-tier detection (daily >1.5%, 5-day >2%, 3-month >8%), includes cash exposure amounts |
+| `GET` | `/fx-watch` | Get all FX watch configs (supports `?active_only=true`) |
+| `POST` | `/fx-watch` | Create FX watch config (base_currency, quote_currency, recent_high_days, consecutive_increase_days, alert_on_recent_high, alert_on_consecutive_increase, reminder_interval_hours) |
+| `PATCH` | `/fx-watch/{id}` | Update FX watch config (optional fields) |
+| `DELETE` | `/fx-watch/{id}` | Delete FX watch config |
+| `POST` | `/fx-watch/check` | Check all FX watches (analysis only, no Telegram) |
+| `POST` | `/fx-watch/alert` | Check FX watches & send Telegram alerts (with per-watch cooldown) |
 | `POST` | `/withdraw` | Smart withdrawal plan (Liquidity Waterfall) |
 
 ### Docs

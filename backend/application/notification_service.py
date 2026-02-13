@@ -14,7 +14,10 @@ from domain.constants import (
 from domain.enums import CATEGORY_LABEL, ScanSignal
 from infrastructure import repositories as repo
 from infrastructure.market_data import get_fear_greed_index
-from infrastructure.notification import is_notification_enabled, send_telegram_message_dual
+from infrastructure.notification import (
+    is_notification_enabled,
+    send_telegram_message_dual,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -37,16 +40,22 @@ def send_weekly_digest(session: Session) -> dict:
     all_stocks = repo.find_active_stocks(session)
     total = len(all_stocks)
     if total == 0:
-        send_telegram_message_dual("📊 <b>Folio 每週摘要</b>\n\n目前無追蹤股票。", session)
+        send_telegram_message_dual(
+            "📊 <b>Folio 每週摘要</b>\n\n目前無追蹤股票。", session
+        )
         return {"message": "無追蹤股票。"}
 
     # 目前非 NORMAL 股票
-    non_normal = [s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
+    non_normal = [
+        s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value
+    ]
     normal_count = total - len(non_normal)
     health_score = round(normal_count / total * 100, 1)
 
     # 過去 7 天的訊號變化
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(
+        days=WEEKLY_DIGEST_LOOKBACK_DAYS
+    )
     recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
 
     # 統計每檔股票的訊號變化次數
@@ -61,13 +70,15 @@ def send_weekly_digest(session: Session) -> dict:
 
     # 恐懼貪婪指數
     fg = get_fear_greed_index()
-    fg_label = format_fear_greed_label(fg.get("composite_level", "N/A"), fg.get("composite_score", 50))
+    fg_label = format_fear_greed_label(
+        fg.get("composite_level", "N/A"), fg.get("composite_score", 50)
+    )
     vix_val = fg.get("vix", {}).get("value")
     vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
 
     # 組合訊息
     parts: list[str] = [
-        f"📊 <b>Folio 每週摘要</b>\n",
+        "📊 <b>Folio 每週摘要</b>\n",
         f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）",
         f"📈 恐懼貪婪指數：{fg_label}（{vix_text}）\n",
     ]

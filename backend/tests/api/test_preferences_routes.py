@@ -85,10 +85,13 @@ class TestNotificationPreferences:
 
     def test_update_should_disable_scan_alerts(self, client):
         # Act
-        resp = client.put("/settings/preferences", json={
-            "privacy_mode": False,
-            "notification_preferences": {"scan_alerts": False},
-        })
+        resp = client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_preferences": {"scan_alerts": False},
+            },
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -100,13 +103,16 @@ class TestNotificationPreferences:
 
     def test_update_should_persist_notification_preferences(self, client):
         # Arrange — disable two types
-        client.put("/settings/preferences", json={
-            "privacy_mode": False,
-            "notification_preferences": {
-                "scan_alerts": False,
-                "fx_alerts": False,
+        client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_preferences": {
+                    "scan_alerts": False,
+                    "fx_alerts": False,
+                },
             },
-        })
+        )
 
         # Act — read back
         resp = client.get("/settings/preferences")
@@ -120,15 +126,21 @@ class TestNotificationPreferences:
 
     def test_update_without_notification_prefs_should_keep_existing(self, client):
         # Arrange — set custom preferences
-        client.put("/settings/preferences", json={
-            "privacy_mode": False,
-            "notification_preferences": {"weekly_digest": False},
-        })
+        client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_preferences": {"weekly_digest": False},
+            },
+        )
 
         # Act — update only privacy_mode, omit notification_preferences
-        resp = client.put("/settings/preferences", json={
-            "privacy_mode": True,
-        })
+        resp = client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": True,
+            },
+        )
 
         # Assert — notification preferences should be preserved
         assert resp.status_code == 200

@@ -2,7 +2,6 @@
 API — 持倉 (Holding) 管理與再平衡 (Rebalance) 路由。
 """
 
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -59,7 +58,9 @@ def _holding_to_response(h: Holding) -> HoldingResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/holdings", response_model=list[HoldingResponse], summary="List all holdings")
+@router.get(
+    "/holdings", response_model=list[HoldingResponse], summary="List all holdings"
+)
 def list_holdings(session: Session = Depends(get_session)) -> list[HoldingResponse]:
     """取得所有持倉。"""
     holdings = session.exec(
@@ -92,7 +93,9 @@ def create_holding(
     return _holding_to_response(holding)
 
 
-@router.post("/holdings/cash", response_model=HoldingResponse, summary="Add a cash holding")
+@router.post(
+    "/holdings/cash", response_model=HoldingResponse, summary="Add a cash holding"
+)
 def create_cash_holding(
     payload: CashHoldingRequest,
     session: Session = Depends(get_session),
@@ -119,7 +122,9 @@ def create_cash_holding(
     return _holding_to_response(holding)
 
 
-@router.put("/holdings/{holding_id}", response_model=HoldingResponse, summary="Update a holding")
+@router.put(
+    "/holdings/{holding_id}", response_model=HoldingResponse, summary="Update a holding"
+)
 def update_holding(
     holding_id: int,
     payload: HoldingRequest,
@@ -128,7 +133,10 @@ def update_holding(
     """更新持倉。"""
     holding = session.get(Holding, holding_id)
     if not holding:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"},
+        )
     holding.ticker = payload.ticker.strip().upper()
     holding.category = payload.category
     holding.quantity = payload.quantity
@@ -143,7 +151,9 @@ def update_holding(
     return _holding_to_response(holding)
 
 
-@router.delete("/holdings/{holding_id}", response_model=MessageResponse, summary="Delete a holding")
+@router.delete(
+    "/holdings/{holding_id}", response_model=MessageResponse, summary="Delete a holding"
+)
 def delete_holding(
     holding_id: int,
     session: Session = Depends(get_session),
@@ -151,7 +161,10 @@ def delete_holding(
     """刪除持倉。"""
     holding = session.get(Holding, holding_id)
     if not holding:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"},
+        )
     ticker = holding.ticker
     session.delete(holding)
     session.commit()
@@ -173,7 +186,9 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     return [
         {
             "ticker": h.ticker,
-            "category": h.category.value if hasattr(h.category, "value") else h.category,
+            "category": h.category.value
+            if hasattr(h.category, "value")
+            else h.category,
             "quantity": h.quantity,
             "cost_basis": h.cost_basis,
             "broker": h.broker,
@@ -185,7 +200,11 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     ]
 
 
-@router.post("/holdings/import", response_model=ImportResponse, summary="Bulk import holdings (replace)")
+@router.post(
+    "/holdings/import",
+    response_model=ImportResponse,
+    summary="Bulk import holdings (replace)",
+)
 def import_holdings(
     data: list[dict],
     session: Session = Depends(get_session),
@@ -232,22 +251,34 @@ def import_holdings(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/rebalance", response_model=RebalanceResponse, summary="Calculate rebalance analysis")
+@router.get(
+    "/rebalance",
+    response_model=RebalanceResponse,
+    summary="Calculate rebalance analysis",
+)
 def get_rebalance(
     display_currency: str = "USD",
     session: Session = Depends(get_session),
 ) -> RebalanceResponse:
     """計算再平衡分析（目標 vs 實際配置）。可透過 display_currency 指定顯示幣別。"""
-    return calculate_rebalance(session, display_currency=display_currency.strip().upper())
+    return calculate_rebalance(
+        session, display_currency=display_currency.strip().upper()
+    )
 
 
-@router.post("/rebalance/xray-alert", response_model=XRayAlertResponse, summary="Trigger X-Ray alert via Telegram")
+@router.post(
+    "/rebalance/xray-alert",
+    response_model=XRayAlertResponse,
+    summary="Trigger X-Ray alert via Telegram",
+)
 def trigger_xray_alert(
     display_currency: str = "USD",
     session: Session = Depends(get_session),
 ) -> dict:
     """觸發 X-Ray 穿透式持倉分析並發送 Telegram 警告。"""
-    rebalance = calculate_rebalance(session, display_currency=display_currency.strip().upper())
+    rebalance = calculate_rebalance(
+        session, display_currency=display_currency.strip().upper()
+    )
     xray = rebalance.get("xray", [])
     warnings = send_xray_warnings(xray, display_currency, session)
     return {
@@ -261,7 +292,11 @@ def trigger_xray_alert(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/withdraw", response_model=WithdrawResponse, summary="Smart withdrawal plan (Liquidity Waterfall)")
+@router.post(
+    "/withdraw",
+    response_model=WithdrawResponse,
+    summary="Smart withdrawal plan (Liquidity Waterfall)",
+)
 def calculate_withdraw_route(
     payload: WithdrawRequest,
     session: Session = Depends(get_session),
@@ -292,7 +327,11 @@ def calculate_withdraw_route(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/currency-exposure", response_model=CurrencyExposureResponse, summary="Calculate currency exposure")
+@router.get(
+    "/currency-exposure",
+    response_model=CurrencyExposureResponse,
+    summary="Calculate currency exposure",
+)
 def get_currency_exposure(
     session: Session = Depends(get_session),
 ) -> CurrencyExposureResponse:
@@ -300,7 +339,11 @@ def get_currency_exposure(
     return calculate_currency_exposure(session)
 
 
-@router.post("/currency-exposure/alert", response_model=FXAlertResponse, summary="Trigger FX alert via Telegram")
+@router.post(
+    "/currency-exposure/alert",
+    response_model=FXAlertResponse,
+    summary="Trigger FX alert via Telegram",
+)
 def trigger_fx_alert(
     session: Session = Depends(get_session),
 ) -> dict:

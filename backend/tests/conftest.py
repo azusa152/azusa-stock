@@ -12,7 +12,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 # Patch disk cache dir before infrastructure.market_data imports it
 import domain.constants  # noqa: E402
 
-domain.constants.DISK_CACHE_DIR = os.path.join(tempfile.gettempdir(), "folio_test_cache")
+domain.constants.DISK_CACHE_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_cache"
+)
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402
@@ -127,6 +129,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
     ("application.rebalance_service.get_etf_top_holdings", []),
     ("application.rebalance_service.get_forex_history", []),
+    ("application.rebalance_service.get_forex_history_long", []),
     ("application.rebalance_service.prewarm_signals_batch", {}),
     ("application.rebalance_service.prewarm_etf_holdings_batch", {}),
     # webhook_service

@@ -19,6 +19,7 @@ from config import (
     API_GET_ENRICHED_TIMEOUT,
     API_EARNINGS_TIMEOUT,
     API_FEAR_GREED_TIMEOUT,
+    API_FX_HISTORY_TIMEOUT,
     API_GET_TIMEOUT,
     API_PATCH_TIMEOUT,
     API_POST_TIMEOUT,
@@ -43,6 +44,8 @@ from config import (
     CACHE_TTL_SCAN_HISTORY,
     CACHE_TTL_SIGNALS,
     CACHE_TTL_FEAR_GREED,
+    CACHE_TTL_FX_HISTORY,
+    CACHE_TTL_FX_WATCH,
     CACHE_TTL_STOCKS,
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
@@ -409,6 +412,54 @@ def fetch_preferences() -> dict | None:
 def save_privacy_mode(enabled: bool) -> dict | None:
     """Persist privacy mode to backend (non-cached PUT)."""
     return api_put("/settings/preferences", {"privacy_mode": enabled})
+
+
+# ---------------------------------------------------------------------------
+# FX Watch Cache Functions
+# ---------------------------------------------------------------------------
+
+
+@st.cache_data(ttl=CACHE_TTL_FX_WATCH, show_spinner=False)
+def fetch_fx_watches() -> list | None:
+    """Fetch all FX watch configurations."""
+    return api_get_silent("/fx-watch")
+
+
+def invalidate_fx_watch_caches() -> None:
+    """Invalidate all FX watch caches after mutations."""
+    fetch_fx_watches.clear()
+
+
+# ---------------------------------------------------------------------------
+# FX History Cache Function
+# ---------------------------------------------------------------------------
+
+
+@st.cache_data(ttl=CACHE_TTL_FX_HISTORY, show_spinner=False)
+def fetch_fx_history(base: str, quote: str) -> list[dict] | None:
+    """
+    Fetch 3-month daily FX rate history for a currency pair.
+
+    Args:
+        base: Base currency code (e.g., 'USD')
+        quote: Quote currency code (e.g., 'TWD')
+
+    Returns:
+        List of rate records: [{"date": "YYYY-MM-DD", "close": 32.15}, ...]
+        Returns None if API call fails or times out.
+
+    Cache: 2 hours (CACHE_TTL_FX_HISTORY)
+    """
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/forex/{base}/{quote}/history-long",
+            timeout=API_FX_HISTORY_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        # Fail silently - chart rendering function will handle None
+        return None
 
 
 # ---------------------------------------------------------------------------

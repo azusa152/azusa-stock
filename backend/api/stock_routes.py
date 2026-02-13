@@ -62,7 +62,9 @@ from infrastructure.market_data import (
 router = APIRouter()
 
 
-@router.post("/ticker", response_model=StockResponse, summary="Add a stock to the watchlist")
+@router.post(
+    "/ticker", response_model=StockResponse, summary="Add a stock to the watchlist"
+)
 def create_ticker_route(
     payload: TickerCreateRequest,
     session: Session = Depends(get_session),
@@ -73,7 +75,10 @@ def create_ticker_route(
             session, payload.ticker, payload.category, payload.thesis, payload.tags
         )
     except StockAlreadyExistsError as e:
-        raise HTTPException(status_code=409, detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)})
+        raise HTTPException(
+            status_code=409,
+            detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
+        )
 
     return StockResponse(
         ticker=stock.ticker,
@@ -84,7 +89,9 @@ def create_ticker_route(
     )
 
 
-@router.get("/stocks", response_model=list[StockResponse], summary="List all active stocks")
+@router.get(
+    "/stocks", response_model=list[StockResponse], summary="List all active stocks"
+)
 def list_stocks_route(
     session: Session = Depends(get_session),
 ) -> list[StockResponse]:
@@ -93,7 +100,10 @@ def list_stocks_route(
     return [StockResponse(**r) for r in results]
 
 
-@router.get("/stocks/enriched", summary="Get all active stocks with signals, earnings, and dividends")
+@router.get(
+    "/stocks/enriched",
+    summary="Get all active stocks with signals, earnings, and dividends",
+)
 def list_enriched_stocks_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
@@ -101,7 +111,11 @@ def list_enriched_stocks_route(
     return get_enriched_stocks(session)
 
 
-@router.put("/stocks/reorder", response_model=MessageResponse, summary="Reorder stock display positions")
+@router.put(
+    "/stocks/reorder",
+    response_model=MessageResponse,
+    summary="Reorder stock display positions",
+)
 def reorder_stocks_route(
     payload: ReorderRequest,
     session: Session = Depends(get_session),
@@ -116,7 +130,9 @@ def get_signals_route(ticker: str) -> dict:
     return get_technical_signals(ticker.upper()) or {}
 
 
-@router.get("/ticker/{ticker}/price-history", summary="Get 1-year price history for a stock")
+@router.get(
+    "/ticker/{ticker}/price-history", summary="Get 1-year price history for a stock"
+)
 def get_price_history_route(ticker: str) -> list[dict]:
     """取得指定股票的收盤價歷史（1 年），用於價格趨勢圖。"""
     return get_price_history(ticker.upper()) or []
@@ -136,7 +152,11 @@ def get_moat_route(ticker: str, session: Session = Depends(get_session)) -> dict
     return get_moat_for_ticker(session, ticker)
 
 
-@router.patch("/ticker/{ticker}/category", response_model=MessageResponse, summary="Update stock category")
+@router.patch(
+    "/ticker/{ticker}/category",
+    response_model=MessageResponse,
+    summary="Update stock category",
+)
 def update_category_route(
     ticker: str,
     payload: CategoryUpdateRequest,
@@ -146,12 +166,22 @@ def update_category_route(
     try:
         return update_stock_category(session, ticker, payload.category)
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
     except CategoryUnchangedError as e:
-        raise HTTPException(status_code=409, detail={"error_code": ERROR_CATEGORY_UNCHANGED, "detail": str(e)})
+        raise HTTPException(
+            status_code=409,
+            detail={"error_code": ERROR_CATEGORY_UNCHANGED, "detail": str(e)},
+        )
 
 
-@router.post("/ticker/{ticker}/deactivate", response_model=MessageResponse, summary="Deactivate a tracked stock")
+@router.post(
+    "/ticker/{ticker}/deactivate",
+    response_model=MessageResponse,
+    summary="Deactivate a tracked stock",
+)
 def deactivate_ticker_route(
     ticker: str,
     payload: DeactivateRequest,
@@ -161,12 +191,22 @@ def deactivate_ticker_route(
     try:
         return deactivate_stock(session, ticker, payload.reason)
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
     except StockAlreadyInactiveError as e:
-        raise HTTPException(status_code=409, detail={"error_code": ERROR_STOCK_ALREADY_INACTIVE, "detail": str(e)})
+        raise HTTPException(
+            status_code=409,
+            detail={"error_code": ERROR_STOCK_ALREADY_INACTIVE, "detail": str(e)},
+        )
 
 
-@router.get("/stocks/removed", response_model=list[RemovedStockResponse], summary="List all removed stocks")
+@router.get(
+    "/stocks/removed",
+    response_model=list[RemovedStockResponse],
+    summary="List all removed stocks",
+)
 def list_removed_stocks_route(
     session: Session = Depends(get_session),
 ) -> list[RemovedStockResponse]:
@@ -184,10 +224,17 @@ def get_removal_history_route(
     try:
         return get_removal_history(session, ticker)
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
 
 
-@router.post("/ticker/{ticker}/reactivate", response_model=MessageResponse, summary="Reactivate a removed stock")
+@router.post(
+    "/ticker/{ticker}/reactivate",
+    response_model=MessageResponse,
+    summary="Reactivate a removed stock",
+)
 def reactivate_ticker_route(
     ticker: str,
     payload: ReactivateRequest,
@@ -197,9 +244,15 @@ def reactivate_ticker_route(
     try:
         return reactivate_stock(session, ticker, payload.category, payload.thesis)
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
     except StockAlreadyActiveError as e:
-        raise HTTPException(status_code=409, detail={"error_code": ERROR_STOCK_ALREADY_ACTIVE, "detail": str(e)})
+        raise HTTPException(
+            status_code=409,
+            detail={"error_code": ERROR_STOCK_ALREADY_ACTIVE, "detail": str(e)},
+        )
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
@@ -222,10 +275,14 @@ def get_scan_history_route(
 ) -> list[dict]:
     """取得指定股票的掃描歷史。"""
     from application.services import get_scan_history
+
     try:
         return get_scan_history(session, ticker, limit)
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
 
 
 @router.get("/scan/history", summary="Get latest scan logs across all stocks")
@@ -235,10 +292,15 @@ def get_all_scan_history_route(
 ) -> list[dict]:
     """取得最近掃描紀錄。"""
     from application.services import get_latest_scan_logs
+
     return get_latest_scan_logs(session, limit)
 
 
-@router.post("/ticker/{ticker}/alerts", response_model=MessageResponse, summary="Create a price alert")
+@router.post(
+    "/ticker/{ticker}/alerts",
+    response_model=MessageResponse,
+    summary="Create a price alert",
+)
 def create_price_alert_route(
     ticker: str,
     payload: PriceAlertCreateRequest,
@@ -246,6 +308,7 @@ def create_price_alert_route(
 ) -> dict:
     """建立價格警報。"""
     from application.services import create_price_alert
+
     try:
         return create_price_alert(
             session,
@@ -255,7 +318,10 @@ def create_price_alert_route(
             payload.threshold,
         )
     except StockNotFoundError as e:
-        raise HTTPException(status_code=404, detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)})
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
+        )
 
 
 @router.get("/ticker/{ticker}/alerts", summary="List price alerts for a stock")
@@ -265,20 +331,28 @@ def get_price_alerts_route(
 ) -> list[dict]:
     """取得指定股票的價格警報列表。"""
     from application.services import list_price_alerts
+
     return list_price_alerts(session, ticker)
 
 
-@router.delete("/alerts/{alert_id}", response_model=MessageResponse, summary="Delete a price alert")
+@router.delete(
+    "/alerts/{alert_id}", response_model=MessageResponse, summary="Delete a price alert"
+)
 def delete_price_alert_route(
     alert_id: int,
     session: Session = Depends(get_session),
 ) -> dict:
     """刪除價格警報。"""
     from application.services import delete_price_alert
+
     return delete_price_alert(session, alert_id)
 
 
-@router.post("/stocks/import", response_model=ImportResponse, summary="Bulk import stocks (upsert)")
+@router.post(
+    "/stocks/import",
+    response_model=ImportResponse,
+    summary="Bulk import stocks (upsert)",
+)
 def import_stocks_route(
     payload: list[dict],
     session: Session = Depends(get_session),
@@ -292,13 +366,21 @@ def import_stocks_route(
 # ===========================================================================
 
 
-@router.get("/summary", response_class=PlainTextResponse, summary="Plain-text portfolio summary for AI agents")
+@router.get(
+    "/summary",
+    response_class=PlainTextResponse,
+    summary="Plain-text portfolio summary for AI agents",
+)
 def get_summary_route(session: Session = Depends(get_session)) -> str:
     """純文字投資組合摘要，專為 chat / AI agent 設計。"""
     return get_portfolio_summary(session)
 
 
-@router.post("/webhook", response_model=WebhookResponse, summary="Unified webhook for AI agent actions")
+@router.post(
+    "/webhook",
+    response_model=WebhookResponse,
+    summary="Unified webhook for AI agent actions",
+)
 def webhook_route(
     payload: WebhookRequest,
     session: Session = Depends(get_session),

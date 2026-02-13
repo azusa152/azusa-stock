@@ -1,6 +1,5 @@
 """Tests for holding management routes (CRUD + import/export + rebalance)."""
 
-
 HOLDING_PAYLOAD = {
     "ticker": "NVDA",
     "category": "Growth",

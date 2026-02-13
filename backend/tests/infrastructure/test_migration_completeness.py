@@ -171,9 +171,7 @@ class TestMigrationCompleteness:
 
         entity_columns: dict[str, set[str]] = {}
         for table in SQLModel.metadata.sorted_tables:
-            entity_columns[table.name.lower()] = {
-                c.name.lower() for c in table.columns
-            }
+            entity_columns[table.name.lower()] = {c.name.lower() for c in table.columns}
 
         for table_name, col_name in add_targets:
             if table_name not in entity_columns:

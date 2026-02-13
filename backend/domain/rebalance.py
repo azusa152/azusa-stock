@@ -35,7 +35,9 @@ def calculate_rebalance(
             "advice": ["⚠️ 持倉總市值為零，無法計算配置。"],
         }
 
-    all_categories = sorted(set(list(target_config.keys()) + list(category_values.keys())))
+    all_categories = sorted(
+        set(list(target_config.keys()) + list(category_values.keys()))
+    )
     categories_result: dict[str, dict] = {}
     advice: list[str] = []
 

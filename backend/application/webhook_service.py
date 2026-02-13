@@ -5,6 +5,7 @@ Application — Webhook Service：OpenClaw / AI agent webhook 處理。
 from sqlmodel import Session
 
 from application.formatters import format_fear_greed_label
+from application.fx_watch_service import send_fx_watch_alerts
 from application.stock_service import (
     StockAlreadyExistsError,
     StockNotFoundError,
@@ -30,7 +31,9 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def handle_webhook(session: Session, action: str, ticker: str | None, params: dict) -> dict:
+def handle_webhook(
+    session: Session, action: str, ticker: str | None, params: dict
+) -> dict:
     """
     處理 AI agent webhook 請求。回傳 dict(success, message, data)。
     業務邏輯集中於此，API handler 只負責 parse + 回傳。
@@ -43,7 +46,10 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
     # Validate action against registry
     if action not in WEBHOOK_ACTION_REGISTRY:
         supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
-        return {"success": False, "message": f"不支援的 action: {action}。支援：{supported}"}
+        return {
+            "success": False,
+            "message": f"不支援的 action: {action}。支援：{supported}",
+        }
 
     if action == "help":
         return {
@@ -63,7 +69,9 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         if not result or "error" in result:
             return {
                 "success": False,
-                "message": result.get("error", "無法取得技術訊號。") if result else "無法取得技術訊號。",
+                "message": result.get("error", "無法取得技術訊號。")
+                if result
+                else "無法取得技術訊號。",
             }
         status_text = "\n".join(result.get("status", []))
         msg = (
@@ -80,7 +88,10 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
                 run_scan(s)
 
         _threading.Thread(target=_bg_scan, daemon=True).start()
-        return {"success": True, "message": "掃描已在背景啟動，結果將透過 Telegram 通知。"}
+        return {
+            "success": True,
+            "message": "掃描已在背景啟動，結果將透過 Telegram 通知。",
+        }
 
     if action == "moat":
         if not ticker:
@@ -102,8 +113,14 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         lines = [f"{ticker} 價格警報："]
         for a in alerts:
             op_str = "<" if a["operator"] == "lt" else ">"
-            lines.append(f"  {a['metric']} {op_str} {a['threshold']} ({'啟用' if a['is_active'] else '停用'})")
-        return {"success": True, "message": "\n".join(lines), "data": {"alerts": alerts}}
+            lines.append(
+                f"  {a['metric']} {op_str} {a['threshold']} ({'啟用' if a['is_active'] else '停用'})"
+            )
+        return {
+            "success": True,
+            "message": "\n".join(lines),
+            "data": {"alerts": alerts},
+        }
 
     if action == "fear_greed":
         fg = get_fear_greed_index()
@@ -115,7 +132,11 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         vix_val = vix_data.get("value")
         vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
         cnn_data = fg.get("cnn")
-        cnn_text = f"CNN={cnn_data['score']}" if cnn_data and cnn_data.get("score") is not None else "CNN=N/A"
+        cnn_text = (
+            f"CNN={cnn_data['score']}"
+            if cnn_data and cnn_data.get("score") is not None
+            else "CNN=N/A"
+        )
         msg = f"恐懼貪婪指數：{fg_label}\n{vix_text}, {cnn_text}"
         return {"success": True, "message": msg, "data": fg}
 
@@ -128,7 +149,10 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         tags = params.get("tags", [])
         try:
             stock = create_stock(session, t, StockCategory(cat_str), thesis, tags)
-            return {"success": True, "message": f"✅ 已新增 {stock.ticker} 到 {cat_str} 分類。"}
+            return {
+                "success": True,
+                "message": f"✅ 已新增 {stock.ticker} 到 {cat_str} 分類。",
+            }
         except StockAlreadyExistsError as e:
             return {"success": False, "message": str(e)}
         except ValueError:
@@ -153,6 +177,25 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         except StockNotFoundError as e:
             return {"success": False, "message": str(e)}
 
+    if action == "fx_watch":
+        try:
+            result = send_fx_watch_alerts(session)
+            msg = (
+                f"外匯監控完成：{result['total_watches']} 筆監控，"
+                f"{result['triggered_alerts']} 筆觸發，{result['sent_alerts']} 筆已通知。"
+            )
+            return {
+                "success": True,
+                "message": msg,
+                "data": result,
+            }
+        except Exception as e:
+            logger.error("外匯監控執行失敗：%s", e)
+            return {"success": False, "message": f"外匯監控執行失敗：{e}"}
+
     # Fallback — should not reach here if registry is in sync
     supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
-    return {"success": False, "message": f"不支援的 action: {action}。支援：{supported}"}
+    return {
+        "success": False,
+        "message": f"不支援的 action: {action}。支援：{supported}",
+    }

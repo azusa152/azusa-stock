@@ -44,7 +44,14 @@
 
 - **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析
 - **穿透式持倉 X-Ray** — 自動解析 ETF 成分股，計算直接+間接真實曝險，超門檻自動警告
-- **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，偵測顯著匯率變動，Telegram 警報
+- **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，三層級匯率變動偵測（單日 / 5日 / 3月），Telegram 警報
+- **外匯換匯時機監控** — 完整的換匯時機管理系統：
+  - 支援 9 種主要貨幣（USD、TWD、JPY、EUR、GBP、CNY、HKD、SGD、THB），任意貨幣對組合
+  - 雙重偵測機制：近期高點警報（可調回溯天數 5-90 日）+ 連續上漲警報（可調門檻 2-10 日）
+  - 即時換匯建議欄位：分析表格直接顯示建議（🟢 建議換匯 / ⚪ 暫不換匯），含詳細理由說明
+  - 互動式趨勢圖表：3 個月歷史匯率折線圖，期間選擇（1M/2M/3M），參考線標示近期高點，顏色編碼趨勢方向
+  - 彈性警報控制：獨立啟用/停用兩種偵測條件（OR 邏輯），自訂冷卻時間（1-168 小時）避免重複通知
+  - 一鍵操作：內嵌切換啟用/停用按鈕、刪除按鈕，手動檢查（不發通知）、立即發送 Telegram 警報
 - **隱私模式** — 一鍵遮蔽金額與數量，設定儲存於資料庫，跨裝置同步
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — Liquidity Waterfall 三層優先演算法產生賣出建議（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
@@ -361,6 +368,12 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
 | `GET` | `/settings/preferences` | 取得使用者偏好設定（隱私模式等） |
 | `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert） |
+| `GET` | `/fx-watch` | 取得所有外匯監控配置（支援 `?active_only=true` 篩選啟用中） |
+| `POST` | `/fx-watch` | 新增外匯監控配置（base_currency / quote_currency / 近期高點天數 / 連續上漲門檻 / 近期高點警報開關 / 連續上漲警報開關 / 提醒間隔） |
+| `PATCH` | `/fx-watch/{id}` | 更新外匯監控配置（可選更新任意欄位） |
+| `DELETE` | `/fx-watch/{id}` | 刪除外匯監控配置 |
+| `POST` | `/fx-watch/check` | 檢查所有外匯監控（分析結果，不發送 Telegram） |
+| `POST` | `/fx-watch/alert` | 檢查外匯監控並發送 Telegram 警報（帶冷卻機制） |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 

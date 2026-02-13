@@ -210,7 +210,9 @@ def plan_withdrawal(
     # 建立分類→市值快查表（供 post-sell drift 計算）
     category_values: dict[str, float] = {}
     for h in holdings_data:
-        category_values[h.category] = category_values.get(h.category, 0.0) + h.market_value
+        category_values[h.category] = (
+            category_values.get(h.category, 0.0) + h.market_value
+        )
     sell_by_category: dict[str, float] = {}
 
     # === Priority 1: 再平衡 — 賣出超配分類 ===
@@ -238,11 +240,17 @@ def plan_withdrawal(
                 break
 
             icon = CATEGORY_ICON.get(cat, "📊")
-            reason = f"{icon} {cat} 超配 {drift_pct:+.1f}%，賣出可鎖定獲利並回歸目標佔比。"
-            rec = _sell_from_holding(h, min(remaining, sellable_value), reason, 1, already_sold)
+            reason = (
+                f"{icon} {cat} 超配 {drift_pct:+.1f}%，賣出可鎖定獲利並回歸目標佔比。"
+            )
+            rec = _sell_from_holding(
+                h, min(remaining, sellable_value), reason, 1, already_sold
+            )
             if rec:
                 recommendations.append(rec)
-                already_sold[h.ticker] = already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                already_sold[h.ticker] = (
+                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                )
                 remaining -= rec.sell_value
                 sellable_value -= rec.sell_value
                 sell_by_category[cat] = sell_by_category.get(cat, 0.0) + rec.sell_value
@@ -254,7 +262,11 @@ def plan_withdrawal(
             avail = h.quantity - already_sold.get(h.ticker, 0.0)
             if avail <= 0:
                 continue
-            if h.cost_basis is not None and h.current_price is not None and h.current_price < h.cost_basis:
+            if (
+                h.cost_basis is not None
+                and h.current_price is not None
+                and h.current_price < h.cost_basis
+            ):
                 total_loss = (h.cost_basis - h.current_price) * avail * h.fx_rate
                 loss_holdings.append((h, total_loss))
 
@@ -269,7 +281,9 @@ def plan_withdrawal(
             rec = _sell_from_holding(h, remaining, reason, 2, already_sold)
             if rec:
                 recommendations.append(rec)
-                already_sold[h.ticker] = already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                already_sold[h.ticker] = (
+                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                )
                 remaining -= rec.sell_value
                 sell_by_category[h.category] = (
                     sell_by_category.get(h.category, 0.0) + rec.sell_value
@@ -305,7 +319,9 @@ def plan_withdrawal(
             rec = _sell_from_holding(h, remaining, reason, 3, already_sold)
             if rec:
                 recommendations.append(rec)
-                already_sold[h.ticker] = already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                already_sold[h.ticker] = (
+                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                )
                 remaining -= rec.sell_value
                 sell_by_category[h.category] = (
                     sell_by_category.get(h.category, 0.0) + rec.sell_value
@@ -314,7 +330,9 @@ def plan_withdrawal(
     # === 彙總結果 ===
     total_sell = sum(r.sell_value for r in recommendations)
     shortfall = max(0.0, target_amount - total_sell)
-    post_sell = _compute_post_sell_drifts(category_values, sell_by_category, target_config)
+    post_sell = _compute_post_sell_drifts(
+        category_values, sell_by_category, target_config
+    )
 
     return WithdrawalPlan(
         recommendations=recommendations,
