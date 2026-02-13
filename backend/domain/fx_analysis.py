@@ -280,12 +280,14 @@ def assess_exchange_timing(
             recommendation_zh = (
                 f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
             )
+            parts = []
+            if high_condition:
+                parts.append(f"已接近 {recent_high_days} 日高點 ({high:.4f})")
+            if consec_condition:
+                parts.append(f"連續上漲 {consec} 日")
             reasoning_zh = (
                 f"{base_currency}/{quote_currency} "
-                f"{'已接近 ' + str(recent_high_days) + ' 日高點 (' + f'{high:.4f}' + ')' if high_condition else ''}"
-                f"{'，且' if high_condition and consec_condition else ''}"
-                f"{'連續上漲 ' + str(consec) + ' 日' if consec_condition else ''}"
-                f"，現在可能是換匯好時機。"
+                f"{'，且'.join(parts)}，現在可能是換匯好時機。"
             )
         elif near_high and not alert_on_consecutive_increase:
             # 偵測到高點但連續上漲監控已關閉

@@ -5,7 +5,7 @@ Exposes FX historical data for frontend chart visualization.
 
 from fastapi import APIRouter
 
-from infrastructure.market_data import get_forex_history_long
+from application.fx_watch_service import get_forex_history
 
 router = APIRouter(prefix="/forex", tags=["Forex"])
 
@@ -26,5 +26,4 @@ def get_forex_history_endpoint(base: str, quote: str) -> list[dict]:
         - L1 (in-memory): 2 hours
         - L2 (disk): 4 hours
     """
-    history = get_forex_history_long(base.upper(), quote.upper())
-    return history
+    return get_forex_history(base, quote)

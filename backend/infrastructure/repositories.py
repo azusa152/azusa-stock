@@ -3,7 +3,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Session, func, select
 
@@ -314,12 +314,19 @@ def find_all_fx_watches(
     return list(session.exec(statement).all())
 
 
+def update_fx_watch(session: Session, watch: FXWatchConfig) -> FXWatchConfig:
+    """更新外匯監控配置（通用）。"""
+    watch.updated_at = datetime.now(timezone.utc)
+    session.add(watch)
+    session.commit()
+    session.refresh(watch)
+    return watch
+
+
 def update_fx_watch_last_alerted(
     session: Session, watch_id: int, alerted_at: datetime
 ) -> None:
     """更新外匯監控配置的最後警報時間。"""
-    from datetime import timezone
-
     watch = session.get(FXWatchConfig, watch_id)
     if watch:
         watch.last_alerted_at = alerted_at

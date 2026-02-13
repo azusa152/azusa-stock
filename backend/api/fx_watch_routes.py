@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from api.schemas import (
+    FXTimingResultResponse,
     FXWatchAlertResponse,
     FXWatchCheckResponse,
+    FXWatchCheckResultItem,
     FXWatchCreateRequest,
     FXWatchResponse,
     FXWatchUpdateRequest,
@@ -23,12 +25,66 @@ from application.fx_watch_service import (
     update_watch,
 )
 from domain.constants import DEFAULT_USER_ID
+from domain.entities import FXWatchConfig
 from infrastructure.database import get_session
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Mapping Helpers
+# ---------------------------------------------------------------------------
+
+
+def _to_watch_response(w: FXWatchConfig) -> FXWatchResponse:
+    """Map FXWatchConfig entity to FXWatchResponse schema."""
+    return FXWatchResponse(
+        id=w.id,
+        user_id=w.user_id,
+        base_currency=w.base_currency,
+        quote_currency=w.quote_currency,
+        recent_high_days=w.recent_high_days,
+        consecutive_increase_days=w.consecutive_increase_days,
+        alert_on_recent_high=w.alert_on_recent_high,
+        alert_on_consecutive_increase=w.alert_on_consecutive_increase,
+        reminder_interval_hours=w.reminder_interval_hours,
+        is_active=w.is_active,
+        last_alerted_at=w.last_alerted_at.isoformat() if w.last_alerted_at else None,
+        created_at=w.created_at.isoformat(),
+        updated_at=w.updated_at.isoformat(),
+    )
+
+
+def _to_result_item(r: dict) -> FXWatchCheckResultItem:
+    """Map service result dict to FXWatchCheckResultItem schema."""
+    timing = r["result"]
+    return FXWatchCheckResultItem(
+        watch_id=r["watch_id"],
+        pair=r["pair"],
+        result=FXTimingResultResponse(
+            base_currency=timing.base_currency,
+            quote_currency=timing.quote_currency,
+            current_rate=timing.current_rate,
+            is_recent_high=timing.is_recent_high,
+            lookback_high=timing.lookback_high,
+            lookback_days=timing.lookback_days,
+            consecutive_increases=timing.consecutive_increases,
+            consecutive_threshold=timing.consecutive_threshold,
+            alert_on_recent_high=timing.alert_on_recent_high,
+            alert_on_consecutive_increase=timing.alert_on_consecutive_increase,
+            should_alert=timing.should_alert,
+            recommendation_zh=timing.recommendation_zh,
+            reasoning_zh=timing.reasoning_zh,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# CRUD Endpoints
+# ---------------------------------------------------------------------------
 
 
 @router.get(
@@ -49,26 +105,7 @@ def get_fx_watch_configs(
     - user_id: 使用者 ID（預設 DEFAULT_USER_ID）
     """
     watches = get_all_watches(session, user_id=user_id, active_only=active_only)
-    return [
-        FXWatchResponse(
-            id=w.id,
-            user_id=w.user_id,
-            base_currency=w.base_currency,
-            quote_currency=w.quote_currency,
-            recent_high_days=w.recent_high_days,
-            consecutive_increase_days=w.consecutive_increase_days,
-            alert_on_recent_high=w.alert_on_recent_high,
-            alert_on_consecutive_increase=w.alert_on_consecutive_increase,
-            reminder_interval_hours=w.reminder_interval_hours,
-            is_active=w.is_active,
-            last_alerted_at=w.last_alerted_at.isoformat()
-            if w.last_alerted_at
-            else None,
-            created_at=w.created_at.isoformat(),
-            updated_at=w.updated_at.isoformat(),
-        )
-        for w in watches
-    ]
+    return [_to_watch_response(w) for w in watches]
 
 
 @router.post(
@@ -105,23 +142,7 @@ def create_fx_watch_config(
         reminder_interval_hours=req.reminder_interval_hours,
         user_id=user_id,
     )
-    return FXWatchResponse(
-        id=watch.id,
-        user_id=watch.user_id,
-        base_currency=watch.base_currency,
-        quote_currency=watch.quote_currency,
-        recent_high_days=watch.recent_high_days,
-        consecutive_increase_days=watch.consecutive_increase_days,
-        alert_on_recent_high=watch.alert_on_recent_high,
-        alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
-        reminder_interval_hours=watch.reminder_interval_hours,
-        is_active=watch.is_active,
-        last_alerted_at=watch.last_alerted_at.isoformat()
-        if watch.last_alerted_at
-        else None,
-        created_at=watch.created_at.isoformat(),
-        updated_at=watch.updated_at.isoformat(),
-    )
+    return _to_watch_response(watch)
 
 
 @router.patch(
@@ -163,23 +184,7 @@ def update_fx_watch_config(
             status_code=404, detail=f"FX watch config with ID {watch_id} not found"
         )
 
-    return FXWatchResponse(
-        id=watch.id,
-        user_id=watch.user_id,
-        base_currency=watch.base_currency,
-        quote_currency=watch.quote_currency,
-        recent_high_days=watch.recent_high_days,
-        consecutive_increase_days=watch.consecutive_increase_days,
-        alert_on_recent_high=watch.alert_on_recent_high,
-        alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
-        reminder_interval_hours=watch.reminder_interval_hours,
-        is_active=watch.is_active,
-        last_alerted_at=watch.last_alerted_at.isoformat()
-        if watch.last_alerted_at
-        else None,
-        created_at=watch.created_at.isoformat(),
-        updated_at=watch.updated_at.isoformat(),
-    )
+    return _to_watch_response(watch)
 
 
 @router.delete(
@@ -206,6 +211,11 @@ def delete_fx_watch_config(
     return MessageResponse(message=f"FX watch config {watch_id} deleted successfully")
 
 
+# ---------------------------------------------------------------------------
+# Analysis & Alert Endpoints
+# ---------------------------------------------------------------------------
+
+
 @router.post(
     "/fx-watch/check",
     response_model=FXWatchCheckResponse,
@@ -228,28 +238,7 @@ def check_fx_watch_alerts(
     results = check_fx_watches(session, user_id=user_id)
     return FXWatchCheckResponse(
         total_watches=len(results),
-        results=[
-            {
-                "watch_id": r["watch_id"],
-                "pair": r["pair"],
-                "result": {
-                    "base_currency": r["result"].base_currency,
-                    "quote_currency": r["result"].quote_currency,
-                    "current_rate": r["result"].current_rate,
-                    "is_recent_high": r["result"].is_recent_high,
-                    "lookback_high": r["result"].lookback_high,
-                    "lookback_days": r["result"].lookback_days,
-                    "consecutive_increases": r["result"].consecutive_increases,
-                    "consecutive_threshold": r["result"].consecutive_threshold,
-                    "alert_on_recent_high": r["result"].alert_on_recent_high,
-                    "alert_on_consecutive_increase": r["result"].alert_on_consecutive_increase,
-                    "should_alert": r["result"].should_alert,
-                    "recommendation_zh": r["result"].recommendation_zh,
-                    "reasoning_zh": r["result"].reasoning_zh,
-                },
-            }
-            for r in results
-        ],
+        results=[_to_result_item(r) for r in results],
     )
 
 
@@ -279,26 +268,5 @@ def send_fx_watch_alert(
         total_watches=result["total_watches"],
         triggered_alerts=result["triggered_alerts"],
         sent_alerts=result["sent_alerts"],
-        alerts=[
-            {
-                "watch_id": a["watch_id"],
-                "pair": a["pair"],
-                "result": {
-                    "base_currency": a["result"].base_currency,
-                    "quote_currency": a["result"].quote_currency,
-                    "current_rate": a["result"].current_rate,
-                    "is_recent_high": a["result"].is_recent_high,
-                    "lookback_high": a["result"].lookback_high,
-                    "lookback_days": a["result"].lookback_days,
-                    "consecutive_increases": a["result"].consecutive_increases,
-                    "consecutive_threshold": a["result"].consecutive_threshold,
-                    "alert_on_recent_high": a["result"].alert_on_recent_high,
-                    "alert_on_consecutive_increase": a["result"].alert_on_consecutive_increase,
-                    "should_alert": a["result"].should_alert,
-                    "recommendation_zh": a["result"].recommendation_zh,
-                    "reasoning_zh": a["result"].reasoning_zh,
-                },
-            }
-            for a in result["alerts"]
-        ],
+        alerts=[_to_result_item(a) for a in result["alerts"]],
     )

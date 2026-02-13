@@ -7,6 +7,13 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from domain.constants import (
+    FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE,
+    FX_WATCH_DEFAULT_ALERT_ON_RECENT_HIGH,
+    FX_WATCH_DEFAULT_CONSECUTIVE_DAYS,
+    FX_WATCH_DEFAULT_RECENT_HIGH_DAYS,
+    FX_WATCH_DEFAULT_REMINDER_HOURS,
+)
 from domain.enums import StockCategory
 
 
@@ -620,11 +627,11 @@ class FXWatchCreateRequest(BaseModel):
 
     base_currency: str
     quote_currency: str
-    recent_high_days: int = 30
-    consecutive_increase_days: int = 3
-    alert_on_recent_high: bool = True
-    alert_on_consecutive_increase: bool = True
-    reminder_interval_hours: int = 24
+    recent_high_days: int = FX_WATCH_DEFAULT_RECENT_HIGH_DAYS
+    consecutive_increase_days: int = FX_WATCH_DEFAULT_CONSECUTIVE_DAYS
+    alert_on_recent_high: bool = FX_WATCH_DEFAULT_ALERT_ON_RECENT_HIGH
+    alert_on_consecutive_increase: bool = FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE
+    reminder_interval_hours: int = FX_WATCH_DEFAULT_REMINDER_HOURS
 
 
 class FXWatchUpdateRequest(BaseModel):
@@ -674,11 +681,19 @@ class FXTimingResultResponse(BaseModel):
     reasoning_zh: str
 
 
+class FXWatchCheckResultItem(BaseModel):
+    """單筆外匯監控分析結果。"""
+
+    watch_id: int
+    pair: str
+    result: FXTimingResultResponse
+
+
 class FXWatchCheckResponse(BaseModel):
     """POST /fx-watch/check 回傳結構：分析結果（不發送通知）。"""
 
     total_watches: int
-    results: list[dict]
+    results: list[FXWatchCheckResultItem]
 
 
 class FXWatchAlertResponse(BaseModel):
@@ -687,4 +702,4 @@ class FXWatchAlertResponse(BaseModel):
     total_watches: int
     triggered_alerts: int
     sent_alerts: int
-    alerts: list[dict]
+    alerts: list[FXWatchCheckResultItem]

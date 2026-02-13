@@ -21,6 +21,7 @@ from infrastructure.repositories import (
     find_active_fx_watches,
     find_all_fx_watches,
     find_fx_watch_by_id,
+    update_fx_watch,
     update_fx_watch_last_alerted,
 )
 from logging_config import get_logger
@@ -153,10 +154,7 @@ def update_watch(
     if is_active is not None:
         watch.is_active = is_active
 
-    watch.updated_at = datetime.now(timezone.utc)
-    session.add(watch)
-    session.commit()
-    session.refresh(watch)
+    watch = update_fx_watch(session, watch)
 
     logger.info(
         "更新外匯監控：ID=%d, is_active=%s, flags=%s/%s",
@@ -191,6 +189,25 @@ def remove_watch(session: Session, watch_id: int) -> bool:
         watch.quote_currency,
     )
     return True
+
+
+# ===========================================================================
+# Forex History (Application-layer wrapper)
+# ===========================================================================
+
+
+def get_forex_history(base: str, quote: str) -> list[dict]:
+    """
+    取得 3 個月外匯歷史資料（供 API 路由使用）。
+
+    Args:
+        base: 基礎貨幣（例如 USD）
+        quote: 報價貨幣（例如 TWD）
+
+    Returns:
+        日線歷史 [{"date": "YYYY-MM-DD", "close": float}, ...]
+    """
+    return get_forex_history_long(base.upper(), quote.upper())
 
 
 # ===========================================================================

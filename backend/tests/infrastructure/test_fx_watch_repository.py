@@ -35,7 +35,7 @@ class TestFXWatchRepository:
             user_id=DEFAULT_USER_ID,
             base_currency="USD",
             quote_currency="TWD",
-            lookback_days=30,
+            recent_high_days=30,
             consecutive_increase_days=3,
             reminder_interval_hours=24,
             is_active=True,
