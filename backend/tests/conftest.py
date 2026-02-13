@@ -148,6 +148,8 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.stock_service.detect_is_etf", False),
     # API routes
     ("api.scan_routes.get_fear_greed_index", MOCK_FEAR_GREED),
+    # prewarm_service (prevent background prewarm during tests)
+    ("application.prewarm_service.prewarm_all_caches", None),
 ]
 
 

@@ -684,6 +684,29 @@ def analyze_moat_trend(ticker: str) -> dict:
     )
 
 
+def prewarm_moat_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, dict | None]:
+    """
+    並行預熱多檔股票的護城河快取。
+    已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
+    回傳 {ticker: moat_dict} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, dict | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(analyze_moat_trend, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results
+
+
 # ===========================================================================
 # 市場情緒分析
 # ===========================================================================

@@ -4,6 +4,7 @@ Folio — FastAPI 應用程式進入點。
 所有業務邏輯已移至 application/services.py。
 """
 
+import threading
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -35,6 +36,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Folio 後端啟動中 — 初始化資料庫...")
     create_db_and_tables()
     logger.info("資料庫初始化完成，服務就緒。")
+
+    # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
+    from application.prewarm_service import prewarm_all_caches
+
+    threading.Thread(target=prewarm_all_caches, daemon=True).start()
+    logger.info("背景快取預熱已啟動。")
+
     yield
     logger.info("Folio 後端關閉中...")
 

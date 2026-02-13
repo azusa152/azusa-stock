@@ -85,7 +85,12 @@ def refresh_ui() -> None:
     st.rerun()
 
 
-_TOAST_DISPATCH = {"success": st.success, "error": st.error, "warning": st.warning}
+_TOAST_DISPATCH = {
+    "success": st.success,
+    "error": st.error,
+    "warning": st.warning,
+    "info": st.info,
+}
 
 
 def show_toast(level: str, msg: str) -> None:
@@ -444,9 +449,15 @@ def fetch_withdraw(
         # Surface 404 (no profile / no holdings) distinctly
         if resp.status_code == 404:
             try:
-                return resp.json().get("detail", {})
+                detail = resp.json().get("detail", {})
+                # Normalise: backend should send a dict, but guard against
+                # a plain-string detail so the caller can always do
+                # ``"error_code" in result`` without TypeError.
+                if isinstance(detail, dict):
+                    return detail
+                return {"error_code": "NOT_FOUND", "detail": str(detail)}
             except Exception:
-                pass
+                return {"error_code": "NOT_FOUND", "detail": resp.text}
         try:
             body = resp.json()
             detail = body.get("detail", body)
@@ -471,7 +482,7 @@ def post_telegram_test() -> tuple[str, str]:
             f"{BACKEND_URL}/settings/telegram/test",
             timeout=API_POST_TIMEOUT,
         )
-        if resp.status_code == 200:
+        if resp.ok:
             return ("success", resp.json().get("message", "✅ 已發送"))
         try:
             detail = resp.json().get("detail", resp.text)
@@ -549,7 +560,7 @@ def put_telegram_settings(payload: dict) -> tuple[str, str]:
             json=payload,
             timeout=API_PUT_TIMEOUT,
         )
-        if resp.status_code == 200:
+        if resp.ok:
             return ("success", "✅ Telegram 設定已儲存")
         try:
             detail = resp.json().get("detail", resp.text)
@@ -579,7 +590,7 @@ def put_notification_preferences(
             },
             timeout=API_PUT_TIMEOUT,
         )
-        if resp.status_code == 200:
+        if resp.ok:
             return ("success", "✅ 通知偏好已儲存")
         try:
             detail = resp.json().get("detail", resp.text)
@@ -603,15 +614,20 @@ def post_digest() -> tuple[str, str]:
             f"{BACKEND_URL}/digest",
             timeout=API_POST_TIMEOUT,
         )
-        if resp.status_code == 200:
+        if resp.ok:
             return ("success", resp.json().get("message", "✅ 已啟動"))
         if resp.status_code == 409:
+            fallback = "每週摘要正在生成中，請稍後再試。"
             try:
-                msg = resp.json().get("detail", {}).get(
-                    "detail", "每週摘要正在生成中，請稍後再試。"
-                )
+                detail = resp.json().get("detail", fallback)
+                # Backend wraps in {"detail": {"error_code": ..., "detail": ...}}
+                # but guard against a plain-string detail.
+                if isinstance(detail, dict):
+                    msg = detail.get("detail", fallback)
+                else:
+                    msg = str(detail)
             except Exception:
-                msg = "每週摘要正在生成中，請稍後再試。"
+                msg = fallback
             return ("warning", msg)
         try:
             detail = resp.json().get("detail", resp.text)

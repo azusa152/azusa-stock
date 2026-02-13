@@ -1,0 +1,150 @@
+"""
+Application — 啟動快取預熱服務。
+非阻塞式背景執行，在 FastAPI lifespan 啟動後填充 L1/L2 快取，
+讓前端首次載入即可命中暖快取。
+"""
+
+import time
+
+from sqlmodel import Session, select
+
+from domain.constants import SKIP_MOAT_CATEGORIES, SKIP_SIGNALS_CATEGORIES
+from domain.entities import Holding, Stock
+from infrastructure.database import engine
+from infrastructure.market_data import (
+    get_fear_greed_index,
+    prewarm_etf_holdings_batch,
+    prewarm_moat_batch,
+    prewarm_signals_batch,
+)
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# 常數
+# ---------------------------------------------------------------------------
+_DEFAULT_USER_ID = "default"
+
+
+def prewarm_all_caches() -> None:
+    """非阻塞式啟動預熱 — 填充 L1/L2 快取。
+
+    依序預熱：
+    1. 技術訊號（signals + piggyback price history）
+    2. 恐懼與貪婪指數（Fear & Greed）
+    3. 護城河趨勢（moat）— 排除 Bond/Cash
+    4. ETF 成分股（etf_holdings）— 僅 is_etf=True 的標的
+
+    整個流程以 try/except 包裹，確保任何失敗都不會影響應用程式正常運作。
+    """
+    start = time.monotonic()
+    logger.info("快取預熱啟動...")
+
+    try:
+        tickers = _collect_tickers()
+    except Exception as exc:
+        logger.error("快取預熱：無法讀取資料庫，中止預熱。%s", exc, exc_info=True)
+        return
+
+    if not tickers["all"]:
+        logger.info("快取預熱：資料庫中無任何股票或持倉，跳過預熱。")
+        return
+
+    logger.info(
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, etf=%d）",
+        len(tickers["all"]),
+        len(tickers["signals"]),
+        len(tickers["moat"]),
+        len(tickers["etf"]),
+    )
+
+    # Phase 1: 技術訊號（含 piggyback price history）
+    _prewarm_phase("signals", lambda: prewarm_signals_batch(tickers["signals"]))
+
+    # Phase 2: 恐懼與貪婪指數
+    _prewarm_phase("fear_greed", get_fear_greed_index)
+
+    # Phase 3: 護城河趨勢
+    _prewarm_phase("moat", lambda: prewarm_moat_batch(tickers["moat"]))
+
+    # Phase 4: ETF 成分股
+    if tickers["etf"]:
+        _prewarm_phase(
+            "etf_holdings", lambda: prewarm_etf_holdings_batch(tickers["etf"])
+        )
+
+    elapsed = time.monotonic() - start
+    logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
+
+
+# ---------------------------------------------------------------------------
+# 內部 Helpers
+# ---------------------------------------------------------------------------
+
+
+def _collect_tickers() -> dict[str, list[str]]:
+    """從 DB 收集需要預熱的 ticker 清單。
+
+    回傳 dict:
+        - all: 所有 unique tickers（watchlist + holdings，排除 Cash 類）
+        - signals: 需要技術訊號的 tickers（排除 Cash）
+        - moat: 需要護城河分析的 tickers（排除 Bond/Cash）
+        - etf: 需要 ETF 成分股的 tickers（is_etf=True）
+    """
+    with Session(engine) as session:
+        # 活躍追蹤清單
+        stocks = list(
+            session.exec(select(Stock).where(Stock.is_active == True)).all()  # noqa: E712
+        )
+        # 持倉（排除現金）
+        holdings = list(
+            session.exec(
+                select(Holding).where(
+                    Holding.user_id == _DEFAULT_USER_ID,
+                    Holding.is_cash == False,  # noqa: E712
+                )
+            ).all()
+        )
+
+    stock_map = {s.ticker: s for s in stocks}
+    holding_tickers = {h.ticker for h in holdings}
+
+    # Union of watchlist + holdings (unique)
+    all_tickers = set(stock_map.keys()) | holding_tickers
+
+    # Signals: 排除 Cash 類
+    signals_tickers = [
+        t
+        for t in all_tickers
+        if t not in stock_map
+        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+    ]
+
+    # Moat: 排除 Bond/Cash
+    moat_tickers = [
+        t
+        for t in all_tickers
+        if t not in stock_map or stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+    ]
+
+    # ETF: 只有追蹤清單中 is_etf=True 的標的
+    etf_tickers = [t for t, s in stock_map.items() if s.is_etf]
+
+    return {
+        "all": sorted(all_tickers),
+        "signals": sorted(signals_tickers),
+        "moat": sorted(moat_tickers),
+        "etf": sorted(etf_tickers),
+    }
+
+
+def _prewarm_phase(name: str, fn) -> None:
+    """執行單一預熱階段，失敗時記錄警告但不中斷後續階段。"""
+    try:
+        phase_start = time.monotonic()
+        fn()
+        elapsed = time.monotonic() - phase_start
+        logger.info("快取預熱 [%s] 完成，耗時 %.1f 秒。", name, elapsed)
+    except Exception as exc:
+        logger.warning("快取預熱 [%s] 失敗（非致命）：%s", name, exc, exc_info=True)
