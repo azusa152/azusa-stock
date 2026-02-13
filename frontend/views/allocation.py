@@ -949,7 +949,7 @@ with tab_warroom:
         st.subheader("📊 Step 3 — 再平衡分析")
 
         if profile and holdings:
-            # Currency selector
+            # Currency selector + refresh button
             cur_cols = st.columns([2, 2, 2])
             with cur_cols[0]:
                 display_cur = st.selectbox(
@@ -960,33 +960,34 @@ with tab_warroom:
                 )
             with cur_cols[1]:
                 st.write("")  # vertical spacer
-                _do_load = st.button(
-                    "📊 載入再平衡分析",
-                    type="primary",
-                    key="btn_load_rebalance",
-                )
-            # Persist loaded state so currency change doesn't lose data
-            if _do_load:
-                st.session_state["rebalance_loaded"] = True
+                if st.button(
+                    "🔄 重新整理",
+                    type="secondary",
+                    key="btn_refresh_rebalance",
+                ):
+                    fetch_rebalance.clear()
+                    st.rerun()
 
+            # Auto-fetch rebalance (cached TTL = CACHE_TTL_REBALANCE)
             rebalance = None
-            if st.session_state.get("rebalance_loaded"):
-                with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
-                    rebalance = fetch_rebalance(display_currency=display_cur)
-                    if rebalance:
-                        _rb_status.update(
-                            label="✅ 再平衡分析載入完成",
-                            state="complete",
-                            expanded=False,
-                        )
-                    else:
-                        _rb_status.update(
-                            label="⚠️ 載入失敗或無持倉資料",
-                            state="error",
-                            expanded=True,
-                        )
-            else:
-                st.info("💡 點擊上方「載入再平衡分析」按鈕以取得最新資料。")
+            with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
+                rebalance = fetch_rebalance(display_currency=display_cur)
+                if rebalance:
+                    _rb_status.update(
+                        label="✅ 再平衡分析載入完成",
+                        state="complete",
+                        expanded=False,
+                    )
+                else:
+                    _rb_status.update(
+                        label="⚠️ 載入失敗",
+                        state="error",
+                        expanded=True,
+                    )
+                    st.warning(
+                        "載入再平衡分析失敗，"
+                        "請稍後再試或確認網路連線正常。"
+                    )
             if rebalance:
                 calc_at = rebalance.get("calculated_at", "")
                 if calc_at:
@@ -1690,11 +1691,6 @@ with tab_warroom:
                             st.markdown("**💡 匯率曝險建議：**")
                             _render_advice(advice)
 
-            else:
-                st.info(
-                    "⏳ 無法計算再平衡，"
-                    "請確認已設定目標配置並輸入持倉。"
-                )
         elif not profile:
             st.caption("請先完成 Step 1（設定目標配置）。")
         else:

@@ -3,6 +3,7 @@ Folio — Shared utilities for the Streamlit frontend.
 API helpers, cached data fetchers, and reusable UI rendering functions.
 """
 
+import logging
 from datetime import datetime as dt
 from datetime import timezone
 from zoneinfo import ZoneInfo
@@ -69,6 +70,8 @@ from config import (
     TICKER_SUFFIX_TO_MARKET,
     WHALEWISDOM_STOCK_URL,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +363,12 @@ def fetch_holdings() -> list | None:
 
 @st.cache_data(ttl=CACHE_TTL_REBALANCE, show_spinner=False)
 def fetch_rebalance(display_currency: str = "USD") -> dict | None:
-    """Fetch rebalance analysis with optional display currency conversion."""
+    """Fetch rebalance analysis with optional display currency conversion.
+
+    Returns the JSON dict on success, ``None`` on any failure.
+    Error details are logged so they can be diagnosed without
+    leaking transient failures into the Streamlit cache.
+    """
     try:
         resp = requests.get(
             f"{BACKEND_URL}/rebalance",
@@ -369,8 +377,16 @@ def fetch_rebalance(display_currency: str = "USD") -> dict | None:
         )
         if resp.status_code == 200:
             return resp.json()
+        # --- non-200: log detail, return None (not cached on error) ---
+        try:
+            body = resp.json()
+            detail = body.get("detail", body)
+        except Exception:
+            detail = resp.text
+        logger.warning("再平衡 API 回傳 %s: %s", resp.status_code, detail)
         return None
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        logger.error("再平衡 API 連線失敗: %s", exc)
         return None
 
 
