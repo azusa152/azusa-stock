@@ -241,13 +241,12 @@ def api_post_silent(path: str, json_data: dict | None = None) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-@st.cache_data(ttl=CACHE_TTL_STOCKS, show_spinner="載入股票資料中...")
+@st.cache_data(ttl=CACHE_TTL_STOCKS, show_spinner=False)
 def fetch_stocks() -> list | None:
     """Fetch all tracked stocks (DB data only)."""
     return api_get("/stocks")
 
 
-@st.cache_data(ttl=CACHE_TTL_STOCKS, show_spinner="載入豐富股票資料中...")
 @st.cache_data(ttl=CACHE_TTL_STOCKS, show_spinner=False)
 def fetch_enriched_stocks() -> list | None:
     """Fetch all active stocks with signals, earnings, and dividends in one batch.
@@ -279,7 +278,7 @@ def fetch_signals(ticker: str) -> dict | None:
         return None
 
 
-@st.cache_data(ttl=CACHE_TTL_REMOVED, show_spinner="載入已移除股票...")
+@st.cache_data(ttl=CACHE_TTL_REMOVED, show_spinner=False)
 def fetch_removed_stocks() -> list | None:
     """Fetch removed stocks list."""
     return api_get("/stocks/removed")
