@@ -60,6 +60,7 @@
 
 - **三頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
+- **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，Dashboard 上傳或 CLI 腳本匯入
@@ -378,6 +379,20 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
 </details>
+
+### 🆕 日漲跌功能 (Daily Change Tracking)
+
+以下端點已新增每日變動欄位：
+
+**GET `/ticker/{ticker}/signals`** — 技術訊號回應新增：
+- `previous_close` (float, optional): 前一交易日收盤價
+- `change_pct` (float, optional): 日漲跌幅百分比
+
+**GET `/rebalance`** — 再平衡分析回應新增：
+- `previous_total_value` (float, optional): 前一交易日投資組合總市值
+- `total_value_change` (float, optional): 投資組合總市值日變動金額
+- `total_value_change_pct` (float, optional): 投資組合總市值日變動百分比
+- `holdings_detail[].change_pct` (float, optional): 個股日漲跌幅百分比
 
 <details>
 <summary>🧪 curl 範例集（點擊展開）</summary>

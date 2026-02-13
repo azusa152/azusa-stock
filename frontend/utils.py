@@ -883,14 +883,23 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
     else:
         signals = fetch_signals(ticker) or {}
 
-    # Build expander header with signal icon, ticker, category, price, and market
+    # Build expander header with signal icon, ticker, category, price, daily change, and market
     last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
     cat_label_short = CATEGORY_LABELS.get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")
     price_str = f" | ${price}" if price and price != "N/A" else ""
+
+    # Add daily change to header
+    change_pct = signals.get("change_pct")
+    if change_pct is not None:
+        arrow = "▲" if change_pct >= 0 else "▼"
+        change_str = f" ({arrow}{abs(change_pct):.2f}%)"
+    else:
+        change_str = ""
+
     market_label = infer_market_label(ticker)
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str} | {market_label}"
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])

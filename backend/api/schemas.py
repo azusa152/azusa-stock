@@ -171,6 +171,8 @@ class SignalsResponse(BaseModel):
 
     ticker: Optional[str] = None
     price: Optional[float] = None
+    previous_close: Optional[float] = None
+    change_pct: Optional[float] = None
     rsi: Optional[float] = None
     ma200: Optional[float] = None
     ma60: Optional[float] = None
@@ -400,6 +402,7 @@ class HoldingDetail(BaseModel):
     weight_pct: float
     avg_cost: Optional[float] = None
     current_price: Optional[float] = None
+    change_pct: Optional[float] = None
 
 
 class XRayEntry(BaseModel):
@@ -420,6 +423,9 @@ class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
     total_value: float
+    previous_total_value: Optional[float] = None
+    total_value_change: Optional[float] = None
+    total_value_change_pct: Optional[float] = None
     display_currency: str = "USD"
     categories: dict[str, CategoryAllocation]
     advice: list[str]

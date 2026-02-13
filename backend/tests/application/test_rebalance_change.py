@@ -1,0 +1,288 @@
+"""Tests for portfolio-level daily change calculation in rebalance_service."""
+
+import os
+import tempfile
+
+os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
+os.environ.setdefault("DATABASE_URL", "sqlite://")
+
+import domain.constants
+
+domain.constants.DISK_CACHE_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_cache_rebalance_change"
+)
+
+from unittest.mock import patch
+
+import pytest
+from sqlmodel import Session
+
+from application.rebalance_service import calculate_rebalance
+from domain.entities import Holding, UserInvestmentProfile
+from domain.enums import StockCategory
+
+
+class TestRebalancePortfolioChange:
+    """Tests for portfolio-level daily change calculation."""
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_forex_rate")
+    def test_calculate_rebalance_should_include_total_change(
+        self, mock_forex, mock_signals, db_session: Session
+    ):
+        # Arrange
+        # Create user profile
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config={"Growth": 100},
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        # Create holding
+        holding = Holding(
+            user_id="default",
+            ticker="NVDA",
+            category=StockCategory.GROWTH,
+            quantity=10.0,
+            cost_basis=100.0,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(holding)
+        db_session.commit()
+
+        # Mock signals with current and previous price
+        mock_signals.return_value = {
+            "price": 120.0,
+            "previous_close": 110.0,
+            "change_pct": 9.09,
+        }
+        mock_forex.return_value = 1.0
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        assert "total_value" in result
+        assert "previous_total_value" in result
+        assert "total_value_change" in result
+        assert "total_value_change_pct" in result
+
+        # Current: 10 * 120 = 1200
+        # Previous: 10 * 110 = 1100
+        # Change: 1200 - 1100 = 100
+        # Change %: (100 / 1100) * 100 = 9.09%
+        assert result["total_value"] == pytest.approx(1200.0, rel=0.01)
+        assert result["previous_total_value"] == pytest.approx(1100.0, rel=0.01)
+        assert result["total_value_change"] == pytest.approx(100.0, rel=0.01)
+        assert result["total_value_change_pct"] == pytest.approx(9.09, rel=0.01)
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_forex_rate")
+    def test_calculate_rebalance_should_include_holding_change_pct(
+        self, mock_forex, mock_signals, db_session: Session
+    ):
+        # Arrange
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config={"Growth": 100},
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        holding = Holding(
+            user_id="default",
+            ticker="AAPL",
+            category=StockCategory.GROWTH,
+            quantity=5.0,
+            cost_basis=150.0,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(holding)
+        db_session.commit()
+
+        # Mock signals
+        mock_signals.return_value = {
+            "price": 180.0,
+            "previous_close": 175.0,
+            "change_pct": 2.86,
+        }
+        mock_forex.return_value = 1.0
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        assert "holdings_detail" in result
+        assert len(result["holdings_detail"]) == 1
+
+        holding_detail = result["holdings_detail"][0]
+        assert "change_pct" in holding_detail
+
+        # Current MV: 5 * 180 = 900
+        # Previous MV: 5 * 175 = 875
+        # Change %: (900 - 875) / 875 * 100 = 2.86%
+        assert holding_detail["change_pct"] == pytest.approx(2.86, rel=0.01)
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_forex_rate")
+    def test_calculate_rebalance_should_handle_missing_previous_close(
+        self, mock_forex, mock_signals, db_session: Session
+    ):
+        # Arrange: New stock with no previous_close
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config={"Growth": 100},
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        holding = Holding(
+            user_id="default",
+            ticker="NEW",
+            category=StockCategory.GROWTH,
+            quantity=10.0,
+            cost_basis=50.0,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(holding)
+        db_session.commit()
+
+        # Mock signals with no previous_close (newly added stock)
+        mock_signals.return_value = {
+            "price": 55.0,
+            "previous_close": None,
+            "change_pct": None,
+        }
+        mock_forex.return_value = 1.0
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        holding_detail = result["holdings_detail"][0]
+
+        # Should fallback to cost_basis for previous value
+        # Current: 10 * 55 = 550
+        # Previous (fallback to cost): 10 * 50 = 500
+        # Change: (550 - 500) / 500 * 100 = 10%
+        assert holding_detail["change_pct"] == pytest.approx(10.0, rel=0.01)
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_forex_rate")
+    def test_calculate_rebalance_should_handle_zero_previous_total_value(
+        self, mock_forex, mock_signals, db_session: Session
+    ):
+        # Arrange: Portfolio with no previous value (edge case)
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config={"Cash": 100},
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        # Cash holding (no price change)
+        holding = Holding(
+            user_id="default",
+            ticker="USD",
+            category=StockCategory.CASH,
+            quantity=1000.0,
+            currency="USD",
+            is_cash=True,
+        )
+        db_session.add(holding)
+        db_session.commit()
+
+        mock_forex.return_value = 1.0
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        # Cash has no change (same current and previous)
+        # So change_pct should be 0.0
+        assert result["total_value"] == pytest.approx(1000.0, rel=0.01)
+        assert result["previous_total_value"] == pytest.approx(1000.0, rel=0.01)
+        assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
+        assert result["total_value_change_pct"] == pytest.approx(0.0, rel=0.01)
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_forex_rate")
+    def test_calculate_rebalance_should_aggregate_multiple_holdings_change(
+        self, mock_forex, mock_signals, db_session: Session
+    ):
+        # Arrange: Multiple holdings with different changes
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config={"Growth": 100},
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        # Holding 1: NVDA (increased)
+        holding1 = Holding(
+            user_id="default",
+            ticker="NVDA",
+            category=StockCategory.GROWTH,
+            quantity=10.0,
+            cost_basis=100.0,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(holding1)
+
+        # Holding 2: AAPL (decreased)
+        holding2 = Holding(
+            user_id="default",
+            ticker="AAPL",
+            category=StockCategory.GROWTH,
+            quantity=5.0,
+            cost_basis=150.0,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(holding2)
+        db_session.commit()
+
+        # Mock signals for both holdings
+        def mock_signals_side_effect(ticker):
+            if ticker == "NVDA":
+                return {
+                    "price": 120.0,
+                    "previous_close": 110.0,
+                    "change_pct": 9.09,
+                }
+            elif ticker == "AAPL":
+                return {
+                    "price": 170.0,
+                    "previous_close": 180.0,
+                    "change_pct": -5.56,
+                }
+            return None
+
+        mock_signals.side_effect = mock_signals_side_effect
+        mock_forex.return_value = 1.0
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        # NVDA: current = 10 * 120 = 1200, previous = 10 * 110 = 1100
+        # AAPL: current = 5 * 170 = 850, previous = 5 * 180 = 900
+        # Total: current = 2050, previous = 2000
+        # Change: (2050 - 2000) / 2000 * 100 = 2.5%
+        assert result["total_value"] == pytest.approx(2050.0, rel=0.01)
+        assert result["previous_total_value"] == pytest.approx(2000.0, rel=0.01)
+        assert result["total_value_change"] == pytest.approx(50.0, rel=0.01)
+        assert result["total_value_change_pct"] == pytest.approx(2.5, rel=0.01)
+
+        # Check individual holdings
+        holdings = result["holdings_detail"]
+        nvda_holding = next(h for h in holdings if h["ticker"] == "NVDA")
+        aapl_holding = next(h for h in holdings if h["ticker"] == "AAPL")
+
+        assert nvda_holding["change_pct"] == pytest.approx(9.09, rel=0.01)
+        assert aapl_holding["change_pct"] == pytest.approx(-5.56, rel=0.01)

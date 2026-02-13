@@ -81,6 +81,7 @@ from domain.constants import (
     MA200_WINDOW,
     MA60_WINDOW,
     MARGIN_TREND_QUARTERS,
+    MIN_CLOSE_PRICES_FOR_CHANGE,
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
@@ -329,6 +330,23 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         volumes = hist["Volume"].tolist() if "Volume" in hist.columns else []
         current_price = round(closes[-1], 2)
 
+        # 計算日漲跌（前一交易日 vs. 當日收盤價）
+        previous_close = None
+        change_pct = None
+        if len(closes) >= MIN_CLOSE_PRICES_FOR_CHANGE:
+            previous_close = round(closes[-2], 2)
+            if previous_close > 0:
+                change_pct = round(((current_price - previous_close) / previous_close) * 100, 2)
+            logger.debug(
+                "%s 日漲跌：previous=%.2f, current=%.2f, change=%.2f%%",
+                ticker,
+                previous_close,
+                current_price,
+                change_pct if change_pct is not None else 0.0,
+            )
+        else:
+            logger.debug("%s 歷史資料不足（%d 筆），無法計算日漲跌", ticker, len(closes))
+
         # 使用 domain 層的純計算函式
         rsi = compute_rsi(closes)
         ma200 = compute_moving_average(closes, MA200_WINDOW)
@@ -380,6 +398,8 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         raw_signals = {
             "ticker": ticker,
             "price": current_price,
+            "previous_close": previous_close,
+            "change_pct": change_pct,
             "rsi": rsi,
             "ma200": ma200,
             "ma60": ma60,

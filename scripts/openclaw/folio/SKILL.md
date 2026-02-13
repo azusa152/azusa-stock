@@ -183,6 +183,39 @@ For advanced use, you can call individual endpoints directly:
 | `Bond` | 🛡️ 債券 | 國債、投資等級債券 ETF |
 | `Cash` | 💵 現金 | 閒置現金 |
 
+## Daily Change Tracking (New)
+
+The following endpoints now include daily change fields calculated from yfinance historical data (previous trading day close vs. current close):
+
+### GET `/ticker/{ticker}/signals` — Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `price` | float | Current close price |
+| `previous_close` | float? | Previous trading day close price |
+| `change_pct` | float? | Daily change percentage (e.g., `2.50` = +2.50% gain) |
+| `rsi` | float | RSI(14) indicator |
+| `ma200` | float | 200-day moving average |
+| `ma60` | float | 60-day moving average |
+| `bias` | float | Price deviation from 60MA (%) |
+| `volume_ratio` | float | Recent/average volume ratio |
+| `status` | list[str] | Formatted status descriptions |
+
+### GET `/rebalance` — Response Fields (New)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_value` | float | Current portfolio total market value |
+| `previous_total_value` | float? | Previous trading day portfolio total value |
+| `total_value_change` | float? | Portfolio total value daily change amount |
+| `total_value_change_pct` | float? | Portfolio daily change percentage |
+| `holdings_detail[].change_pct` | float? | Per-holding daily change percentage |
+
+**Edge Cases:**
+- `previous_close` and `change_pct` will be `null` for newly added stocks with insufficient history (< 2 days)
+- Weekend/holiday gaps are automatically handled by yfinance (uses last trading day)
+- Cash holdings have no price change (same current and previous value)
+
 ## Usage Tips
 
 - Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful")

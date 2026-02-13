@@ -110,7 +110,7 @@ with st.expander("📖 投資組合總覽：使用說明書", expanded=False):
 | 指標 | 說明 | 如何解讀 |
 |------|------|----------|
 | **市場情緒** | 基於風向球（Trend Setter）股票是否跌破 60 日均線的比例 | ☀️ 晴天 = 多數風向球在均線之上，市場偏多；🌧️ 雨天 = 超過半數跌破，市場偏空 |
-| **總市值** | 所有持倉的市值加總（以選定幣別顯示） | 隱私模式下顯示 `***`。可透過頁面上方幣別選單切換顯示幣別 |
+| **總市值** | 所有持倉的市值加總（以選定幣別顯示），含日漲跌幅 | 顯示相對前一交易日的漲跌幅與金額變動（▲上漲 / ▼下跌）。隱私模式下僅顯示百分比，金額遮蔽為 `***`。可透過頁面上方幣別選單切換顯示幣別 |
 | **健康分數** | 追蹤中股票訊號為「NORMAL」的比例 | ≥ 80% 綠色（健康）、≥ 50% 黃色（留意）、< 50% 紅色（警戒）。分子/分母顯示正常股數與總股數 |
 | **追蹤 / 持倉** | 雷達追蹤的股票檔數 vs 實際持倉筆數 | 兩者差距大代表有些追蹤中的股票尚未建立持倉，或持倉中有雷達未追蹤的標的 |
 
@@ -149,9 +149,14 @@ with st.expander("📖 投資組合總覽：使用說明書", expanded=False):
 
 ### 🏆 前 10 大持倉
 
-依**權重（佔總市值比例）**排序的前 10 大持倉，顯示股票代號、分類、權重百分比與市值。隱私模式下市值欄位會以 `***` 遮蔽。
+依**權重（佔總市值比例）**排序的前 10 大持倉，顯示股票代號、分類、權重百分比、市值與日漲跌幅。
+
+- **日漲跌** — 顯示個股相對前一交易日的漲跌幅（▲上漲 / ▼下跌），數據來自 yfinance 歷史資料
+- **隱私模式** — 市值欄位會以 `***` 遮蔽，但日漲跌百分比仍然顯示
 
 > 💡 若單一持倉權重超過 15%，建議留意集中度風險。可前往「個人資產配置」頁的 X-Ray 穿透分析查看更詳細的曝險。
+>
+> ⚠️ **注意**：日漲跌數據需要至少 2 天的歷史資料。新加入的股票或資料不足時會顯示 `N/A`。
 
 ---
 
@@ -247,7 +252,30 @@ with kpi_cols[1]:
 with kpi_cols[2]:
     if rebalance_data and rebalance_data.get("total_value") is not None:
         total_val = rebalance_data["total_value"]
-        st.metric("總市值", _mask_money(total_val))
+        privacy = _is_privacy()
+
+        # Extract daily change data
+        change_pct = rebalance_data.get("total_value_change_pct")
+        change_amt = rebalance_data.get("total_value_change")
+
+        # Format delta string (show percentage always, amount only if not private)
+        if change_pct is not None and change_amt is not None:
+            arrow = "▲" if change_amt >= 0 else "▼"
+            if privacy:
+                delta_str = f"{arrow}{abs(change_pct):.2f}%"
+            else:
+                delta_str = f"{arrow}{abs(change_pct):.2f}% (${abs(change_amt):,.2f})"
+            delta_color = "normal"
+        else:
+            delta_str = None
+            delta_color = "off"
+
+        st.metric(
+            "總市值",
+            _mask_money(total_val),
+            delta=delta_str,
+            delta_color=delta_color,
+        )
     else:
         st.metric("總市值", "N/A")
 
@@ -431,11 +459,21 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
     for h in top_holdings:
         cat = h.get("category", "")
         icon = CATEGORY_ICON_SHORT.get(cat, "")
+
+        # Format daily change with arrow
+        change_pct = h.get("change_pct")
+        if change_pct is not None:
+            arrow = "▲" if change_pct >= 0 else "▼"
+            change_str = f"{arrow}{abs(change_pct):.2f}%"
+        else:
+            change_str = "N/A"
+
         rows.append({
             "股票": h.get("ticker", ""),
             "分類": f"{icon} {cat}",
             "權重": f"{h.get('weight_pct', 0):.1f}%",
             "市值": PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}",
+            "日漲跌": change_str,
         })
 
     if rows:
