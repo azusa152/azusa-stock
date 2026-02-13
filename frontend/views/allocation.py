@@ -33,6 +33,7 @@ from config import (
     STOCK_CATEGORY_OPTIONS,
     STOCK_MARKET_OPTIONS,
     STOCK_MARKET_PLACEHOLDERS,
+    WITHDRAW_PRIORITY_LABELS,
     XRAY_TOP_N_DISPLAY,
     XRAY_WARN_THRESHOLD_PCT,
 )
@@ -48,6 +49,7 @@ from utils import (
     fetch_profile,
     fetch_rebalance,
     fetch_templates,
+    fetch_withdraw,
     format_utc_timestamp,
     invalidate_all_caches,
     invalidate_holding_caches,
@@ -188,6 +190,25 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - **匯率變動警報**：三層級偵測（🔴 單日 >1.5% / 🟡 5日 >2% / 🔵 3月 >8%），以色彩標籤分級顯示
 - **智慧建議**：系統會特別標示現金部位受匯率影響的金額，幫助您聚焦最需要關注的部分
 - **Telegram 警報**：當匯率變動超過三層門檻時發送 Telegram 通知（含現金曝險金額）。系統每 6 小時自動檢查，亦可手動點擊「📨 發送匯率曝險警報至 Telegram」
+
+---
+
+### Step 5 — 聰明提款（Smart Withdrawal）
+
+當你需要從投資組合中提取現金時，系統會透過 **Liquidity Waterfall** 三層優先演算法，自動建議最佳賣出方案：
+
+1. **🔄 再平衡**（Priority 1）：優先賣出超配資產，順便回歸目標配置
+2. **📉 節稅**（Priority 2）：賣出帳面虧損持倉，進行 Tax-Loss Harvesting
+3. **💧 流動性**（Priority 3）：按流動性順序（現金 → 債券 → 成長 → 護城河 → 風向球）賣出
+
+#### 使用方式
+
+- 輸入**提款金額**與**幣別**，點擊「💰 計算提款建議」
+- 系統會顯示賣出建議表格（標的、數量、金額、原因）與摘要指標（目標金額、可賣出總額、缺口）
+- 若投資組合市值不足，會顯示**缺口金額**警告
+- 可選擇開啟「📡 發送 Telegram 通知」，將建議同步至 Telegram
+
+> 💡 聰明提款的核心理念：先賣該賣的（超配），再賣能省稅的（虧損），最後才動用流動性高的資產，保護你的複利核心持倉。
 
 ---
 
@@ -1690,6 +1711,188 @@ with tab_warroom:
                         if advice:
                             st.markdown("**💡 匯率曝險建議：**")
                             _render_advice(advice)
+
+            # -----------------------------------------------------------
+            # Section 5: Smart Withdrawal
+            # -----------------------------------------------------------
+            st.divider()
+            st.subheader("💰 Step 5 — 聰明提款")
+
+            with st.form("withdraw_form"):
+                w_cols = st.columns([2, 2, 2])
+                with w_cols[0]:
+                    w_amount = st.number_input(
+                        "提款金額",
+                        min_value=0.01,
+                        value=1000.0,
+                        step=100.0,
+                        format="%.2f",
+                    )
+                with w_cols[1]:
+                    w_currency = st.selectbox(
+                        "幣別",
+                        options=DISPLAY_CURRENCY_OPTIONS,
+                        key="withdraw_currency",
+                    )
+                with w_cols[2]:
+                    st.write("")  # vertical spacer
+                    w_notify = st.toggle(
+                        "📡 發送 Telegram 通知",
+                        value=False,
+                        key="withdraw_notify",
+                    )
+                w_submit = st.form_submit_button(
+                    "💰 計算提款建議", type="primary"
+                )
+
+            # Fetch on submit; persist result in session_state so it
+            # survives Streamlit re-runs (e.g. privacy toggle).
+            if w_submit and w_amount > 0:
+                with st.status(
+                    "💰 計算聰明提款中...", expanded=True
+                ) as _wd_status:
+                    result = fetch_withdraw(
+                        w_amount, w_currency, w_notify
+                    )
+                    if result and "error_code" in result:
+                        # 404: no profile or no holdings
+                        _wd_status.update(
+                            label="⚠️ 計算失敗",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.warning(
+                            result.get("detail", "請先完成 Step 1 與 Step 2。")
+                        )
+                        st.session_state.pop("withdraw_result", None)
+                    elif result:
+                        st.session_state["withdraw_result"] = result
+                        st.session_state["withdraw_display_cur"] = w_currency
+                        _wd_status.update(
+                            label="✅ 聰明提款建議完成",
+                            state="complete",
+                            expanded=False,
+                        )
+                    else:
+                        st.session_state.pop("withdraw_result", None)
+                        _wd_status.update(
+                            label="⚠️ 計算失敗",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.warning(
+                            "計算提款建議失敗，"
+                            "請稍後再試或確認網路連線正常。"
+                        )
+
+            # Render persisted result (survives re-runs).
+            wd = st.session_state.get("withdraw_result")
+            wd_cur = st.session_state.get("withdraw_display_cur", "USD")
+            if wd:
+                # --- Summary message ---
+                msg = wd.get("message", "")
+                if msg:
+                    st.markdown(f"**{msg}**")
+
+                # --- Metrics row ---
+                m1, m2, m3 = st.columns(3)
+                m1.metric(
+                    "目標提款",
+                    _mask_money(
+                        wd["target_amount"],
+                        f"{wd_cur} {{:,.0f}}",
+                    ),
+                )
+                m2.metric(
+                    "可賣出總額",
+                    _mask_money(
+                        wd["total_sell_value"],
+                        f"{wd_cur} {{:,.0f}}",
+                    ),
+                )
+                shortfall = wd.get("shortfall", 0)
+                if shortfall > 0:
+                    m3.metric(
+                        "缺口",
+                        _mask_money(
+                            shortfall,
+                            f"{wd_cur} {{:,.0f}}",
+                        ),
+                        delta="不足",
+                        delta_color="inverse",
+                    )
+                    st.warning(
+                        "投資組合市值不足以完全覆蓋提款需求。"
+                    )
+                else:
+                    m3.metric(
+                        "缺口", "0", delta="充足", delta_color="normal"
+                    )
+
+                # --- Recommendations table ---
+                recs = wd.get("recommendations", [])
+                if recs:
+                    st.markdown("**📋 賣出建議：**")
+                    rows = []
+                    for r in recs:
+                        cat = r["category"]
+                        icon = CATEGORY_ICON_SHORT.get(cat, "")
+                        upl = r.get("unrealized_pl")
+                        rows.append(
+                            {
+                                "優先序": WITHDRAW_PRIORITY_LABELS.get(
+                                    r["priority"], "?"
+                                ),
+                                "標的": r["ticker"],
+                                "類別": f"{icon} {cat}",
+                                "賣出數量": _mask_qty(
+                                    r["quantity_to_sell"]
+                                ),
+                                "賣出金額": _mask_money(
+                                    r["sell_value"],
+                                    f"{wd_cur} {{:,.2f}}",
+                                ),
+                                "未實現損益": (
+                                    _mask_money(
+                                        upl,
+                                        f"{wd_cur} {{:+,.2f}}",
+                                    )
+                                    if upl is not None
+                                    else "—"
+                                ),
+                                "原因": (
+                                    PRIVACY_MASK
+                                    if _is_privacy()
+                                    else r["reason"]
+                                ),
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                # --- Post-sell drifts ---
+                drifts = wd.get("post_sell_drifts", {})
+                if drifts:
+                    st.markdown("**📊 賣出後預估配置偏移：**")
+                    drift_rows = []
+                    for cat, d in drifts.items():
+                        icon = CATEGORY_ICON_SHORT.get(cat, "")
+                        drift_rows.append(
+                            {
+                                "類別": f"{icon} {cat}",
+                                "目標 %": f"{d['target_pct']:.1f}%",
+                                "預估 %": f"{d['current_pct']:.1f}%",
+                                "偏移": f"{d['drift_pct']:+.1f}%",
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(drift_rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
         elif not profile:
             st.caption("請先完成 Step 1（設定目標配置）。")

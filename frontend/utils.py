@@ -28,6 +28,7 @@ from config import (
     API_PUT_TIMEOUT,
     API_REBALANCE_TIMEOUT,
     API_SIGNALS_TIMEOUT,
+    API_WITHDRAW_TIMEOUT,
     BACKEND_URL,
     BIAS_OVERHEATED_UI,
     BIAS_OVERSOLD_UI,
@@ -402,6 +403,48 @@ def fetch_currency_exposure() -> dict | None:
             return resp.json()
         return None
     except requests.RequestException:
+        return None
+
+
+def fetch_withdraw(
+    target_amount: float,
+    display_currency: str = "USD",
+    notify: bool = False,
+) -> dict | None:
+    """POST /withdraw — 聰明提款建議（Liquidity Waterfall）。
+
+    Not cached: each call is a user-initiated action with unique parameters.
+    Returns the JSON dict on success, ``None`` on any failure.
+    On 404 (no profile / no holdings) returns ``{"error_code": "...", ...}``
+    so the UI can show a specific message instead of a generic failure.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/withdraw",
+            json={
+                "target_amount": target_amount,
+                "display_currency": display_currency,
+                "notify": notify,
+            },
+            timeout=API_WITHDRAW_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        # Surface 404 (no profile / no holdings) distinctly
+        if resp.status_code == 404:
+            try:
+                return resp.json().get("detail", {})
+            except Exception:
+                pass
+        try:
+            body = resp.json()
+            detail = body.get("detail", body)
+        except Exception:
+            detail = resp.text
+        logger.warning("提款 API 回傳 %s: %s", resp.status_code, detail)
+        return None
+    except requests.RequestException as exc:
+        logger.error("提款 API 連線失敗: %s", exc)
         return None
 
 

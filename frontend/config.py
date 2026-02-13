@@ -137,8 +137,14 @@ CACHE_TTL_PROFILE = 300  # 5 minutes
 CACHE_TTL_HOLDINGS = 300  # 5 minutes
 CACHE_TTL_REBALANCE = 60  # 1 minute (contains live prices)
 API_REBALANCE_TIMEOUT = 30
+API_WITHDRAW_TIMEOUT = 30
 DRIFT_CHART_HEIGHT = 300
 ALLOCATION_CHART_HEIGHT = 400
+WITHDRAW_PRIORITY_LABELS = {
+    1: "🔄 再平衡",
+    2: "📉 節稅",
+    3: "💧 流動性",
+}
 
 # ---------------------------------------------------------------------------
 # External URLs
