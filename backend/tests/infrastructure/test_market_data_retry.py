@@ -63,9 +63,7 @@ class TestCachedFetchErrorSkip:
         error_result = {"error": "⚠️ Could not resolve host"}
 
         with (
-            patch(
-                "infrastructure.market_data._disk_get", return_value=None
-            ),
+            patch("infrastructure.market_data._disk_get", return_value=None),
             patch("infrastructure.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
@@ -117,9 +115,7 @@ class TestCachedFetchErrorSkip:
         success_result = {"ticker": "NVDA", "price": 120.0, "rsi": 55.0}
 
         with (
-            patch(
-                "infrastructure.market_data._disk_get", return_value=None
-            ),
+            patch("infrastructure.market_data._disk_get", return_value=None),
             patch("infrastructure.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=success_result)

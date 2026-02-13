@@ -32,8 +32,9 @@ install: ## 建立 venv 並安裝依賴（首次設定用）
 test: ## 執行所有後端測試（in-memory SQLite，與 CI 一致）
 	$(PYTHON) -m pytest backend/tests/ -v --tb=short
 
-lint: ## 執行 ruff check --fix（靜態分析 + 自動修正）
+lint: ## 執行 ruff check --fix + format --check（靜態分析 + 格式檢查）
 	$(RUFF) check --fix backend/
+	$(RUFF) format --check backend/
 
 format: ## 執行 ruff format（程式碼格式化）
 	$(RUFF) format backend/
