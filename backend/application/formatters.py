@@ -3,7 +3,12 @@ Application — 表示層格式化函式。
 將原始數值資料轉換為使用者可讀的狀態文字。
 """
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from domain.withdrawal import WithdrawalPlan
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
@@ -134,8 +139,8 @@ _PRIORITY_LABEL: dict[int, str] = {
 
 
 def format_withdrawal_telegram(
-    plan: "WithdrawalPlan", display_currency: str = "USD"
-) -> str:  # noqa: F821
+    plan: WithdrawalPlan, display_currency: str = "USD"
+) -> str:
     """
     將 WithdrawalPlan 格式化為 Telegram HTML 訊息。
 

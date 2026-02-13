@@ -65,7 +65,7 @@ class TestCachedFetchErrorSkip:
         with (
             patch(
                 "infrastructure.market_data._disk_get", return_value=None
-            ) as mock_disk_get,
+            ),
             patch("infrastructure.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
@@ -119,7 +119,7 @@ class TestCachedFetchErrorSkip:
         with (
             patch(
                 "infrastructure.market_data._disk_get", return_value=None
-            ) as mock_disk_get,
+            ),
             patch("infrastructure.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=success_result)

@@ -10,8 +10,6 @@ import time
 from datetime import datetime, timezone
 from typing import Callable, Optional, TypeVar
 
-T = TypeVar("T")
-
 import diskcache
 import requests as http_requests
 import yfinance as yf
@@ -25,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from application.formatters import build_moat_details, build_signal_status
 from domain.analysis import (
     classify_vix,
     compute_bias,
@@ -35,7 +34,6 @@ from domain.analysis import (
     determine_market_sentiment,
     determine_moat_status,
 )
-from application.formatters import build_moat_details, build_signal_status
 from domain.constants import (
     CNN_FG_API_URL,
     CNN_FG_REQUEST_TIMEOUT,
@@ -101,6 +99,8 @@ from domain.constants import (
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
 from logging_config import get_logger
+
+T = TypeVar("T")
 
 logger = get_logger(__name__)
 
