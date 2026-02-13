@@ -227,6 +227,17 @@ FEAR_GREED_DEFAULT_LABEL = "⏳ 無資料"
 CACHE_TTL_FEAR_GREED = 1800  # 30 minutes
 API_FEAR_GREED_TIMEOUT = 15
 
+# Fear & Greed Gauge Chart (CNN-style semicircle)
+FEAR_GREED_GAUGE_HEIGHT = 200
+FEAR_GREED_GAUGE_BANDS: list[dict] = [
+    {"range": [0, 25], "color": "#d32f2f"},  # 極度恐懼 — dark red
+    {"range": [25, 45], "color": "#ff9800"},  # 恐懼 — orange
+    {"range": [45, 55], "color": "#fdd835"},  # 中性 — yellow
+    {"range": [55, 75], "color": "#66bb6a"},  # 貪婪 — light green
+    {"range": [75, 100], "color": "#2e7d32"},  # 極度貪婪 — dark green
+]
+FEAR_GREED_CNN_UNAVAILABLE_MSG = "⚠️ CNN 資料不可用，僅使用 VIX"
+
 DASHBOARD_DRIFT_CHART_HEIGHT = 250
 DASHBOARD_ALLOCATION_CHART_HEIGHT = 300
 

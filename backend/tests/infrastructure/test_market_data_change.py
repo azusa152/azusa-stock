@@ -44,8 +44,8 @@ class TestDailyChangeCalculation:
         assert result["change_pct"] == pytest.approx(4.35, rel=0.01)  # (120-115)/115*100
 
     @patch("infrastructure.market_data._yf_history")
-    def test_fetch_signals_should_return_none_change_when_insufficient_history(self, mock_yf):
-        # Arrange: Only 1 day of history
+    def test_fetch_signals_should_return_error_when_insufficient_history(self, mock_yf):
+        # Arrange: Only 1 day of history (< MIN_HISTORY_DAYS_FOR_SIGNALS)
         mock_stock = MagicMock()
         mock_hist = pd.DataFrame(
             {
@@ -58,10 +58,9 @@ class TestDailyChangeCalculation:
         # Act
         result = _fetch_signals_from_yf("NVDA")
 
-        # Assert
-        assert result["price"] == 120.0
-        assert result["previous_close"] is None
-        assert result["change_pct"] is None
+        # Assert — insufficient history returns error dict, not price data
+        assert "error" in result
+        assert "price" not in result
 
     @patch("infrastructure.market_data._yf_history")
     def test_fetch_signals_should_handle_zero_previous_close(self, mock_yf):

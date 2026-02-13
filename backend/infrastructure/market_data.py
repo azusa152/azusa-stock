@@ -28,6 +28,7 @@ from domain.analysis import (
     classify_vix,
     compute_bias,
     compute_composite_fear_greed,
+    compute_daily_change_pct,
     compute_moving_average,
     compute_rsi,
     compute_volume_ratio,
@@ -335,8 +336,7 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         change_pct = None
         if len(closes) >= MIN_CLOSE_PRICES_FOR_CHANGE:
             previous_close = round(closes[-2], 2)
-            if previous_close > 0:
-                change_pct = round(((current_price - previous_close) / previous_close) * 100, 2)
+            change_pct = compute_daily_change_pct(current_price, previous_close)
             logger.debug(
                 "%s 日漲跌：previous=%.2f, current=%.2f, change=%.2f%%",
                 ticker,

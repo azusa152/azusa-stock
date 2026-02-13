@@ -22,6 +22,11 @@ from domain.constants import (
     VIX_FEAR,
     VIX_GREED,
     VIX_NEUTRAL_LOW,
+    VIX_SCORE_BREAKPOINTS,
+    VIX_SCORE_CEILING,
+    VIX_SCORE_CEILING_VIX,
+    VIX_SCORE_FLOOR,
+    VIX_SCORE_FLOOR_VIX,
     VOLUME_RATIO_LONG_DAYS,
     VOLUME_RATIO_SHORT_DAYS,
 )
@@ -66,6 +71,13 @@ def compute_bias(price: float, ma60: float) -> Optional[float]:
     if ma60 and ma60 != 0:
         return round((price - ma60) / ma60 * 100, 2)
     return None
+
+
+def compute_daily_change_pct(current: float, previous: float) -> Optional[float]:
+    """計算日漲跌百分比。previous 為 0 時回傳 None。"""
+    if previous <= 0:
+        return None
+    return round((current - previous) / previous * 100, 2)
 
 
 def compute_volume_ratio(volumes: list[float]) -> Optional[float]:
@@ -229,14 +241,35 @@ _LEVEL_SCORE: dict[FearGreedLevel, int] = {
 
 def _vix_to_score(vix_value: Optional[float]) -> int:
     """
-    將 VIX 值線性映射至 0–100 恐懼貪婪分數。
-    VIX 40+ → 0, VIX 8 → 100。
+    將 VIX 值以分段線性映射至 0–100 恐懼貪婪分數。
+    對齊 VIX 區間與 CNN 分數分級閾值，確保 VIX 分類與分數區間一致。
+    VIX ≥ 40 → 0, VIX ≤ 8 → 100。
     """
     if vix_value is None:
         return 50
-    # 線性反轉：高 VIX = 低分數（恐懼），低 VIX = 高分數（貪婪）
-    score = round((40.0 - vix_value) / 32.0 * 100.0)
-    return max(0, min(100, score))
+
+    # 完整分段映射：(VIX 值, 對應分數)，VIX 遞減排列
+    points = [
+        (VIX_SCORE_FLOOR_VIX, VIX_SCORE_FLOOR),
+        *VIX_SCORE_BREAKPOINTS,
+        (VIX_SCORE_CEILING_VIX, VIX_SCORE_CEILING),
+    ]
+
+    # 超出邊界則鉗制
+    if vix_value >= points[0][0]:
+        return points[0][1]
+    if vix_value <= points[-1][0]:
+        return points[-1][1]
+
+    # 找到所在區間並線性內插
+    for i in range(len(points) - 1):
+        vix_high, score_at_high = points[i]
+        vix_low, score_at_low = points[i + 1]
+        if vix_value >= vix_low:
+            ratio = (vix_high - vix_value) / (vix_high - vix_low)
+            return round(score_at_high + ratio * (score_at_low - score_at_high))
+
+    return 50  # fallback（理論上不會執行到此）
 
 
 def compute_composite_fear_greed(

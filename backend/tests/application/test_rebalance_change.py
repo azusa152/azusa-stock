@@ -1,5 +1,6 @@
 """Tests for portfolio-level daily change calculation in rebalance_service."""
 
+import json
 import os
 import tempfile
 
@@ -26,20 +27,19 @@ class TestRebalancePortfolioChange:
     """Tests for portfolio-level daily change calculation."""
 
     @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_forex_rate")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
     def test_calculate_rebalance_should_include_total_change(
-        self, mock_forex, mock_signals, db_session: Session
+        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
     ):
         # Arrange
-        # Create user profile
         profile = UserInvestmentProfile(
             user_id="default",
-            config={"Growth": 100},
+            config=json.dumps({"Growth": 100}),
             is_active=True,
         )
         db_session.add(profile)
 
-        # Create holding
         holding = Holding(
             user_id="default",
             ticker="NVDA",
@@ -58,7 +58,7 @@ class TestRebalancePortfolioChange:
             "previous_close": 110.0,
             "change_pct": 9.09,
         }
-        mock_forex.return_value = 1.0
+        mock_fx.return_value = {"USD": 1.0}
 
         # Act
         result = calculate_rebalance(db_session, "USD")
@@ -79,14 +79,15 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change_pct"] == pytest.approx(9.09, rel=0.01)
 
     @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_forex_rate")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
     def test_calculate_rebalance_should_include_holding_change_pct(
-        self, mock_forex, mock_signals, db_session: Session
+        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
     ):
         # Arrange
         profile = UserInvestmentProfile(
             user_id="default",
-            config={"Growth": 100},
+            config=json.dumps({"Growth": 100}),
             is_active=True,
         )
         db_session.add(profile)
@@ -109,7 +110,7 @@ class TestRebalancePortfolioChange:
             "previous_close": 175.0,
             "change_pct": 2.86,
         }
-        mock_forex.return_value = 1.0
+        mock_fx.return_value = {"USD": 1.0}
 
         # Act
         result = calculate_rebalance(db_session, "USD")
@@ -127,14 +128,15 @@ class TestRebalancePortfolioChange:
         assert holding_detail["change_pct"] == pytest.approx(2.86, rel=0.01)
 
     @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_forex_rate")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
     def test_calculate_rebalance_should_handle_missing_previous_close(
-        self, mock_forex, mock_signals, db_session: Session
+        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
     ):
         # Arrange: New stock with no previous_close
         profile = UserInvestmentProfile(
             user_id="default",
-            config={"Growth": 100},
+            config=json.dumps({"Growth": 100}),
             is_active=True,
         )
         db_session.add(profile)
@@ -157,34 +159,29 @@ class TestRebalancePortfolioChange:
             "previous_close": None,
             "change_pct": None,
         }
-        mock_forex.return_value = 1.0
+        mock_fx.return_value = {"USD": 1.0}
 
         # Act
         result = calculate_rebalance(db_session, "USD")
 
-        # Assert
+        # Assert — no previous_close: fallback to current price, daily change = 0
         holding_detail = result["holdings_detail"][0]
+        assert result["total_value"] == pytest.approx(550.0, rel=0.01)
+        assert result["previous_total_value"] == pytest.approx(550.0, rel=0.01)
+        assert holding_detail["change_pct"] == pytest.approx(0.0, abs=0.01)
 
-        # Should fallback to cost_basis for previous value
-        # Current: 10 * 55 = 550
-        # Previous (fallback to cost): 10 * 50 = 500
-        # Change: (550 - 500) / 500 * 100 = 10%
-        assert holding_detail["change_pct"] == pytest.approx(10.0, rel=0.01)
-
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_forex_rate")
+    @patch("application.rebalance_service.get_exchange_rates")
     def test_calculate_rebalance_should_handle_zero_previous_total_value(
-        self, mock_forex, mock_signals, db_session: Session
+        self, mock_fx, db_session: Session
     ):
-        # Arrange: Portfolio with no previous value (edge case)
+        # Arrange: Portfolio with cash only (no price change)
         profile = UserInvestmentProfile(
             user_id="default",
-            config={"Cash": 100},
+            config=json.dumps({"Cash": 100}),
             is_active=True,
         )
         db_session.add(profile)
 
-        # Cash holding (no price change)
         holding = Holding(
             user_id="default",
             ticker="USD",
@@ -196,33 +193,32 @@ class TestRebalancePortfolioChange:
         db_session.add(holding)
         db_session.commit()
 
-        mock_forex.return_value = 1.0
+        mock_fx.return_value = {"USD": 1.0}
 
         # Act
         result = calculate_rebalance(db_session, "USD")
 
         # Assert
         # Cash has no change (same current and previous)
-        # So change_pct should be 0.0
         assert result["total_value"] == pytest.approx(1000.0, rel=0.01)
         assert result["previous_total_value"] == pytest.approx(1000.0, rel=0.01)
         assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change_pct"] == pytest.approx(0.0, rel=0.01)
 
     @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_forex_rate")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
     def test_calculate_rebalance_should_aggregate_multiple_holdings_change(
-        self, mock_forex, mock_signals, db_session: Session
+        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
     ):
         # Arrange: Multiple holdings with different changes
         profile = UserInvestmentProfile(
             user_id="default",
-            config={"Growth": 100},
+            config=json.dumps({"Growth": 100}),
             is_active=True,
         )
         db_session.add(profile)
 
-        # Holding 1: NVDA (increased)
         holding1 = Holding(
             user_id="default",
             ticker="NVDA",
@@ -234,7 +230,6 @@ class TestRebalancePortfolioChange:
         )
         db_session.add(holding1)
 
-        # Holding 2: AAPL (decreased)
         holding2 = Holding(
             user_id="default",
             ticker="AAPL",
@@ -264,7 +259,7 @@ class TestRebalancePortfolioChange:
             return None
 
         mock_signals.side_effect = mock_signals_side_effect
-        mock_forex.return_value = 1.0
+        mock_fx.return_value = {"USD": 1.0}
 
         # Act
         result = calculate_rebalance(db_session, "USD")

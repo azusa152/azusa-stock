@@ -16,7 +16,10 @@ from config import (
     DASHBOARD_DRIFT_CHART_HEIGHT,
     DASHBOARD_TOP_HOLDINGS_LIMIT,
     DISPLAY_CURRENCY_OPTIONS,
+    FEAR_GREED_CNN_UNAVAILABLE_MSG,
     FEAR_GREED_DEFAULT_LABEL,
+    FEAR_GREED_GAUGE_BANDS,
+    FEAR_GREED_GAUGE_HEIGHT,
     FEAR_GREED_LABELS,
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
@@ -102,6 +105,29 @@ with st.expander("📖 投資組合總覽：使用說明書", expanded=False):
 - **🔍 上次掃描** — 最近一次執行三層漏斗掃描的時間。掃描每 30 分鐘自動執行一次
 
 > 若兩者時間差距過大，可前往「投資雷達」頁面手動觸發掃描。
+
+---
+
+### 🎯 恐懼與貪婪指數（半圓儀表板）
+
+KPI 列上方的半圓儀表板顯示**綜合恐懼與貪婪指數**（0–100 分）。
+
+**資料來源：**
+- **VIX（40% 權重）** — CBOE 波動率指數，反映市場對未來 30 天波動的預期
+- **CNN Fear & Greed Index（60% 權重）** — CNN 綜合七項市場指標的情緒指數
+- 若 CNN 資料不可用，將 100% 使用 VIX 計算，並在儀表板下方顯示警告
+
+**色帶含義（由左至右）：**
+
+| 分數範圍 | 顏色 | 等級 |
+|----------|------|------|
+| 0–25 | 🟥 深紅 | 極度恐懼 |
+| 25–45 | 🟧 橘色 | 恐懼 |
+| 45–55 | 🟨 黃色 | 中性 |
+| 55–75 | 🟩 淺綠 | 貪婪 |
+| 75–100 | 🟢 深綠 | 極度貪婪 |
+
+**如何解讀：** 指針指向的位置即為當前市場情緒。儀表板下方顯示 VIX 值與日變動、CNN 分數（若可用）。
 
 ---
 
@@ -206,9 +232,67 @@ else:
 
 
 # ---------------------------------------------------------------------------
+# Section 0: Fear & Greed Gauge Chart
+# ---------------------------------------------------------------------------
+fear_greed_data = fetch_fear_greed()
+
+if fear_greed_data:
+    fg_level = fear_greed_data.get("composite_level", "N/A")
+    fg_score = fear_greed_data.get("composite_score", 50)
+    fg_info = FEAR_GREED_LABELS.get(fg_level, FEAR_GREED_LABELS["N/A"])
+    vix_data = fear_greed_data.get("vix") or {}
+    vix_val = vix_data.get("value")
+    vix_change = vix_data.get("change_1d")
+    cnn_data = fear_greed_data.get("cnn")
+    cnn_score = cnn_data.get("score") if cnn_data else None
+
+    # Gauge title: level label without emoji (e.g., "恐懼")
+    gauge_title = fg_info["label"].split(" ", 1)[-1] if " " in fg_info["label"] else fg_info["label"]
+
+    fig_gauge = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=fg_score,
+            title={"text": gauge_title, "font": {"size": 18}},
+            number={"suffix": "/100", "font": {"size": 28}},
+            gauge={
+                "axis": {"range": [0, 100], "tickwidth": 1},
+                "bar": {"color": "#333333"},
+                "steps": [
+                    {"range": band["range"], "color": band["color"]}
+                    for band in FEAR_GREED_GAUGE_BANDS
+                ],
+            },
+        )
+    )
+    fig_gauge.update_layout(
+        height=FEAR_GREED_GAUGE_HEIGHT,
+        margin=dict(l=30, r=30, t=40, b=10),
+    )
+    st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
+
+    # Caption: VIX info + CNN availability
+    caption_parts: list[str] = []
+    if vix_val is not None:
+        vix_str = f"VIX={vix_val:.1f}"
+        if vix_change is not None:
+            arrow = "▲" if vix_change > 0 else "▼"
+            vix_str += f" ({arrow}{abs(vix_change):.1f})"
+        caption_parts.append(vix_str)
+    if cnn_score is not None:
+        caption_parts.append(f"CNN={cnn_score}")
+    else:
+        caption_parts.append(FEAR_GREED_CNN_UNAVAILABLE_MSG)
+
+    st.caption(" ｜ ".join(caption_parts))
+else:
+    st.caption(FEAR_GREED_DEFAULT_LABEL)
+
+
+# ---------------------------------------------------------------------------
 # Section 1: KPI Metrics Row
 # ---------------------------------------------------------------------------
-kpi_cols = st.columns(5)
+kpi_cols = st.columns(4)
 
 # -- 1a. Market Sentiment --
 with kpi_cols[0]:
@@ -222,34 +306,8 @@ with kpi_cols[0]:
     else:
         st.metric("市場情緒", MARKET_SENTIMENT_DEFAULT_LABEL)
 
-# -- 1b. Fear & Greed Index --
+# -- 1b. Total Portfolio Value --
 with kpi_cols[1]:
-    fear_greed_data = fetch_fear_greed()
-    if fear_greed_data:
-        fg_level = fear_greed_data.get("composite_level", "N/A")
-        fg_score = fear_greed_data.get("composite_score", 50)
-        fg_info = FEAR_GREED_LABELS.get(fg_level, FEAR_GREED_LABELS["N/A"])
-        vix_data = fear_greed_data.get("vix") or {}
-        vix_val = vix_data.get("value")
-        vix_change = vix_data.get("change_1d")
-        st.metric(
-            "恐懼貪婪",
-            fg_info["label"],
-            delta=f"分數 {fg_score}/100",
-            delta_color=fg_info["color"],
-        )
-        vix_parts = []
-        if vix_val is not None:
-            vix_parts.append(f"VIX={vix_val:.1f}")
-        if vix_change is not None:
-            vix_parts.append(f"{'▲' if vix_change > 0 else '▼'}{abs(vix_change):.1f}")
-        if vix_parts:
-            st.caption(" ".join(vix_parts))
-    else:
-        st.metric("恐懼貪婪", FEAR_GREED_DEFAULT_LABEL)
-
-# -- 1c. Total Portfolio Value --
-with kpi_cols[2]:
     if rebalance_data and rebalance_data.get("total_value") is not None:
         total_val = rebalance_data["total_value"]
         privacy = _is_privacy()
@@ -260,7 +318,7 @@ with kpi_cols[2]:
 
         # Format delta string (show percentage always, amount only if not private)
         if change_pct is not None and change_amt is not None:
-            arrow = "▲" if change_amt >= 0 else "▼"
+            arrow = "▲" if change_pct >= 0 else "▼"
             if privacy:
                 delta_str = f"{arrow}{abs(change_pct):.2f}%"
             else:
@@ -279,8 +337,8 @@ with kpi_cols[2]:
     else:
         st.metric("總市值", "N/A")
 
-# -- 1d. Health Score --
-with kpi_cols[3]:
+# -- 1c. Health Score --
+with kpi_cols[2]:
     health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
     if total_cnt > 0:
         st.metric(
@@ -292,8 +350,8 @@ with kpi_cols[3]:
     else:
         st.metric("健康分數", "N/A")
 
-# -- 1e. Tracking & Holdings Count --
-with kpi_cols[4]:
+# -- 1d. Tracking & Holdings Count --
+with kpi_cols[3]:
     stock_count = len(stocks_data) if stocks_data else 0
     holding_count = len(holdings_data) if holdings_data else 0
     st.metric("追蹤 / 持倉", f"{stock_count} 檔 / {holding_count} 筆")

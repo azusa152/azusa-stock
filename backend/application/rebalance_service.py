@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlmodel import Session, select
 
 from application.stock_service import StockNotFoundError
+from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     XRAY_SINGLE_STOCK_WARN_PCT,
@@ -92,11 +93,9 @@ def _compute_holding_market_values(
             # 計算前一交易日市值
             if previous_close is not None and isinstance(previous_close, (int, float)):
                 previous_market_value = h.quantity * previous_close * fx
-            elif h.cost_basis is not None:
-                # 無 previous_close 時回退至成本價
-                previous_market_value = h.quantity * h.cost_basis * fx
             else:
-                previous_market_value = 0.0
+                # 無 previous_close 時回退至當前市值，日漲跌為 0
+                previous_market_value = market_value
 
         currency_values[h.currency] = (
             currency_values.get(h.currency, 0.0) + market_value
@@ -192,12 +191,9 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     # 6) 計算投資組合日漲跌
     total_value = result["total_value"]
     previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
-    if previous_total_value > 0:
-        total_value_change = total_value - previous_total_value
-        total_value_change_pct = round((total_value_change / previous_total_value) * 100, 2)
-    else:
-        # 前一交易日市值為 0（空倉或純現金），變動設為 0.0
-        total_value_change = 0.0
+    total_value_change = round(total_value - previous_total_value, 2)
+    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
+    if total_value_change_pct is None:
         total_value_change_pct = 0.0
 
     logger.info(
@@ -225,10 +221,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         cur_price = agg["price"]
 
         # 計算個股日漲跌百分比
-        prev_mv = agg["prev_mv"]
-        holding_change_pct = None
-        if prev_mv > 0 and agg["mv"] > 0:
-            holding_change_pct = round(((agg["mv"] - prev_mv) / prev_mv) * 100, 2)
+        holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
 
         holdings_detail.append(
             {
