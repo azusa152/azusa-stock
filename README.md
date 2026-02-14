@@ -59,7 +59,7 @@
 
 ### 介面與操作
 
-- **三頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）
+- **四頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
@@ -723,12 +723,17 @@ azusa-stock/
 │   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
 │   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測 + 隱私模式載入 + FX 監控頁
 │   └── views/
-│       ├── components/               # 可重用 UI 元件
+│       ├── components/               # 可重用 UI 元件（各 Step 獨立元件）
 │       │   ├── __init__.py
-│       │   └── stress_test.py        # 壓力測試元件（滑桿 + 痛苦等級 + 持倉明細）
+│       │   ├── target_allocation.py  # Step 1：目標配置（範本選擇 + 微調）
+│       │   ├── holdings_manager.py   # Step 2：持倉管理（即時編輯 + 儲存 + 刪除）
+│       │   ├── rebalance.py          # Step 3：再平衡分析（餅圖 + Drift + X-Ray）
+│       │   ├── currency_exposure.py  # Step 4：匯率曝險（甜甜圈圖 + 警報 + 建議）
+│       │   ├── withdrawal.py         # Step 5：聰明提款（Waterfall 演算 + 賣出建議）
+│       │   └── stress_test.py        # Step 6：壓力測試（滑桿 + 痛苦等級 + 持倉明細）
 │       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）
 │       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
-│       └── allocation.py             # 個人資產配置頁（War Room + Telegram 設定）
+│       └── allocation.py             # 個人資產配置頁（War Room 編排器 + Telegram 設定）
 │
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）

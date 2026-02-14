@@ -118,66 +118,70 @@ def _render_existing_profile(
     if switch_clicked:
         _render_switch_picker(templates, profile)
 
-    # -- Adjust percentages --
-    _render_config_editor(profile, target)
+    # -- Adjust percentages (toggle) --
+    if st.button("✏️ 調整目標配置", key="toggle_config_editor"):
+        st.session_state["show_config_editor"] = not st.session_state.get(
+            "show_config_editor", False
+        )
+    if st.session_state.get("show_config_editor", False):
+        _render_config_editor(profile, target)
 
 
 def _render_switch_picker(
     templates: list[dict], profile: dict
 ) -> None:
-    """Render the persona switch picker expander."""
-    with st.expander("🔄 選擇新的投資風格範本", expanded=True):
-        if templates:
-            home_cur = profile.get("home_currency", "TWD")
-            sw_cols = st.columns(3)
-            for idx, tmpl in enumerate(templates):
-                with sw_cols[idx % 3]:
-                    _render_template_card(
-                        tmpl,
-                        key_prefix="switch_tmpl",
-                        home_currency=home_cur,
-                        success_msg=f"✅ 已切換至「{tmpl['name']}」",
-                    )
-        else:
-            st.warning("⚠️ 無法載入範本。")
+    """Render the persona switch picker."""
+    st.markdown("**🔄 選擇新的投資風格範本**")
+    if templates:
+        home_cur = profile.get("home_currency", "TWD")
+        sw_cols = st.columns(3)
+        for idx, tmpl in enumerate(templates):
+            with sw_cols[idx % 3]:
+                _render_template_card(
+                    tmpl,
+                    key_prefix="switch_tmpl",
+                    home_currency=home_cur,
+                    success_msg=f"✅ 已切換至「{tmpl['name']}」",
+                )
+    else:
+        st.warning("⚠️ 無法載入範本。")
 
 
 def _render_config_editor(profile: dict, target: dict) -> None:
     """Render the target config percentage editor."""
-    with st.expander("✏️ 調整目標配置", expanded=False):
-        edit_cols = st.columns(len(CATEGORY_OPTIONS))
-        new_config = {}
-        for i, cat in enumerate(CATEGORY_OPTIONS):
-            with edit_cols[i]:
-                label = (
-                    CATEGORY_LABELS.get(cat, cat)
-                    .split("(")[0]
-                    .strip()
-                )
-                new_config[cat] = st.number_input(
-                    label,
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=float(target.get(cat, 0)),
-                    step=5.0,
-                    key=f"target_{cat}",
-                )
-
-        total_pct = sum(new_config.values())
-        if abs(total_pct - 100) > 0.01:
-            st.warning(
-                f"⚠️ 配置合計 {total_pct:.0f}%，應為 100%。"
+    edit_cols = st.columns(len(CATEGORY_OPTIONS))
+    new_config = {}
+    for i, cat in enumerate(CATEGORY_OPTIONS):
+        with edit_cols[i]:
+            label = (
+                CATEGORY_LABELS.get(cat, cat)
+                .split("(")[0]
+                .strip()
             )
-        else:
-            if st.button("💾 儲存配置", key="save_profile"):
-                result = api_put(
-                    f"/profiles/{profile['id']}",
-                    {"config": new_config},
-                )
-                if result:
-                    st.success("✅ 配置已更新")
-                    invalidate_profile_caches()
-                    st.rerun()
+            new_config[cat] = st.number_input(
+                label,
+                min_value=0.0,
+                max_value=100.0,
+                value=float(target.get(cat, 0)),
+                step=5.0,
+                key=f"target_{cat}",
+            )
+
+    total_pct = sum(new_config.values())
+    if abs(total_pct - 100) > 0.01:
+        st.warning(
+            f"⚠️ 配置合計 {total_pct:.0f}%，應為 100%。"
+        )
+    else:
+        if st.button("💾 儲存配置", key="save_profile"):
+            result = api_put(
+                f"/profiles/{profile['id']}",
+                {"config": new_config},
+            )
+            if result:
+                st.success("✅ 配置已更新")
+                invalidate_profile_caches()
+                st.rerun()
 
 
 def _render_initial_setup(templates: list[dict]) -> None:
