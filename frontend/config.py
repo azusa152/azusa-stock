@@ -10,6 +10,7 @@ import os
 # Backend Connection
 # ---------------------------------------------------------------------------
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+FOLIO_API_KEY = os.getenv("FOLIO_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # API Timeouts (seconds)

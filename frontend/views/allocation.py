@@ -42,6 +42,8 @@ from utils import (
     invalidate_all_caches,
     invalidate_holding_caches,
     invalidate_stock_caches,
+    is_privacy,
+    mask_id,
     on_privacy_change as _on_privacy_change,
     post_digest,
     post_telegram_test,
@@ -699,10 +701,11 @@ with tab_telegram:
         with tg_cols[0]:
             st.metric("模式", mode_label)
         with tg_cols[1]:
-            st.metric(
-                "Chat ID",
-                tg_settings.get("telegram_chat_id") or "未設定",
-            )
+            # Mask Chat ID in privacy mode
+            chat_id = tg_settings.get("telegram_chat_id") or "未設定"
+            if chat_id != "未設定":
+                chat_id = mask_id(chat_id)
+            st.metric("Chat ID", chat_id)
         with tg_cols[2]:
             st.metric(
                 "自訂 Token",
@@ -716,9 +719,13 @@ with tab_telegram:
         ),
     ):
         with st.form("telegram_settings_form"):
+            # Don't pre-fill Chat ID in privacy mode to prevent shoulder surfing
+            tg_chat_value = (tg_settings or {}).get("telegram_chat_id", "")
+            if is_privacy() and tg_chat_value:
+                tg_chat_value = ""
             tg_chat = st.text_input(
                 "Telegram Chat ID",
-                value=(tg_settings or {}).get("telegram_chat_id", ""),
+                value=tg_chat_value,
                 placeholder="例如 123456789",
             )
             tg_token = st.text_input(
