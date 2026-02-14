@@ -11,7 +11,11 @@ from domain.constants import CATEGORY_FALLBACK_BETA, DEFAULT_USER_ID
 from domain.entities import Holding
 from domain.enums import StockCategory
 from domain.stress_test import calculate_stress_test as _pure_stress_test
-from infrastructure.market_data import get_exchange_rates, get_stock_beta, prewarm_beta_batch
+from infrastructure.market_data import (
+    get_exchange_rates,
+    get_stock_beta,
+    prewarm_beta_batch,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -57,13 +61,14 @@ def calculate_stress_test(
     fx_rates = get_exchange_rates(display_currency, holding_currencies)
 
     # 3) 計算持倉市值（複用再平衡服務邏輯）
-    _currency_values, _cash_currency_values, ticker_agg = _compute_holding_market_values(
-        holdings, fx_rates
+    _currency_values, _cash_currency_values, ticker_agg = (
+        _compute_holding_market_values(holdings, fx_rates)
     )
 
     # 4) 收集需要 Beta 的標的（排除現金）
     non_cash_tickers = [
-        ticker for ticker, data in ticker_agg.items()
+        ticker
+        for ticker, data in ticker_agg.items()
         if data["category"] != StockCategory.CASH.value
     ]
 
@@ -99,15 +104,21 @@ def calculate_stress_test(
                 )
 
         # 計算權重百分比（用於組合 Beta 加權）
-        weight_pct = (market_value / total_portfolio_value * 100.0) if total_portfolio_value > 0 else 0.0
+        weight_pct = (
+            (market_value / total_portfolio_value * 100.0)
+            if total_portfolio_value > 0
+            else 0.0
+        )
 
-        holdings_with_beta.append({
-            "ticker": ticker,
-            "category": category,
-            "market_value": market_value,
-            "beta": beta,
-            "weight_pct": weight_pct,
-        })
+        holdings_with_beta.append(
+            {
+                "ticker": ticker,
+                "category": category,
+                "market_value": market_value,
+                "beta": beta,
+                "weight_pct": weight_pct,
+            }
+        )
 
     # 6) 呼叫 domain 純函式計算壓力測試
     result = _pure_stress_test(holdings_with_beta, scenario_drop_pct)

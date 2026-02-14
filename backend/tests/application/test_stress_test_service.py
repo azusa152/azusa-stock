@@ -56,7 +56,9 @@ def _mock_compute_holding_market_values(holdings, fx_rates):
             # price is in h.currency, need to convert to USD
             market_value = h.quantity * price / fx
 
-        currency_values[h.currency] = currency_values.get(h.currency, 0.0) + market_value
+        currency_values[h.currency] = (
+            currency_values.get(h.currency, 0.0) + market_value
+        )
 
         if h.is_cash:
             cash_currency_values[h.currency] = (
@@ -396,14 +398,12 @@ class TestStressTestPrivacy:
         calculate_stress_test(db_session, -20.0, "USD")
 
         # Assert — Check logger.info calls do NOT contain dollar amounts
-        info_calls = [
-            str(call) for call in mock_logger.info.call_args_list
-        ]
+        info_calls = [str(call) for call in mock_logger.info.call_args_list]
 
         for call in info_calls:
             # Should NOT log total_value, total_loss, or any absolute dollar amount
             assert "15000" not in call  # total_value
-            assert "5400" not in call   # total_loss
+            assert "5400" not in call  # total_loss
             # Should only log beta and scenario %
             if "壓力測試完成" in call:
                 assert "Beta=" in call or "beta=" in call.lower()

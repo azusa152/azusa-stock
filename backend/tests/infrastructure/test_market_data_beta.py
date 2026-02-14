@@ -22,7 +22,7 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_beta"
 )
 
-from unittest.mock import MagicMock, patch  # noqa: E402
+from unittest.mock import patch  # noqa: E402
 
 from cachetools import TTLCache  # noqa: E402
 
@@ -191,9 +191,7 @@ class TestGetStockBeta:
 
     @patch("infrastructure.market_data._disk_get")
     @patch("infrastructure.market_data._fetch_beta_from_yf")
-    def test_should_return_l1_cached_without_fetching(
-        self, mock_fetch, mock_disk_get
-    ):
+    def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
         l1 = _fresh_beta_l1()
         l1["MSFT"] = 1.12
@@ -258,9 +256,11 @@ class TestPrewarmBetaBatch:
     @patch("infrastructure.market_data.get_stock_beta")
     def test_should_fetch_all_tickers(self, mock_get_beta):
         # Arrange
-        mock_get_beta.side_effect = lambda t: {"NVDA": 1.5, "AAPL": 1.2, "TLT": 0.3}.get(
-            t, 1.0
-        )
+        mock_get_beta.side_effect = lambda t: {
+            "NVDA": 1.5,
+            "AAPL": 1.2,
+            "TLT": 0.3,
+        }.get(t, 1.0)
 
         # Act
         results = prewarm_beta_batch(["NVDA", "AAPL", "TLT"])

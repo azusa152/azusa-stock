@@ -90,9 +90,7 @@ class TestGetStressTestHappyPath:
         assert call_args[1]["display_currency"] == "USD"
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_accept_custom_scenario(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_accept_custom_scenario(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
         mock_result["scenario_drop_pct"] = -30.0
@@ -132,9 +130,7 @@ class TestGetStressTestHappyPath:
         assert call_args[1]["display_currency"] == "TWD"
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_uppercase_display_currency(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_uppercase_display_currency(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
         mock_result["display_currency"] = "TWD"
@@ -174,9 +170,7 @@ class TestGetStressTestHappyPath:
         assert data["pain_level"]["level"] == "panic"
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_handle_mild_drop_scenario(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_handle_mild_drop_scenario(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
         mock_result["scenario_drop_pct"] = -5.0
@@ -208,11 +202,11 @@ class TestGetStressTestErrorHandling:
     """Tests for stress test endpoint error handling."""
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_return_404_when_no_holdings(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_return_404_when_no_holdings(self, mock_service, client: TestClient):
         # Arrange
-        mock_service.side_effect = StockNotFoundError("尚未輸入任何持倉，請先新增資產。")
+        mock_service.side_effect = StockNotFoundError(
+            "尚未輸入任何持倉，請先新增資產。"
+        )
 
         # Act
         response = client.get("/stress-test")
@@ -275,9 +269,7 @@ class TestGetStressTestBoundary:
     """Tests for stress test endpoint boundary conditions."""
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_accept_scenario_at_minus_50(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_accept_scenario_at_minus_50(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
         mock_result["scenario_drop_pct"] = -50.0
@@ -290,9 +282,7 @@ class TestGetStressTestBoundary:
         assert response.status_code == 200
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_should_accept_scenario_at_zero(
-        self, mock_service, client: TestClient
-    ):
+    def test_should_accept_scenario_at_zero(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
         mock_result["scenario_drop_pct"] = 0.0
@@ -318,9 +308,7 @@ class TestGetStressTestSchemaValidation:
     """Tests for response schema validation."""
 
     @patch("api.holding_routes.calculate_stress_test")
-    def test_response_should_match_schema(
-        self, mock_service, client: TestClient
-    ):
+    def test_response_should_match_schema(self, mock_service, client: TestClient):
         # Arrange
         mock_service.return_value = MOCK_STRESS_TEST_RESULT
 
