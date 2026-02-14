@@ -310,9 +310,9 @@ class TestWebhookDiscoverability:
         assert resp.status_code == 200
         data = resp.json()["data"]
         required_keys = {"total_watches", "triggered_alerts", "sent_alerts", "alerts"}
-        assert required_keys == set(data.keys()), (
-            f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
-        )
+        assert (
+            required_keys == set(data.keys())
+        ), f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
 
 
 class TestWebhookUnknownAction:

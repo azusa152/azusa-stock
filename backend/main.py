@@ -10,8 +10,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from api.dependencies import require_api_key
 from api.forex_routes import router as forex_router
@@ -19,6 +21,7 @@ from api.fx_watch_routes import router as fx_watch_router
 from api.holding_routes import router as holding_router
 from api.persona_routes import router as persona_router
 from api.preferences_routes import router as preferences_router
+from api.rate_limit import limiter
 from api.scan_routes import router as scan_router
 from api.schemas import HealthResponse
 from api.stock_routes import router as stock_router
@@ -66,6 +69,10 @@ app = FastAPI(
     # Auth applied per-router, NOT globally (health must be exempt)
 )
 
+# Register rate limiter state and exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS middleware for frontend access
 app.add_middleware(
     CORSMiddleware,
@@ -92,8 +99,9 @@ def health_check() -> dict:
     summary="Clear all backend caches (L1 + L2)",
     dependencies=[Depends(require_api_key)],
 )
-def clear_cache() -> dict:
-    """Admin endpoint - WITH auth."""
+@limiter.limit("10/minute")
+def clear_cache(request: Request) -> dict:
+    """Admin endpoint - WITH auth and rate limiting."""
     from infrastructure.market_data import clear_all_caches
 
     result = clear_all_caches()

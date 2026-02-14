@@ -1,5 +1,8 @@
+# Core UI
 streamlit==1.41.1
 requests==2.32.3
+
+# UI Components
 streamlit-sortables==0.3.1
-streamlit-js-eval>=0.1.7
-plotly>=5.18.0
+streamlit-js-eval==0.1.7
+plotly==5.26.1

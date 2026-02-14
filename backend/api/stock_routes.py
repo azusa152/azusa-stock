@@ -3,9 +3,11 @@ API — 股票管理路由。
 薄控制器：僅負責解析請求、呼叫 Service、回傳回應。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session
+
+from api.rate_limit import limiter
 
 from api.schemas import (
     CategoryUpdateRequest,
@@ -418,13 +420,17 @@ def get_summary_route(session: Session = Depends(get_session)) -> str:
     response_model=WebhookResponse,
     summary="Unified webhook for AI agent actions",
 )
-def webhook_route(
+@limiter.limit("5/minute")
+async def webhook_route(
+    request: Request,
     payload: WebhookRequest,
     session: Session = Depends(get_session),
 ) -> WebhookResponse:
     """
     統一入口 — 供 OpenClaw 等 AI agent 使用。
     支援的 action: help, summary, signals, scan, moat, alerts, add_stock
+
+    Rate limited: 5/minute per IP (prevents webhook abuse).
     """
     try:
         result = handle_webhook(session, payload.action, payload.ticker, payload.params)

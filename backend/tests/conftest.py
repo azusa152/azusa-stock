@@ -173,6 +173,10 @@ def client() -> Generator[TestClient, None, None]:
 
     app.dependency_overrides.clear()
 
+    # Clear rate limiter state between tests to prevent cross-test contamination
+    if hasattr(app.state, "limiter") and hasattr(app.state.limiter, "_storage"):
+        app.state.limiter._storage.storage.clear()
+
 
 @pytest.fixture()
 def db_session() -> Generator[Session, None, None]:

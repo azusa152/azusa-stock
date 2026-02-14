@@ -277,6 +277,8 @@ docker compose up --build
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
 
+**⚠️ 升級提示**：從舊版（root 使用者）升級至新版（非 root 使用者）時，若遇到權限錯誤，請使用 `docker compose down -v` 重置 volumes。Docker volumes 會繼承容器內目錄的權限設定，新版的 folio 使用者需要正確的檔案所有權才能寫入資料。
+
 ### 5. 執行測試
 
 ```bash
