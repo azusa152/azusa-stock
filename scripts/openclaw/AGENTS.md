@@ -127,6 +127,33 @@ Branch on `error_code` (not the human-readable `detail` string). Common codes:
 - `TELEGRAM_NOT_CONFIGURED` / `TELEGRAM_SEND_FAILED`
 - `PREFERENCES_UPDATE_FAILED`
 
+## Service Operations
+
+Folio provides `make` targets for service management. Use `exec` to run these from the project root.
+
+### Backup & Restore
+
+| Command | Description |
+|---------|-------------|
+| `make backup` | Backup database to `./backups/radar-YYYYMMDD_HHMMSS.db` |
+| `make restore` | Restore from the latest backup in `./backups/` |
+| `make restore FILE=backups/radar-20260214.db` | Restore from a specific backup file |
+
+### Upgrade & Restart
+
+| Command | Description |
+|---------|-------------|
+| `docker compose up --build -d` | Rebuild and restart (safe, preserves data) |
+| `docker compose down -v` | Full reset -- DELETES ALL DATA (use `make backup` first!) |
+
+### Health Check
+
+| Command | Description |
+|---------|-------------|
+| `curl -sf http://localhost:8000/health` | Backend health check |
+| `docker compose ps` | Check container status |
+| `docker compose logs backend --tail 50` | View recent backend logs |
+
 ## Response Guidelines
 
 - Be concise — the user wants quick investment insights, not essays

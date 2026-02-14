@@ -51,6 +51,16 @@ alwaysApply: true
 -   Use `os.getenv()` with `python-dotenv` for all configuration. Reference `.env.example` for required variables.
 -   Never commit `.env` files. Only commit `.env.example` with placeholder values.
 
+## Docker Best Practices
+-   **Non-root execution:** All containers run as the `folio` user. Never run application processes as root.
+-   **Entrypoint pattern:** Services with persistent volumes MUST use a `docker-entrypoint.sh` script that:
+    1.  Runs initially as root to fix volume ownership (`chown -R folio:folio /app/data`)
+    2.  Drops privileges via `gosu folio` before exec'ing the main process
+    3.  Is idempotent (safe to run on every startup)
+-   **gosu for privilege drop:** Use `gosu` (not `su` or `sudo`) for dropping privileges in entrypoint scripts. Install via `apt-get install gosu`.
+-   **Image pinning:** Pin base images with SHA256 digest. Update periodically.
+-   **No USER directive with volumes:** Do not use `USER` in Dockerfiles that mount persistent volumes. Use the entrypoint pattern instead.
+
 ---
 
 # Backend Testing Standards (pytest)

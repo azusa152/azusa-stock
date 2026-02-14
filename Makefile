@@ -19,7 +19,10 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format generate-key
+.PHONY: help install test lint format generate-key backup restore
+
+# Dynamic volume name detection (project directory name may vary)
+VOLUME_NAME := $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
 
 help: ## 列出所有可用的 Make 目標
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -42,3 +45,21 @@ format: ## 執行 ruff format（程式碼格式化）
 generate-key: ## 生成安全的 API Key（用於 FOLIO_API_KEY）
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"
 	@python3 -c "import secrets; print(f'sk-folio-{secrets.token_urlsafe(32)}')"
+
+backup: ## 備份資料庫到 ./backups/
+	@mkdir -p backups
+	@vol=$(VOLUME_NAME); \
+	if [ -z "$$vol" ]; then echo "❌ Error: radar-data volume not found"; exit 1; fi; \
+	docker run --rm -v $$vol:/data -v $$(pwd)/backups:/backup alpine \
+		cp /data/radar.db /backup/radar-$$(date +%Y%m%d_%H%M%S).db
+	@echo "✅ Backup saved to ./backups/"
+	@ls -lh backups/radar-*.db | tail -1
+
+restore: ## 還原資料庫（用法：make restore 或 make restore FILE=backups/radar-xxx.db）
+	@vol=$(VOLUME_NAME); \
+	if [ -z "$$vol" ]; then echo "❌ Error: radar-data volume not found"; exit 1; fi; \
+	file=$${FILE:-$$(ls -t backups/radar-*.db 2>/dev/null | head -1)}; \
+	if [ -z "$$file" ]; then echo "❌ Error: No backup found in ./backups/"; exit 1; fi; \
+	docker run --rm -v $$vol:/data -v $$(pwd)/backups:/backup alpine \
+		cp /backup/$$(basename $$file) /data/radar.db; \
+	echo "✅ Restored from $$file"

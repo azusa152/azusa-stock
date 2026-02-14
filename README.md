@@ -268,16 +268,41 @@ python scripts/import_stocks.py path/to/custom_list.json
 
 </details>
 
-### 4. 重置資料庫
+### 4. 升級與資料管理
+
+#### 升級服務（安全，保留資料）
 
 ```bash
+docker compose up --build -d
+```
+
+容器內建的 entrypoint 腳本會自動處理權限問題，無需額外操作。從舊版（root 使用者）升級時，系統會自動修正檔案所有權。
+
+#### 備份與還原資料庫
+
+```bash
+# 備份資料庫到 ./backups/
+make backup
+
+# 還原最新備份
+make restore
+
+# 還原特定備份檔案
+make restore FILE=backups/radar-20260214_153022.db
+```
+
+#### 完全重置（清空所有資料）
+
+```bash
+# ⚠️ 警告：這會刪除所有資料！建議先備份
+make backup
+
+# 刪除 Docker volumes 並重建
 docker compose down -v
 docker compose up --build
 ```
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
-
-**⚠️ 升級提示**：從舊版（root 使用者）升級至新版（非 root 使用者）時，若遇到權限錯誤，請使用 `docker compose down -v` 重置 volumes。Docker volumes 會繼承容器內目錄的權限設定，新版的 folio 使用者需要正確的檔案所有權才能寫入資料。
 
 ### 5. 執行測試
 
@@ -326,7 +351,7 @@ make generate-key
 FOLIO_API_KEY=your-generated-key-here
 
 # 3. 重啟服務
-docker compose down && docker compose up --build
+docker compose up --build -d
 ```
 
 **範例請求：**
@@ -355,7 +380,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 FERNET_KEY=your-generated-fernet-key-here
 
 # 3. 重啟服務（自動加密既有 Token）
-docker compose down && docker compose up --build
+docker compose up --build -d
 ```
 
 > **注意：** `FERNET_KEY` 必須妥善保管與備份。遺失此 Key 將無法解密資料庫中的 Token。開發模式（未設定 `FERNET_KEY`）會以明文儲存 Token 並顯示警告日誌。

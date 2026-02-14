@@ -12,6 +12,9 @@ logs/
 *.db-wal
 data/
 
+# Backups
+backups/
+
 # Python
 __pycache__/
 *.pyc

@@ -1,6 +1,6 @@
 # Pin base image with digest for security (python:3.12-slim)
 # Update digest periodically: docker pull python:3.12-slim && docker inspect python:3.12-slim | grep Id
-FROM python:3.12-slim@sha256:2fba8e70a87bcc9f6edd20dda0a1d4adb32046d2acbca7361bc61da5a106a0f7
+FROM python:3.12-slim@sha256:9e01bf1ae5db7649a236da7be1e94ffbbbdd7a93f867dd0d8d5720d9e1f89fab
 
 WORKDIR /app
 

@@ -260,3 +260,26 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `PATCH /fx-watch/{id}` with `{"is_active": false}` to temporarily pause a monitor without deleting it
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order
 - Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
+- Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
+- When users report errors after an upgrade, check `docker compose logs backend --tail 50` first
+
+## Service Operations
+
+Use `exec` tool to run these commands from the Folio project root for infrastructure management.
+
+### Backup & Restore
+
+- `make backup` — Backup database (timestamped file in `./backups/`)
+- `make restore` — Restore from latest backup
+- `make restore FILE=backups/radar-YYYYMMDD.db` — Restore specific backup
+
+### Upgrade & Restart
+
+- `docker compose up --build -d` — Safe rebuild (entrypoint handles volume permissions automatically)
+- `docker compose down -v` — Full reset, DELETES ALL DATA (suggest `make backup` first)
+
+### Health & Diagnostics
+
+- `curl -sf http://localhost:8000/health` — Backend health check
+- `docker compose ps` — Container status
+- `docker compose logs backend --tail 50` — Recent backend logs
