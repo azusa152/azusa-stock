@@ -4,17 +4,40 @@
 
 You have access to **Folio (智能資產配置)**, a self-hosted stock tracking and market scanning system. It runs as a Docker Compose application with a FastAPI backend at `http://localhost:8000`.
 
+## Authentication
+
+Folio supports optional API key authentication via the `X-API-Key` header. When `FOLIO_API_KEY` is set in the environment, all API requests must include the key.
+
+**Dev Mode (default):** If `FOLIO_API_KEY` is unset, authentication is disabled — no breaking changes for existing users.
+
+**Production Mode:** Set `FOLIO_API_KEY` in `.env` and include the header in all requests:
+
+```bash
+# Generate a secure API key
+make generate-key
+
+# Add to .env
+echo "FOLIO_API_KEY=your-generated-key" >> .env
+
+# Use in requests
+export FOLIO_API_KEY="your-generated-key"
+curl -s http://localhost:8000/summary \
+  -H "X-API-Key: $FOLIO_API_KEY"
+```
+
 ## How to Interact
 
 Use the `exec` tool with `curl` to call the Folio API:
 
 ```bash
 # Quick portfolio overview (plain text)
+# Add -H "X-API-Key: $FOLIO_API_KEY" if auth is enabled
 curl -s http://localhost:8000/summary
 
 # Structured command via webhook
 curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $FOLIO_API_KEY" \
   -d '{"action": "signals", "ticker": "NVDA"}'
 ```
 

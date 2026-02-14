@@ -12,13 +12,36 @@ Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、�
 
 - Folio 的 Docker Compose 服務正在運行
 - Backend API 預設在 `http://localhost:8000`
+- (Optional) Set `FOLIO_API_KEY` environment variable for production security
+
+## Authentication
+
+Folio supports optional API key authentication via the `X-API-Key` header.
+
+**Dev Mode (default):** If `FOLIO_API_KEY` is unset, authentication is disabled.
+
+**Production Mode:** Set `FOLIO_API_KEY` in `.env` and include it in all requests:
+
+```bash
+# Generate API key
+make generate-key
+
+# Add to .env
+echo "FOLIO_API_KEY=your-key-here" >> .env
+
+# Export for shell commands
+export FOLIO_API_KEY="your-key-here"
+```
+
+All `curl` commands below assume you'll add `-H "X-API-Key: $FOLIO_API_KEY"` when auth is enabled.
 
 ## Quick Start
 
 ### 查看投資組合摘要
 
 ```bash
-curl -s http://localhost:8000/summary
+curl -s http://localhost:8000/summary \
+  -H "X-API-Key: $FOLIO_API_KEY"
 ```
 
 ### 透過 Webhook 執行操作
@@ -26,6 +49,7 @@ curl -s http://localhost:8000/summary
 ```bash
 curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $FOLIO_API_KEY" \
   -d '{"action": "summary"}'
 ```
 

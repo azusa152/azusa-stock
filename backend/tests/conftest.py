@@ -8,6 +8,8 @@ import tempfile
 # Set environment variables BEFORE any app imports to avoid /app filesystem access
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
+# Disable auth in tests by default (individual tests can override)
+os.environ.pop("FOLIO_API_KEY", None)
 
 # Patch disk cache dir before infrastructure.market_data imports it
 import domain.constants  # noqa: E402

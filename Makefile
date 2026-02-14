@@ -19,7 +19,7 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format
+.PHONY: help install test lint format generate-key
 
 help: ## 列出所有可用的 Make 目標
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -38,3 +38,7 @@ lint: ## 執行 ruff check --fix + format --check（靜態分析 + 格式檢查�
 
 format: ## 執行 ruff format（程式碼格式化）
 	$(RUFF) format backend/
+
+generate-key: ## 生成安全的 API Key（用於 FOLIO_API_KEY）
+	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"
+	@python3 -c "import secrets; print(f'sk-folio-{secrets.token_urlsafe(32)}')"

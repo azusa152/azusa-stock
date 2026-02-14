@@ -4,12 +4,16 @@ Folio — FastAPI 應用程式進入點。
 所有業務邏輯已移至 application/services.py。
 """
 
+import os
 import threading
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from api.dependencies import require_api_key
 from api.forex_routes import router as forex_router
 from api.fx_watch_routes import router as fx_watch_router
 from api.holding_routes import router as holding_router
@@ -22,6 +26,9 @@ from api.telegram_routes import router as telegram_router
 from api.thesis_routes import router as thesis_router
 from infrastructure.database import create_db_and_tables
 from logging_config import get_logger
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = get_logger(__name__)
 
@@ -56,6 +63,16 @@ app = FastAPI(
     description="Folio — 智能資產配置",
     version="2.0.0",
     lifespan=lifespan,
+    # Auth applied per-router, NOT globally (health must be exempt)
+)
+
+# CORS middleware for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.getenv("CORS_ALLOW_ORIGIN", "http://localhost:8501")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["X-API-Key", "Content-Type"],
 )
 
 
@@ -66,11 +83,17 @@ app = FastAPI(
 
 @app.get("/health", response_model=HealthResponse, summary="Health check")
 def health_check() -> dict:
+    """Health check endpoint - NO auth (Docker healthcheck must access without key)."""
     return {"status": "ok", "service": "folio-backend"}
 
 
-@app.post("/admin/cache/clear", summary="Clear all backend caches (L1 + L2)")
+@app.post(
+    "/admin/cache/clear",
+    summary="Clear all backend caches (L1 + L2)",
+    dependencies=[Depends(require_api_key)],
+)
 def clear_cache() -> dict:
+    """Admin endpoint - WITH auth."""
     from infrastructure.market_data import clear_all_caches
 
     result = clear_all_caches()
@@ -81,12 +104,15 @@ def clear_cache() -> dict:
 # 註冊路由
 # ---------------------------------------------------------------------------
 
-app.include_router(stock_router)
-app.include_router(thesis_router)
-app.include_router(scan_router)
-app.include_router(persona_router)
-app.include_router(holding_router)
-app.include_router(telegram_router)
-app.include_router(preferences_router)
-app.include_router(forex_router)
-app.include_router(fx_watch_router)
+# Apply auth to all routers (health endpoint is exempt as it's not in a router)
+auth_deps = [Depends(require_api_key)]
+
+app.include_router(stock_router, dependencies=auth_deps)
+app.include_router(thesis_router, dependencies=auth_deps)
+app.include_router(scan_router, dependencies=auth_deps)
+app.include_router(persona_router, dependencies=auth_deps)
+app.include_router(holding_router, dependencies=auth_deps)
+app.include_router(telegram_router, dependencies=auth_deps)
+app.include_router(preferences_router, dependencies=auth_deps)
+app.include_router(forex_router, dependencies=auth_deps)
+app.include_router(fx_watch_router, dependencies=auth_deps)
