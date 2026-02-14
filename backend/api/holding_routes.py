@@ -16,6 +16,7 @@ from api.schemas import (
     ImportResponse,
     MessageResponse,
     RebalanceResponse,
+    StressTestResponse,
     WithdrawRequest,
     WithdrawResponse,
     XRayAlertResponse,
@@ -24,6 +25,7 @@ from application.services import (
     StockNotFoundError,
     calculate_currency_exposure,
     calculate_rebalance,
+    calculate_stress_test,
     calculate_withdrawal,
     send_fx_alerts,
     send_xray_warnings,
@@ -353,3 +355,57 @@ def trigger_fx_alert(
         "message": f"匯率曝險檢查完成，{len(alerts)} 筆警報已發送。",
         "alerts": alerts,
     }
+
+
+# ---------------------------------------------------------------------------
+# Stress Test
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/stress-test",
+    response_model=StressTestResponse,
+    summary="Calculate portfolio stress test",
+)
+def get_stress_test(
+    scenario_drop_pct: float = -20.0,
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> StressTestResponse:
+    """
+    計算組合壓力測試：評估市場崩盤情境下的預期損失。
+
+    Args:
+        scenario_drop_pct: 市場崩盤情境 % (範圍: -50 到 0，預設 -20)
+        display_currency: 顯示幣別（預設 USD）
+        session: DB session (injected)
+
+    Returns:
+        StressTestResponse: 壓力測試結果（portfolio_beta, total_loss, pain_level, advice, breakdown）
+
+    Raises:
+        HTTPException 404: 當無任何持倉時
+        HTTPException 422: 當 scenario_drop_pct 超出範圍時
+    """
+    # 驗證 scenario_drop_pct 範圍
+    if not -50 <= scenario_drop_pct <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": "INVALID_SCENARIO_DROP",
+                "detail": "scenario_drop_pct 必須在 -50 到 0 之間",
+            },
+        )
+
+    try:
+        result = calculate_stress_test(
+            session,
+            scenario_drop_pct=scenario_drop_pct,
+            display_currency=display_currency.strip().upper(),
+        )
+        return StressTestResponse(**result)
+    except StockNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": str(e)},
+        )

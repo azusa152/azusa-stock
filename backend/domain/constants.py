@@ -334,3 +334,57 @@ CURL_CFFI_IMPERSONATE = "chrome"
 YFINANCE_RETRY_ATTEMPTS = 3
 YFINANCE_RETRY_WAIT_MIN = 2  # seconds (exponential backoff minimum)
 YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)
+
+# ---------------------------------------------------------------------------
+# Beta Cache Configuration (Stress Test)
+# ---------------------------------------------------------------------------
+BETA_CACHE_MAXSIZE = 200
+BETA_CACHE_TTL = 86400  # 24 hours (L1)
+DISK_BETA_TTL = 604800  # 7 days (L2)
+DISK_KEY_BETA = "beta"
+
+# Category Fallback Beta (when yfinance returns None)
+CATEGORY_FALLBACK_BETA: dict[str, float] = {
+    "Trend_Setter": 1.0,
+    "Moat": 1.2,
+    "Growth": 1.5,
+    "Bond": 0.3,
+    "Cash": 0.0,
+}
+
+# ---------------------------------------------------------------------------
+# Stress Test Pain Levels
+# ---------------------------------------------------------------------------
+# threshold 表示該等級的最低損失門檻（含）
+# loss_pct < 10% → low, 10% <= loss < 20% → moderate, 20% <= loss < 30% → high, loss >= 30% → panic
+STRESS_PAIN_LEVELS = [
+    {
+        "threshold": 0,
+        "level": "low",
+        "label": "微風輕拂 (Just a Scratch)",
+        "emoji": "green",
+    },
+    {
+        "threshold": 10,
+        "level": "moderate",
+        "label": "有感修正 (Correction)",
+        "emoji": "yellow",
+    },
+    {
+        "threshold": 20,
+        "level": "high",
+        "label": "傷筋動骨 (Bear Market)",
+        "emoji": "orange",
+    },
+    {
+        "threshold": 30,
+        "level": "panic",
+        "label": "睡不著覺 (Panic Zone)",
+        "emoji": "red",
+    },
+]
+
+STRESS_DISCLAIMER = (
+    "⚠️ 此為線性 CAPM 簡化模型，實際崩盤中相關性會趨近 1、"
+    "流動性枯竭可能導致更大跌幅。本模擬僅供參考，不構成投資建議。"
+)

@@ -28,6 +28,7 @@ from config import (
     API_PUT_TIMEOUT,
     API_REBALANCE_TIMEOUT,
     API_SIGNALS_TIMEOUT,
+    API_STRESS_TEST_TIMEOUT,
     API_WITHDRAW_TIMEOUT,
     BACKEND_URL,
     BIAS_OVERHEATED_UI,
@@ -45,6 +46,7 @@ from config import (
     CACHE_TTL_REBALANCE,
     CACHE_TTL_SCAN_HISTORY,
     CACHE_TTL_SIGNALS,
+    CACHE_TTL_STRESS_TEST,
     CACHE_TTL_FEAR_GREED,
     CACHE_TTL_FX_HISTORY,
     CACHE_TTL_FX_WATCH,
@@ -119,6 +121,7 @@ def invalidate_holding_caches() -> None:
     fetch_holdings.clear()
     fetch_rebalance.clear()
     fetch_currency_exposure.clear()
+    fetch_stress_test.clear()
 
 
 def invalidate_profile_caches() -> None:
@@ -126,6 +129,7 @@ def invalidate_profile_caches() -> None:
     fetch_profile.clear()
     fetch_rebalance.clear()
     fetch_currency_exposure.clear()
+    fetch_stress_test.clear()
 
 
 def invalidate_all_caches() -> None:
@@ -419,6 +423,44 @@ def fetch_currency_exposure() -> dict | None:
             return resp.json()
         return None
     except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_STRESS_TEST, show_spinner=False)
+def fetch_stress_test(
+    scenario_drop_pct: float = -20.0,
+    display_currency: str = "USD",
+) -> dict | None:
+    """Fetch portfolio stress test analysis.
+
+    Args:
+        scenario_drop_pct: Market crash scenario % (range: -50 to 0, default -20)
+        display_currency: Display currency (default USD)
+
+    Returns:
+        dict containing stress test results on success, None on failure
+    """
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/stress-test",
+            params={
+                "scenario_drop_pct": scenario_drop_pct,
+                "display_currency": display_currency,
+            },
+            timeout=API_STRESS_TEST_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        # --- non-200: log detail, return None (not cached on error) ---
+        try:
+            body = resp.json()
+            detail = body.get("detail", body)
+        except Exception:
+            detail = resp.text
+        logger.warning("壓力測試 API 回傳 %s: %s", resp.status_code, detail)
+        return None
+    except requests.RequestException as exc:
+        logger.error("壓力測試 API 連線失敗: %s", exc)
         return None
 
 

@@ -147,6 +147,22 @@ WITHDRAW_PRIORITY_LABELS = {
 }
 
 # ---------------------------------------------------------------------------
+# Stress Test (Portfolio Stress Testing)
+# ---------------------------------------------------------------------------
+CACHE_TTL_STRESS_TEST = 60  # 1 minute (same as rebalance)
+API_STRESS_TEST_TIMEOUT = 60  # Increased to allow Beta fetching for multiple holdings
+STRESS_SLIDER_MIN = -50
+STRESS_SLIDER_MAX = 0
+STRESS_SLIDER_STEP = 5
+STRESS_SLIDER_DEFAULT = -20
+PAIN_LEVEL_COLORS = {
+    "low": "#22c55e",  # green
+    "moderate": "#eab308",  # yellow
+    "high": "#f97316",  # orange
+    "panic": "#ef4444",  # red
+}
+
+# ---------------------------------------------------------------------------
 # External URLs
 # ---------------------------------------------------------------------------
 WHALEWISDOM_STOCK_URL = "https://whalewisdom.com/stock/{ticker}"

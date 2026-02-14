@@ -713,3 +713,42 @@ class FXWatchAlertResponse(BaseModel):
     triggered_alerts: int
     sent_alerts: int
     alerts: list[FXWatchCheckResultItem]
+
+
+# ---------------------------------------------------------------------------
+# Stress Test Schemas
+# ---------------------------------------------------------------------------
+
+
+class StressTestHoldingBreakdown(BaseModel):
+    """壓力測試：單檔持倉損失細項。"""
+
+    ticker: str
+    category: str
+    beta: float
+    market_value: float
+    expected_drop_pct: float
+    expected_loss: float
+
+
+class StressTestPainLevel(BaseModel):
+    """壓力測試：痛苦等級分類。"""
+
+    level: str
+    label: str
+    emoji: str
+
+
+class StressTestResponse(BaseModel):
+    """GET /stress-test 回傳結構：組合壓力測試結果。"""
+
+    portfolio_beta: float
+    scenario_drop_pct: float
+    total_value: float
+    total_loss: float
+    total_loss_pct: float
+    display_currency: str
+    pain_level: StressTestPainLevel
+    advice: list[str]
+    disclaimer: str
+    holdings_breakdown: list[StressTestHoldingBreakdown]

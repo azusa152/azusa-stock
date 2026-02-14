@@ -35,9 +35,12 @@ from domain.analysis import (
     determine_moat_status,
 )
 from domain.constants import (
+    BETA_CACHE_MAXSIZE,
+    BETA_CACHE_TTL,
     CNN_FG_API_URL,
     CNN_FG_REQUEST_TIMEOUT,
     CURL_CFFI_IMPERSONATE,
+    DISK_BETA_TTL,
     DISK_CACHE_DIR,
     DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
@@ -47,6 +50,7 @@ from domain.constants import (
     DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
     DISK_FOREX_TTL,
+    DISK_KEY_BETA,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
@@ -178,6 +182,7 @@ _forex_history_long_cache: TTLCache = TTLCache(
 _fear_greed_cache: TTLCache = TTLCache(
     maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL
 )
+_beta_cache: TTLCache = TTLCache(maxsize=BETA_CACHE_MAXSIZE, ttl=BETA_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +220,7 @@ def clear_all_caches() -> dict:
         _forex_history_cache,
         _forex_history_long_cache,
         _fear_greed_cache,
+        _beta_cache,
     ]
     for cache in l1_caches:
         cache.clear()
@@ -1143,6 +1149,7 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
 
 
 _ETF_NOT_FOUND_SENTINEL: list[dict] = []  # 空 list 作為「非 ETF」的快取標記
+_BETA_NOT_AVAILABLE: float = -999.0  # 哨兵值：yfinance 無提供 Beta 時的快取標記
 
 
 def get_etf_top_holdings(ticker: str) -> list[dict] | None:
@@ -1335,3 +1342,71 @@ def get_fear_greed_index() -> dict:
         _fetch_fear_greed,
         is_error=_is_fear_greed_error,
     )
+
+
+# ===========================================================================
+# 股票 Beta（壓力測試用）
+# ===========================================================================
+
+
+def _fetch_beta_from_yf(ticker: str) -> float:
+    """
+    從 yfinance info 取得 Beta 值（供 _cached_fetch 使用）。
+    回傳實際 Beta 或 _BETA_NOT_AVAILABLE 哨兵值（永不回傳 None，確保可快取）。
+    """
+    try:
+        info = _yf_info(ticker)
+        beta = info.get("beta")
+        if beta is not None:
+            beta = round(float(beta), 2)
+            logger.info("%s Beta = %.2f", ticker, beta)
+            return beta
+        else:
+            logger.debug("%s yfinance 未提供 Beta 值，使用哨兵值。", ticker)
+            return _BETA_NOT_AVAILABLE
+    except Exception as e:
+        logger.warning("無法取得 %s Beta：%s，使用哨兵值。", ticker, e)
+        return _BETA_NOT_AVAILABLE
+
+
+def get_stock_beta(ticker: str) -> float | None:
+    """
+    取得股票 Beta 值。
+    結果透過 L1 + L2 快取（L1: 24 小時，L2: 7 天）。
+    回傳 None 表示 yfinance 無提供（呼叫端應使用 CATEGORY_FALLBACK_BETA）。
+
+    內部使用哨兵值 _BETA_NOT_AVAILABLE 以確保「無 Beta」狀態可被快取，
+    避免對無 Beta 的 ticker（如加密貨幣、新 IPO）反覆呼叫 yfinance。
+    """
+    result = _cached_fetch(
+        _beta_cache,
+        ticker,
+        DISK_KEY_BETA,
+        DISK_BETA_TTL,
+        _fetch_beta_from_yf,
+    )
+    # 將哨兵值轉回 None 給呼叫端
+    return None if result == _BETA_NOT_AVAILABLE else result
+
+
+def prewarm_beta_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, float | None]:
+    """
+    並行預熱多檔股票的 Beta 快取。
+    已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
+    回傳 {ticker: beta_or_None} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, float | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_stock_beta, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error("預熱 %s Beta 失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results

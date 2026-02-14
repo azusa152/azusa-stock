@@ -43,6 +43,7 @@
 ### 資產配置
 
 - **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析、聰明提款
+- **壓力測試** — 模擬大盤崩盤情境（-50% 至 0%），基於 CAPM Beta 計算各持倉預期損失與痛苦等級（微風輕拂 / 有感修正 / 傷筋動骨 / 睡不著覺），檢視投資組合抗跌能力
 - **穿透式持倉 X-Ray** — 自動解析 ETF 成分股，計算直接+間接真實曝險，超門檻自動警告
 - **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，三層級匯率變動偵測（單日 / 5日 / 3月），Telegram 警報
 - **外匯換匯時機監控** — 完整的換匯時機管理系統：
@@ -58,7 +59,7 @@
 
 ### 介面與操作
 
-- **三頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）
+- **四頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
@@ -110,6 +111,7 @@ graph LR
       PERSONA["Persona System"]
       HOLDINGS["Holdings CRUD"]
       REBALANCE["Rebalance Engine"]
+      STRESS["Stress Test Engine"]
       NOTIFY["Notification\n(Dual-Mode)"]
     end
   end
@@ -125,9 +127,10 @@ graph LR
 - **Frontend** — Streamlit 四頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控）
 - **Database** — SQLite，透過 Docker Volume 持久化
 - **資料來源** — yfinance，含多層快取、速率限制與自動重試機制
-- **啟動快取預熱** — 後端啟動時非阻塞式背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股），前端首次載入即命中暖快取
+- **啟動快取預熱** — 後端啟動時非阻塞式背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），前端首次載入即命中暖快取
 - **通知** — Telegram Bot API 雙模式，支援差異通知、價格警報、每週摘要
 - **再平衡引擎** — 比較目標配置 vs 實際持倉，產生偏移分析與再平衡建議
+- **壓力測試引擎** — 基於 CAPM Beta 模擬大盤崩盤情境，計算投資組合預期損失與痛苦等級（線性模型：Loss = Market Drop × Beta），含分類別 Beta 回退機制
 - **匯率曝險引擎** — 分離現金/全資產幣別分佈，偵測顯著匯率變動
 - **聰明提款引擎** — Liquidity Waterfall 三層優先演算法（再平衡 → 節稅 → 流動性），純函式設計可獨立測試
 
@@ -219,7 +222,7 @@ docker compose up --build
 - **Frontend Dashboard** — http://localhost:8501
 - **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）
 
-> **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
+> **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
 
 ### 3. 匯入觀察名單
 
@@ -366,6 +369,7 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），支援 `display_currency` 指定幣別、`notify` 控制 Telegram 通知 |
+| `GET` | `/stress-test` | 壓力測試分析（scenario_drop_pct: -50 至 0，display_currency），回傳組合 Beta、預期損失、痛苦等級、各持倉明細 |
 | `GET` | `/ticker/{ticker}/price-history` | 取得股價歷史（前端趨勢圖用） |
 | `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
@@ -617,8 +621,8 @@ cp scripts/openclaw/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 
 ```
 azusa-stock/
-├── backend/       # FastAPI + SQLModel（domain / application / infrastructure / api）
-├── frontend/      # Streamlit 三頁面 Dashboard
+├── backend/       # FastAPI + SQLModel（domain / application / infrastructure / api / tests）
+├── frontend/      # Streamlit 四頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控）
 ├── scripts/       # 匯入腳本 + OpenClaw 設定
 └── docker-compose.yml
 ```
@@ -669,11 +673,13 @@ azusa-stock/
 │   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences)
 │   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
 │   │   ├── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
-│   │   └── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
+│   │   ├── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
+│   │   └── stress_test.py            #   純計算：壓力測試 CAPM 模擬（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
 │   │   ├── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
-│   │   └── prewarm_service.py        #   啟動快取預熱（非阻塞背景執行）
+│   │   ├── prewarm_service.py        #   啟動快取預熱（非阻塞背景執行）
+│   │   └── stress_test_service.py    #   壓力測試編排（Beta 取得 + FX + 組合分析）
 │   │
 │   ├── infrastructure/               # 基礎設施層：外部適配器
 │   │   ├── database.py               #   SQLite engine + session 管理
@@ -691,20 +697,43 @@ azusa-stock/
 │       ├── thesis_routes.py          #   觀點版控路由
 │       ├── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
 │       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
-│       ├── holding_routes.py         #   持倉管理 + 再平衡路由
+│       ├── holding_routes.py         #   持倉管理 + 再平衡 + 壓力測試路由
 │       ├── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
 │       └── preferences_routes.py    #   使用者偏好設定路由（隱私模式等）
+│   │
+│   └── tests/                        # 測試套件（domain / application / api / infrastructure）
+│       ├── conftest.py               #   共用 fixtures（TestClient, in-memory DB, mock 外部服務）
+│       ├── domain/
+│       │   ├── test_stress_test.py  #   壓力測試純計算邏輯（38 tests）
+│       │   └── ...                   #   其他 domain 測試
+│       ├── application/
+│       │   ├── test_stress_test_service.py  #   壓力測試服務編排（9 tests）
+│       │   └── ...                   #   其他 application 測試
+│       ├── api/
+│       │   ├── test_stress_test_routes.py   #   壓力測試 API 端點（14 tests）
+│       │   └── ...                   #   其他 API 測試
+│       └── infrastructure/
+│           ├── test_market_data_beta.py     #   Beta 快取與 yfinance 整合（19 tests）
+│           └── ...                   #   其他 infrastructure 測試
 │
 ├── frontend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── config.py                     # 前端集中常數與設定
 │   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
-│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測 + 隱私模式載入
+│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測 + 隱私模式載入 + FX 監控頁
 │   └── views/
+│       ├── components/               # 可重用 UI 元件（各 Step 獨立元件）
+│       │   ├── __init__.py
+│       │   ├── target_allocation.py  # Step 1：目標配置（範本選擇 + 微調）
+│       │   ├── holdings_manager.py   # Step 2：持倉管理（即時編輯 + 儲存 + 刪除）
+│       │   ├── rebalance.py          # Step 3：再平衡分析（餅圖 + Drift + X-Ray）
+│       │   ├── currency_exposure.py  # Step 4：匯率曝險（甜甜圈圖 + 警報 + 建議）
+│       │   ├── withdrawal.py         # Step 5：聰明提款（Waterfall 演算 + 賣出建議）
+│       │   └── stress_test.py        # Step 6：壓力測試（滑桿 + 痛苦等級 + 持倉明細）
 │       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）
 │       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
-│       └── allocation.py             # 個人資產配置頁（War Room + Telegram 設定）
+│       └── allocation.py             # 個人資產配置頁（War Room 編排器 + Telegram 設定）
 │
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）

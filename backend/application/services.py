@@ -76,3 +76,8 @@ from application.notification_service import (  # noqa: F401
     get_portfolio_summary,
     send_weekly_digest,
 )
+
+# ---------------------------------------------------------------------------
+# Stress Test Service (portfolio stress testing)
+# ---------------------------------------------------------------------------
+from application.stress_test_service import calculate_stress_test  # noqa: F401

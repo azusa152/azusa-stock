@@ -1,40 +1,33 @@
 """
 Folio — Asset Allocation Page (個人資產配置).
 Holdings management, rebalancing, and Telegram settings.
+
+Step rendering is delegated to components in views/components/:
+  - target_allocation.py  (Step 1)
+  - holdings_manager.py   (Step 2)
+  - rebalance.py          (Step 3)
+  - currency_exposure.py  (Step 4)
+  - withdrawal.py         (Step 5)
+  - stress_test.py        (Step 6)
 """
 
 import json
-import re
 
-import pandas as pd
 import streamlit as st
 
-from collections import defaultdict
-
 from config import (
-    ALLOCATION_CHART_HEIGHT,
     CASH_ACCOUNT_TYPE_OPTIONS,
     CASH_CURRENCY_OPTIONS,
-    CATEGORY_COLOR_FALLBACK,
-    CATEGORY_COLOR_MAP,
-    CATEGORY_ICON_SHORT,
     CATEGORY_LABELS,
-    CATEGORY_OPTIONS,
     DISPLAY_CURRENCY_OPTIONS,
-    DRIFT_CHART_HEIGHT,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
-    PRIVACY_MASK,
     PRIVACY_TOGGLE_LABEL,
     STOCK_CATEGORY_OPTIONS,
     STOCK_MARKET_OPTIONS,
     STOCK_MARKET_PLACEHOLDERS,
-    WITHDRAW_PRIORITY_LABELS,
-    XRAY_TOP_N_DISPLAY,
-    XRAY_WARN_THRESHOLD_PCT,
 )
 from utils import (
-    api_delete,
     api_get_silent,
     api_post,
     api_put,
@@ -44,59 +37,36 @@ from utils import (
     fetch_preferences,
     fetch_profile,
     fetch_rebalance,
+    fetch_stress_test,
     fetch_templates,
-    fetch_withdraw,
-    format_utc_timestamp,
     invalidate_all_caches,
     invalidate_holding_caches,
-    invalidate_profile_caches,
     invalidate_stock_caches,
-    is_privacy as _is_privacy,
-    mask_money as _mask_money,
-    mask_qty as _mask_qty,
     on_privacy_change as _on_privacy_change,
     post_digest,
-    post_fx_exposure_alert,
     post_telegram_test,
-    post_xray_alert,
     put_notification_preferences,
     put_telegram_settings,
     refresh_ui,
     show_toast,
 )
+from views.components.currency_exposure import render_currency_exposure
+from views.components.holdings_manager import render_holdings
+from views.components.rebalance import render_rebalance
+from views.components.stress_test import render_stress_test
+from views.components.target_allocation import render_target
+from views.components.withdrawal import render_withdrawal
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers (sidebar-only)
 # ---------------------------------------------------------------------------
 
 _MARKET_KEYS = list(STOCK_MARKET_OPTIONS.keys())
 
 
-def _hex_to_rgb_str(hex_color: str) -> str:
-    """Convert '#RRGGBB' to 'rgb(r, g, b)' for plotly.colors.n_colors."""
-    h = hex_color.lstrip("#")
-    return f"rgb({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)})"
-
-
 def _market_label(key: str) -> str:
     return STOCK_MARKET_OPTIONS[key]["label"]
-
-
-# Regex: match numeric amounts (e.g. "50,000", "1,234.56") followed by a currency code
-_CURRENCY_AMOUNT_RE = re.compile(
-    r"[\d,]+(?:\.\d+)?(?=\s*(?:TWD|USD|JPY|EUR|GBP|CNY|HKD|SGD|THB))"
-)
-
-
-def _render_advice(advice_lines: list[str]) -> None:
-    """Render advice lines, masking monetary amounts in privacy mode."""
-    for adv in advice_lines:
-        if _is_privacy():
-            masked = _CURRENCY_AMOUNT_RE.sub(PRIVACY_MASK, adv)
-            st.write(masked)
-        else:
-            st.write(adv)
 
 
 # ---------------------------------------------------------------------------
@@ -144,12 +114,13 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 ---
 
-### Step 1 — 設定目標配置
+### Step 1 — 設定目標配置（可收合）
 
 - 從 6 種預設**投資人格範本**中選擇（退休防禦、標準型、積極進攻、槓鈴策略、狙擊手、自訂）
 - 每種範本預設五大分類的目標配置比例
 - 可隨時**微調**各分類百分比（合計需等於 100%）
 - 已選定範本後，可點擊**「🔄 切換風格」**更換為其他範本
+- 已設定配置後，此區段會自動收合，點擊可展開重新編輯
 
 ---
 
@@ -162,11 +133,14 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 ---
 
-### Step 3 — 再平衡分析
+### 分析功能（頂層分頁：再平衡 / 匯率曝險 / 聰明提款 / 壓力測試）
+
+完成 Step 1 與 Step 2 後，頁面頂部的四個分析分頁（📊 再平衡、💱 匯率曝險、💰 聰明提款、🧪 壓力測試）即可使用。「⚙️ 設定」分頁底部有共用的**顯示幣別選擇器**與**🔄 重新整理**按鈕，切換幣別或刷新資料會套用到所有分析分頁。
+
+#### 📊 再平衡分析
 
 - **載入指示器**：載入再平衡資料時顯示「📊 載入再平衡分析中...」狀態動畫，完成後自動收合為「✅ 再平衡分析載入完成」
-- **資料更新時間**：幣別選單旁顯示資料取得時間（🕐），自動偵測瀏覽器時區並以本地時間顯示，讓你清楚知道數據的新鮮度
-- **幣別切換**：透過下拉選單選擇顯示幣別（USD / TWD / JPY / EUR / GBP / CNY / HKD / SGD / THB），所有資產市值將自動以選定幣別計算
+- **資料更新時間**：顯示資料取得時間（🕐），自動偵測瀏覽器時區並以本地時間顯示
 - **即時匯率**：系統透過 yfinance 取得即時匯率（快取 1 小時），確保跨幣別資產正確換算
 - **雙餅圖**：目標配置 vs 實際配置
 - **Drift 長條圖**：各分類的偏移程度（紅色超配 / 綠色低配）
@@ -176,11 +150,9 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 > 💡 定期（如每季）檢視資產配置，是最重要但最常被忽略的投資紀律。
 
----
+#### 💱 匯率曝險監控
 
-### Step 4 — 匯率曝險監控 (Currency Exposure Monitor)
-
-- **本幣設定**：在 Step 4 區域右上角可直接切換本幣（如 TWD → USD），系統會以此作為匯率曝險計算的基準
+- **本幣設定**：右上角可直接切換本幣（如 TWD → USD），系統會以此作為匯率曝險計算的基準
 - **雙分頁檢視**：
   - **💵 現金幣別曝險**（預設）：僅分析現金部位的幣別分佈，匯率風險對現金的影響最直接
   - **📊 全資產幣別曝險**：分析整體投資組合（含股票、債券、現金）的幣別分佈
@@ -194,9 +166,7 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - **智慧建議**：系統會特別標示現金部位受匯率影響的金額，幫助您聚焦最需要關注的部分
 - **Telegram 警報**：當匯率變動超過三層門檻時發送 Telegram 通知（含現金曝險金額）。系統每 6 小時自動檢查，亦可手動點擊「📨 發送匯率曝險警報至 Telegram」
 
----
-
-### Step 5 — 聰明提款（Smart Withdrawal）
+#### 💰 聰明提款
 
 當你需要從投資組合中提取現金時，系統會透過 **Liquidity Waterfall** 三層優先演算法，自動建議最佳賣出方案：
 
@@ -204,14 +174,30 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 2. **📉 節稅**（Priority 2）：賣出帳面虧損持倉，進行 Tax-Loss Harvesting
 3. **💧 流動性**（Priority 3）：按流動性順序（現金 → 債券 → 成長 → 護城河 → 風向球）賣出
 
-#### 使用方式
-
 - 輸入**提款金額**與**幣別**，點擊「💰 計算提款建議」
 - 系統會顯示賣出建議表格（標的、數量、金額、原因）與摘要指標（目標金額、可賣出總額、缺口）
 - 若投資組合市值不足，會顯示**缺口金額**警告
 - 可選擇開啟「📡 發送 Telegram 通知」，將建議同步至 Telegram
 
 > 💡 聰明提款的核心理念：先賣該賣的（超配），再賣能省稅的（虧損），最後才動用流動性高的資產，保護你的複利核心持倉。
+
+#### 🧪 壓力測試
+
+模擬大盤崩盤情境，檢視你的組合能承受多大衝擊。基於線性 CAPM 模型（β 值）估算各持倉在市場大跌時的預期損失。
+
+- **崩盤情境滑桿**：選擇市場下跌幅度（-50% 到 0%），模擬大盤（如 S&P 500）崩跌時的組合表現
+- **組合加權 Beta**：計算整體 Beta 值（Beta > 1.0 表示比大盤波動更大，Beta < 1.0 較穩健）
+- **預期蒸發金額**：顯示在此情境下組合預期損失的金額與百分比
+- **痛苦等級分類**：
+  - 🟢 微風輕拂（< 10% 損失）
+  - 🟡 有感修正（10-20% 損失）
+  - 🟠 傷筋動骨（20-30% 損失）
+  - 🔴 睡不著覺（≥ 30% 損失）
+- **持倉明細表**：各標的預期損失明細，按影響程度排序
+- **智能建議**：達到「睡不著覺」等級時，系統提供風險管理建議（檢視 Beta、緊急備用金、槓桿風險等）
+- **隱私模式**：支援金額隱藏，僅顯示百分比與等級
+
+> 💡 壓力測試幫助你評估組合抗跌能力，提前了解極端市場情境下的風險暴露。定期檢視 Beta 值與損失預期，是風險管理的重要環節。
 
 ---
 
@@ -571,1311 +557,128 @@ with st.sidebar:
 
 
 # ---------------------------------------------------------------------------
-# Main Content: Tabs (War Room + Telegram)
+# Shared data (fetched once, available to all tabs)
 # ---------------------------------------------------------------------------
 
-tab_warroom, tab_telegram = st.tabs(
-    ["📊 資產配置 War Room", "📡 Telegram 設定"]
-)
+try:
+    _templates = fetch_templates() or []
+    _profile = fetch_profile()
+    _holdings = fetch_holdings() or []
+except Exception as e:
+    st.error(f"❌ 資產配置載入失敗：{e}")
+    _templates, _profile, _holdings = [], None, []
+
+_setup_done = bool(_profile and _holdings)
+_SETUP_MSG = "⚠️ 請先至「⚙️ 設定」分頁完成 Step 1（目標配置）與 Step 2（新增持倉）。"
+
+
+# ---------------------------------------------------------------------------
+# Main Content: Top-level tabs
+# ---------------------------------------------------------------------------
+
+tab_setup, tab_rebal, tab_fx, tab_withdraw, tab_stress, tab_telegram = st.tabs([
+    "⚙️ 設定",
+    "📊 再平衡",
+    "💱 匯率曝險",
+    "💰 聰明提款",
+    "🧪 壓力測試",
+    "📡 Telegram",
+])
 
 
 # ===========================================================================
-# Tab 1: War Room — Asset Allocation Dashboard
+# Tab 1: Setup — Target Allocation + Holdings + Display Currency
 # ===========================================================================
 
-with tab_warroom:
+with tab_setup:
     try:
-        templates = fetch_templates() or []
-        profile = fetch_profile()
-        holdings = fetch_holdings() or []
+        # Step 1 — collapsible when profile exists
+        with st.expander(
+            "🎯 Step 1 — 設定目標配置",
+            expanded=not _profile,
+        ):
+            render_target(_templates, _profile, _holdings)
 
-        # -------------------------------------------------------------------
-        # Section 1: Target Allocation
-        # -------------------------------------------------------------------
-        st.subheader("🎯 Step 1 — 設定目標配置")
-
-        if profile:
-            prof_cols = st.columns([5, 1])
-            with prof_cols[0]:
-                home_cur = profile.get("home_currency", "TWD")
-                st.success(
-                    f"✅ 目前使用配置：**{profile['name']}** ｜ 🏠 本幣：{home_cur}"
-                )
-            with prof_cols[1]:
-                switch_clicked = st.button(
-                    "🔄 切換風格", key="switch_persona_btn"
-                )
-
-            target = profile.get("config", {})
-
-            target_cols = st.columns(len(CATEGORY_OPTIONS))
-            for i, cat in enumerate(CATEGORY_OPTIONS):
-                with target_cols[i]:
-                    label = CATEGORY_LABELS.get(cat, cat)
-                    pct = target.get(cat, 0)
-                    st.metric(label.split(" ")[0], f"{pct}%")
-
-            # -- Switch Persona picker --
-            if switch_clicked:
-                with st.expander(
-                    "🔄 選擇新的投資風格範本", expanded=True
-                ):
-                    if templates:
-                        sw_cols = st.columns(3)
-                        for idx, tmpl in enumerate(templates):
-                            with sw_cols[idx % 3]:
-                                with st.container(border=True):
-                                    st.markdown(f"**{tmpl['name']}**")
-                                    st.caption(tmpl["description"])
-                                    if tmpl.get("quote"):
-                                        st.markdown(
-                                            f"*「{tmpl['quote']}」*"
-                                        )
-
-                                    cfg = tmpl.get("default_config", {})
-                                    non_zero = {
-                                        k: v
-                                        for k, v in cfg.items()
-                                        if v > 0
-                                    }
-                                    if non_zero:
-                                        parts = [
-                                            f"{CATEGORY_LABELS.get(k, k).split(' ')[0]} {v}%"
-                                            for k, v in non_zero.items()
-                                        ]
-                                        st.caption(" · ".join(parts))
-
-                                    if st.button(
-                                        "選擇此範本",
-                                        key=f"switch_tmpl_{tmpl['id']}",
-                                        use_container_width=True,
-                                    ):
-                                        result = api_post(
-                                            "/profiles",
-                                            {
-                                                "name": tmpl["name"],
-                                                "source_template_id": tmpl[
-                                                    "id"
-                                                ],
-                                                "config": cfg,
-                                                "home_currency": profile.get("home_currency", "TWD"),
-                                            },
-                                        )
-                                        if result:
-                                            st.success(
-                                                f"✅ 已切換至「{tmpl['name']}」"
-                                            )
-                                            invalidate_profile_caches()
-                                            st.rerun()
-                    else:
-                        st.warning("⚠️ 無法載入範本。")
-
-            # -- Adjust percentages --
-            with st.expander("✏️ 調整目標配置", expanded=False):
-                edit_cols = st.columns(len(CATEGORY_OPTIONS))
-                new_config = {}
-                for i, cat in enumerate(CATEGORY_OPTIONS):
-                    with edit_cols[i]:
-                        label = (
-                            CATEGORY_LABELS.get(cat, cat)
-                            .split("(")[0]
-                            .strip()
-                        )
-                        new_config[cat] = st.number_input(
-                            label,
-                            min_value=0.0,
-                            max_value=100.0,
-                            value=float(target.get(cat, 0)),
-                            step=5.0,
-                            key=f"target_{cat}",
-                        )
-
-                total_pct = sum(new_config.values())
-                if abs(total_pct - 100) > 0.01:
-                    st.warning(
-                        f"⚠️ 配置合計 {total_pct:.0f}%，應為 100%。"
-                    )
-                else:
-                    if st.button("💾 儲存配置", key="save_profile"):
-                        result = api_put(
-                            f"/profiles/{profile['id']}",
-                            {"config": new_config},
-                        )
-                        if result:
-                            st.success("✅ 配置已更新")
-                            invalidate_profile_caches()
-                            st.rerun()
-        else:
-            st.info(
-                "📋 尚未設定投資組合目標，請選擇一個投資人格範本開始："
-            )
-
-            init_home_cur = st.selectbox(
-                "🏠 本幣 (Home Currency)",
-                options=DISPLAY_CURRENCY_OPTIONS,
-                index=DISPLAY_CURRENCY_OPTIONS.index("TWD") if "TWD" in DISPLAY_CURRENCY_OPTIONS else 0,
-                key="init_home_currency",
-                help="用於匯率曝險計算的基準幣別。",
-            )
-
-            if templates:
-                template_cols = st.columns(3)
-                for idx, tmpl in enumerate(templates):
-                    with template_cols[idx % 3]:
-                        with st.container(border=True):
-                            st.markdown(f"**{tmpl['name']}**")
-                            st.caption(tmpl["description"])
-                            if tmpl.get("quote"):
-                                st.markdown(f"*「{tmpl['quote']}」*")
-
-                            cfg = tmpl.get("default_config", {})
-                            non_zero = {
-                                k: v for k, v in cfg.items() if v > 0
-                            }
-                            if non_zero:
-                                parts = [
-                                    f"{CATEGORY_LABELS.get(k, k).split(' ')[0]} {v}%"
-                                    for k, v in non_zero.items()
-                                ]
-                                st.caption(" · ".join(parts))
-
-                            if st.button(
-                                "選擇此範本",
-                                key=f"pick_template_{tmpl['id']}",
-                                use_container_width=True,
-                            ):
-                                result = api_post(
-                                    "/profiles",
-                                    {
-                                        "name": tmpl["name"],
-                                        "source_template_id": tmpl["id"],
-                                        "config": cfg,
-                                        "home_currency": init_home_cur,
-                                    },
-                                )
-                                if result:
-                                    st.success(
-                                        f"✅ 已套用「{tmpl['name']}」"
-                                    )
-                                    invalidate_profile_caches()
-                                    st.rerun()
-            else:
-                st.warning("⚠️ 無法載入範本，請確認後端服務。")
-
-        st.divider()
-
-        # -------------------------------------------------------------------
-        # Section 2: Holdings Management (inline editor + save + delete)
-        # -------------------------------------------------------------------
+        # Step 2 — always visible
         st.subheader("💼 Step 2 — 持倉管理")
-
-        if holdings:
-            # Build DataFrame with raw API values for round-trip editing
-            rows = []
-            for h in holdings:
-                is_cash = h.get("is_cash", False)
-                rows.append(
-                    {
-                        "ID": h["id"],
-                        "ticker": (
-                            "" if is_cash else h["ticker"]
-                        ),
-                        "raw_ticker": h["ticker"],
-                        "category": h["category"],
-                        "quantity": float(h["quantity"]),
-                        "cost_basis": (
-                            float(h["cost_basis"])
-                            if h.get("cost_basis") is not None
-                            else None
-                        ),
-                        "broker": h.get("broker") or "",
-                        "currency": h.get("currency", "USD"),
-                        "account_type": h.get("account_type") or "",
-                        "is_cash": is_cash,
-                    }
-                )
-            df = pd.DataFrame(rows)
-
-            if _is_privacy():
-                # Privacy mode: show masked read-only table
-                masked_df = df.copy()
-                masked_df["quantity"] = PRIVACY_MASK
-                masked_df["cost_basis"] = PRIVACY_MASK
-                st.dataframe(
-                    masked_df.drop(columns=["ID", "raw_ticker"]),
-                    column_config={
-                        "ticker": "代號",
-                        "category": "分類",
-                        "quantity": "數量",
-                        "cost_basis": "平均成本",
-                        "broker": "銀行/券商",
-                        "currency": "幣別",
-                        "account_type": "帳戶類型",
-                        "is_cash": "現金",
-                    },
-                    use_container_width=True,
-                    hide_index=True,
-                )
-                edited_df = df  # no edits in privacy mode
-                st.caption("🔒 隱私模式已開啟，關閉後可編輯持倉。")
-            else:
-                edited_df = st.data_editor(
-                    df,
-                    column_config={
-                        "ID": None,  # hidden
-                        "raw_ticker": None,  # hidden
-                        "ticker": st.column_config.TextColumn(
-                            "代號", disabled=True
-                        ),
-                        "category": st.column_config.SelectboxColumn(
-                            "分類",
-                            options=CATEGORY_OPTIONS,
-                            required=True,
-                        ),
-                        "quantity": st.column_config.NumberColumn(
-                            "數量", min_value=0.0, format="%.4f"
-                        ),
-                        "cost_basis": st.column_config.NumberColumn(
-                            "平均成本", min_value=0.0, format="%.2f"
-                        ),
-                        "broker": st.column_config.TextColumn(
-                            "銀行/券商"
-                        ),
-                        "currency": st.column_config.TextColumn(
-                            "幣別", disabled=True
-                        ),
-                        "account_type": st.column_config.TextColumn(
-                            "帳戶類型"
-                        ),
-                        "is_cash": st.column_config.CheckboxColumn(
-                            "現金", disabled=True
-                        ),
-                    },
-                    use_container_width=True,
-                    hide_index=True,
-                    num_rows="fixed",
-                    key="holdings_editor",
-                )
-
-            # --- Save button ---
-            save_clicked = st.button(
-                "💾 儲存變更",
-                key="save_holdings_btn",
-                disabled=_is_privacy(),
-            )
-
-            # --- Save logic: diff edited vs original ---
-            if save_clicked:
-                changed = 0
-                errors: list[str] = []
-                for idx in range(len(df)):
-                    orig = df.iloc[idx]
-                    edit = edited_df.iloc[idx]
-                    # Check if any editable field changed
-                    if (
-                        orig["category"] != edit["category"]
-                        or orig["quantity"] != edit["quantity"]
-                        or orig["cost_basis"] != edit["cost_basis"]
-                        or (orig["broker"] or "")
-                        != (edit["broker"] or "")
-                        or (orig["account_type"] or "")
-                        != (edit["account_type"] or "")
-                    ):
-                        h_id = int(orig["ID"])
-                        result = api_put(
-                            f"/holdings/{h_id}",
-                            {
-                                "ticker": orig["raw_ticker"],
-                                "category": edit["category"],
-                                "quantity": float(edit["quantity"]),
-                                "cost_basis": (
-                                    float(edit["cost_basis"])
-                                    if pd.notna(edit["cost_basis"])
-                                    else None
-                                ),
-                                "broker": (
-                                    edit["broker"]
-                                    if edit["broker"]
-                                    else None
-                                ),
-                                "currency": edit.get(
-                                    "currency", "USD"
-                                ),
-                                "account_type": (
-                                    edit["account_type"]
-                                    if edit["account_type"]
-                                    else None
-                                ),
-                                "is_cash": bool(edit["is_cash"]),
-                            },
-                        )
-                        if result:
-                            changed += 1
-                        else:
-                            errors.append(
-                                orig["raw_ticker"]
-                            )
-                if changed > 0:
-                    st.success(f"✅ 已更新 {changed} 筆持倉")
-                if errors:
-                    st.error(
-                        f"❌ 更新失敗：{', '.join(errors)}"
-                    )
-                if changed == 0 and not errors:
-                    st.info("ℹ️ 沒有偵測到變更")
-                if changed > 0:
-                    invalidate_holding_caches()
-                    st.rerun()
-
-            # --- Delete logic: selector first, then button ---
-            st.divider()
-            del_cols = st.columns([3, 1])
-            with del_cols[0]:
-                _priv = _is_privacy()
-                del_id = st.selectbox(
-                    "選擇要刪除的持倉",
-                    options=[h["id"] for h in holdings],
-                    format_func=lambda x: next(
-                        (
-                            (
-                                h["ticker"]
-                                if _priv
-                                else f"{h['ticker']} ({h['quantity']})"
-                            )
-                            for h in holdings
-                            if h["id"] == x
-                        ),
-                        str(x),
-                    ),
-                    key="del_holding_id",
-                )
-            with del_cols[1]:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button(
-                    "🗑️ 刪除", key="del_holding_btn"
-                ):
-                    result = api_delete(f"/holdings/{del_id}")
-                    if result:
-                        st.success(
-                            result.get("message", "✅ 已刪除")
-                        )
-                        invalidate_holding_caches()
-                        st.rerun()
-        else:
-            st.caption(
-                "目前無持倉資料，請透過左側面板新增股票、債券或現金。"
-            )
+        render_holdings(_holdings)
 
         st.divider()
 
-        # -------------------------------------------------------------------
-        # Section 3: Rebalance Analysis
-        # -------------------------------------------------------------------
-        st.subheader("📊 Step 3 — 再平衡分析")
-
-        if profile and holdings:
-            # Currency selector + refresh button
-            cur_cols = st.columns([2, 2, 2])
-            with cur_cols[0]:
-                display_cur = st.selectbox(
-                    "顯示幣別",
-                    options=DISPLAY_CURRENCY_OPTIONS,
-                    index=0,
-                    key="display_currency",
-                )
-            with cur_cols[1]:
-                st.write("")  # vertical spacer
-                if st.button(
-                    "🔄 重新整理",
-                    type="secondary",
-                    key="btn_refresh_rebalance",
-                ):
-                    fetch_rebalance.clear()
-                    st.rerun()
-
-            # Auto-fetch rebalance (cached TTL = CACHE_TTL_REBALANCE)
-            rebalance = None
-            with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
-                rebalance = fetch_rebalance(display_currency=display_cur)
-                if rebalance:
-                    _rb_status.update(
-                        label="✅ 再平衡分析載入完成",
-                        state="complete",
-                        expanded=False,
-                    )
-                else:
-                    _rb_status.update(
-                        label="⚠️ 載入失敗",
-                        state="error",
-                        expanded=True,
-                    )
-                    st.warning(
-                        "載入再平衡分析失敗，"
-                        "請稍後再試或確認網路連線正常。"
-                    )
-            if rebalance:
-                calc_at = rebalance.get("calculated_at", "")
-                if calc_at:
-                    with cur_cols[1]:
-                        browser_tz = st.session_state.get("browser_tz")
-                        st.caption(
-                            f"🕐 資料更新時間：{format_utc_timestamp(calc_at, browser_tz)}"
-                        )
-                st.metric(
-                    f"💰 投資組合總市值（{display_cur}）",
-                    _mask_money(rebalance["total_value"]),
-                )
-
-                import plotly.graph_objects as go
-                from plotly.subplots import make_subplots
-
-                cats_data = rebalance.get("categories", {})
-                cat_names = list(cats_data.keys())
-                cat_labels = [
-                    CATEGORY_LABELS.get(c, c).split("(")[0].strip()
-                    for c in cat_names
-                ]
-                total_val = rebalance["total_value"]
-
-                # --- Target Pie: category + target dollar amount ---
-                target_amounts = [
-                    round(
-                        total_val
-                        * cats_data[c]["target_pct"]
-                        / 100,
-                        2,
-                    )
-                    for c in cat_names
-                ]
-                target_text = [
-                    _mask_money(amt, "${:,.0f}")
-                    for amt in target_amounts
-                ]
-
-                # --- Actual Pie: per-stock breakdown (grouped by category color) ---
-                import plotly.colors as pc
-
-                detail = rebalance.get("holdings_detail", [])
-                cat_groups: dict[str, list] = defaultdict(list)
-                for d in detail:
-                    cat_groups[d["category"]].append(d)
-
-                actual_labels = []
-                actual_values = []
-                actual_text = []
-                actual_colors = []
-                for cat, items in cat_groups.items():
-                    base = CATEGORY_COLOR_MAP.get(cat, CATEGORY_COLOR_FALLBACK)
-                    icon = CATEGORY_ICON_SHORT.get(cat, "")
-                    n = len(items)
-                    if n == 1:
-                        shades = [base]
-                    else:
-                        shades = pc.n_colors(
-                            _hex_to_rgb_str(base),
-                            "rgb(255, 255, 255)",
-                            n + 2,
-                            colortype="rgb",
-                        )[:-2]
-                    for i, d in enumerate(items):
-                        actual_labels.append(f"{icon} {d['ticker']}")
-                        actual_values.append(d["market_value"])
-                        actual_text.append(
-                            _mask_money(d["market_value"], "${:,.0f}")
-                        )
-                        actual_colors.append(shades[i])
-
-                fig_pie = make_subplots(
-                    rows=1,
-                    cols=2,
-                    specs=[[{"type": "pie"}, {"type": "pie"}]],
-                    subplot_titles=[
-                        f"🎯 目標配置（{display_cur}）",
-                        f"📊 實際配置（{display_cur}）",
-                    ],
-                )
-
-                # Target pie — categories with matching base colors
-                target_colors = [
-                    CATEGORY_COLOR_MAP.get(c, CATEGORY_COLOR_FALLBACK)
-                    for c in cat_names
-                ]
-                _privacy = _is_privacy()
-                fig_pie.add_trace(
-                    go.Pie(
-                        labels=cat_labels,
-                        values=target_amounts,
-                        hole=0.4,
-                        text=target_text,
-                        textinfo=(
-                            "label+percent"
-                            if _privacy
-                            else "label+text+percent"
-                        ),
-                        textposition="auto",
-                        marker=dict(colors=target_colors),
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "佔比：%{percent}<extra></extra>"
-                            if _privacy
-                            else (
-                                "<b>%{label}</b><br>"
-                                f"目標金額：%{{text}} {display_cur}<br>"
-                                "佔比：%{percent}<extra></extra>"
-                            )
-                        ),
-                    ),
-                    row=1,
-                    col=1,
-                )
-
-                # Actual pie — individual stocks with category-colored shades
-                fig_pie.add_trace(
-                    go.Pie(
-                        labels=actual_labels,
-                        values=actual_values,
-                        hole=0.4,
-                        text=actual_text,
-                        textinfo=(
-                            "label+percent"
-                            if _privacy
-                            else "label+text+percent"
-                        ),
-                        textposition="auto",
-                        marker=dict(colors=actual_colors),
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "佔比：%{percent}<extra></extra>"
-                            if _privacy
-                            else (
-                                "<b>%{label}</b><br>"
-                                f"市值：%{{text}} {display_cur}<br>"
-                                "佔比：%{percent}<extra></extra>"
-                            )
-                        ),
-                    ),
-                    row=1,
-                    col=2,
-                )
-
-                fig_pie.update_layout(
-                    height=ALLOCATION_CHART_HEIGHT,
-                    margin=dict(t=40, b=20, l=20, r=20),
-                    showlegend=False,
-                )
-                st.plotly_chart(fig_pie, use_container_width=True)
-
-                # Drift chart
-                drift_vals = [
-                    cats_data[c]["drift_pct"] for c in cat_names
-                ]
-                colors = [
-                    "#ef4444" if d > 0 else "#22c55e" for d in drift_vals
-                ]
-                fig_drift = go.Figure(
-                    go.Bar(
-                        x=cat_labels,
-                        y=drift_vals,
-                        marker_color=colors,
-                        text=[f"{d:+.1f}%" for d in drift_vals],
-                        textposition="outside",
-                    )
-                )
-                fig_drift.update_layout(
-                    title="偏移度 (Drift %)",
-                    yaxis_title="偏移 (%)",
-                    height=DRIFT_CHART_HEIGHT,
-                    margin=dict(t=40, b=20, l=40, r=20),
-                )
-                st.plotly_chart(fig_drift, use_container_width=True)
-
-                # Advice
-                st.markdown("**💡 再平衡建議：**")
-                for adv in rebalance.get("advice", []):
-                    st.write(adv)
-
-                # Holdings breakdown (merged by ticker)
-                detail = rebalance.get("holdings_detail", [])
-                if detail:
-                    st.divider()
-                    st.markdown(
-                        f"**📋 個股持倉明細（{display_cur}）：**"
-                    )
-                    detail_rows = []
-                    for d in detail:
-                        cat_lbl = (
-                            CATEGORY_LABELS.get(
-                                d["category"], d["category"]
-                            )
-                            .split("(")[0]
-                            .strip()
-                        )
-                        orig_cur = d.get("currency", "USD")
-
-                        # 計算未實現損益
-                        cur_price = d.get("current_price")
-                        avg_cost = d.get("avg_cost")
-                        qty = d.get("quantity", 0)
-                        fx = d.get("fx", 1.0)
-
-                        pl_value = None
-                        pl_pct = None
-                        if (
-                            cur_price is not None
-                            and avg_cost is not None
-                            and avg_cost > 0
-                        ):
-                            pl_value = (cur_price - avg_cost) * qty * fx
-                            pl_pct = ((cur_price - avg_cost) / avg_cost) * 100
-
-                        # 格式化 P/L 顯示
-                        if _is_privacy():
-                            pl_display = PRIVACY_MASK
-                            pl_pct_display = PRIVACY_MASK
-                        elif pl_value is not None:
-                            sign = "+" if pl_value >= 0 else ""
-                            pl_display = f"{sign}${pl_value:,.2f}"
-                            pl_pct_display = f"{sign}{pl_pct:.2f}%"
-                        else:
-                            pl_display = "—"
-                            pl_pct_display = "—"
-
-                        detail_rows.append(
-                            {
-                                "代號": d["ticker"],
-                                "分類": cat_lbl,
-                                "原幣": orig_cur,
-                                "數量": (
-                                    _mask_qty(d["quantity"])
-                                ),
-                                "現價": (
-                                    _mask_money(
-                                        d["current_price"]
-                                    )
-                                    if d.get("current_price")
-                                    else "—"
-                                ),
-                                "平均成本": (
-                                    _mask_money(d["avg_cost"])
-                                    if d.get("avg_cost")
-                                    else "—"
-                                ),
-                                f"市值({display_cur})": (
-                                    _mask_money(
-                                        d["market_value"]
-                                    )
-                                ),
-                                "未實現損益": pl_display,
-                                "損益%": pl_pct_display,
-                                "佔比": f"{d['weight_pct']:.1f}%",
-                            }
-                        )
-                    detail_df = pd.DataFrame(detail_rows)
-                    st.dataframe(
-                        detail_df,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                # ----- X-Ray: Portfolio Overlap Analysis -----
-                xray = rebalance.get("xray", [])
-                if xray:
-                    st.divider()
-                    st.markdown(
-                        f"**🔬 穿透式持倉 X-Ray（{display_cur}）：**"
-                    )
-                    st.caption(
-                        "解析 ETF 成分股，揭示直接持倉與 ETF 間接曝險的真實比例。"
-                    )
-
-                    # -- Warning callouts --
-                    for entry in xray:
-                        if (
-                            entry["total_weight_pct"]
-                            > XRAY_WARN_THRESHOLD_PCT
-                            and entry["indirect_value"] > 0
-                        ):
-                            sources = ", ".join(
-                                entry.get("indirect_sources", [])
-                            )
-                            st.warning(
-                                f"⚠️ **{entry['symbol']}** 直接持倉佔 "
-                                f"{entry['direct_weight_pct']:.1f}%，"
-                                f"加上 ETF 間接曝險（{sources}），"
-                                f"真實曝險已達 "
-                                f"**{entry['total_weight_pct']:.1f}%**，"
-                                f"超過建議值 "
-                                f"{XRAY_WARN_THRESHOLD_PCT:.0f}%。"
-                            )
-
-                    # -- Stacked bar chart (top N) --
-                    top_xray = xray[:XRAY_TOP_N_DISPLAY]
-                    xray_symbols = [
-                        e["symbol"] for e in reversed(top_xray)
-                    ]
-                    xray_direct = [
-                        e["direct_weight_pct"]
-                        for e in reversed(top_xray)
-                    ]
-                    xray_indirect = [
-                        e["indirect_weight_pct"]
-                        for e in reversed(top_xray)
-                    ]
-
-                    fig_xray = go.Figure()
-                    fig_xray.add_trace(
-                        go.Bar(
-                            y=xray_symbols,
-                            x=xray_direct,
-                            name="直接持倉",
-                            orientation="h",
-                            marker_color="#4A90D9",
-                            text=[
-                                f"{v:.1f}%" if v > 0.5 else ""
-                                for v in xray_direct
-                            ],
-                            textposition="inside",
-                        )
-                    )
-                    fig_xray.add_trace(
-                        go.Bar(
-                            y=xray_symbols,
-                            x=xray_indirect,
-                            name="ETF 間接曝險",
-                            orientation="h",
-                            marker_color="#F5A623",
-                            text=[
-                                f"{v:.1f}%" if v > 0.5 else ""
-                                for v in xray_indirect
-                            ],
-                            textposition="inside",
-                        )
-                    )
-                    # Threshold line
-                    fig_xray.add_vline(
-                        x=XRAY_WARN_THRESHOLD_PCT,
-                        line_dash="dash",
-                        line_color="red",
-                        annotation_text=(
-                            f"風險門檻 {XRAY_WARN_THRESHOLD_PCT:.0f}%"
-                        ),
-                        annotation_position="top right",
-                    )
-                    fig_xray.update_layout(
-                        barmode="stack",
-                        height=max(300, len(top_xray) * 28 + 80),
-                        margin=dict(t=30, b=20, l=80, r=20),
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom",
-                            y=1.02,
-                            xanchor="right",
-                            x=1,
-                        ),
-                        xaxis_title=f"佔比 (%)",
-                    )
-                    st.plotly_chart(
-                        fig_xray, use_container_width=True
-                    )
-
-                    # -- Summary table --
-                    xray_rows = []
-                    for e in xray:
-                        xray_rows.append(
-                            {
-                                "標的": e["symbol"],
-                                "名稱": e.get("name", ""),
-                                "直接 (%)": (
-                                    f"{e['direct_weight_pct']:.1f}"
-                                ),
-                                "間接 (%)": (
-                                    f"{e['indirect_weight_pct']:.1f}"
-                                ),
-                                "真實曝險 (%)": (
-                                    f"{e['total_weight_pct']:.1f}"
-                                ),
-                                f"直接市值({display_cur})": (
-                                    _mask_money(
-                                        e["direct_value"],
-                                        "${:,.0f}",
-                                    )
-                                ),
-                                f"間接市值({display_cur})": (
-                                    _mask_money(
-                                        e["indirect_value"],
-                                        "${:,.0f}",
-                                    )
-                                ),
-                                "間接來源": ", ".join(
-                                    e.get("indirect_sources", [])
-                                ),
-                            }
-                        )
-                    xray_df = pd.DataFrame(xray_rows)
-                    st.dataframe(
-                        xray_df,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    # -- Telegram alert button --
-                    if st.button(
-                        "📨 發送 X-Ray 警告至 Telegram",
-                        key="xray_tg_btn",
-                    ):
-                        level, msg = post_xray_alert(display_cur)
-                        show_toast(level, msg)
-
-                # -----------------------------------------------------------
-                # Section 4: Currency Exposure Monitor
-                # -----------------------------------------------------------
-                st.divider()
-                st.subheader("💱 Step 4 — 匯率曝險監控")
-
-                with st.status("💱 載入匯率曝險分析中...", expanded=True) as _fx_status:
-                    fx_data = fetch_currency_exposure()
-                    if fx_data:
-                        _fx_status.update(
-                            label="✅ 匯率曝險分析載入完成",
-                            state="complete",
-                            expanded=False,
-                        )
-                    else:
-                        _fx_status.update(
-                            label="⚠️ 匯率曝險分析載入失敗",
-                            state="error",
-                            expanded=True,
-                        )
-
-                if fx_data:
-                    fx_calc_at = fx_data.get("calculated_at", "")
-                    fx_home = fx_data.get("home_currency", "TWD")
-
-                    # --- Home currency selector (inline in Step 4) ---
-                    _fx_hdr_cols = st.columns([3, 1])
-                    with _fx_hdr_cols[0]:
-                        if fx_calc_at:
-                            browser_tz = st.session_state.get("browser_tz")
-                            st.caption(
-                                f"🕐 分析時間：{format_utc_timestamp(fx_calc_at, browser_tz)}"
-                            )
-                    with _fx_hdr_cols[1]:
-                        _fx_cur_idx = (
-                            DISPLAY_CURRENCY_OPTIONS.index(fx_home)
-                            if fx_home in DISPLAY_CURRENCY_OPTIONS
-                            else 0
-                        )
-                        new_fx_home = st.selectbox(
-                            "🏠 本幣",
-                            options=DISPLAY_CURRENCY_OPTIONS,
-                            index=_fx_cur_idx,
-                            key="fx_home_currency_selector",
-                        )
-                        if new_fx_home != fx_home and profile:
-                            result = api_put(
-                                f"/profiles/{profile['id']}",
-                                {"home_currency": new_fx_home},
-                            )
-                            if result:
-                                invalidate_profile_caches()
-                                st.rerun()
-
-                    # --- Shared data ---
-                    risk_colors = {"low": "🟢", "medium": "🟡", "high": "🔴"}
-                    risk_labels_map = {"low": "低風險", "medium": "中風險", "high": "高風險"}
-                    fx_movements = fx_data.get("fx_movements", [])
-
-                    _CUR_COLORS = {
-                        "USD": "#3B82F6", "TWD": "#10B981", "JPY": "#F59E0B",
-                        "EUR": "#8B5CF6", "GBP": "#EF4444", "CNY": "#EC4899",
-                        "HKD": "#F97316", "SGD": "#14B8A6", "THB": "#6366F1",
-                    }
-
-                    def _render_fx_donut(bd_data: list[dict], title: str, home: str) -> None:
-                        """Render a currency breakdown donut chart."""
-                        if not bd_data:
-                            st.info("暫無資料。")
-                            return
-                        import plotly.graph_objects as go
-
-                        bd_labels = [b["currency"] for b in bd_data]
-                        bd_values = [b["value"] for b in bd_data]
-                        bd_text = [_mask_money(b["value"], "${:,.0f}") for b in bd_data]
-                        bd_colors = [_CUR_COLORS.get(b["currency"], "#6B7280") for b in bd_data]
-
-                        fig = go.Figure(
-                            go.Pie(
-                                labels=bd_labels,
-                                values=bd_values,
-                                hole=0.45,
-                                text=bd_text,
-                                textinfo=(
-                                    "label+percent"
-                                    if _is_privacy()
-                                    else "label+text+percent"
-                                ),
-                                textposition="auto",
-                                marker=dict(colors=bd_colors),
-                                hovertemplate=(
-                                    "<b>%{label}</b><br>"
-                                    "佔比：%{percent}<extra></extra>"
-                                    if _is_privacy()
-                                    else (
-                                        "<b>%{label}</b><br>"
-                                        f"市值：%{{text}} {home}<br>"
-                                        "佔比：%{percent}<extra></extra>"
-                                    )
-                                ),
-                            )
-                        )
-                        fig.update_layout(
-                            title=title,
-                            height=380,
-                            margin=dict(t=40, b=20, l=20, r=20),
-                            showlegend=True,
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-
-                    def _render_fx_movements(movements: list[dict]) -> None:
-                        """Render the FX movements table."""
-                        if not movements:
-                            return
-                        st.markdown("**📉📈 近期匯率變動：**")
-                        mv_rows = []
-                        for mv in movements:
-                            direction_icon = (
-                                "📈" if mv["direction"] == "up"
-                                else ("📉" if mv["direction"] == "down" else "➡️")
-                            )
-                            mv_rows.append({
-                                "": direction_icon,
-                                "貨幣對": mv["pair"],
-                                "現價": PRIVACY_MASK if _is_privacy() else f"{mv['current_rate']:.4f}",
-                                "變動": f"{mv['change_pct']:+.2f}%",
-                            })
-                        st.dataframe(
-                            pd.DataFrame(mv_rows),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-
-                    _ALERT_TYPE_BADGES = {
-                        "daily_spike": ("🔴", "單日劇烈波動"),
-                        "short_term_swing": ("🟡", "短期波段變動"),
-                        "long_term_trend": ("🔵", "長期趨勢變動"),
-                    }
-
-                    def _render_fx_rate_alerts(rate_alerts: list[dict]) -> None:
-                        """Render FX rate change alerts with colored badges."""
-                        if not rate_alerts:
-                            return
-                        st.markdown("**⚡ 匯率變動警報：**")
-                        alert_rows = []
-                        for a in rate_alerts:
-                            badge, label = _ALERT_TYPE_BADGES.get(
-                                a["alert_type"], ("⚪", a["alert_type"])
-                            )
-                            direction_icon = "📈" if a["direction"] == "up" else "📉"
-                            alert_rows.append({
-                                "": f"{badge} {direction_icon}",
-                                "類型": label,
-                                "貨幣對": a["pair"],
-                                "期間": a["period_label"],
-                                "變動": f"{a['change_pct']:+.2f}%",
-                                "現價": (
-                                    PRIVACY_MASK if _is_privacy()
-                                    else f"{a['current_rate']:.4f}"
-                                ),
-                            })
-                        st.dataframe(
-                            pd.DataFrame(alert_rows),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-
-                    # --- Two tabs: Cash vs Total ---
-                    fx_tab_cash, fx_tab_total = st.tabs(
-                        ["💵 現金幣別曝險", "📊 全資產幣別曝險"]
-                    )
-
-                    # === Cash tab ===
-                    with fx_tab_cash:
-                        cash_bd = fx_data.get("cash_breakdown", [])
-                        cash_nhp = fx_data.get("cash_non_home_pct", 0.0)
-                        total_cash = fx_data.get("total_cash_home", 0.0)
-
-                        if not cash_bd:
-                            st.info("尚無現金部位，請先在 Step 2 輸入現金持倉。")
-                        else:
-                            # Risk level from backend (based on alert severity)
-                            cash_risk = fx_data.get("risk_level", "low")
-
-                            cash_m_cols = st.columns(3)
-                            with cash_m_cols[0]:
-                                st.metric(
-                                    f"💰 現金總額（{fx_home}）",
-                                    _mask_money(total_cash),
-                                )
-                            with cash_m_cols[1]:
-                                st.metric("🌍 現金非本幣佔比", f"{cash_nhp:.1f}%")
-                            with cash_m_cols[2]:
-                                c_icon = risk_colors.get(cash_risk, "⚪")
-                                c_label = risk_labels_map.get(cash_risk, cash_risk)
-                                st.metric("風險等級", f"{c_icon} {c_label}")
-
-                            _render_fx_donut(
-                                cash_bd,
-                                f"現金幣別分佈（{fx_home}）",
-                                fx_home,
-                            )
-                            _render_fx_movements(fx_movements)
-                            _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
-
-                            # Cash-focused advice
-                            advice = fx_data.get("advice", [])
-                            cash_advice = [
-                                a for a in advice
-                                if "現金" in a or "💵" in a
-                            ]
-                            if cash_advice:
-                                st.markdown("**💡 現金幣別建議：**")
-                                _render_advice(cash_advice)
-
-                            # Telegram alert button
-                            if st.button(
-                                "📨 發送匯率曝險警報至 Telegram",
-                                key="fx_alert_tg_cash_btn",
-                            ):
-                                level, msg = post_fx_exposure_alert()
-                                show_toast(level, msg)
-
-                    # === Total tab ===
-                    with fx_tab_total:
-                        all_bd = fx_data.get("breakdown", [])
-                        all_nhp = fx_data.get("non_home_pct", 0.0)
-                        total_home = fx_data.get("total_value_home", 0.0)
-                        risk_level = fx_data.get("risk_level", "low")
-
-                        total_m_cols = st.columns(3)
-                        with total_m_cols[0]:
-                            st.metric(
-                                f"💰 投資組合總市值（{fx_home}）",
-                                _mask_money(total_home),
-                            )
-                        with total_m_cols[1]:
-                            st.metric("🌍 非本幣佔比", f"{all_nhp:.1f}%")
-                        with total_m_cols[2]:
-                            t_icon = risk_colors.get(risk_level, "⚪")
-                            t_label = risk_labels_map.get(risk_level, risk_level)
-                            st.metric("風險等級", f"{t_icon} {t_label}")
-
-                        _render_fx_donut(
-                            all_bd,
-                            f"全資產幣別分佈（{fx_home}）",
-                            fx_home,
-                        )
-                        _render_fx_movements(fx_movements)
-                        _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
-
-                        # Full advice
-                        advice = fx_data.get("advice", [])
-                        if advice:
-                            st.markdown("**💡 匯率曝險建議：**")
-                            _render_advice(advice)
-
-            # -----------------------------------------------------------
-            # Section 5: Smart Withdrawal
-            # -----------------------------------------------------------
-            st.divider()
-            st.subheader("💰 Step 5 — 聰明提款")
-
-            with st.form("withdraw_form"):
-                w_cols = st.columns([2, 2, 2])
-                with w_cols[0]:
-                    w_amount = st.number_input(
-                        "提款金額",
-                        min_value=0.01,
-                        value=1000.0,
-                        step=100.0,
-                        format="%.2f",
-                    )
-                with w_cols[1]:
-                    w_currency = st.selectbox(
-                        "幣別",
-                        options=DISPLAY_CURRENCY_OPTIONS,
-                        key="withdraw_currency",
-                    )
-                with w_cols[2]:
-                    st.write("")  # vertical spacer
-                    w_notify = st.toggle(
-                        "📡 發送 Telegram 通知",
-                        value=False,
-                        key="withdraw_notify",
-                    )
-                w_submit = st.form_submit_button(
-                    "💰 計算提款建議", type="primary"
-                )
-
-            # Fetch on submit; persist result in session_state so it
-            # survives Streamlit re-runs (e.g. privacy toggle).
-            if w_submit and w_amount > 0:
-                with st.status(
-                    "💰 計算聰明提款中...", expanded=True
-                ) as _wd_status:
-                    result = fetch_withdraw(
-                        w_amount, w_currency, w_notify
-                    )
-                    if result and "error_code" in result:
-                        # 404: no profile or no holdings
-                        _wd_status.update(
-                            label="⚠️ 計算失敗",
-                            state="error",
-                            expanded=True,
-                        )
-                        st.warning(
-                            result.get("detail", "請先完成 Step 1 與 Step 2。")
-                        )
-                        st.session_state.pop("withdraw_result", None)
-                    elif result:
-                        st.session_state["withdraw_result"] = result
-                        st.session_state["withdraw_display_cur"] = w_currency
-                        _wd_status.update(
-                            label="✅ 聰明提款建議完成",
-                            state="complete",
-                            expanded=False,
-                        )
-                    else:
-                        st.session_state.pop("withdraw_result", None)
-                        _wd_status.update(
-                            label="⚠️ 計算失敗",
-                            state="error",
-                            expanded=True,
-                        )
-                        st.warning(
-                            "計算提款建議失敗，"
-                            "請稍後再試或確認網路連線正常。"
-                        )
-
-            # Render persisted result (survives re-runs).
-            wd = st.session_state.get("withdraw_result")
-            wd_cur = st.session_state.get("withdraw_display_cur", "USD")
-            if wd:
-                # --- Summary message ---
-                msg = wd.get("message", "")
-                if msg:
-                    st.markdown(f"**{msg}**")
-
-                # --- Metrics row ---
-                m1, m2, m3 = st.columns(3)
-                m1.metric(
-                    "目標提款",
-                    _mask_money(
-                        wd["target_amount"],
-                        f"{wd_cur} {{:,.0f}}",
-                    ),
-                )
-                m2.metric(
-                    "可賣出總額",
-                    _mask_money(
-                        wd["total_sell_value"],
-                        f"{wd_cur} {{:,.0f}}",
-                    ),
-                )
-                shortfall = wd.get("shortfall", 0)
-                if shortfall > 0:
-                    m3.metric(
-                        "缺口",
-                        _mask_money(
-                            shortfall,
-                            f"{wd_cur} {{:,.0f}}",
-                        ),
-                        delta="不足",
-                        delta_color="inverse",
-                    )
-                    st.warning(
-                        "投資組合市值不足以完全覆蓋提款需求。"
-                    )
-                else:
-                    m3.metric(
-                        "缺口", "0", delta="充足", delta_color="normal"
-                    )
-
-                # --- Recommendations table ---
-                recs = wd.get("recommendations", [])
-                if recs:
-                    st.markdown("**📋 賣出建議：**")
-                    rows = []
-                    for r in recs:
-                        cat = r["category"]
-                        icon = CATEGORY_ICON_SHORT.get(cat, "")
-                        upl = r.get("unrealized_pl")
-                        rows.append(
-                            {
-                                "優先序": WITHDRAW_PRIORITY_LABELS.get(
-                                    r["priority"], "?"
-                                ),
-                                "標的": r["ticker"],
-                                "類別": f"{icon} {cat}",
-                                "賣出數量": _mask_qty(
-                                    r["quantity_to_sell"]
-                                ),
-                                "賣出金額": _mask_money(
-                                    r["sell_value"],
-                                    f"{wd_cur} {{:,.2f}}",
-                                ),
-                                "未實現損益": (
-                                    _mask_money(
-                                        upl,
-                                        f"{wd_cur} {{:+,.2f}}",
-                                    )
-                                    if upl is not None
-                                    else "—"
-                                ),
-                                "原因": (
-                                    PRIVACY_MASK
-                                    if _is_privacy()
-                                    else r["reason"]
-                                ),
-                            }
-                        )
-                    st.dataframe(
-                        pd.DataFrame(rows),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                # --- Post-sell drifts ---
-                drifts = wd.get("post_sell_drifts", {})
-                if drifts:
-                    st.markdown("**📊 賣出後預估配置偏移：**")
-                    drift_rows = []
-                    for cat, d in drifts.items():
-                        icon = CATEGORY_ICON_SHORT.get(cat, "")
-                        drift_rows.append(
-                            {
-                                "類別": f"{icon} {cat}",
-                                "目標 %": f"{d['target_pct']:.1f}%",
-                                "預估 %": f"{d['current_pct']:.1f}%",
-                                "偏移": f"{d['drift_pct']:+.1f}%",
-                            }
-                        )
-                    st.dataframe(
-                        pd.DataFrame(drift_rows),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-        elif not profile:
-            st.caption("請先完成 Step 1（設定目標配置）。")
-        else:
-            st.caption("請先完成 Step 2（輸入持倉）。")
+        # Shared display currency selector + refresh button
+        _ctrl_cols = st.columns([3, 1])
+        with _ctrl_cols[0]:
+            display_cur = st.selectbox(
+                "顯示幣別",
+                options=DISPLAY_CURRENCY_OPTIONS,
+                index=DISPLAY_CURRENCY_OPTIONS.index("USD"),
+                key="display_currency",
+            )
+        with _ctrl_cols[1]:
+            st.write("")  # vertical spacer
+            if st.button(
+                "🔄 重新整理",
+                type="secondary",
+                key="btn_refresh_analysis",
+            ):
+                fetch_rebalance.clear()
+                fetch_stress_test.clear()
+                fetch_currency_exposure.clear()
+                st.rerun()
 
     except Exception as e:
-        st.error(f"❌ 資產配置載入失敗：{e}")
+        st.error(f"❌ 設定載入失敗：{e}")
+
+# Resolved once after Setup tab (selectbox has already populated session state)
+_display_cur = st.session_state.get("display_currency", "USD")
 
 
 # ===========================================================================
-# Tab 2: Telegram Settings
+# Tab 2: Rebalance Analysis
+# ===========================================================================
+
+with tab_rebal:
+    if _setup_done:
+        render_rebalance(_profile, _holdings, _display_cur)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 3: Currency Exposure
+# ===========================================================================
+
+with tab_fx:
+    if _setup_done:
+        render_currency_exposure(_profile, _holdings, _display_cur)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 4: Smart Withdrawal
+# ===========================================================================
+
+with tab_withdraw:
+    if _setup_done:
+        render_withdrawal(_profile, _holdings)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 5: Stress Test
+# ===========================================================================
+
+with tab_stress:
+    if _setup_done:
+        render_stress_test(display_currency=_display_cur)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 6: Telegram Settings
 # ===========================================================================
 
 with tab_telegram:

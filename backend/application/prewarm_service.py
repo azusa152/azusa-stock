@@ -13,6 +13,7 @@ from domain.entities import Holding, Stock
 from infrastructure.database import engine
 from infrastructure.market_data import (
     get_fear_greed_index,
+    prewarm_beta_batch,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
@@ -35,6 +36,7 @@ def prewarm_all_caches() -> None:
     2. 恐懼與貪婪指數（Fear & Greed）
     3. 護城河趨勢（moat）— 排除 Bond/Cash
     4. ETF 成分股（etf_holdings）— 僅 is_etf=True 的標的
+    5. Beta 值（beta）— 壓力測試用，排除 Cash
 
     整個流程以 try/except 包裹，確保任何失敗都不會影響應用程式正常運作。
     """
@@ -52,11 +54,12 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, etf=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, etf=%d, beta=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
         len(tickers["etf"]),
+        len(tickers["beta"]),
     )
 
     # Phase 1: 技術訊號（含 piggyback price history）
@@ -73,6 +76,10 @@ def prewarm_all_caches() -> None:
         _prewarm_phase(
             "etf_holdings", lambda: prewarm_etf_holdings_batch(tickers["etf"])
         )
+
+    # Phase 5: Beta 值（壓力測試用）
+    if tickers["beta"]:
+        _prewarm_phase("beta", lambda: prewarm_beta_batch(tickers["beta"]))
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
@@ -91,6 +98,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         - signals: 需要技術訊號的 tickers（排除 Cash）
         - moat: 需要護城河分析的 tickers（排除 Bond/Cash）
         - etf: 需要 ETF 成分股的 tickers（is_etf=True）
+        - beta: 需要 Beta 值的 tickers（壓力測試用，排除 Cash）
     """
     with Session(engine) as session:
         # 活躍追蹤清單
@@ -131,11 +139,16 @@ def _collect_tickers() -> dict[str, list[str]]:
     # ETF: 只有追蹤清單中 is_etf=True 的標的
     etf_tickers = [t for t, s in stock_map.items() if s.is_etf]
 
+    # Beta: 與 signals 使用相同範圍（排除 Cash）
+    # 若未來需要不同過濾邏輯（如包含 Bond），再拆分
+    beta_tickers = signals_tickers
+
     return {
         "all": sorted(all_tickers),
         "signals": sorted(signals_tickers),
         "moat": sorted(moat_tickers),
         "etf": sorted(etf_tickers),
+        "beta": sorted(beta_tickers),
     }
 
 

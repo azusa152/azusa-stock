@@ -12,7 +12,7 @@ class TestCacheClearEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["l1_cleared"] == 10
+        assert data["l1_cleared"] == 11
         assert data["l2_cleared"] is True
 
     def test_cache_clear_should_be_idempotent(self, client):

@@ -27,6 +27,7 @@ class TestCollectTickers:
         assert result["signals"] == []
         assert result["moat"] == []
         assert result["etf"] == []
+        assert result["beta"] == []
 
     def test_should_collect_active_stocks(self, db_session: Session):
         # Arrange
@@ -54,6 +55,7 @@ class TestCollectTickers:
         assert sorted(result["all"]) == ["MSFT", "NVDA"]
         assert sorted(result["signals"]) == ["MSFT", "NVDA"]
         assert sorted(result["moat"]) == ["MSFT", "NVDA"]
+        assert sorted(result["beta"]) == ["MSFT", "NVDA"]
 
     def test_should_exclude_cash_from_signals(self, db_session: Session):
         # Arrange
@@ -81,6 +83,8 @@ class TestCollectTickers:
         assert "USD" in result["all"]
         assert "USD" not in result["signals"]
         assert "NVDA" in result["signals"]
+        assert "USD" not in result["beta"]
+        assert "NVDA" in result["beta"]
 
     def test_should_exclude_bond_and_cash_from_moat(self, db_session: Session):
         # Arrange
@@ -178,6 +182,8 @@ class TestCollectTickers:
         # Assert — both should appear
         assert "NVDA" in result["all"]
         assert "AAPL" in result["all"]
+        assert "NVDA" in result["beta"]
+        assert "AAPL" in result["beta"]
 
     def test_should_exclude_cash_holdings(self, db_session: Session):
         # Arrange — cash holding should be excluded
@@ -206,6 +212,8 @@ class TestCollectTickers:
         # Assert — USD cash holding excluded, NVDA included
         assert "USD" not in result["all"]
         assert "NVDA" in result["all"]
+        assert "USD" not in result["beta"]
+        assert "NVDA" in result["beta"]
 
     def test_should_skip_inactive_stocks(self, db_session: Session):
         # Arrange
@@ -244,6 +252,7 @@ class TestCollectTickers:
 class TestPrewarmAllCaches:
     """Tests for the orchestration function."""
 
+    @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
@@ -254,6 +263,7 @@ class TestPrewarmAllCaches:
         mock_fg,
         mock_moat,
         mock_etf,
+        mock_beta,
         db_session: Session,
     ):
         # Arrange
@@ -279,6 +289,7 @@ class TestPrewarmAllCaches:
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_etf.return_value = {}
+        mock_beta.return_value = {}
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -289,6 +300,7 @@ class TestPrewarmAllCaches:
         mock_fg.assert_called_once()
         mock_moat.assert_called_once()
         mock_etf.assert_called_once()
+        mock_beta.assert_called_once()
 
         # Verify correct tickers passed
         signals_tickers = sorted(mock_signals.call_args[0][0])
@@ -302,6 +314,11 @@ class TestPrewarmAllCaches:
         etf_tickers = sorted(mock_etf.call_args[0][0])
         assert etf_tickers == ["VTI"]
 
+        beta_tickers = sorted(mock_beta.call_args[0][0])
+        assert "NVDA" in beta_tickers
+        assert "VTI" in beta_tickers
+
+    @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
@@ -312,6 +329,7 @@ class TestPrewarmAllCaches:
         mock_fg,
         mock_moat,
         mock_etf,
+        mock_beta,
         db_session: Session,
     ):
         # Act — empty DB
@@ -323,7 +341,9 @@ class TestPrewarmAllCaches:
         mock_fg.assert_not_called()
         mock_moat.assert_not_called()
         mock_etf.assert_not_called()
+        mock_beta.assert_not_called()
 
+    @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
@@ -334,6 +354,7 @@ class TestPrewarmAllCaches:
         mock_fg,
         mock_moat,
         mock_etf,
+        mock_beta,
         db_session: Session,
     ):
         # Arrange
@@ -350,6 +371,7 @@ class TestPrewarmAllCaches:
         mock_signals.side_effect = RuntimeError("yfinance 爆炸")
         mock_fg.return_value = {}
         mock_moat.return_value = {}
+        mock_beta.return_value = {}
 
         # Act — should NOT raise
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -359,7 +381,9 @@ class TestPrewarmAllCaches:
         mock_signals.assert_called_once()
         mock_fg.assert_called_once()
         mock_moat.assert_called_once()
+        mock_beta.assert_called_once()
 
+    @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
@@ -370,6 +394,7 @@ class TestPrewarmAllCaches:
         mock_fg,
         mock_moat,
         mock_etf,
+        mock_beta,
         db_session: Session,
     ):
         # Arrange — no ETFs
@@ -386,14 +411,17 @@ class TestPrewarmAllCaches:
         mock_signals.return_value = {}
         mock_fg.return_value = {}
         mock_moat.return_value = {}
+        mock_beta.return_value = {}
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
-        # Assert — ETF phase skipped
+        # Assert — ETF phase skipped, beta still called
         mock_etf.assert_not_called()
+        mock_beta.assert_called_once()
 
+    @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
@@ -404,6 +432,7 @@ class TestPrewarmAllCaches:
         mock_fg,
         mock_moat,
         mock_etf,
+        mock_beta,
         db_session: Session,
     ):
         # Arrange
@@ -426,6 +455,7 @@ class TestPrewarmAllCaches:
         mock_signals.return_value = {}
         mock_fg.return_value = {}
         mock_moat.return_value = {}
+        mock_beta.return_value = {}
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -434,8 +464,11 @@ class TestPrewarmAllCaches:
         # Assert
         signals_tickers = mock_signals.call_args[0][0]
         moat_tickers = mock_moat.call_args[0][0]
+        beta_tickers = mock_beta.call_args[0][0]
 
         assert "USD" not in signals_tickers
         assert "USD" not in moat_tickers
+        assert "USD" not in beta_tickers
         assert "NVDA" in signals_tickers
         assert "NVDA" in moat_tickers
+        assert "NVDA" in beta_tickers

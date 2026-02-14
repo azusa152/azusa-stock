@@ -120,6 +120,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("infrastructure.market_data.get_earnings_date", _MOCK_EARNINGS),
     ("infrastructure.market_data.get_dividend_info", _MOCK_DIVIDEND),
     ("infrastructure.market_data.get_fear_greed_index", MOCK_FEAR_GREED),
+    ("infrastructure.market_data.get_stock_beta", 1.0),
     ("infrastructure.notification.send_telegram_message", None),
     ("infrastructure.notification.send_telegram_message_dual", None),
     # scan_service

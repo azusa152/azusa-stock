@@ -66,6 +66,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/holdings` | All holdings |
 | `POST` | `/holdings` | Add holding |
 | `GET` | `/rebalance` | Rebalance analysis |
+| `GET` | `/stress-test` | Stress test analysis (portfolio crash simulation) |
 | `GET` | `/settings/telegram` | Telegram notification settings |
 | `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
 | `POST` | `/settings/telegram/test` | Send a test Telegram message |

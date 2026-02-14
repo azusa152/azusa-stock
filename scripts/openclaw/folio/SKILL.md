@@ -156,6 +156,7 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/holdings/cash` | 新增現金持倉 |
 | `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算）。回傳含 `xray` 陣列，揭示 ETF 間接曝險 |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
+| `GET` | `/stress-test` | 壓力測試分析：模擬大盤崩盤情境，支援 `?scenario_drop_pct=-20&display_currency=USD`。回傳組合 Beta、預期損失金額與百分比、痛苦等級（微風輕拂/有感修正/傷筋動骨/睡不著覺）、各持倉明細與建議 |
 | `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`fx_rate_alerts`（三層級警報）、匯率變動、建議 |
 | `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（三層級偵測：單日 >1.5% / 5日 >2% / 3月 >8%，含現金曝險金額） |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），body: `{"target_amount": 50000, "display_currency": "TWD", "notify": true}` |
@@ -234,3 +235,4 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `POST /fx-watch/alert` to trigger Telegram alerts for FX timing opportunities (near recent high or consecutive increases); subject to cooldown (`reminder_interval_hours`)
 - Use `PATCH /fx-watch/{id}` with `{"is_active": false}` to temporarily pause a monitor without deleting it
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order
+- Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
