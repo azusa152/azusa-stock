@@ -322,6 +322,17 @@ ERROR_DIGEST_IN_PROGRESS = "DIGEST_IN_PROGRESS"
 ERROR_TELEGRAM_NOT_CONFIGURED = "TELEGRAM_NOT_CONFIGURED"
 ERROR_TELEGRAM_SEND_FAILED = "TELEGRAM_SEND_FAILED"
 ERROR_PREFERENCES_UPDATE_FAILED = "PREFERENCES_UPDATE_FAILED"
+ERROR_INVALID_INPUT = "INVALID_INPUT"
+ERROR_INTERNAL_ERROR = "INTERNAL_ERROR"
+
+# ---------------------------------------------------------------------------
+# Generic Error Messages — sanitized messages to prevent information leakage
+# ---------------------------------------------------------------------------
+GENERIC_ERROR_MESSAGE = "操作失敗，請稍後再試。"
+GENERIC_VALIDATION_ERROR = "輸入資料格式不正確。"
+GENERIC_TELEGRAM_ERROR = "Telegram 通知設定失敗。"
+GENERIC_PREFERENCES_ERROR = "偏好設定更新失敗。"
+GENERIC_WEBHOOK_ERROR = "處理請求時發生錯誤。"
 
 # ---------------------------------------------------------------------------
 # curl_cffi

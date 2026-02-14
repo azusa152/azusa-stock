@@ -16,6 +16,7 @@ from api.schemas import (
     ReactivateRequest,
     ReorderRequest,
     RemovedStockResponse,
+    StockImportItem,
     StockResponse,
     TickerCreateRequest,
     WebhookRequest,
@@ -44,10 +45,13 @@ from application.services import (
 from application.stock_service import get_enriched_stocks
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
+    ERROR_INVALID_INPUT,
     ERROR_STOCK_ALREADY_ACTIVE,
     ERROR_STOCK_ALREADY_EXISTS,
     ERROR_STOCK_ALREADY_INACTIVE,
     ERROR_STOCK_NOT_FOUND,
+    GENERIC_VALIDATION_ERROR,
+    GENERIC_WEBHOOK_ERROR,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
@@ -58,8 +62,10 @@ from infrastructure.market_data import (
     get_price_history,
     get_technical_signals,
 )
+from logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -360,11 +366,36 @@ def delete_price_alert_route(
     summary="Bulk import stocks (upsert)",
 )
 def import_stocks_route(
-    payload: list[dict],
+    payload: list[StockImportItem],
     session: Session = Depends(get_session),
 ) -> dict:
-    """批次匯入股票（upsert 邏輯）。"""
-    return import_stocks(session, payload)
+    """
+    批次匯入股票（upsert 邏輯）。
+
+    限制：
+    - 最多一次匯入 1000 筆
+    - ticker 長度限制 20 字元
+    - thesis 長度限制 5000 字元
+    """
+    if len(payload) > 1000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": GENERIC_VALIDATION_ERROR,
+            },
+        )
+
+    # Convert Pydantic models to dicts for the service layer
+    payload_dicts = [item.model_dump() for item in payload]
+    result = import_stocks(session, payload_dicts)
+
+    # Transform service response to match ImportResponse schema
+    return {
+        "message": result["message"],
+        "imported": result["created"] + result["updated"],
+        "errors": result["errors"],
+    }
 
 
 # ===========================================================================
@@ -399,4 +430,5 @@ def webhook_route(
         result = handle_webhook(session, payload.action, payload.ticker, payload.params)
         return WebhookResponse(**result)
     except Exception as e:
-        return WebhookResponse(success=False, message=f"錯誤：{e}")
+        logger.error("Webhook 處理失敗：%s", e, exc_info=True)
+        return WebhookResponse(success=False, message=GENERIC_WEBHOOK_ERROR)

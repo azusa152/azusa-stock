@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from api.schemas import PreferencesRequest, PreferencesResponse
-from domain.constants import DEFAULT_USER_ID, ERROR_PREFERENCES_UPDATE_FAILED
+from domain.constants import (
+    DEFAULT_NOTIFICATION_PREFERENCES,
+    DEFAULT_USER_ID,
+    ERROR_PREFERENCES_UPDATE_FAILED,
+    GENERIC_PREFERENCES_ERROR,
+)
 from domain.entities import UserPreferences
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -28,8 +33,6 @@ def get_preferences(
     """取得目前的使用者偏好設定。"""
     prefs = session.get(UserPreferences, DEFAULT_USER_ID)
     if not prefs:
-        from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES
-
         return PreferencesResponse(
             privacy_mode=False,
             notification_preferences=DEFAULT_NOTIFICATION_PREFERENCES,
@@ -73,11 +76,11 @@ def update_preferences(
             notification_preferences=prefs.get_notification_prefs(),
         )
     except Exception as e:
-        logger.error("使用者偏好更新失敗：%s", e)
+        logger.error("使用者偏好更新失敗：%s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "error_code": ERROR_PREFERENCES_UPDATE_FAILED,
-                "detail": f"偏好設定更新失敗：{e}",
+                "detail": GENERIC_PREFERENCES_ERROR,
             },
         ) from e

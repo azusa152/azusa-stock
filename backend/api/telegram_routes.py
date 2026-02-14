@@ -15,6 +15,7 @@ from domain.constants import (
     DEFAULT_USER_ID,
     ERROR_TELEGRAM_NOT_CONFIGURED,
     ERROR_TELEGRAM_SEND_FAILED,
+    GENERIC_TELEGRAM_ERROR,
 )
 from domain.entities import UserTelegramSettings
 from infrastructure.database import get_session
@@ -123,11 +124,11 @@ def test_telegram_message(
         logger.info("Telegram 測試訊息已發送。")
         return {"message": "✅ 測試訊息已發送，請檢查 Telegram。"}
     except Exception as e:
-        logger.error("Telegram 測試訊息發送失敗：%s", e)
+        logger.error("Telegram 測試訊息發送失敗：%s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "error_code": ERROR_TELEGRAM_SEND_FAILED,
-                "detail": f"發送失敗：{e}",
+                "detail": GENERIC_TELEGRAM_ERROR,
             },
         ) from e

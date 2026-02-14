@@ -5,7 +5,7 @@ API — Pydantic Request / Response Schemas。
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from domain.constants import (
     FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE,
@@ -75,24 +75,51 @@ class PriceAlertCreateRequest(BaseModel):
 class StockImportItem(BaseModel):
     """POST /stocks/import 單筆匯入資料。"""
 
-    ticker: str
-    category: str
-    thesis: str = ""
-    tags: list[str] = []
+    ticker: str = Field(..., min_length=1, max_length=20)
+    category: str = Field(..., min_length=1, max_length=50)
+    thesis: str = Field(default="", max_length=5000)
+    tags: list[str] = Field(default_factory=list, max_length=20)
     is_etf: Optional[bool] = None
+
+    @field_validator("ticker")
+    @classmethod
+    def ticker_must_be_uppercase(cls, v: str) -> str:
+        """Ticker must be uppercase."""
+        return v.upper().strip()
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: list[str]) -> list[str]:
+        """Each tag must be non-empty and under 50 chars."""
+        for tag in v:
+            if not tag or len(tag) > 50:
+                raise ValueError("每個標籤必須非空且不超過 50 字元")
+        return v
 
 
 class HoldingImportItem(BaseModel):
     """POST /holdings/import 單筆匯入資料。"""
 
-    ticker: str
-    category: str
-    quantity: float
-    cost_basis: Optional[float] = None
-    broker: Optional[str] = None
-    currency: str = "USD"
-    account_type: Optional[str] = None
+    ticker: str = Field(..., min_length=1, max_length=20)
+    category: str = Field(..., min_length=1, max_length=50)
+    quantity: float = Field(..., gt=0)
+    cost_basis: Optional[float] = Field(default=None, ge=0)
+    broker: Optional[str] = Field(default=None, max_length=100)
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    account_type: Optional[str] = Field(default=None, max_length=100)
     is_cash: bool = False
+
+    @field_validator("ticker")
+    @classmethod
+    def ticker_must_be_uppercase(cls, v: str) -> str:
+        """Ticker must be uppercase."""
+        return v.upper().strip()
+
+    @field_validator("currency")
+    @classmethod
+    def currency_must_be_uppercase(cls, v: str) -> str:
+        """Currency must be uppercase."""
+        return v.upper().strip()
 
 
 # ---------------------------------------------------------------------------

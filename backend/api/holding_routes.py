@@ -11,6 +11,7 @@ from api.schemas import (
     CashHoldingRequest,
     CurrencyExposureResponse,
     FXAlertResponse,
+    HoldingImportItem,
     HoldingRequest,
     HoldingResponse,
     ImportResponse,
@@ -30,7 +31,12 @@ from application.services import (
     send_fx_alerts,
     send_xray_warnings,
 )
-from domain.constants import DEFAULT_USER_ID, ERROR_HOLDING_NOT_FOUND
+from domain.constants import (
+    DEFAULT_USER_ID,
+    ERROR_HOLDING_NOT_FOUND,
+    ERROR_INVALID_INPUT,
+    GENERIC_VALIDATION_ERROR,
+)
 from domain.entities import Holding
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -208,10 +214,26 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     summary="Bulk import holdings (replace)",
 )
 def import_holdings(
-    data: list[dict],
+    data: list[HoldingImportItem],
     session: Session = Depends(get_session),
 ) -> dict:
-    """批次匯入持倉（清除舊資料後重新匯入）。"""
+    """
+    批次匯入持倉（清除舊資料後重新匯入）。
+
+    限制：
+    - 最多一次匯入 1000 筆
+    - ticker 長度限制 20 字元
+    - quantity 必須大於 0
+    """
+    if len(data) > 1000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": GENERIC_VALIDATION_ERROR,
+            },
+        )
+
     # 清除既有持倉
     existing = session.exec(
         select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
@@ -223,21 +245,23 @@ def import_holdings(
     errors: list[str] = []
     for i, item in enumerate(data):
         try:
+            item_dict = item.model_dump()
             holding = Holding(
                 user_id=DEFAULT_USER_ID,
-                ticker=item["ticker"].strip().upper(),
-                category=item["category"],
-                quantity=item["quantity"],
-                cost_basis=item.get("cost_basis"),
-                broker=item.get("broker"),
-                currency=item.get("currency", "USD").strip().upper(),
-                account_type=item.get("account_type"),
-                is_cash=item.get("is_cash", False),
+                ticker=item_dict["ticker"],
+                category=item_dict["category"],
+                quantity=item_dict["quantity"],
+                cost_basis=item_dict.get("cost_basis"),
+                broker=item_dict.get("broker"),
+                currency=item_dict["currency"],
+                account_type=item_dict.get("account_type"),
+                is_cash=item_dict.get("is_cash", False),
             )
             session.add(holding)
             count += 1
         except Exception as e:
-            errors.append(f"第 {i + 1} 筆：{e}")
+            logger.warning("持倉匯入第 %d 筆失敗：%s", i + 1, e)
+            errors.append(f"第 {i + 1} 筆匯入失敗")
 
     session.commit()
     logger.info("匯入持倉完成：%d 筆成功，%d 筆失敗。", count, len(errors))
