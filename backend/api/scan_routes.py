@@ -6,9 +6,10 @@ API — 掃描路由（非同步 fire-and-forget）。
 
 import threading
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
 
+from api.rate_limit import limiter
 from api.schemas import (
     AcceptedResponse,
     CNNFearGreedData,
@@ -102,8 +103,13 @@ def get_fear_greed() -> FearGreedResponse:
 @router.post(
     "/scan", response_model=AcceptedResponse, summary="Trigger background scan"
 )
-def run_scan_route() -> AcceptedResponse:
-    """觸發 V2 三層漏斗掃描（非同步），結果透過 Telegram 通知。"""
+@limiter.limit("5/minute")
+async def run_scan_route(request: Request) -> AcceptedResponse:
+    """
+    觸發 V2 三層漏斗掃描（非同步），結果透過 Telegram 通知。
+
+    Rate limited: 5/minute per IP (prevents scan abuse & yfinance overload).
+    """
     if not _scan_lock.acquire(blocking=False):
         raise HTTPException(
             status_code=409,
@@ -130,8 +136,13 @@ def run_scan_route() -> AcceptedResponse:
 @router.post(
     "/digest", response_model=AcceptedResponse, summary="Trigger weekly digest"
 )
-def run_digest_route() -> AcceptedResponse:
-    """觸發每週摘要（非同步），結果透過 Telegram 通知。"""
+@limiter.limit("5/minute")
+async def run_digest_route(request: Request) -> AcceptedResponse:
+    """
+    觸發每週摘要（非同步），結果透過 Telegram 通知。
+
+    Rate limited: 5/minute per IP (prevents digest abuse).
+    """
     if not _digest_lock.acquire(blocking=False):
         raise HTTPException(
             status_code=409,

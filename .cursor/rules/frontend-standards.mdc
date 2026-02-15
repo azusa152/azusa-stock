@@ -1,5 +1,5 @@
 ---
-description: Streamlit frontend coding standards -- caching, session state, layout patterns, config usage
+description: Apply when working with Streamlit frontend code in the frontend/ directory. Covers caching strategies, session state management, layout patterns, and privacy mode.
 globs: ["frontend/**"]
 ---
 

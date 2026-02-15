@@ -1,0 +1,27 @@
+---
+description: Apply when working with Python backend code. Covers Python tooling standards including ruff formatter/linter, dependencies management, Makefile usage, and logging practices.
+globs:
+  - "backend/**/*.py"
+alwaysApply: false
+---
+
+# Python Tooling Standards
+
+## Python Version
+- **Python version:** 3.12+ (match CI in `.github/workflows/ci.yml`).
+
+## Formatter/Linter
+- **Formatter/Linter:** Use `ruff` for both formatting and linting. Run `ruff check --fix` and `ruff format` before committing.
+- **Import ordering:** stdlib, third-party, local — ruff handles this automatically.
+
+## Makefile Shortcuts
+- **Makefile shortcuts:** Use `make test`, `make lint`, `make format` from the project root. Run `make help` to see all targets.
+
+## Dependencies
+- **Dependencies:** Pin versions in `requirements.txt`. When adding a new package, add it with a pinned version.
+
+## Logging
+- Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.
+- Never use `print()` for diagnostic output; always use `logger.info()` / `logger.warning()` / `logger.error()`.
+- Log messages in Traditional Chinese, consistent with UI language.
+- Log levels: DEBUG for tracing, INFO for business events, WARNING for recoverable issues, ERROR for failures.

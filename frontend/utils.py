@@ -58,6 +58,7 @@ from config import (
     DEFAULT_ALERT_THRESHOLD,
     DEFAULT_TAG_OPTIONS,
     EARNINGS_BADGE_DAYS_THRESHOLD,
+    FOLIO_API_KEY,
     MARGIN_BAD_CHANGE_THRESHOLD,
     PRICE_CHART_DEFAULT_PERIOD,
     PRICE_CHART_HEIGHT,
@@ -161,11 +162,16 @@ def infer_market_label(ticker: str) -> str:
 # API Helpers
 # ---------------------------------------------------------------------------
 
+# Create a session with API key header (if configured)
+_session = requests.Session()
+if FOLIO_API_KEY:
+    _session.headers["X-API-Key"] = FOLIO_API_KEY
+
 
 def api_get(path: str) -> dict | list | None:
     """GET request to Backend API."""
     try:
-        resp = requests.get(f"{BACKEND_URL}{path}", timeout=API_GET_TIMEOUT)
+        resp = _session.get(f"{BACKEND_URL}{path}", timeout=API_GET_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -176,7 +182,7 @@ def api_get(path: str) -> dict | list | None:
 def api_post(path: str, json_data: dict | list) -> dict | None:
     """POST request to Backend API."""
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}{path}", json=json_data, timeout=API_POST_TIMEOUT
         )
         resp.raise_for_status()
@@ -189,7 +195,7 @@ def api_post(path: str, json_data: dict | list) -> dict | None:
 def api_patch(path: str, json_data: dict) -> dict | None:
     """PATCH request to Backend API."""
     try:
-        resp = requests.patch(
+        resp = _session.patch(
             f"{BACKEND_URL}{path}", json=json_data, timeout=API_PATCH_TIMEOUT
         )
         resp.raise_for_status()
@@ -202,7 +208,7 @@ def api_patch(path: str, json_data: dict) -> dict | None:
 def api_put(path: str, json_data: dict) -> dict | None:
     """PUT request to Backend API."""
     try:
-        resp = requests.put(
+        resp = _session.put(
             f"{BACKEND_URL}{path}", json=json_data, timeout=API_PUT_TIMEOUT
         )
         resp.raise_for_status()
@@ -215,7 +221,7 @@ def api_put(path: str, json_data: dict) -> dict | None:
 def api_delete(path: str) -> dict | None:
     """DELETE request to Backend API."""
     try:
-        resp = requests.delete(f"{BACKEND_URL}{path}", timeout=API_DELETE_TIMEOUT)
+        resp = _session.delete(f"{BACKEND_URL}{path}", timeout=API_DELETE_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -226,7 +232,7 @@ def api_delete(path: str) -> dict | None:
 def api_get_silent(path: str, timeout: int | None = None) -> dict | list | None:
     """GET request to Backend API (silent mode — no error display)."""
     try:
-        resp = requests.get(f"{BACKEND_URL}{path}", timeout=timeout or API_GET_TIMEOUT)
+        resp = _session.get(f"{BACKEND_URL}{path}", timeout=timeout or API_GET_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
@@ -236,7 +242,7 @@ def api_get_silent(path: str, timeout: int | None = None) -> dict | list | None:
 def api_post_silent(path: str, json_data: dict | None = None) -> dict | None:
     """POST request to Backend API (silent mode — no error display)."""
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}{path}", json=json_data or {}, timeout=API_POST_TIMEOUT
         )
         resp.raise_for_status()
@@ -278,7 +284,7 @@ def build_radar_lookup() -> dict[str, str]:
 def fetch_signals(ticker: str) -> dict | None:
     """Fetch technical signals for a single stock (yfinance)."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/ticker/{ticker}/signals", timeout=API_SIGNALS_TIMEOUT
         )
         resp.raise_for_status()
@@ -297,7 +303,7 @@ def fetch_removed_stocks() -> list | None:
 def fetch_earnings(ticker: str) -> dict | None:
     """Fetch earnings date."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/ticker/{ticker}/earnings", timeout=API_EARNINGS_TIMEOUT
         )
         resp.raise_for_status()
@@ -310,7 +316,7 @@ def fetch_earnings(ticker: str) -> dict | None:
 def fetch_dividend(ticker: str) -> dict | None:
     """Fetch dividend info."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/ticker/{ticker}/dividend", timeout=API_DIVIDEND_TIMEOUT
         )
         resp.raise_for_status()
@@ -349,7 +355,7 @@ def fetch_thesis_history(ticker: str) -> list | None:
 def fetch_price_history(ticker: str) -> list[dict] | None:
     """Fetch closing price history (for trend chart)."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/ticker/{ticker}/price-history",
             timeout=API_PRICE_HISTORY_TIMEOUT,
         )
@@ -391,7 +397,7 @@ def fetch_rebalance(display_currency: str = "USD") -> dict | None:
     leaking transient failures into the Streamlit cache.
     """
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/rebalance",
             params={"display_currency": display_currency},
             timeout=API_REBALANCE_TIMEOUT,
@@ -415,7 +421,7 @@ def fetch_rebalance(display_currency: str = "USD") -> dict | None:
 def fetch_currency_exposure() -> dict | None:
     """Fetch currency exposure analysis."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/currency-exposure",
             timeout=API_REBALANCE_TIMEOUT,
         )
@@ -441,7 +447,7 @@ def fetch_stress_test(
         dict containing stress test results on success, None on failure
     """
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/stress-test",
             params={
                 "scenario_drop_pct": scenario_drop_pct,
@@ -477,7 +483,7 @@ def fetch_withdraw(
     so the UI can show a specific message instead of a generic failure.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/withdraw",
             json={
                 "target_amount": target_amount,
@@ -520,7 +526,7 @@ def post_telegram_test() -> tuple[str, str]:
     ``getattr(st, level)(message)``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/settings/telegram/test",
             timeout=API_POST_TIMEOUT,
         )
@@ -544,7 +550,7 @@ def post_xray_alert(display_currency: str = "USD") -> tuple[str, str]:
     ``"success"`` / ``"error"``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/rebalance/xray-alert",
             params={"display_currency": display_currency},
             timeout=API_POST_TIMEOUT,
@@ -571,7 +577,7 @@ def post_fx_exposure_alert() -> tuple[str, str]:
     ``"success"`` / ``"error"``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/currency-exposure/alert",
             timeout=API_POST_TIMEOUT,
         )
@@ -597,7 +603,7 @@ def put_telegram_settings(payload: dict) -> tuple[str, str]:
     ``"success"`` / ``"error"``.
     """
     try:
-        resp = requests.put(
+        resp = _session.put(
             f"{BACKEND_URL}/settings/telegram",
             json=payload,
             timeout=API_PUT_TIMEOUT,
@@ -624,7 +630,7 @@ def put_notification_preferences(
     ``"success"`` / ``"error"``.
     """
     try:
-        resp = requests.put(
+        resp = _session.put(
             f"{BACKEND_URL}/settings/preferences",
             json={
                 "privacy_mode": privacy_mode,
@@ -652,7 +658,7 @@ def post_digest() -> tuple[str, str]:
     ``"success"`` / ``"warning"`` / ``"error"``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/digest",
             timeout=API_POST_TIMEOUT,
         )
@@ -693,7 +699,7 @@ def create_fx_watch(payload: dict) -> tuple[str, str]:
     Returns ``(level, message)``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/fx-watch",
             json=payload,
             timeout=API_POST_TIMEOUT,
@@ -718,7 +724,7 @@ def patch_fx_watch(watch_id: int, payload: dict) -> tuple[str, str]:
     Returns ``(level, message)``.
     """
     try:
-        resp = requests.patch(
+        resp = _session.patch(
             f"{BACKEND_URL}/fx-watch/{watch_id}",
             json=payload,
             timeout=API_PATCH_TIMEOUT,
@@ -742,7 +748,7 @@ def toggle_fx_watch(watch_id: int, is_active: bool) -> bool:
     Returns ``True`` on success, ``False`` on any failure.
     """
     try:
-        resp = requests.patch(
+        resp = _session.patch(
             f"{BACKEND_URL}/fx-watch/{watch_id}",
             json={"is_active": not is_active},
             timeout=API_PATCH_TIMEOUT,
@@ -762,7 +768,7 @@ def delete_fx_watch(watch_id: int) -> bool:
     Returns ``True`` on success, ``False`` on any failure.
     """
     try:
-        resp = requests.delete(
+        resp = _session.delete(
             f"{BACKEND_URL}/fx-watch/{watch_id}",
             timeout=API_DELETE_TIMEOUT,
         )
@@ -781,7 +787,7 @@ def post_fx_watch_check() -> tuple[str, str]:
     Returns ``(level, message)``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/fx-watch/check",
             timeout=API_POST_TIMEOUT,
         )
@@ -805,7 +811,7 @@ def post_fx_watch_alert() -> tuple[str, str]:
     Returns ``(level, message)``.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/fx-watch/alert",
             timeout=API_POST_TIMEOUT,
         )
@@ -834,7 +840,7 @@ def fetch_fx_watch_analysis() -> dict[int, dict]:
     Returns mapping of watch_id → analysis dict.
     """
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{BACKEND_URL}/fx-watch/check",
             timeout=API_POST_TIMEOUT,
         )
@@ -871,7 +877,7 @@ def fetch_last_scan() -> dict | None:
 def fetch_fear_greed() -> dict | None:
     """Fetch Fear & Greed Index (VIX + CNN composite)."""
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/market/fear-greed",
             timeout=API_FEAR_GREED_TIMEOUT,
         )
@@ -931,7 +937,7 @@ def fetch_fx_history(base: str, quote: str) -> list[dict] | None:
     Cache: 2 hours (CACHE_TTL_FX_HISTORY)
     """
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{BACKEND_URL}/forex/{base}/{quote}/history-long",
             timeout=API_FX_HISTORY_TIMEOUT,
         )
@@ -971,6 +977,15 @@ def mask_qty(value: float, fmt: str = "{:,.4f}") -> str:
     if is_privacy():
         return PRIVACY_MASK
     return fmt.format(value)
+
+
+def mask_id(value: str, visible_suffix: int = 3) -> str:
+    """Mask a sensitive ID string, or return as-is when privacy mode is off."""
+    if not is_privacy() or not value:
+        return value
+    if len(value) > visible_suffix:
+        return "***" + value[-visible_suffix:]
+    return "***"
 
 
 # ---------------------------------------------------------------------------

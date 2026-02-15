@@ -1,5 +1,5 @@
 ---
-description: Git commit message format (type-colon-description, imperative mood) and branch naming conventions (type/kebab-case)
+description: Apply when creating commits, naming branches, or working with git workflow. Covers commit message format (type-colon-description, imperative mood) and branch naming conventions (type/kebab-case).
 alwaysApply: false
 ---
 

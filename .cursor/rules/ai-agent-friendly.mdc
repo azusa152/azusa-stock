@@ -1,5 +1,5 @@
 ---
-description: AI agent-friendly API design principles for FastAPI backend -- structured responses, OpenAPI completeness, error codes, webhook discoverability, and agent skill documentation sync
+description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing endpoints. Covers structured responses, OpenAPI completeness, error codes, webhook discoverability, and agent skill documentation sync.
 globs: ["backend/**"]
 ---
 
@@ -89,6 +89,11 @@ def create_stock(req: dict): ...
 
 - The webhook action registry lives in `backend/domain/constants.py` as a single source of truth.
 - Adding a new agent action = one dict entry + one handler function. No scattering across files.
+
+## 10. Implementation Guidelines
+
+- When implementing the "Scanner", strictly follow the specific logic for each Tier (Trend Setter vs. Moat vs. Growth).
+- Ensure the API is RESTful so the user's external bot (OpenClaw) can easily `POST /ticker` or `GET /scan`.
 
 ---
 

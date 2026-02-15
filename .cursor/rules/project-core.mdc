@@ -23,7 +23,3 @@ Your Goal: Build a Dockerized, API-first investment analysis system for discipli
 -   **Database:** SQLite (via SQLModel). Persistent storage for Watchlist and Thesis Logs.
 -   **Data Source:** `yfinance`.
 -   **Notification:** Telegram Bot API.
-
-# Interaction Guidelines
--   When implementing the "Scanner", strictly follow the specific logic for each Tier (Trend Setter vs. Moat vs. Growth).
--   Ensure the API is RESTful so the user's external bot (OpenClaw) can easily `POST /ticker` or `GET /scan`.

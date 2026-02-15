@@ -1,7 +1,10 @@
 """
 API — Telegram 通知設定路由。
 支援使用者自訂 Bot Token（雙模式：系統預設 / 自訂 Bot）。
+自訂 Bot Token 使用 Fernet 加密存儲於資料庫。
 """
+
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
@@ -15,8 +18,10 @@ from domain.constants import (
     DEFAULT_USER_ID,
     ERROR_TELEGRAM_NOT_CONFIGURED,
     ERROR_TELEGRAM_SEND_FAILED,
+    GENERIC_TELEGRAM_ERROR,
 )
 from domain.entities import UserTelegramSettings
+from infrastructure.crypto import encrypt_token
 from infrastructure.database import get_session
 from infrastructure.notification import send_telegram_message_dual
 from logging_config import get_logger
@@ -67,18 +72,35 @@ def update_telegram_settings(
     payload: TelegramSettingsRequest,
     session: Session = Depends(get_session),
 ) -> TelegramSettingsResponse:
-    """更新 Telegram 通知設定。"""
+    """
+    更新 Telegram 通知設定。
+
+    Note: custom_bot_token 在存入資料庫前會自動加密（Fernet）。
+    """
     settings = session.get(UserTelegramSettings, DEFAULT_USER_ID)
+
+    # Encrypt token before storing (if provided)
+    # Dev mode: store plaintext when FERNET_KEY unset (consistent with FOLIO_API_KEY pattern)
+    encrypted_token = None
+    if payload.custom_bot_token is not None and payload.custom_bot_token:
+        if os.getenv("FERNET_KEY"):
+            encrypted_token = encrypt_token(payload.custom_bot_token)
+        else:
+            logger.warning(
+                "FERNET_KEY 未設定，Token 以明文儲存（開發模式）。生產環境請設定 FERNET_KEY。"
+            )
+            encrypted_token = payload.custom_bot_token
+
     if settings:
         settings.telegram_chat_id = payload.telegram_chat_id
-        if payload.custom_bot_token is not None:
-            settings.custom_bot_token = payload.custom_bot_token
+        if encrypted_token is not None:
+            settings.custom_bot_token = encrypted_token
         settings.use_custom_bot = payload.use_custom_bot
     else:
         settings = UserTelegramSettings(
             user_id=DEFAULT_USER_ID,
             telegram_chat_id=payload.telegram_chat_id,
-            custom_bot_token=payload.custom_bot_token,
+            custom_bot_token=encrypted_token,
             use_custom_bot=payload.use_custom_bot,
         )
         session.add(settings)
@@ -86,7 +108,7 @@ def update_telegram_settings(
     session.commit()
     session.refresh(settings)
     logger.info(
-        "Telegram 設定已更新：chat_id=%s, use_custom_bot=%s",
+        "Telegram 設定已更新（Token 已加密）：chat_id=%s, use_custom_bot=%s",
         settings.telegram_chat_id,
         settings.use_custom_bot,
     )
@@ -123,11 +145,11 @@ def test_telegram_message(
         logger.info("Telegram 測試訊息已發送。")
         return {"message": "✅ 測試訊息已發送，請檢查 Telegram。"}
     except Exception as e:
-        logger.error("Telegram 測試訊息發送失敗：%s", e)
+        logger.error("Telegram 測試訊息發送失敗：%s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "error_code": ERROR_TELEGRAM_SEND_FAILED,
-                "detail": f"發送失敗：{e}",
+                "detail": GENERIC_TELEGRAM_ERROR,
             },
         ) from e

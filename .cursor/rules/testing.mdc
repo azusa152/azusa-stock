@@ -1,0 +1,76 @@
+---
+description: Backend testing standards with pytest. Apply when writing or modifying tests in backend/tests/ or any test files.
+globs:
+  - "backend/tests/**"
+  - "**/*test*.py"
+  - "**/conftest.py"
+alwaysApply: false
+---
+
+# Backend Testing Standards (pytest)
+
+Every feature MUST ship with tests. No untested code in production.
+
+## Test File Structure
+
+Tests live in `backend/tests/` mirroring the source layout. Check the actual directory for current structure.
+
+## Test Naming
+
+Use descriptive names: `test_<function>_should_<expected_behavior>`
+
+```python
+# ✅ GOOD
+def test_create_stock_should_return_409_when_duplicate(): ...
+def test_webhook_signals_should_return_rsi_and_ma(): ...
+
+# ❌ BAD
+def test_stock(): ...
+def test_1(): ...
+```
+
+## AAA Pattern
+
+Every test follows **Arrange / Act / Assert**:
+
+```python
+def test_deactivate_stock_should_record_reason():
+    # Arrange
+    client.post("/ticker", json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"})
+
+    # Act
+    resp = client.post("/ticker/NVDA/deactivate", json={"reason": "Valuation too high"})
+
+    # Assert
+    assert resp.status_code == 200
+    assert "NVDA" in resp.json()["message"]
+```
+
+## Fixtures & conftest.py
+
+- `conftest.py` provides: `TestClient`, in-memory SQLite DB, mock yfinance data, mock Telegram sender.
+- Use `@pytest.fixture` with appropriate scope (`session` for DB, `function` for per-test isolation).
+
+## Mock External Services
+
+- **yfinance**, **Telegram Bot API**, and any network I/O MUST be mocked. Never hit real APIs in tests.
+- Use `unittest.mock.patch` or `pytest-mock` to replace infrastructure adapters.
+
+## Minimum Test Coverage Per Endpoint
+
+| Scenario | Status Code |
+|----------|-------------|
+| Happy path | 200 / 201 |
+| Validation error | 422 |
+| Not found | 404 |
+| Conflict / duplicate | 409 (where applicable) |
+
+## Webhook Action Coverage
+
+- Every webhook action MUST have at least **one happy-path test** and **one error-path test**.
+- The `help` action must be tested to ensure discoverability stays accurate.
+
+## Mandatory Coverage Rule
+
+- Every new feature or bug fix MUST include corresponding tests.
+- PRs that change business logic without adding or updating tests should be flagged during review.

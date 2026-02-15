@@ -268,9 +268,36 @@ python scripts/import_stocks.py path/to/custom_list.json
 
 </details>
 
-### 4. 重置資料庫
+### 4. 升級與資料管理
+
+#### 升級服務（安全，保留資料）
 
 ```bash
+docker compose up --build -d
+```
+
+容器內建的 entrypoint 腳本會自動處理權限問題，無需額外操作。從舊版（root 使用者）升級時，系統會自動修正檔案所有權。
+
+#### 備份與還原資料庫
+
+```bash
+# 備份資料庫到 ./backups/
+make backup
+
+# 還原最新備份
+make restore
+
+# 還原特定備份檔案
+make restore FILE=backups/radar-20260214_153022.db
+```
+
+#### 完全重置（清空所有資料）
+
+```bash
+# ⚠️ 警告：這會刪除所有資料！建議先備份
+make backup
+
+# 刪除 Docker volumes 並重建
 docker compose down -v
 docker compose up --build
 ```
@@ -307,6 +334,75 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 
 > 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
 > CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
+
+## 安全性 (Security)
+
+Folio 採用多層次安全防護，確保資料安全與系統穩定性。
+
+### 🔐 API 認證 (API Authentication)
+
+**生產模式：** 透過 `X-API-Key` header 驗證所有 API 請求。
+
+```bash
+# 1. 生成 API Key（使用 Makefile）
+make generate-key
+
+# 2. 將 Key 加入 backend/.env
+FOLIO_API_KEY=your-generated-key-here
+
+# 3. 重啟服務
+docker compose up --build -d
+```
+
+**範例請求：**
+
+```bash
+# 正確：攜帶 X-API-Key header
+curl -H "X-API-Key: your-generated-key-here" http://localhost:8000/summary
+
+# 錯誤：未攜帶 header → 401 Unauthorized
+curl http://localhost:8000/summary
+```
+
+**開發模式：** 若 `FOLIO_API_KEY` 未設定，API 認證自動停用（dev mode），無需額外設定。
+
+> **重要提示：** OpenClaw 或其他 AI agent 整合時，需在 webhook 設定中加入 `X-API-Key` header。詳見 [OpenClaw 整合](#openclaw-整合) 章節。
+
+### 🔒 資料加密 (Data Encryption)
+
+**Telegram Bot Token 加密：** 使用 Fernet 對稱式加密（AES-128-CBC + HMAC-SHA256）保護自訂 Bot Token，防止資料庫明文洩漏。
+
+```bash
+# 1. 生成加密金鑰
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 2. 將 Key 加入 backend/.env
+FERNET_KEY=your-generated-fernet-key-here
+
+# 3. 重啟服務（自動加密既有 Token）
+docker compose up --build -d
+```
+
+> **注意：** `FERNET_KEY` 必須妥善保管與備份。遺失此 Key 將無法解密資料庫中的 Token。開發模式（未設定 `FERNET_KEY`）會以明文儲存 Token 並顯示警告日誌。
+
+### 🛡️ 安全機制
+
+- **速率限制** — 掃描、Webhook、Digest 端點限制 5 次/分鐘（每 IP），防止濫用與 yfinance 過載
+- **輸入驗證** — 批次匯入限制 1000 筆，檔案上傳限制 5MB，Pydantic 型別驗證防止注入攻擊
+- **錯誤遮蔽** — API 錯誤訊息不洩漏內部實作細節，僅回傳標準化 `error_code` 與通用訊息
+- **Docker 隔離** — 容器內使用非 root 使用者執行服務，限縮攻擊面
+- **隱私模式** — 前端一鍵遮蔽金額、數量、Chat ID，設定持久化至資料庫
+- **依賴掃描** — CI 流程使用 `pip-audit` 自動檢查已知 CVE 漏洞
+- **敏感資料防護** — `.gitignore` 排除資料庫檔案（`*.db`）、環境變數（`.env`）、日誌檔案（`logs/`）
+
+### 🚨 安全最佳實務
+
+1. **定期更新依賴** — 執行 `make install` 確保套件為最新版本
+2. **備份加密金鑰** — 將 `FERNET_KEY` 儲存於密碼管理器或安全 vault
+3. **限制網路曝露** — 生產環境建議使用 reverse proxy（Nginx/Caddy）搭配 HTTPS
+4. **監控異常** — 定期檢查 `logs/radar.log`，注意重複 403 或 429 錯誤
+
+---
 
 ## API 參考
 

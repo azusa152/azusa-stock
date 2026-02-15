@@ -2,6 +2,7 @@
 Infrastructure — 通知適配器 (Telegram Bot API)。
 支援雙模式：系統預設 Bot（env）或使用者自訂 Bot（DB）。
 支援通知偏好：依使用者設定過濾特定類型的通知。
+自訂 Bot Token 使用 Fernet 加密存儲於資料庫。
 """
 
 import os
@@ -10,6 +11,7 @@ import requests as http_requests
 from sqlmodel import Session
 
 from domain.constants import DEFAULT_USER_ID, TELEGRAM_API_URL, TELEGRAM_REQUEST_TIMEOUT
+from infrastructure.crypto import decrypt_token
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -69,8 +71,10 @@ def send_telegram_message_dual(text: str, session: Session) -> None:
     """
     雙模式 Telegram 發送：
     1. 查詢 UserTelegramSettings（自訂 Bot 設定）
-    2. 若 use_custom_bot=True 且 token / chat_id 有效 → 使用自訂 Bot
+    2. 若 use_custom_bot=True 且 token / chat_id 有效 → 使用自訂 Bot（自動解密）
     3. 否則 → 回退至環境變數（系統預設 Bot）
+
+    Note: custom_bot_token 使用 Fernet 加密存儲，此處自動解密後使用。
     """
     from domain.entities import UserTelegramSettings
 
@@ -83,8 +87,12 @@ def send_telegram_message_dual(text: str, session: Session) -> None:
         and settings.telegram_chat_id
     ):
         logger.info("使用自訂 Bot 發送 Telegram 通知。")
-        _send(settings.custom_bot_token, settings.telegram_chat_id, text)
-        return
+        # Decrypt token before use (stored encrypted in DB)
+        decrypted_token = decrypt_token(settings.custom_bot_token)
+        if decrypted_token:
+            _send(decrypted_token, settings.telegram_chat_id, text)
+            return
+        logger.warning("自訂 Bot Token 解密失敗，回退至環境變數。")
 
     # 回退：使用環境變數
     send_telegram_message(text)

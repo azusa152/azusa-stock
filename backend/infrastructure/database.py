@@ -113,6 +113,54 @@ def _load_system_personas() -> None:
     logger.info("系統人格範本載入完成（%d 筆）。", len(personas))
 
 
+def _encrypt_plaintext_tokens() -> None:
+    """
+    加密遷移：將 UserTelegramSettings.custom_bot_token 的明文改為加密存儲。
+
+    僅在 FERNET_KEY 環境變數已設定時執行。已加密的 token 不會重複加密。
+    """
+    import os
+
+    # Skip if FERNET_KEY not set (encryption not enabled)
+    if not os.getenv("FERNET_KEY"):
+        logger.debug("FERNET_KEY 未設定，跳過 Token 加密遷移。")
+        return
+
+    try:
+        from domain.entities import UserTelegramSettings
+        from infrastructure.crypto import encrypt_token, is_encrypted
+
+        with Session(engine) as session:
+            settings_list = session.query(UserTelegramSettings).all()
+            encrypted_count = 0
+
+            for settings in settings_list:
+                if settings.custom_bot_token and not is_encrypted(
+                    settings.custom_bot_token
+                ):
+                    # Token is plaintext, encrypt it
+                    try:
+                        encrypted = encrypt_token(settings.custom_bot_token)
+                        settings.custom_bot_token = encrypted
+                        encrypted_count += 1
+                        logger.info("Token 加密完成：user_id=%s", settings.user_id)
+                    except Exception as e:
+                        logger.error(
+                            "Token 加密失敗：user_id=%s, error=%s",
+                            settings.user_id,
+                            e,
+                        )
+
+            if encrypted_count > 0:
+                session.commit()
+                logger.info("Token 加密遷移完成：%d 筆。", encrypted_count)
+            else:
+                logger.debug("無需加密的明文 Token。")
+
+    except Exception as e:
+        logger.error("Token 加密遷移失敗：%s", e, exc_info=True)
+
+
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移與資料載入。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
@@ -129,6 +177,10 @@ def create_db_and_tables() -> None:
     logger.info("載入系統人格範本...")
     _load_system_personas()
     logger.info("人格範本就緒。")
+
+    logger.info("執行 Token 加密遷移...")
+    _encrypt_plaintext_tokens()
+    logger.info("Token 加密遷移完成。")
 
 
 def get_session() -> Generator[Session, None, None]:

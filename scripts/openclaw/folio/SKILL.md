@@ -12,13 +12,36 @@ Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、�
 
 - Folio 的 Docker Compose 服務正在運行
 - Backend API 預設在 `http://localhost:8000`
+- (Optional) Set `FOLIO_API_KEY` environment variable for production security
+
+## Authentication
+
+Folio supports optional API key authentication via the `X-API-Key` header.
+
+**Dev Mode (default):** If `FOLIO_API_KEY` is unset, authentication is disabled.
+
+**Production Mode:** Set `FOLIO_API_KEY` in `.env` and include it in all requests:
+
+```bash
+# Generate API key
+make generate-key
+
+# Add to .env
+echo "FOLIO_API_KEY=your-key-here" >> .env
+
+# Export for shell commands
+export FOLIO_API_KEY="your-key-here"
+```
+
+All `curl` commands below assume you'll add `-H "X-API-Key: $FOLIO_API_KEY"` when auth is enabled.
 
 ## Quick Start
 
 ### 查看投資組合摘要
 
 ```bash
-curl -s http://localhost:8000/summary
+curl -s http://localhost:8000/summary \
+  -H "X-API-Key: $FOLIO_API_KEY"
 ```
 
 ### 透過 Webhook 執行操作
@@ -26,6 +49,7 @@ curl -s http://localhost:8000/summary
 ```bash
 curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $FOLIO_API_KEY" \
   -d '{"action": "summary"}'
 ```
 
@@ -236,3 +260,26 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `PATCH /fx-watch/{id}` with `{"is_active": false}` to temporarily pause a monitor without deleting it
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order
 - Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
+- Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
+- When users report errors after an upgrade, check `docker compose logs backend --tail 50` first
+
+## Service Operations
+
+Use `exec` tool to run these commands from the Folio project root for infrastructure management.
+
+### Backup & Restore
+
+- `make backup` — Backup database (timestamped file in `./backups/`)
+- `make restore` — Restore from latest backup
+- `make restore FILE=backups/radar-YYYYMMDD.db` — Restore specific backup
+
+### Upgrade & Restart
+
+- `docker compose up --build -d` — Safe rebuild (entrypoint handles volume permissions automatically)
+- `docker compose down -v` — Full reset, DELETES ALL DATA (suggest `make backup` first)
+
+### Health & Diagnostics
+
+- `curl -sf http://localhost:8000/health` — Backend health check
+- `docker compose ps` — Container status
+- `docker compose logs backend --tail 50` — Recent backend logs

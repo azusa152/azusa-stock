@@ -84,8 +84,8 @@ class TestWebhookScan:
     """Tests for the 'scan' action."""
 
     def test_scan_should_accept_background_job(self, client):
-        # Act — mock Thread so _bg_scan doesn't run against the test DB
-        with patch("threading.Thread"):
+        # Act — mock run_scan so it doesn't actually run the scan in the background
+        with patch("application.webhook_service.run_scan"):
             resp = client.post("/webhook", json={"action": "scan"})
 
         # Assert
@@ -310,9 +310,9 @@ class TestWebhookDiscoverability:
         assert resp.status_code == 200
         data = resp.json()["data"]
         required_keys = {"total_watches", "triggered_alerts", "sent_alerts", "alerts"}
-        assert required_keys == set(data.keys()), (
-            f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
-        )
+        assert (
+            required_keys == set(data.keys())
+        ), f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
 
 
 class TestWebhookUnknownAction:
