@@ -657,18 +657,18 @@ openclaw onboard
 
 **方式一：使用 Skill 檔案**
 
-將 `scripts/openclaw/folio/` 資料夾複製到 OpenClaw skills 目錄：
+將 `docs/agents/folio/` 資料夾複製到 OpenClaw skills 目錄：
 
 ```bash
-cp -r scripts/openclaw/folio/ ~/.openclaw/skills/folio/
+cp -r docs/agents/folio/ ~/.openclaw/skills/folio/
 ```
 
 **方式二：使用 AGENTS.md**
 
-將 `scripts/openclaw/AGENTS.md` 複製到 OpenClaw workspace：
+將 `docs/agents/AGENTS.md` 複製到 OpenClaw workspace：
 
 ```bash
-cp scripts/openclaw/AGENTS.md ~/.openclaw/workspace/AGENTS.md
+cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 ```
 
 ### Agent-Friendly Endpoints

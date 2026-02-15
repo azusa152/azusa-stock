@@ -30,5 +30,5 @@ alwaysApply: true
 - **Documentation Sync:** Any feature addition, modification, or removal MUST include updates to the corresponding documentation:
   - `README.md` — Update feature list, API reference, architecture diagrams, examples, and project structure as needed.
   - Frontend SOP manual (the `st.expander("SOP")` block in `frontend/pages/radar.py`) — Update the in-app user guide to reflect the current system behavior.
-  - OpenClaw Skills (`scripts/openclaw/folio/SKILL.md` and `scripts/openclaw/AGENTS.md`) — Update endpoint tables, webhook actions, categories, and usage tips to match API changes.
+  - AI Agent Docs (`docs/agents/folio/SKILL.md` and `docs/agents/AGENTS.md`) — Update endpoint tables, webhook actions, categories, and usage tips to match API changes.
   - Never leave documentation out of date after a code change.

@@ -105,8 +105,8 @@ Every code change that affects the API surface MUST update the agent skill files
 
 | File | What to update |
 |------|----------------|
-| `scripts/openclaw/folio/SKILL.md` | Webhook actions table, direct API endpoint table, categories, response format, usage tips |
-| `scripts/openclaw/AGENTS.md` | Key endpoints list, webhook actions table, direct API table, response guidelines |
+| `docs/agents/folio/SKILL.md` | Webhook actions table, direct API endpoint table, categories, response format, usage tips |
+| `docs/agents/AGENTS.md` | Key endpoints list, webhook actions table, direct API table, response guidelines |
 
 ## When to Update
 
