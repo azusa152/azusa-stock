@@ -8,8 +8,11 @@ import tempfile
 # Set environment variables BEFORE any app imports to avoid /app filesystem access
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
+
 # Disable auth in tests by default (individual tests can override)
-os.environ.pop("FOLIO_API_KEY", None)
+# IMPORTANT: Set empty string instead of pop() to prevent python-dotenv from loading
+# FOLIO_API_KEY from .env file when main.py imports load_dotenv()
+os.environ["FOLIO_API_KEY"] = ""
 
 # Set test Fernet key for encryption tests (required for Phase 4)
 # This key is only used in tests and is not a real secret
