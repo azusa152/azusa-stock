@@ -308,8 +308,16 @@ Use `exec` tool to run these commands from the Folio project root for infrastruc
 
 ### Upgrade & Restart
 
-- `docker compose up --build -d` — Safe rebuild (entrypoint handles volume permissions automatically)
-- `docker compose down -v` — Full reset, DELETES ALL DATA (suggest `make backup` first)
+When code changes have been pushed to the repository, follow this workflow to apply them to the running service:
+
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1. Pull latest code | `git pull origin main` | Fetch code changes (or use current branch name) |
+| 2. Rebuild & restart | `make up` | Rebuild images with changes and restart containers (zero downtime, data preserved) |
+| 3. Verify health | `curl -sf http://localhost:8000/health` | Backend health check |
+| 4. Check status | `docker compose ps` | Verify all containers are running |
+| 5. Troubleshoot (if needed) | `docker compose logs backend --tail 50` | View recent logs if health check fails |
+
 
 ### Health & Diagnostics
 

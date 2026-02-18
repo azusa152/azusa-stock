@@ -8,6 +8,7 @@
 #   make format    # Ruff 程式碼格式化
 #   make up        # 啟動所有服務（背景執行）
 #   make down      # 停止並移除所有容器
+#   make restart   # 重新建構並重啟所有服務（保留資料）
 #   make security  # 安全性檢查（.env 檔案、API Key、敏感資料）
 #   make help      # 列出所有可用目標
 # ---------------------------------------------------------------------------
@@ -22,7 +23,7 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format generate-key backup restore up down security
+.PHONY: help install test lint format generate-key backup restore up down restart security
 
 # Dynamic volume name detection (project directory name may vary)
 VOLUME_NAME := $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -72,6 +73,9 @@ up: ## 啟動所有服務（背景執行）
 
 down: ## 停止並移除所有容器
 	docker compose down
+
+restart: ## 重新建構並重啟所有服務（保留資料）
+	docker compose up --build -d
 
 security: ## 安全性檢查（.env 檔案、API Key、敏感資料）
 	@echo "=== Security Audit ==="
