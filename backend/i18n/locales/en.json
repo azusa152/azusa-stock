@@ -55,7 +55,8 @@
     "contrarian_buy_alert": "🟢 {ticker} contrarian buy signal (RSI={rsi}, positive market)",
     "overheated_alert": "🟠 {ticker} overheated (Bias={bias}%)",
     "moat_stable_alert": "🟢 {ticker} {details}",
-    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+    "moat_unavailable_alert": "⚠️ {ticker} {details}",
+    "rogue_wave_alert": "🌊 {ticker} Rogue Wave: Bias {bias}% at P{percentile}, volume {vol_ratio}x surge. Party peaking — no leveraged chasing."
   },
   "notification": {
     "change_label": "changes",

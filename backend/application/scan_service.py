@@ -10,7 +10,11 @@ from sqlmodel import Session
 
 from application.formatters import format_fear_greed_label
 from application.stock_service import _get_stock_or_raise
-from domain.analysis import determine_scan_signal
+from domain.analysis import (
+    compute_bias_percentile,
+    detect_rogue_wave,
+    determine_scan_signal,
+)
 from domain.constants import (
     CATEGORY_DISPLAY_ORDER,
     CATEGORY_ICON,
@@ -35,6 +39,7 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
+    get_bias_distribution,
     get_fear_greed_index,
     get_technical_signals,
 )
@@ -132,6 +137,32 @@ def run_scan(session: Session) -> dict:
 
         signal = determine_scan_signal(moat_value, mkt_status, rsi, bias)
 
+        # === Rogue Wave (瘋狗浪) ===
+        bias_percentile: float | None = None
+        is_rogue_wave = False
+        if bias is not None and stock.category.value not in SKIP_SIGNALS_CATEGORIES:
+            dist = get_bias_distribution(ticker)
+            if dist:
+                bias_percentile = compute_bias_percentile(
+                    bias, dist["historical_biases"]
+                )
+            is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
+            if is_rogue_wave:
+                alerts.append(
+                    t(
+                        "scan.rogue_wave_alert",
+                        lang=lang,
+                        ticker=ticker,
+                        bias=round(bias, 1),
+                        percentile=round(bias_percentile)
+                        if bias_percentile is not None
+                        else "N/A",
+                        vol_ratio=round(volume_ratio, 1)
+                        if volume_ratio is not None
+                        else "N/A",
+                    )
+                )
+
         if signal == ScanSignal.THESIS_BROKEN:
             alerts.append(
                 t(
@@ -190,6 +221,8 @@ def run_scan(session: Session) -> dict:
             "price": price,
             "rsi": rsi,
             "market_status": market_status_value,
+            "bias_percentile": bias_percentile,
+            "is_rogue_wave": is_rogue_wave,
         }
 
     results: list[dict] = []

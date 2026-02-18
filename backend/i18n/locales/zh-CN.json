@@ -55,7 +55,8 @@
     "contrarian_buy_alert": "🟢 {ticker} 逆势买入信号（RSI={rsi}，市场正面）",
     "overheated_alert": "🟠 {ticker} 乖离率过热（Bias={bias}%）",
     "moat_stable_alert": "🟢 {ticker} {details}",
-    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+    "moat_unavailable_alert": "⚠️ {ticker} {details}",
+    "rogue_wave_alert": "🌊 {ticker} 疯狗浪：乖离率 {bias}% 达历史 P{percentile}，成交量放大 {vol_ratio}x。派对尾声，勿追高加杠杆。"
   },
   "notification": {
     "change_label": "变化",
