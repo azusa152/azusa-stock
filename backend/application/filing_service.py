@@ -6,9 +6,10 @@ Application — Filing Service：13F 季報同步與持倉差異分析。
 2. 若 latest 已同步則跳過（冪等）
 3. 解析 13F XML 持倉明細
 4. 對每筆持倉呼叫 classify_holding_change()，與前季進行比較
-5. 計算 weight_pct
-6. 批次儲存 GuruFiling + GuruHolding
-7. 回傳摘要 dict
+5. 對前季有但本季完全消失的 CUSIP 建立 SOLD_OUT 記錄
+6. 計算 weight_pct
+7. 批次儲存 GuruFiling + GuruHolding
+8. 回傳摘要 dict
 """
 
 from sqlmodel import Session
@@ -48,10 +49,12 @@ def sync_guru_filing(session: Session, guru_id: int) -> dict:
     1. 取得大師資料與 EDGAR 最新兩筆申報
     2. 若最新申報已存在資料庫則跳過（冪等）
     3. 下載並解析 13F XML
-    4. 與前季持倉比較，標記動作與變化幅度
-    5. 計算各持倉佔總倉位比例
-    6. 批次儲存申報 + 持倉
-    7. 回傳摘要
+    4. 載入前季持倉快照（在 save_filing 之前，確保取得的是舊季資料）
+    5. 與前季持倉比較，標記動作與變化幅度
+    6. 對前季有但本季完全消失的 CUSIP 建立 SOLD_OUT 記錄
+    7. 計算各持倉佔總倉位比例
+    8. 批次儲存申報 + 持倉
+    9. 回傳摘要
 
     Args:
         session: Database session
@@ -109,8 +112,8 @@ def sync_guru_filing(session: Session, guru_id: int) -> dict:
             "error": "failed to fetch or parse infotable XML",
         }
 
-    # 載入前季持倉（用於 diff）
-    prev_holdings_map = _load_previous_holdings_map(session, guru_id)
+    # 載入前季持倉快照（必須在 save_filing 之前呼叫，此時 DB 中最新申報即為前季）
+    prev_holdings_map = _snapshot_prev_holdings(session, guru_id)
 
     # 計算總持倉市值（用於 weight_pct）
     total_value = sum(h["value"] for h in raw_holdings)
@@ -129,7 +132,7 @@ def sync_guru_filing(session: Session, guru_id: int) -> dict:
         ),
     )
 
-    # 組裝並分類 GuruHolding 列表
+    # 組裝並分類 GuruHolding 列表（含前季完全消失的 SOLD_OUT）
     holdings = _build_holdings(
         raw_holdings, filing, guru, prev_holdings_map, total_value
     )
@@ -215,7 +218,8 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
         guru_id: Guru.id
 
     Returns:
-        持倉變動列表，每筆含 ticker, company_name, action, change_pct, value, shares, weight_pct
+        持倉變動列表，每筆含 report_date, filing_date, ticker, company_name,
+        action, change_pct, value, shares, weight_pct
     """
     filing = find_latest_filing_by_guru(session, guru_id)
     if filing is None:
@@ -224,7 +228,7 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
     holdings = find_holdings_by_filing(session, filing.id)
     changes = [h for h in holdings if h.action != HoldingAction.UNCHANGED.value]
 
-    return [_holding_to_dict(h) for h in changes]
+    return [_holding_to_dict(h, filing) for h in changes]
 
 
 # ---------------------------------------------------------------------------
@@ -232,10 +236,19 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _load_previous_holdings_map(session: Session, guru_id: int) -> dict[str, float]:
+def _snapshot_prev_holdings(session: Session, guru_id: int) -> dict[str, float]:
     """
-    載入前季持倉的 cusip → shares 映射，用於 diff。
-    若無前季申報則回傳空 dict。
+    載入資料庫中現有最新申報的 cusip → shares 快照，作為本次 diff 的基準。
+
+    重要：此函式必須在 save_filing（新申報）之前呼叫，否則會取到剛存入的
+    本季資料而非前季資料。
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+
+    Returns:
+        cusip → shares 映射；若無前季申報則回傳空 dict
     """
     prev_filing = find_latest_filing_by_guru(session, guru_id)
     if prev_filing is None:
@@ -252,10 +265,18 @@ def _build_holdings(
     prev_map: dict[str, float],
     total_value: float,
 ) -> list[GuruHolding]:
-    """將 EDGAR 原始持倉列表轉換為 GuruHolding 物件，含分類與計算。"""
+    """
+    將 EDGAR 原始持倉列表轉換為 GuruHolding 物件，含分類與計算。
+
+    同時處理前季有但本季完全消失的 CUSIP（SOLD_OUT），
+    這類倉位不出現在 EDGAR XML 中，需從 prev_map 補充建立。
+    """
     holdings = []
+    current_cusips: set[str] = set()
+
     for raw in raw_holdings:
         cusip = raw["cusip"]
+        current_cusips.add(cusip)
         current_shares = raw["shares"]
         previous_shares = prev_map.get(cusip)
 
@@ -282,6 +303,26 @@ def _build_holdings(
                 weight_pct=weight_pct,
             )
         )
+
+    # 前季存在但本季完全消失 → SOLD_OUT
+    for cusip, prev_shares in prev_map.items():
+        if cusip not in current_cusips:
+            ticker = map_cusip_to_ticker(cusip, "")
+            holdings.append(
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip=cusip,
+                    ticker=ticker,
+                    company_name="",
+                    value=0.0,
+                    shares=0.0,
+                    action=HoldingAction.SOLD_OUT.value,
+                    change_pct=-100.0,
+                    weight_pct=0.0,
+                )
+            )
+
     return holdings
 
 
@@ -298,7 +339,7 @@ def _build_summary(guru: Guru, filing: GuruFiling, holdings: list[GuruHolding]) 
             action_counts[h.action] += 1
 
     top_holdings = sorted(
-        [_holding_to_dict(h) for h in holdings if h.weight_pct is not None],
+        [_holding_to_dict(h, filing) for h in holdings if h.weight_pct is not None],
         key=lambda x: x["weight_pct"] or 0,
         reverse=True,
     )[:GURU_TOP_HOLDINGS_COUNT]
@@ -319,10 +360,11 @@ def _build_summary(guru: Guru, filing: GuruFiling, holdings: list[GuruHolding]) 
     }
 
 
-def _holding_to_dict(h: GuruHolding) -> dict:
-    """GuruHolding → serializable dict。"""
+def _holding_to_dict(h: GuruHolding, filing: GuruFiling) -> dict:
+    """GuruHolding → serializable dict，含所屬申報的日期資訊。"""
     return {
         "id": h.id,
+        "guru_id": h.guru_id,
         "cusip": h.cusip,
         "ticker": h.ticker,
         "company_name": h.company_name,
@@ -331,4 +373,6 @@ def _holding_to_dict(h: GuruHolding) -> dict:
         "action": h.action,
         "change_pct": h.change_pct,
         "weight_pct": h.weight_pct,
+        "report_date": filing.report_date,
+        "filing_date": filing.filing_date,
     }

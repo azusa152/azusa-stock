@@ -518,6 +518,42 @@ class TestSyncHoldingDiff:
     @patch(
         f"{FILING_MODULE}.get_latest_13f_filings", return_value=_SAMPLE_EDGAR_FILINGS
     )
+    def test_sold_out_should_be_created_when_cusip_absent_from_current_filing(
+        self, _mock_get, _mock_cusip, db_session: Session
+    ):
+        from application.filing_service import sync_guru_filing
+
+        guru = _make_guru(db_session, cik="0001111116")
+        self._setup_previous_holding(db_session, guru, cusip="GONE001", shares=5000.0)
+
+        # Current filing doesn't contain GONE001 at all
+        current_holdings = [
+            {
+                "cusip": "NEWCUSIP2",
+                "company_name": "Other Co",
+                "value": 100.0,
+                "shares": 1000.0,
+            }
+        ]
+        with patch(
+            f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=current_holdings
+        ):
+            result = sync_guru_filing(db_session, guru.id)
+
+        assert result["sold_out"] == 1
+
+        latest = find_latest_filing_by_guru(db_session, guru.id)
+        holdings = find_holdings_by_filing(db_session, latest.id)
+        sold = [h for h in holdings if h.action == HoldingAction.SOLD_OUT.value]
+        assert len(sold) == 1
+        assert sold[0].cusip == "GONE001"
+        assert sold[0].shares == 0.0
+        assert sold[0].change_pct == pytest.approx(-100.0)
+
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings", return_value=_SAMPLE_EDGAR_FILINGS
+    )
     def test_unchanged_should_be_classified_when_change_below_threshold(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
@@ -801,6 +837,21 @@ class TestGetFilingSummaryAndChanges:
         assert len(changes) == 1
         assert changes[0]["cusip"] == "NEW001"
         assert changes[0]["action"] == HoldingAction.NEW_POSITION.value
+
+    def test_get_holding_changes_should_include_filing_metadata(
+        self, db_session: Session
+    ):
+        from application.filing_service import get_holding_changes
+
+        guru, _ = self._seed_guru_and_holding(
+            db_session, HoldingAction.NEW_POSITION.value, cik="0003000004"
+        )
+        changes = get_holding_changes(db_session, guru.id)
+
+        assert len(changes) == 1
+        assert changes[0]["report_date"] == "2024-12-31"
+        assert changes[0]["filing_date"] == "2025-02-14"
+        assert changes[0]["guru_id"] == guru.id
 
     def test_get_holding_changes_should_return_empty_when_no_filing(
         self, db_session: Session
