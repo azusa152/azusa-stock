@@ -230,7 +230,7 @@ class TestSyncGuruFiling:
             result["accession_number"] == _SAMPLE_EDGAR_FILINGS[0]["accession_number"]
         )
         assert result["report_date"] == "2024-12-31"
-        assert result["total_holdings"] == len(_SAMPLE_RAW_HOLDINGS)
+        assert result["holdings_count"] == len(_SAMPLE_RAW_HOLDINGS)
 
     @patch(
         f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=_SAMPLE_RAW_HOLDINGS
@@ -791,7 +791,7 @@ class TestGetFilingSummaryAndChanges:
         assert result is not None
         assert result["new_positions"] == 1
         assert result["sold_out"] == 0
-        assert result["total_holdings"] == 1
+        assert result["holdings_count"] == 1
 
     def test_get_holding_changes_should_exclude_unchanged(self, db_session: Session):
         from application.filing_service import get_holding_changes

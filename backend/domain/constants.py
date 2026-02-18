@@ -303,6 +303,14 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Check FX watch configs & send Telegram alerts (with cooldown)",
         "requires_ticker": False,
     },
+    "guru_sync": {
+        "description": "Trigger 13F filing sync for all tracked gurus (EDGAR fetch)",
+        "requires_ticker": False,
+    },
+    "guru_summary": {
+        "description": "Send latest guru holding changes digest via Telegram",
+        "requires_ticker": False,
+    },
 }
 
 # ---------------------------------------------------------------------------

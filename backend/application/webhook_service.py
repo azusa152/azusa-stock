@@ -4,15 +4,19 @@ Application — Webhook Service：OpenClaw / AI agent webhook 處理。
 
 from sqlmodel import Session
 
+from application.filing_service import sync_all_gurus
 from application.formatters import format_fear_greed_label
 from application.fx_watch_service import send_fx_watch_alerts
+from application.notification_service import (
+    get_portfolio_summary,
+    send_filing_season_digest,
+)
 from application.stock_service import (
     StockAlreadyExistsError,
     StockNotFoundError,
     create_stock,
 )
 from application.scan_service import list_price_alerts, run_scan
-from application.notification_service import get_portfolio_summary
 from application.rebalance_service import calculate_withdrawal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
@@ -235,6 +239,58 @@ def handle_webhook(
             return {
                 "success": False,
                 "message": t("webhook.fx_watch_failed", lang=lang, error=str(e)),
+            }
+
+    if action == "guru_sync":
+        try:
+            results = sync_all_gurus(session)
+            synced = sum(1 for r in results if r.get("status") == "synced")
+            skipped = sum(1 for r in results if r.get("status") == "skipped")
+            errors = sum(1 for r in results if r.get("status") == "error")
+            msg = t(
+                "webhook.guru_sync_complete",
+                lang=lang,
+                total=len(results),
+                synced=synced,
+                skipped=skipped,
+                errors=errors,
+            )
+            return {
+                "success": True,
+                "message": msg,
+                "data": {
+                    "total": len(results),
+                    "synced": synced,
+                    "skipped": skipped,
+                    "errors": errors,
+                },
+            }
+        except Exception as e:
+            logger.error("guru_sync 執行失敗：%s", e)
+            return {
+                "success": False,
+                "message": t("webhook.guru_sync_failed", lang=lang, error=str(e)),
+            }
+
+    if action == "guru_summary":
+        try:
+            result = send_filing_season_digest(session)
+            msg = t(
+                "webhook.guru_summary_complete",
+                lang=lang,
+                status=result.get("status", ""),
+                count=result.get("guru_count", 0),
+            )
+            return {
+                "success": True,
+                "message": msg,
+                "data": result,
+            }
+        except Exception as e:
+            logger.error("guru_summary 執行失敗：%s", e)
+            return {
+                "success": False,
+                "message": t("webhook.guru_summary_failed", lang=lang, error=str(e)),
             }
 
     # Fallback — should not reach here if registry is in sync

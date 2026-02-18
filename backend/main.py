@@ -14,10 +14,12 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlmodel import Session
 
 from api.dependencies import require_api_key
 from api.forex_routes import router as forex_router
 from api.fx_watch_routes import router as fx_watch_router
+from api.guru_routes import resonance_router, router as guru_router
 from api.holding_routes import router as holding_router
 from api.persona_routes import router as persona_router
 from api.preferences_routes import router as preferences_router
@@ -46,6 +48,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Folio 後端啟動中 — 初始化資料庫...")
     create_db_and_tables()
     logger.info("資料庫初始化完成，服務就緒。")
+
+    # 種入系統預設大師（冪等）
+    from application.guru_service import seed_default_gurus
+    from infrastructure.database import engine
+
+    with Session(engine) as _session:
+        seed_default_gurus(_session)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.prewarm_service import prewarm_all_caches
@@ -124,3 +133,5 @@ app.include_router(telegram_router, dependencies=auth_deps)
 app.include_router(preferences_router, dependencies=auth_deps)
 app.include_router(forex_router, dependencies=auth_deps)
 app.include_router(fx_watch_router, dependencies=auth_deps)
+app.include_router(guru_router, dependencies=auth_deps)
+app.include_router(resonance_router, dependencies=auth_deps)

@@ -18,7 +18,11 @@
     },
     "fear_greed_prefix": "恐懼貪婪指數",
     "price_alerts_header": "{ticker} 價格警報：",
-    "signals_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%"
+    "signals_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%",
+    "guru_sync_complete": "✅ 13F 同步完成：共 {total} 位大師，已同步 {synced}，跳過 {skipped}，失敗 {errors}。",
+    "guru_sync_failed": "❌ 13F 同步失敗：{error}",
+    "guru_summary_complete": "✅ 13F 摘要通知已處理（{status}），共 {count} 位大師。",
+    "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}"
   },
   "stock": {
     "not_found": "找不到股票 {ticker}。",
@@ -225,6 +229,10 @@
     "action_sold_out": "清倉",
     "action_increased": "加碼",
     "action_decreased": "減碼",
-    "action_unchanged": "持平"
+    "action_unchanged": "持平",
+    "sync_complete": "✅ 已同步 {guru_name} 本季 13F 報告（基準日 {report_date}）",
+    "lagging_disclaimer": "⚠️ 此數據為 {days_ago} 天前的持倉快照，非即時資料",
+    "report_date_label": "持倉基準日",
+    "filing_date_label": "公告日"
   }
 }
