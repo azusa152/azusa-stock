@@ -10,6 +10,9 @@ from sqlmodel import Session, func, select
 from domain.constants import LATEST_SCAN_LOGS_DEFAULT_LIMIT, SCAN_HISTORY_DEFAULT_LIMIT
 from domain.entities import (
     FXWatchConfig,
+    Guru,
+    GuruFiling,
+    GuruHolding,
     PriceAlert,
     RemovalLog,
     ScanLog,
@@ -338,4 +341,160 @@ def update_fx_watch_last_alerted(
 def delete_fx_watch(session: Session, watch: FXWatchConfig) -> None:
     """刪除一筆外匯監控配置。"""
     session.delete(watch)
+    session.commit()
+
+
+# ===========================================================================
+# Guru Repository
+# ===========================================================================
+
+
+def find_all_active_gurus(session: Session) -> list[Guru]:
+    """查詢所有啟用中的大師（依 ID 排序）。"""
+    statement = (
+        select(Guru).where(Guru.is_active == True).order_by(Guru.id)  # noqa: E712
+    )
+    return list(session.exec(statement).all())
+
+
+def find_guru_by_cik(session: Session, cik: str) -> Guru | None:
+    """根據 CIK 查詢大師。"""
+    statement = select(Guru).where(Guru.cik == cik)
+    return session.exec(statement).first()
+
+
+def find_guru_by_id(session: Session, guru_id: int) -> Guru | None:
+    """根據 ID 查詢大師。"""
+    return session.get(Guru, guru_id)
+
+
+def save_guru(session: Session, guru: Guru) -> Guru:
+    """新增大師（含 refresh）。"""
+    session.add(guru)
+    session.commit()
+    session.refresh(guru)
+    return guru
+
+
+def update_guru(session: Session, guru: Guru) -> Guru:
+    """更新大師（含 refresh）。"""
+    session.add(guru)
+    session.commit()
+    session.refresh(guru)
+    return guru
+
+
+def deactivate_guru(session: Session, guru: Guru) -> None:
+    """停用大師（軟刪除）。"""
+    guru.is_active = False
+    session.add(guru)
+    session.commit()
+
+
+# ===========================================================================
+# GuruFiling Repository
+# ===========================================================================
+
+
+def find_latest_filing_by_guru(session: Session, guru_id: int) -> GuruFiling | None:
+    """查詢指定大師最新的 13F 申報記錄（依 report_date 降序）。"""
+    statement = (
+        select(GuruFiling)
+        .where(GuruFiling.guru_id == guru_id)
+        .order_by(GuruFiling.report_date.desc())  # type: ignore[union-attr]
+        .limit(1)
+    )
+    return session.exec(statement).first()
+
+
+def find_filings_by_guru(
+    session: Session, guru_id: int, limit: int = 8
+) -> list[GuruFiling]:
+    """查詢指定大師的歷史申報（依 report_date 降序）。"""
+    statement = (
+        select(GuruFiling)
+        .where(GuruFiling.guru_id == guru_id)
+        .order_by(GuruFiling.report_date.desc())  # type: ignore[union-attr]
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def find_filing_by_accession(
+    session: Session, accession_number: str
+) -> GuruFiling | None:
+    """根據 accession number 查詢申報（用於冪等同步判斷）。"""
+    statement = select(GuruFiling).where(
+        GuruFiling.accession_number == accession_number
+    )
+    return session.exec(statement).first()
+
+
+def save_filing(session: Session, filing: GuruFiling) -> GuruFiling:
+    """新增 13F 申報記錄（含 refresh）。"""
+    session.add(filing)
+    session.commit()
+    session.refresh(filing)
+    return filing
+
+
+# ===========================================================================
+# GuruHolding Repository
+# ===========================================================================
+
+
+def find_holdings_by_filing(session: Session, filing_id: int) -> list[GuruHolding]:
+    """查詢指定申報的所有持倉，依 weight_pct 降序排列。"""
+    statement = (
+        select(GuruHolding)
+        .where(GuruHolding.filing_id == filing_id)
+        .order_by(GuruHolding.weight_pct.desc())  # type: ignore[union-attr]
+    )
+    return list(session.exec(statement).all())
+
+
+def find_holdings_by_guru_latest(session: Session, guru_id: int) -> list[GuruHolding]:
+    """查詢指定大師最新申報的所有持倉（依 weight_pct 降序）。"""
+    latest = find_latest_filing_by_guru(session, guru_id)
+    if latest is None:
+        return []
+    return find_holdings_by_filing(session, latest.id)
+
+
+def find_holdings_by_ticker_across_gurus(
+    session: Session, ticker: str
+) -> list[GuruHolding]:
+    """
+    查詢所有大師中持有指定股票的最新持倉記錄。
+    僅回傳每位大師最新申報中的持倉（避免重複舊季數據）。
+    """
+    # 子查詢：每位大師最新 filing_id
+    subq = (
+        select(
+            GuruFiling.guru_id,
+            func.max(GuruFiling.report_date).label("max_report"),
+        ).group_by(GuruFiling.guru_id)
+    ).subquery()
+
+    latest_filing_subq = (
+        select(GuruFiling.id.label("filing_id")).join(
+            subq,
+            (GuruFiling.guru_id == subq.c.guru_id)
+            & (GuruFiling.report_date == subq.c.max_report),
+        )
+    ).subquery()
+
+    statement = select(GuruHolding).where(
+        GuruHolding.ticker == ticker,
+        GuruHolding.filing_id.in_(  # type: ignore[union-attr]
+            select(latest_filing_subq.c.filing_id)
+        ),
+    )
+    return list(session.exec(statement).all())
+
+
+def save_holdings_batch(session: Session, holdings: list[GuruHolding]) -> None:
+    """批次儲存持倉記錄（單次 commit）。"""
+    for holding in holdings:
+        session.add(holding)
     session.commit()
