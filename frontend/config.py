@@ -75,6 +75,8 @@ API_FX_HISTORY_TIMEOUT = 20  # Longer timeout for potential yfinance delays
 # ---------------------------------------------------------------------------
 BIAS_OVERHEATED_UI = 20
 BIAS_OVERSOLD_UI = -20
+ROGUE_WAVE_PERCENTILE_UI = 95
+ROGUE_WAVE_WARNING_PERCENTILE_UI = 90
 PRICE_WEAK_BIAS_THRESHOLD = -5
 MARGIN_BAD_CHANGE_THRESHOLD = -2
 EARNINGS_BADGE_DAYS_THRESHOLD = 14
@@ -95,6 +97,8 @@ def get_category_label(category: str) -> str:
 def get_category_labels() -> dict[str, str]:
     """Get all localized category labels as a dict (evaluated at call time)."""
     return {k: get_category_label(k) for k in CATEGORY_OPTIONS}
+
+
 # ---------------------------------------------------------------------------
 # Category Colors (for pie chart visual grouping)
 # ---------------------------------------------------------------------------
@@ -163,6 +167,7 @@ def get_withdraw_priority_label(priority: int) -> str:
     }
     return labels.get(priority, str(priority))
 
+
 # ---------------------------------------------------------------------------
 # Stress Test (Portfolio Stress Testing)
 # ---------------------------------------------------------------------------
@@ -188,6 +193,7 @@ WHALEWISDOM_STOCK_URL = "https://whalewisdom.com/stock/{ticker}"
 # Radar Page — Category subset (excludes Cash)
 # ---------------------------------------------------------------------------
 RADAR_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond"]
+
 
 # ---------------------------------------------------------------------------
 # Stock Market Options (for multi-market support)
@@ -220,6 +226,8 @@ def get_ticker_market_label(ticker: str) -> str:
         return t("config.market.hk")
     else:
         return t("config.market.us")
+
+
 STOCK_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth"]
 
 # ---------------------------------------------------------------------------
@@ -237,10 +245,21 @@ def get_cash_account_type_options() -> list[str]:
         t("config.account_type.other"),
     ]
 
+
 # ---------------------------------------------------------------------------
 # Display Currency Options (for rebalance analysis)
 # ---------------------------------------------------------------------------
-DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+DISPLAY_CURRENCY_OPTIONS = [
+    "USD",
+    "TWD",
+    "JPY",
+    "EUR",
+    "GBP",
+    "CNY",
+    "HKD",
+    "SGD",
+    "THB",
+]
 
 # ---------------------------------------------------------------------------
 # UI Constants (shared across pages)
@@ -261,6 +280,7 @@ def get_privacy_toggle_label() -> str:
     """Get localized privacy toggle label."""
     return t("config.privacy_mode")
 
+
 # ---------------------------------------------------------------------------
 # Dashboard Page
 # ---------------------------------------------------------------------------
@@ -277,17 +297,26 @@ def get_market_sentiment_label(sentiment: str) -> dict:
         "POSITIVE": {"label": t("config.sentiment.positive"), "color": "green"},
         "CAUTION": {"label": t("config.sentiment.caution"), "color": "red"},
     }
-    return labels.get(sentiment, {"label": t("config.sentiment.not_scanned"), "color": "off"})
+    return labels.get(
+        sentiment, {"label": t("config.sentiment.not_scanned"), "color": "off"}
+    )
+
 
 # Fear & Greed Index
 def get_fear_greed_label(level: str) -> dict:
     """Get localized fear & greed label and color."""
     labels = {
-        "EXTREME_FEAR": {"label": t("config.fear_greed.extreme_fear"), "color": "inverse"},
+        "EXTREME_FEAR": {
+            "label": t("config.fear_greed.extreme_fear"),
+            "color": "inverse",
+        },
         "FEAR": {"label": t("config.fear_greed.fear"), "color": "off"},
         "NEUTRAL": {"label": t("config.fear_greed.neutral"), "color": "normal"},
         "GREED": {"label": t("config.fear_greed.greed"), "color": "normal"},
-        "EXTREME_GREED": {"label": t("config.fear_greed.extreme_greed"), "color": "off"},
+        "EXTREME_GREED": {
+            "label": t("config.fear_greed.extreme_greed"),
+            "color": "off",
+        },
         "N/A": {"label": t("config.fear_greed.na"), "color": "off"},
     }
     return labels.get(level, {"label": t("config.fear_greed.na"), "color": "off"})

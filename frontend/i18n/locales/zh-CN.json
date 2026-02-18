@@ -494,7 +494,9 @@
       "bias": "乖离率 Bias",
       "bias_with_color": "{color} 乖离率 Bias",
       "volume_ratio": "量比 Vol Ratio",
-      "data_updated": "🕐 资料更新：{time}"
+      "data_updated": "🕐 资料更新：{time}",
+      "bias_percentile": "P{percentile}",
+      "rogue_wave_warning": "🌊 疯狗浪 — 乖离率达历史极端值且量能放大。派对接近尾声，切勿加杠杆追高。"
     },
     "moat": {
       "metric_label": "最新毛利率 (Gross Margin)",

@@ -494,7 +494,9 @@
       "bias": "乖離率 Bias",
       "bias_with_color": "{color} 乖離率 Bias",
       "volume_ratio": "出来高比率 Vol Ratio",
-      "data_updated": "🕐 データ更新：{time}"
+      "data_updated": "🕐 データ更新：{time}",
+      "bias_percentile": "P{percentile}",
+      "rogue_wave_warning": "🌊 狂乱波 — 乖離率が歴史的極値に達し出来高急増。パーティーのピーク、レバレッジ追いかけ厳禁。"
     },
     "moat": {
       "metric_label": "最新粗利率 (Gross Margin)",

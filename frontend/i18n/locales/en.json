@@ -494,7 +494,9 @@
       "bias": "Bias",
       "bias_with_color": "{color} Bias",
       "volume_ratio": "Vol Ratio",
-      "data_updated": "🕐 Updated: {time}"
+      "data_updated": "🕐 Updated: {time}",
+      "bias_percentile": "P{percentile}",
+      "rogue_wave_warning": "🌊 Rogue Wave — bias at historical extreme with volume surge. Party peaking, no leveraged chasing."
     },
     "moat": {
       "metric_label": "Latest Gross Margin",
