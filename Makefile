@@ -6,6 +6,9 @@
 #   make test      # 執行所有後端測試
 #   make lint      # Ruff 靜態分析（自動修正）
 #   make format    # Ruff 程式碼格式化
+#   make up        # 啟動所有服務（背景執行）
+#   make down      # 停止並移除所有容器
+#   make security  # 安全性檢查（.env 檔案、API Key、敏感資料）
 #   make help      # 列出所有可用目標
 # ---------------------------------------------------------------------------
 
@@ -19,7 +22,7 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format generate-key backup restore
+.PHONY: help install test lint format generate-key backup restore up down security
 
 # Dynamic volume name detection (project directory name may vary)
 VOLUME_NAME := $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -63,3 +66,24 @@ restore: ## 還原資料庫（用法：make restore 或 make restore FILE=backup
 	docker run --rm -v $$vol:/data -v $$(pwd)/backups:/backup alpine \
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "✅ Restored from $$file"
+
+up: ## 啟動所有服務（背景執行）
+	docker compose up -d --build
+
+down: ## 停止並移除所有容器
+	docker compose down
+
+security: ## 安全性檢查（.env 檔案、API Key、敏感資料）
+	@echo "=== Security Audit ==="
+	@echo ""
+	@echo "--- .env file ---"
+	@if [ -f .env ]; then echo "✅ .env exists"; else echo "⚠️  .env not found (copy from .env.example)"; fi
+	@echo ""
+	@echo "--- FOLIO_API_KEY ---"
+	@if grep -q 'FOLIO_API_KEY=.' .env 2>/dev/null; then echo "✅ FOLIO_API_KEY is set"; else echo "⚠️  FOLIO_API_KEY is empty or missing (run: make generate-key)"; fi
+	@echo ""
+	@echo "--- Secrets in source ---"
+	@if rg -l 'sk-folio-|TELEGRAM.*=[0-9]' --glob '!.env*' --glob '!*.example' --glob '!Makefile' . 2>/dev/null; then echo "❌ Potential secrets found in source!"; else echo "✅ No hardcoded secrets detected"; fi
+	@echo ""
+	@echo "--- .env in .gitignore ---"
+	@if grep -q '^\.env$$' .gitignore 2>/dev/null; then echo "✅ .env is in .gitignore"; else echo "⚠️  .env is NOT in .gitignore"; fi
