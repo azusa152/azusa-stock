@@ -1,0 +1,334 @@
+"""
+Application — Filing Service：13F 季報同步與持倉差異分析。
+
+主要工作流程：
+1. 從 EDGAR 取得最新兩筆 13F-HR 申報（latest + previous）
+2. 若 latest 已同步則跳過（冪等）
+3. 解析 13F XML 持倉明細
+4. 對每筆持倉呼叫 classify_holding_change()，與前季進行比較
+5. 計算 weight_pct
+6. 批次儲存 GuruFiling + GuruHolding
+7. 回傳摘要 dict
+"""
+
+from sqlmodel import Session
+
+from domain.constants import GURU_TOP_HOLDINGS_COUNT
+from domain.entities import Guru, GuruFiling, GuruHolding
+from domain.enums import HoldingAction
+from domain.smart_money import (
+    classify_holding_change,
+    compute_change_pct,
+    compute_holding_weight,
+)
+from infrastructure.repositories import (
+    find_all_active_gurus,
+    find_filing_by_accession,
+    find_guru_by_id,
+    find_holdings_by_filing,
+    find_latest_filing_by_guru,
+    save_filing,
+    save_holdings_batch,
+)
+from infrastructure.sec_edgar import (
+    fetch_13f_filing_detail,
+    get_latest_13f_filings,
+    map_cusip_to_ticker,
+)
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
+
+def sync_guru_filing(session: Session, guru_id: int) -> dict:
+    """
+    同步指定大師的最新 13F 季報。
+
+    流程：
+    1. 取得大師資料與 EDGAR 最新兩筆申報
+    2. 若最新申報已存在資料庫則跳過（冪等）
+    3. 下載並解析 13F XML
+    4. 與前季持倉比較，標記動作與變化幅度
+    5. 計算各持倉佔總倉位比例
+    6. 批次儲存申報 + 持倉
+    7. 回傳摘要
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+
+    Returns:
+        dict with keys:
+            guru_id, guru_display_name, status ("synced" | "skipped" | "error"),
+            accession_number, report_date, filing_date,
+            total_holdings, new_positions, sold_out, increased, decreased,
+            top_holdings (list of top-N holdings by weight)
+    """
+    guru = find_guru_by_id(session, guru_id)
+    if guru is None:
+        logger.warning("sync_guru_filing 找不到大師：ID=%d", guru_id)
+        return {"guru_id": guru_id, "status": "error", "error": "guru not found"}
+
+    edgar_filings = get_latest_13f_filings(guru.cik, count=2)
+    if not edgar_filings:
+        logger.warning("EDGAR 無 13F 申報：%s (%s)", guru.display_name, guru.cik)
+        return {
+            "guru_id": guru_id,
+            "guru_display_name": guru.display_name,
+            "status": "error",
+            "error": "no 13F filings found on EDGAR",
+        }
+
+    latest_edgar = edgar_filings[0]
+    accession_number = latest_edgar["accession_number"]
+
+    # 冪等檢查
+    if find_filing_by_accession(session, accession_number) is not None:
+        logger.info(
+            "13F 申報已存在，跳過同步：%s %s", guru.display_name, accession_number
+        )
+        return {
+            "guru_id": guru_id,
+            "guru_display_name": guru.display_name,
+            "status": "skipped",
+            "accession_number": accession_number,
+            "report_date": latest_edgar["report_date"],
+            "filing_date": latest_edgar["filing_date"],
+        }
+
+    # 下載並解析持倉明細
+    raw_holdings = fetch_13f_filing_detail(accession_number, guru.cik)
+    if not raw_holdings:
+        logger.warning(
+            "13F 持倉明細解析失敗：%s %s", guru.display_name, accession_number
+        )
+        return {
+            "guru_id": guru_id,
+            "guru_display_name": guru.display_name,
+            "status": "error",
+            "error": "failed to fetch or parse infotable XML",
+        }
+
+    # 載入前季持倉（用於 diff）
+    prev_holdings_map = _load_previous_holdings_map(session, guru_id)
+
+    # 計算總持倉市值（用於 weight_pct）
+    total_value = sum(h["value"] for h in raw_holdings)
+
+    # 組裝 GuruFiling
+    filing = save_filing(
+        session,
+        GuruFiling(
+            guru_id=guru_id,
+            accession_number=accession_number,
+            report_date=latest_edgar["report_date"],
+            filing_date=latest_edgar["filing_date"],
+            total_value=total_value,
+            holdings_count=len(raw_holdings),
+            filing_url=latest_edgar.get("filing_url", ""),
+        ),
+    )
+
+    # 組裝並分類 GuruHolding 列表
+    holdings = _build_holdings(
+        raw_holdings, filing, guru, prev_holdings_map, total_value
+    )
+    save_holdings_batch(session, holdings)
+
+    summary = _build_summary(guru, filing, holdings)
+    logger.info(
+        "13F 同步完成：%s %s，持倉 %d 筆，新建倉 %d，清倉 %d",
+        guru.display_name,
+        accession_number,
+        len(holdings),
+        summary["new_positions"],
+        summary["sold_out"],
+    )
+    return summary
+
+
+def sync_all_gurus(session: Session) -> list[dict]:
+    """
+    批次同步所有啟用中大師的最新 13F 季報。
+
+    Args:
+        session: Database session
+
+    Returns:
+        每位大師的 sync_guru_filing() 結果列表
+    """
+    gurus = find_all_active_gurus(session)
+    if not gurus:
+        logger.info("無啟用中的大師，跳過同步")
+        return []
+
+    results = []
+    for guru in gurus:
+        try:
+            result = sync_guru_filing(session, guru.id)
+            results.append(result)
+        except Exception as exc:
+            logger.warning(
+                "大師同步失敗：%s (ID=%d), error=%s", guru.display_name, guru.id, exc
+            )
+            results.append(
+                {
+                    "guru_id": guru.id,
+                    "guru_display_name": guru.display_name,
+                    "status": "error",
+                    "error": str(exc),
+                }
+            )
+
+    return results
+
+
+def get_filing_summary(session: Session, guru_id: int) -> dict | None:
+    """
+    取得指定大師最新申報摘要（含分類持倉）。
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+
+    Returns:
+        摘要 dict（參考 _build_summary），若無申報則回傳 None
+    """
+    guru = find_guru_by_id(session, guru_id)
+    if guru is None:
+        return None
+
+    filing = find_latest_filing_by_guru(session, guru_id)
+    if filing is None:
+        return None
+
+    holdings = find_holdings_by_filing(session, filing.id)
+    return _build_summary(guru, filing, holdings)
+
+
+def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
+    """
+    取得指定大師最新申報中有動作的持倉（action != UNCHANGED）。
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+
+    Returns:
+        持倉變動列表，每筆含 ticker, company_name, action, change_pct, value, shares, weight_pct
+    """
+    filing = find_latest_filing_by_guru(session, guru_id)
+    if filing is None:
+        return []
+
+    holdings = find_holdings_by_filing(session, filing.id)
+    changes = [h for h in holdings if h.action != HoldingAction.UNCHANGED.value]
+
+    return [_holding_to_dict(h) for h in changes]
+
+
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_previous_holdings_map(session: Session, guru_id: int) -> dict[str, float]:
+    """
+    載入前季持倉的 cusip → shares 映射，用於 diff。
+    若無前季申報則回傳空 dict。
+    """
+    prev_filing = find_latest_filing_by_guru(session, guru_id)
+    if prev_filing is None:
+        return {}
+
+    prev_holdings = find_holdings_by_filing(session, prev_filing.id)
+    return {h.cusip: h.shares for h in prev_holdings}
+
+
+def _build_holdings(
+    raw_holdings: list[dict],
+    filing: GuruFiling,
+    guru: Guru,
+    prev_map: dict[str, float],
+    total_value: float,
+) -> list[GuruHolding]:
+    """將 EDGAR 原始持倉列表轉換為 GuruHolding 物件，含分類與計算。"""
+    holdings = []
+    for raw in raw_holdings:
+        cusip = raw["cusip"]
+        current_shares = raw["shares"]
+        previous_shares = prev_map.get(cusip)
+
+        action = classify_holding_change(current_shares, previous_shares)
+        change_pct = (
+            compute_change_pct(current_shares, previous_shares)
+            if previous_shares is not None
+            else None
+        )
+        weight_pct = compute_holding_weight(raw["value"], total_value)
+        ticker = map_cusip_to_ticker(cusip, raw["company_name"])
+
+        holdings.append(
+            GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=cusip,
+                ticker=ticker,
+                company_name=raw["company_name"],
+                value=raw["value"],
+                shares=current_shares,
+                action=action.value,
+                change_pct=change_pct,
+                weight_pct=weight_pct,
+            )
+        )
+    return holdings
+
+
+def _build_summary(guru: Guru, filing: GuruFiling, holdings: list[GuruHolding]) -> dict:
+    """組裝 sync/summary 回傳 dict。"""
+    action_counts: dict[str, int] = {
+        HoldingAction.NEW_POSITION.value: 0,
+        HoldingAction.SOLD_OUT.value: 0,
+        HoldingAction.INCREASED.value: 0,
+        HoldingAction.DECREASED.value: 0,
+    }
+    for h in holdings:
+        if h.action in action_counts:
+            action_counts[h.action] += 1
+
+    top_holdings = sorted(
+        [_holding_to_dict(h) for h in holdings if h.weight_pct is not None],
+        key=lambda x: x["weight_pct"] or 0,
+        reverse=True,
+    )[:GURU_TOP_HOLDINGS_COUNT]
+
+    return {
+        "guru_id": guru.id,
+        "guru_display_name": guru.display_name,
+        "status": "synced",
+        "accession_number": filing.accession_number,
+        "report_date": filing.report_date,
+        "filing_date": filing.filing_date,
+        "total_holdings": len(holdings),
+        "new_positions": action_counts[HoldingAction.NEW_POSITION.value],
+        "sold_out": action_counts[HoldingAction.SOLD_OUT.value],
+        "increased": action_counts[HoldingAction.INCREASED.value],
+        "decreased": action_counts[HoldingAction.DECREASED.value],
+        "top_holdings": top_holdings,
+    }
+
+
+def _holding_to_dict(h: GuruHolding) -> dict:
+    """GuruHolding → serializable dict。"""
+    return {
+        "id": h.id,
+        "cusip": h.cusip,
+        "ticker": h.ticker,
+        "company_name": h.company_name,
+        "value": h.value,
+        "shares": h.shares,
+        "action": h.action,
+        "change_pct": h.change_pct,
+        "weight_pct": h.weight_pct,
+    }
