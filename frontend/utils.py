@@ -64,6 +64,8 @@ from config import (
     PRICE_CHART_PERIODS,
     PRICE_WEAK_BIAS_THRESHOLD,
     REORDER_MIN_STOCKS,
+    ROGUE_WAVE_PERCENTILE_UI,
+    ROGUE_WAVE_WARNING_PERCENTILE_UI,
     SCAN_HISTORY_CARD_LIMIT,
     SCAN_SIGNAL_ICONS,
     SKIP_MOAT_CATEGORIES,
@@ -555,7 +557,11 @@ def post_xray_alert(display_currency: str = "USD") -> tuple[str, str]:
         if resp.ok:
             data = resp.json()
             w_count = len(data.get("warnings", []))
-            return ("success", "✅ " + (data.get("message") or t("api.xray_warnings_sent", count=w_count)))
+            return (
+                "success",
+                "✅ "
+                + (data.get("message") or t("api.xray_warnings_sent", count=w_count)),
+            )
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
@@ -581,7 +587,10 @@ def post_fx_exposure_alert() -> tuple[str, str]:
         if resp.ok:
             data = resp.json()
             a_count = len(data.get("alerts", []))
-            return ("success", "✅ " + (data.get("message") or t("api.fx_alerts_sent", count=a_count)))
+            return (
+                "success",
+                "✅ " + (data.get("message") or t("api.fx_alerts_sent", count=a_count)),
+            )
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
@@ -790,7 +799,10 @@ def post_fx_watch_check() -> tuple[str, str]:
         )
         if resp.ok:
             data = resp.json()
-            return ("success", t("api.fx_check_done", count=data.get("total_watches", 0)))
+            return (
+                "success",
+                t("api.fx_check_done", count=data.get("total_watches", 0)),
+            )
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
@@ -1002,9 +1014,17 @@ def render_thesis_history(history: list[dict]) -> None:
             content = entry.get("content", "")
             created = entry.get("created_at", "")
             entry_tags = entry.get("tags", [])
-            st.markdown(t("utils.thesis.version", ver=ver, date=created[:10] if created else t("utils.thesis.unknown_date")))
+            st.markdown(
+                t(
+                    "utils.thesis.version",
+                    ver=ver,
+                    date=created[:10] if created else t("utils.thesis.unknown_date"),
+                )
+            )
             if entry_tags:
-                st.caption(t("utils.thesis.tags") + " ".join(f"`{tag}`" for tag in entry_tags))
+                st.caption(
+                    t("utils.thesis.tags") + " ".join(f"`{tag}`" for tag in entry_tags)
+                )
             st.text(content)
             st.divider()
     else:
@@ -1023,6 +1043,8 @@ def _render_signal_metrics(signals: dict) -> None:
     ma60 = signals.get("ma60", "N/A")
     bias = signals.get("bias")
     volume_ratio = signals.get("volume_ratio")
+    bias_percentile = signals.get("bias_percentile")
+    is_rogue_wave = signals.get("is_rogue_wave", False)
 
     metrics_col1, metrics_col2 = st.columns(2)
     with metrics_col1:
@@ -1040,7 +1062,25 @@ def _render_signal_metrics(signals: dict) -> None:
                 if bias > BIAS_OVERHEATED_UI
                 else ("🟢" if bias < BIAS_OVERSOLD_UI else "⚪")
             )
-            st.metric(t("utils.signals.bias_with_color", color=bias_color), f"{bias}%")
+            if bias_percentile is not None:
+                pct_int = int(round(bias_percentile))
+                pct_color = (
+                    "🔴"
+                    if bias_percentile >= ROGUE_WAVE_PERCENTILE_UI
+                    else (
+                        "🟠"
+                        if bias_percentile >= ROGUE_WAVE_WARNING_PERCENTILE_UI
+                        else ""
+                    )
+                )
+                pct_tag = t("utils.signals.bias_percentile", percentile=pct_int)
+                bias_label = t(
+                    "utils.signals.bias_with_color",
+                    color=f"{bias_color}{pct_color} {pct_tag}",
+                )
+            else:
+                bias_label = t("utils.signals.bias_with_color", color=bias_color)
+            st.metric(bias_label, f"{bias}%")
         else:
             st.metric(t("utils.signals.bias"), "N/A")
     with chip_col2:
@@ -1049,13 +1089,21 @@ def _render_signal_metrics(signals: dict) -> None:
         else:
             st.metric(t("utils.signals.volume_ratio"), "N/A")
 
+    if is_rogue_wave:
+        st.warning(t("utils.signals.rogue_wave_warning"))
+
     for s in signals.get("status", []):
         st.write(s)
 
     fetched_at = signals.get("fetched_at")
     if fetched_at:
         browser_tz = st.session_state.get("browser_tz")
-        st.caption(t("utils.signals.data_updated", time=format_utc_timestamp(fetched_at, browser_tz)))
+        st.caption(
+            t(
+                "utils.signals.data_updated",
+                time=format_utc_timestamp(fetched_at, browser_tz),
+            )
+        )
 
 
 def _render_moat_section(ticker: str, signals: dict) -> None:
@@ -1163,7 +1211,13 @@ def _render_scan_history_section(ticker: str) -> None:
             else:
                 break
         if latest_sig != "NORMAL" and consecutive > 1:
-            st.warning(t("utils.scan_history.consecutive_warning", signal=latest_sig, count=consecutive))
+            st.warning(
+                t(
+                    "utils.scan_history.consecutive_warning",
+                    signal=latest_sig,
+                    count=consecutive,
+                )
+            )
 
         for entry in scan_hist:
             sig = entry.get("signal", "NORMAL")
@@ -1184,7 +1238,11 @@ def _render_price_alerts_section(ticker: str) -> None:
             op_str = "<" if a["operator"] == "lt" else ">"
             active_badge = "🟢" if a["is_active"] else "⚪"
             triggered = a.get("last_triggered_at")
-            trigger_info = t("utils.alerts.last_triggered", date=triggered[:10]) if triggered else ""
+            trigger_info = (
+                t("utils.alerts.last_triggered", date=triggered[:10])
+                if triggered
+                else ""
+            )
             col_a, col_b = st.columns([3, 1])
             with col_a:
                 st.caption(
@@ -1192,7 +1250,9 @@ def _render_price_alerts_section(ticker: str) -> None:
                     f"{a['threshold']}{trigger_info}"
                 )
             with col_b:
-                if st.button("🗑️", key=f"del_alert_{a['id']}", help=t("utils.alerts.delete_help")):
+                if st.button(
+                    "🗑️", key=f"del_alert_{a['id']}", help=t("utils.alerts.delete_help")
+                ):
                     api_delete(f"/alerts/{a['id']}")
                     fetch_alerts.clear()
                     refresh_ui()
@@ -1211,7 +1271,9 @@ def _render_price_alerts_section(ticker: str) -> None:
         alert_op = st.selectbox(
             t("utils.alerts.condition_label"),
             options=["lt", "gt"],
-            format_func=lambda x: t("utils.alerts.op_lt") if x == "lt" else t("utils.alerts.op_gt"),
+            format_func=lambda x: t("utils.alerts.op_lt")
+            if x == "lt"
+            else t("utils.alerts.op_gt"),
             key=f"alert_op_{ticker}",
             label_visibility="collapsed",
         )
@@ -1227,7 +1289,11 @@ def _render_price_alerts_section(ticker: str) -> None:
     if st.button(t("utils.alerts.add_button"), key=f"add_alert_{ticker}"):
         result = api_post(
             f"/ticker/{ticker}/alerts",
-            {"metric": alert_metric, "operator": alert_op, "threshold": alert_threshold},
+            {
+                "metric": alert_metric,
+                "operator": alert_op,
+                "threshold": alert_threshold,
+            },
         )
         if result:
             st.success(result.get("message", t("utils.alerts.created")))
@@ -1421,9 +1487,21 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                             if 0 < days_left <= EARNINGS_BADGE_DAYS_THRESHOLD
                             else ""
                         )
-                        st.caption(t("utils.stock_card.earnings_date", date=earnings_date_str, badge=badge))
+                        st.caption(
+                            t(
+                                "utils.stock_card.earnings_date",
+                                date=earnings_date_str,
+                                badge=badge,
+                            )
+                        )
                     except ValueError:
-                        st.caption(t("utils.stock_card.earnings_date", date=earnings_date_str, badge=""))
+                        st.caption(
+                            t(
+                                "utils.stock_card.earnings_date",
+                                date=earnings_date_str,
+                                badge="",
+                            )
+                        )
                 else:
                     st.caption(t("utils.earnings.na"))
 
@@ -1436,12 +1514,18 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                     if div_data and div_data.get("dividend_yield"):
                         dy = div_data["dividend_yield"]
                         ex_date = div_data.get("ex_dividend_date", "N/A")
-                        st.caption(t("utils.stock_card.dividend_yield", dy=dy, ex_date=ex_date))
+                        st.caption(
+                            t("utils.stock_card.dividend_yield", dy=dy, ex_date=ex_date)
+                        )
                     else:
                         st.caption(t("utils.dividend.na"))
 
             # -- Sub-sections via tabs --
-            _tab_labels = [t("utils.stock_card.tab.chips"), t("utils.stock_card.tab.scan_history"), t("utils.stock_card.tab.alerts")]
+            _tab_labels = [
+                t("utils.stock_card.tab.chips"),
+                t("utils.stock_card.tab.scan_history"),
+                t("utils.stock_card.tab.alerts"),
+            ]
             _show_moat = stock.get("category") not in SKIP_MOAT_CATEGORIES
             if _show_moat:
                 _tab_labels.insert(1, t("utils.stock_card.tab.moat"))
@@ -1484,7 +1568,11 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
 
             # -- Management tabs --
             _mgmt_tab_thesis, _mgmt_tab_cat, _mgmt_tab_remove = st.tabs(
-                [t("utils.stock_card.mgmt.thesis"), t("utils.stock_card.mgmt.category"), t("utils.stock_card.mgmt.remove")]
+                [
+                    t("utils.stock_card.mgmt.thesis"),
+                    t("utils.stock_card.mgmt.category"),
+                    t("utils.stock_card.mgmt.remove"),
+                ]
             )
 
             with _mgmt_tab_thesis:
@@ -1494,7 +1582,9 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                 current_cat = stock.get("category", "Growth")
                 other_categories = [c for c in CATEGORY_OPTIONS if c != current_cat]
                 current_label = get_category_labels().get(current_cat, current_cat)
-                st.caption(t("utils.stock_card.current_category", category=current_label))
+                st.caption(
+                    t("utils.stock_card.current_category", category=current_label)
+                )
                 new_cat = st.selectbox(
                     t("utils.stock_card.new_category"),
                     options=other_categories,
@@ -1502,12 +1592,19 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                     key=f"cat_select_{ticker}",
                     label_visibility="collapsed",
                 )
-                if st.button(t("utils.stock_card.confirm_switch"), key=f"cat_btn_{ticker}"):
+                if st.button(
+                    t("utils.stock_card.confirm_switch"), key=f"cat_btn_{ticker}"
+                ):
                     result = api_patch(
-                        f"/ticker/{ticker}/category", {"category": new_cat},
+                        f"/ticker/{ticker}/category",
+                        {"category": new_cat},
                     )
                     if result:
-                        st.success(result.get("message", t("utils.stock_card.category_changed")))
+                        st.success(
+                            result.get(
+                                "message", t("utils.stock_card.category_changed")
+                            )
+                        )
                         invalidate_stock_caches()
                         refresh_ui()
 
@@ -1519,23 +1616,27 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                     placeholder=t("utils.stock_card.removal_placeholder"),
                     label_visibility="collapsed",
                 )
-                if st.button(t("utils.stock_card.confirm_remove"), key=f"removal_btn_{ticker}", type="primary"):
+                if st.button(
+                    t("utils.stock_card.confirm_remove"),
+                    key=f"removal_btn_{ticker}",
+                    type="primary",
+                ):
                     if removal_reason.strip():
                         result = api_post(
                             f"/ticker/{ticker}/deactivate",
                             {"reason": removal_reason.strip()},
                         )
                         if result:
-                            st.success(result.get("message", t("utils.stock_card.removed")))
+                            st.success(
+                                result.get("message", t("utils.stock_card.removed"))
+                            )
                             invalidate_stock_caches()
                             refresh_ui()
                     else:
                         st.warning(t("utils.stock_card.remove_reason_required"))
 
 
-def render_reorder_section(
-    category_key: str, stocks_in_cat: list[dict]
-) -> None:
+def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None:
     """Render drag-and-drop reorder section (only when enabled by user)."""
     if len(stocks_in_cat) < REORDER_MIN_STOCKS:
         return
@@ -1546,10 +1647,10 @@ def render_reorder_section(
         ticker_list = [s["ticker"] for s in stocks_in_cat]
         sorted_tickers = sort_items(ticker_list, key=f"sort_{category_key}")
         if sorted_tickers != ticker_list:
-            if st.button(t("utils.reorder.save_button"), key=f"save_order_{category_key}"):
-                result = api_put(
-                    "/stocks/reorder", {"ordered_tickers": sorted_tickers}
-                )
+            if st.button(
+                t("utils.reorder.save_button"), key=f"save_order_{category_key}"
+            ):
+                result = api_put("/stocks/reorder", {"ordered_tickers": sorted_tickers})
                 if result:
                     st.success(t("utils.reorder.saved"))
                     fetch_stocks.clear()

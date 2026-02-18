@@ -136,6 +136,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan_service.get_technical_signals", MOCK_SIGNALS),
     ("application.scan_service.analyze_moat_trend", MOCK_MOAT),
     ("application.scan_service.get_fear_greed_index", MOCK_FEAR_GREED),
+    ("application.scan_service.get_bias_distribution", {}),
     # rebalance_service
     ("application.rebalance_service.get_technical_signals", MOCK_SIGNALS),
     ("application.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),

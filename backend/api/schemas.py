@@ -187,6 +187,8 @@ class ScanResult(BaseModel):
     bias: Optional[float] = None
     volume_ratio: Optional[float] = None
     market_status: Optional[str] = None
+    bias_percentile: Optional[float] = None
+    is_rogue_wave: bool = False
 
 
 class ScanResponse(BaseModel):
@@ -210,6 +212,8 @@ class SignalsResponse(BaseModel):
     volume_ratio: Optional[float] = None
     status: list[str] = []
     error: Optional[str] = None
+    bias_percentile: Optional[float] = None
+    is_rogue_wave: bool = False
 
 
 class PriceHistoryPoint(BaseModel):

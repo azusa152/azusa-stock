@@ -3,27 +3,6 @@ API — 股票管理路由。
 薄控制器：僅負責解析請求、呼叫 Service、回傳回應。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import PlainTextResponse
-from sqlmodel import Session
-
-from api.rate_limit import limiter
-
-from api.schemas import (
-    CategoryUpdateRequest,
-    DeactivateRequest,
-    ImportResponse,
-    MessageResponse,
-    PriceAlertCreateRequest,
-    ReactivateRequest,
-    ReorderRequest,
-    RemovedStockResponse,
-    StockImportItem,
-    StockResponse,
-    TickerCreateRequest,
-    WebhookRequest,
-    WebhookResponse,
-)
 from application.services import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -45,6 +24,7 @@ from application.services import (
     update_stock_category,
 )
 from application.stock_service import get_enriched_stocks
+from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
     ERROR_INVALID_INPUT,
@@ -57,15 +37,36 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from infrastructure.market_data import (
+    get_bias_distribution,
     get_dividend_info,
     get_earnings_date,
     get_price_history,
     get_technical_signals,
 )
 from logging_config import get_logger
+from sqlmodel import Session
+
+from api.rate_limit import limiter
+from api.schemas import (
+    CategoryUpdateRequest,
+    DeactivateRequest,
+    ImportResponse,
+    MessageResponse,
+    PriceAlertCreateRequest,
+    ReactivateRequest,
+    RemovedStockResponse,
+    ReorderRequest,
+    StockImportItem,
+    StockResponse,
+    TickerCreateRequest,
+    WebhookRequest,
+    WebhookResponse,
+)
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -142,7 +143,18 @@ def reorder_stocks_route(
 @router.get("/ticker/{ticker}/signals", summary="Get technical signals for a stock")
 def get_signals_route(ticker: str) -> dict:
     """取得指定股票的技術訊號（yfinance，含快取）。"""
-    return get_technical_signals(ticker.upper()) or {}
+    ticker_upper = ticker.upper()
+    signals = get_technical_signals(ticker_upper) or {}
+    if signals and "error" not in signals:
+        bias = signals.get("bias")
+        volume_ratio = signals.get("volume_ratio")
+        dist = get_bias_distribution(ticker_upper)
+        bias_percentile: float | None = None
+        if dist and bias is not None:
+            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
+        signals["bias_percentile"] = bias_percentile
+        signals["is_rogue_wave"] = detect_rogue_wave(bias_percentile, volume_ratio)
+    return signals
 
 
 @router.get(

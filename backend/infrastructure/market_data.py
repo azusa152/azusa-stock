@@ -61,9 +61,11 @@ from domain.constants import (
     DISK_KEY_FOREX_HISTORY_LONG,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
+    DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SIGNALS,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
+    DISK_ROGUE_WAVE_TTL,
     DISK_SIGNALS_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
@@ -92,6 +94,10 @@ from domain.constants import (
     MOAT_CACHE_TTL,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
+    ROGUE_WAVE_CACHE_MAXSIZE,
+    ROGUE_WAVE_CACHE_TTL,
+    ROGUE_WAVE_HISTORY_PERIOD,
+    ROGUE_WAVE_MIN_HISTORY_DAYS,
     SCAN_THREAD_POOL_SIZE,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
@@ -185,6 +191,9 @@ _fear_greed_cache: TTLCache = TTLCache(
     maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL
 )
 _beta_cache: TTLCache = TTLCache(maxsize=BETA_CACHE_MAXSIZE, ttl=BETA_CACHE_TTL)
+_rogue_wave_cache: TTLCache = TTLCache(
+    maxsize=ROGUE_WAVE_CACHE_MAXSIZE, ttl=ROGUE_WAVE_CACHE_TTL
+)
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +232,7 @@ def clear_all_caches() -> dict:
         _forex_history_long_cache,
         _fear_greed_cache,
         _beta_cache,
+        _rogue_wave_cache,
     ]
     for cache in l1_caches:
         cache.clear()
@@ -1433,3 +1443,95 @@ def prewarm_beta_batch(
                 logger.error("預熱 %s Beta 失敗：%s", ticker, exc, exc_info=True)
                 results[ticker] = None
     return results
+
+
+# ===========================================================================
+# Rogue Wave (瘋狗浪) — 歷史乖離率分佈
+# ===========================================================================
+
+
+def _fetch_bias_distribution_from_yf(ticker: str) -> dict:
+    """
+    從 yfinance 取得 3 年日線歷史，計算每日乖離率分佈（供 _cached_fetch 使用）。
+
+    回傳：
+        {"historical_biases": sorted_list, "count": int, "p95": float, "fetched_at": str}
+    失敗時回傳空 dict {}（graceful fallback）。
+    """
+    try:
+        _stock, hist = _yf_history(ticker, ROGUE_WAVE_HISTORY_PERIOD)
+
+        if hist.empty:
+            logger.warning("%s 瘋狗浪：yfinance 回傳空資料。", ticker)
+            return {}
+
+        closes = hist["Close"].tolist()
+
+        # 計算每日乖離率：每天用截至當天所有資料的 MA60
+        biases: list[float] = []
+        for i in range(len(closes)):
+            if i + 1 < MA60_WINDOW:
+                continue  # MA60 尚不可用
+            window_closes = closes[i + 1 - MA60_WINDOW : i + 1]
+            ma60 = sum(window_closes) / MA60_WINDOW
+            bias = compute_bias(closes[i], ma60)
+            if bias is None:
+                continue
+            biases.append(bias)
+
+        if len(biases) < ROGUE_WAVE_MIN_HISTORY_DAYS:
+            logger.warning(
+                "%s 瘋狗浪：乖離率樣本不足（%d 筆，需 %d 筆）。",
+                ticker,
+                len(biases),
+                ROGUE_WAVE_MIN_HISTORY_DAYS,
+            )
+            return {}
+
+        biases.sort()
+        p95_idx = int(len(biases) * 0.95)
+        p95 = biases[min(p95_idx, len(biases) - 1)]
+
+        logger.info(
+            "%s 瘋狗浪分佈：%d 筆，P95=%.2f%%",
+            ticker,
+            len(biases),
+            p95,
+        )
+
+        return {
+            "historical_biases": biases,
+            "count": len(biases),
+            "p95": round(p95, 2),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    except Exception as e:
+        logger.error("無法取得 %s 瘋狗浪分佈：%s", ticker, e, exc_info=True)
+        return {}
+
+
+def _is_rogue_wave_error(result) -> bool:
+    """判斷瘋狗浪分佈結果是否為空（失敗）回應。"""
+    return not result  # empty dict is falsy
+
+
+def get_bias_distribution(ticker: str) -> dict:
+    """
+    取得股票 3 年歷史乖離率分佈。
+
+    回傳 {"historical_biases": sorted_list, "count": int, "p95": float, "fetched_at": str}
+    或空 dict {}（yfinance 失敗 / 資料不足時）。
+
+    結果透過 L1 + L2 快取（L1: 24 小時，L2: 48 小時）。
+    歷史偏態分佈變動緩慢，長 TTL 適合此場景。
+    錯誤結果（空 dict）僅寫入 L1（短暫），不寫入 L2。
+    """
+    return _cached_fetch(
+        _rogue_wave_cache,
+        ticker,
+        DISK_KEY_ROGUE_WAVE,
+        DISK_ROGUE_WAVE_TTL,
+        _fetch_bias_distribution_from_yf,
+        is_error=_is_rogue_wave_error,
+    )

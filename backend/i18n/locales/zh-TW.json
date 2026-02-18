@@ -55,7 +55,8 @@
     "contrarian_buy_alert": "🟢 {ticker} 逆勢買入訊號（RSI={rsi}，市場正面）",
     "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
     "moat_stable_alert": "🟢 {ticker} {details}",
-    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+    "moat_unavailable_alert": "⚠️ {ticker} {details}",
+    "rogue_wave_alert": "🌊 {ticker} 瘋狗浪：乖離率 {bias}% 達歷史 P{percentile}，成交量放大 {vol_ratio}x。派對尾聲，勿追高加槓桿。"
   },
   "notification": {
     "change_label": "變化",

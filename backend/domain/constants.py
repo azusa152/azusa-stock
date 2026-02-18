@@ -242,6 +242,7 @@ DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"
 DISK_KEY_FEAR_GREED = "fear_greed"
+DISK_KEY_ROGUE_WAVE = "rogue_wave"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages (use t("webhook.missing_ticker") at call sites)
@@ -350,6 +351,18 @@ GENERIC_WEBHOOK_ERROR = "constants.generic_webhook_error"
 # curl_cffi
 # ---------------------------------------------------------------------------
 CURL_CFFI_IMPERSONATE = "chrome"
+
+# ---------------------------------------------------------------------------
+# Rogue Wave (瘋狗浪) — Historical Bias Percentile Alert
+# ---------------------------------------------------------------------------
+ROGUE_WAVE_HISTORY_PERIOD = "3y"
+ROGUE_WAVE_MIN_HISTORY_DAYS = 200
+ROGUE_WAVE_BIAS_PERCENTILE = 95  # 95th percentile = extreme overheating
+ROGUE_WAVE_VOLUME_RATIO_THRESHOLD = 1.5  # 50% above normal volume
+
+ROGUE_WAVE_CACHE_MAXSIZE = 200
+ROGUE_WAVE_CACHE_TTL = 86400  # L1: 24 hours
+DISK_ROGUE_WAVE_TTL = 172800  # L2: 48 hours
 
 # ---------------------------------------------------------------------------
 # Retry Configuration (yfinance transient network failures)

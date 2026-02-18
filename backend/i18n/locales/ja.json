@@ -55,7 +55,8 @@
     "contrarian_buy_alert": "🟢 {ticker} 逆張り買いシグナル（RSI={rsi}、市場ポジティブ）",
     "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
     "moat_stable_alert": "🟢 {ticker} {details}",
-    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+    "moat_unavailable_alert": "⚠️ {ticker} {details}",
+    "rogue_wave_alert": "🌊 {ticker} 瘋狗浪：乖離率 {bias}% が歴史的 P{percentile}、出来高 {vol_ratio}x 急増。パーティーの終盤、レバレッジ追撃は禁物。"
   },
   "notification": {
     "change_label": "変化",

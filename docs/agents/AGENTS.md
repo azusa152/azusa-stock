@@ -76,7 +76,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/stocks` | All tracked stocks |
 | `GET` | `/stocks/export` | Export watchlist as JSON |
 | `POST` | `/ticker` | Add new stock |
-| `GET` | `/ticker/{ticker}/signals` | Technical signals |
+| `GET` | `/ticker/{ticker}/signals` | Technical signals (includes `bias_percentile` and `is_rogue_wave` for Rogue Wave detection) |
 | `GET` | `/ticker/{ticker}/moat` | Moat analysis |
 | `POST` | `/ticker/{ticker}/thesis` | Update thesis |
 | `PATCH` | `/ticker/{ticker}/category` | Switch category |
@@ -145,9 +145,18 @@ Folio provides `make` targets for service management. Use `exec` to run these fr
 
 ### Upgrade & Restart
 
+When code changes have been pushed to the repository, follow this workflow to apply them to the running service:
+
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1. Pull latest code | `git pull origin main` | Fetch code changes (or use current branch name) |
+| 2. Rebuild & restart | `make up` | Rebuild images with changes and restart containers (zero downtime, data preserved) |
+| 3. Verify health | `curl -sf http://localhost:8000/health` | Backend health check |
+| 4. Check status | `docker compose ps` | Verify all containers are running |
+| 5. Troubleshoot (if needed) | `docker compose logs backend --tail 50` | View recent logs if health check fails |
+
 | Command | Description |
 |---------|-------------|
-| `docker compose up --build -d` | Rebuild and restart (safe, preserves data) |
 | `docker compose down -v` | Full reset -- DELETES ALL DATA (use `make backup` first!) |
 
 ### Health Check
@@ -161,6 +170,7 @@ Folio provides `make` targets for service management. Use `exec` to run these fr
 ## Response Guidelines
 
 - Be concise — the user wants quick investment insights, not essays
+- When a `signals` response has `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
 - When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first
