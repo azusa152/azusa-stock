@@ -32,6 +32,7 @@
 - **護城河健檢** — 毛利率 5 季走勢圖 + YoY 五級診斷
 - **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🟢🟠🔴⚪）
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
+- **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
 
 ### 通知與警報
 
@@ -97,6 +98,8 @@ flowchart TD
     TechCheck -->|"RSI<35 + 市場正面"| BUY["CONTRARIAN_BUY"]
     TechCheck -->|"Bias>20%"| HOT["OVERHEATED"]
     TechCheck -->|"其他"| NORMAL["NORMAL"]
+
+    L3 -->|"Bias ≥ P95 + 量比 ≥ 1.5x"| ROGUE["🌊 ROGUE WAVE（疊加警示）"]
 ```
 
 ## 技術架構

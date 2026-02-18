@@ -255,6 +255,8 @@ The following endpoints now include daily change fields calculated from yfinance
 | `bias` | float | Price deviation from 60MA (%) |
 | `volume_ratio` | float | Recent/average volume ratio |
 | `status` | list[str] | Formatted status descriptions |
+| `bias_percentile` | float? | Current bias rank in 3-year historical distribution (0–100). e.g., `97.0` = top 3% historically |
+| `is_rogue_wave` | bool | `true` when `bias_percentile ≥ 95` AND `volume_ratio ≥ 1.5` — extreme overheating with volume surge |
 
 ### GET `/rebalance` — Response Fields (New)
 
@@ -289,6 +291,7 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `POST /fx-watch/alert` to trigger Telegram alerts for FX timing opportunities (near recent high or consecutive increases); subject to cooldown (`reminder_interval_hours`)
 - Use `PATCH /fx-watch/{id}` with `{"is_active": false}` to temporarily pause a monitor without deleting it
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order
+- When `is_rogue_wave` is `true` in a `signals` response, warn the user: bias is at a historically extreme level (≥ 95th percentile) with volume surge — the party is likely peaking; avoid leveraged chasing and consider reducing exposure
 - Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
 - Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
 - When users report errors after an upgrade, check `docker compose logs backend --tail 50` first

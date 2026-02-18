@@ -76,7 +76,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/stocks` | All tracked stocks |
 | `GET` | `/stocks/export` | Export watchlist as JSON |
 | `POST` | `/ticker` | Add new stock |
-| `GET` | `/ticker/{ticker}/signals` | Technical signals |
+| `GET` | `/ticker/{ticker}/signals` | Technical signals (includes `bias_percentile` and `is_rogue_wave` for Rogue Wave detection) |
 | `GET` | `/ticker/{ticker}/moat` | Moat analysis |
 | `POST` | `/ticker/{ticker}/thesis` | Update thesis |
 | `PATCH` | `/ticker/{ticker}/category` | Switch category |
@@ -161,6 +161,7 @@ Folio provides `make` targets for service management. Use `exec` to run these fr
 ## Response Guidelines
 
 - Be concise — the user wants quick investment insights, not essays
+- When a `signals` response has `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
 - When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first
