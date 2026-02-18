@@ -12,6 +12,7 @@ from domain.constants import (
     WEEKLY_DIGEST_LOOKBACK_DAYS,
 )
 from domain.enums import CATEGORY_LABEL, ScanSignal
+from i18n import get_user_language, t
 from infrastructure import repositories as repo
 from infrastructure.market_data import get_fear_greed_index
 from infrastructure.notification import (
@@ -36,14 +37,17 @@ def send_weekly_digest(session: Session) -> dict:
     - 投資組合健康分數
     """
     logger.info("開始生成每週摘要...")
+    lang = get_user_language(session)
 
     all_stocks = repo.find_active_stocks(session)
     total = len(all_stocks)
     if total == 0:
         send_telegram_message_dual(
-            "📊 <b>Folio 每週摘要</b>\n\n目前無追蹤股票。", session
+            t("notification.weekly_digest_title", lang=lang)
+            + t("notification.no_stocks", lang=lang),
+            session,
         )
-        return {"message": "無追蹤股票。"}
+        return {"message": t("notification.no_stocks", lang=lang)}
 
     # 目前非 NORMAL 股票
     non_normal = [
@@ -71,31 +75,39 @@ def send_weekly_digest(session: Session) -> dict:
     # 恐懼貪婪指數
     fg = get_fear_greed_index()
     fg_label = format_fear_greed_label(
-        fg.get("composite_level", "N/A"), fg.get("composite_score", 50)
+        fg.get("composite_level", "N/A"), fg.get("composite_score", 50), lang=lang
     )
     vix_val = fg.get("vix", {}).get("value")
     vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
 
     # 組合訊息
     parts: list[str] = [
-        "📊 <b>Folio 每週摘要</b>\n",
-        f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）",
-        f"📈 恐懼貪婪指數：{fg_label}（{vix_text}）\n",
+        t("notification.weekly_digest_title", lang=lang),
+        t(
+            "notification.health_score",
+            lang=lang,
+            score=health_score,
+            normal=normal_count,
+            total=total,
+        ),
+        t("notification.fear_greed", lang=lang, label=fg_label, vix=vix_text) + "\n",
     ]
 
     if non_normal:
-        parts.append("⚠️ <b>目前異常股票：</b>")
+        parts.append(t("notification.abnormal_stocks", lang=lang))
         for s in non_normal:
             cat_label = CATEGORY_LABEL.get(s.category.value, s.category.value)
             parts.append(f"  • {s.ticker}（{cat_label}）→ {s.last_scan_signal}")
 
     if signal_changes:
-        parts.append("\n🔄 <b>本週訊號變化：</b>")
+        parts.append(t("notification.signal_changes", lang=lang))
+        change_label = t("notification.change_label", lang=lang)
+        times_label = t("notification.times_label", lang=lang)
         for tk, count in sorted(signal_changes.items(), key=lambda x: -x[1]):
-            parts.append(f"  • {tk}：變化 {count} 次")
+            parts.append(f"  • {tk}：{change_label} {count} {times_label}")
 
     if not non_normal and not signal_changes:
-        parts.append("✅ 一切正常，本週無異常訊號。")
+        parts.append(t("notification.all_normal", lang=lang))
 
     message = "\n".join(parts)
     if is_notification_enabled(session, "weekly_digest"):
@@ -104,7 +116,10 @@ def send_weekly_digest(session: Session) -> dict:
     else:
         logger.info("每週摘要通知已被使用者停用，跳過發送。")
 
-    return {"message": "每週摘要已發送。", "health_score": health_score}
+    return {
+        "message": t("notification.summary_sent", lang=lang),
+        "health_score": health_score,
+    }
 
 
 # ===========================================================================
@@ -116,18 +131,27 @@ def get_portfolio_summary(session: Session) -> str:
     """
     產生純文字投資組合摘要，專為 chat / AI agent 設計。
     """
+    lang = get_user_language(session)
     stocks = repo.find_active_stocks(session)
     if not stocks:
-        return "Folio — 目前無追蹤股票。"
+        return t("notification.portfolio_summary_no_stocks", lang=lang)
 
     non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
 
     # 恐懼貪婪指數
     fg = get_fear_greed_index()
-    fg_short = format_fear_greed_short(fg.get("composite_level", "N/A"))
+    fg_short = format_fear_greed_short(fg.get("composite_level", "N/A"), lang=lang)
 
-    lines: list[str] = [f"Folio — Health: {health}% | F&G: {fg_short}", ""]
+    lines: list[str] = [
+        t(
+            "notification.portfolio_summary_health",
+            lang=lang,
+            health=health,
+            fg=fg_short,
+        ),
+        "",
+    ]
 
     for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]
@@ -136,10 +160,10 @@ def get_portfolio_summary(session: Session) -> str:
             lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
 
     if non_normal:
-        lines += ["", "Abnormal:"]
+        lines += ["", t("notification.portfolio_summary_abnormal", lang=lang)]
         for s in non_normal:
             lines.append(f"  {s.ticker} -> {s.last_scan_signal}")
     else:
-        lines += ["", "All signals normal."]
+        lines += ["", t("notification.portfolio_summary_normal", lang=lang)]
 
     return "\n".join(lines)

@@ -10,6 +10,7 @@ from config import (
     CATEGORY_OPTIONS,
     PRIVACY_MASK,
 )
+from i18n import t
 from utils import (
     api_delete,
     api_put,
@@ -27,9 +28,7 @@ def render_holdings(holdings: list[dict]) -> None:
         holdings: Current holdings list from backend.
     """
     if not holdings:
-        st.caption(
-            "目前無持倉資料，請透過左側面板新增股票、債券或現金。"
-        )
+        st.caption(t("components.holdings.no_data"))
         return
 
     # Build DataFrame with raw API values for round-trip editing
@@ -82,19 +81,19 @@ def _render_privacy_table(df: pd.DataFrame) -> pd.DataFrame:
     st.dataframe(
         masked_df.drop(columns=["ID", "raw_ticker"]),
         column_config={
-            "ticker": "代號",
-            "category": "分類",
-            "quantity": "數量",
-            "cost_basis": "平均成本",
-            "broker": "銀行/券商",
-            "currency": "幣別",
-            "account_type": "帳戶類型",
-            "is_cash": "現金",
+            "ticker": t("components.holdings.col.ticker"),
+            "category": t("components.holdings.col.category"),
+            "quantity": t("components.holdings.col.quantity"),
+            "cost_basis": t("components.holdings.col.cost_basis"),
+            "broker": t("components.holdings.col.broker"),
+            "currency": t("components.holdings.col.currency"),
+            "account_type": t("components.holdings.col.account_type"),
+            "is_cash": t("components.holdings.col.is_cash"),
         },
         use_container_width=True,
         hide_index=True,
     )
-    st.caption("🔒 隱私模式已開啟，關閉後可編輯持倉。")
+    st.caption(t("components.holdings.privacy_hint"))
     return df  # no edits in privacy mode
 
 
@@ -106,26 +105,26 @@ def _render_editable_table(df: pd.DataFrame) -> pd.DataFrame:
             "ID": None,  # hidden
             "raw_ticker": None,  # hidden
             "ticker": st.column_config.TextColumn(
-                "代號", disabled=True
+                t("components.holdings.col.ticker"), disabled=True
             ),
             "category": st.column_config.SelectboxColumn(
-                "分類",
+                t("components.holdings.col.category"),
                 options=CATEGORY_OPTIONS,
                 required=True,
             ),
             "quantity": st.column_config.NumberColumn(
-                "數量", min_value=0.0, format="%.4f"
+                t("components.holdings.col.quantity"), min_value=0.0, format="%.4f"
             ),
             "cost_basis": st.column_config.NumberColumn(
-                "平均成本", min_value=0.0, format="%.2f"
+                t("components.holdings.col.cost_basis"), min_value=0.0, format="%.2f"
             ),
-            "broker": st.column_config.TextColumn("銀行/券商"),
+            "broker": st.column_config.TextColumn(t("components.holdings.col.broker")),
             "currency": st.column_config.TextColumn(
-                "幣別", disabled=True
+                t("components.holdings.col.currency"), disabled=True
             ),
-            "account_type": st.column_config.TextColumn("帳戶類型"),
+            "account_type": st.column_config.TextColumn(t("components.holdings.col.account_type")),
             "is_cash": st.column_config.CheckboxColumn(
-                "現金", disabled=True
+                t("components.holdings.col.is_cash"), disabled=True
             ),
         },
         use_container_width=True,
@@ -140,7 +139,7 @@ def _render_save_button(
 ) -> None:
     """Render save button and handle diff-based update logic."""
     save_clicked = st.button(
-        "💾 儲存變更",
+        t("components.holdings.save_button"),
         key="save_holdings_btn",
         disabled=_is_privacy(),
     )
@@ -192,11 +191,11 @@ def _render_save_button(
                 errors.append(orig["raw_ticker"])
 
     if changed > 0:
-        st.success(f"✅ 已更新 {changed} 筆持倉")
+        st.success(t("components.holdings.save_success", count=changed))
     if errors:
-        st.error(f"❌ 更新失敗：{', '.join(errors)}")
+        st.error(t("components.holdings.save_error", tickers=", ".join(errors)))
     if changed == 0 and not errors:
-        st.info("ℹ️ 沒有偵測到變更")
+        st.info(t("components.holdings.no_changes"))
     if changed > 0:
         invalidate_holding_caches()
         st.rerun()
@@ -208,7 +207,7 @@ def _render_delete_section(holdings: list[dict]) -> None:
     _priv = _is_privacy()
     with del_cols[0]:
         del_id = st.selectbox(
-            "選擇要刪除的持倉",
+            t("components.holdings.delete_label"),
             options=[h["id"] for h in holdings],
             format_func=lambda x: next(
                 (
@@ -226,9 +225,9 @@ def _render_delete_section(holdings: list[dict]) -> None:
         )
     with del_cols[1]:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🗑️ 刪除", key="del_holding_btn"):
+        if st.button(t("components.holdings.delete_button"), key="del_holding_btn"):
             result = api_delete(f"/holdings/{del_id}")
             if result:
-                st.success(result.get("message", "✅ 已刪除"))
+                st.success(result.get("message", t("components.holdings.delete_success")))
                 invalidate_holding_caches()
                 st.rerun()

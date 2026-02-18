@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from domain.enums import FearGreedLevel
+from i18n import t
 
 
 class TestGetFearGreedEndpoint:
@@ -17,7 +18,9 @@ class TestGetFearGreedEndpoint:
         data = resp.json()
         assert data["composite_score"] == 38
         assert data["composite_level"] == "FEAR"
-        assert "恐懼" in data["composite_label"]
+        # Expect the translated label (defaults to zh-TW in tests)
+        expected_label = t("formatter.fear_greed_fear", score=38, lang="zh-TW")
+        assert data["composite_label"] == expected_label
         assert data["vix"] is not None
         assert data["vix"]["value"] == 22.5
         assert data["cnn"] is not None
@@ -75,7 +78,8 @@ class TestGetFearGreedEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["composite_level"] == "N/A"
-        assert "無資料" in data["composite_label"]
+        expected_label = t("formatter.fear_greed_n/a", score=50, lang="zh-TW")
+        assert data["composite_label"] == expected_label
 
     def test_fear_greed_should_include_fetched_at_timestamp(self, client):
         # Act
@@ -113,6 +117,7 @@ class TestFearGreedWebhookAction:
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
-        assert "恐懼貪婪指數" in data["message"]
+        expected_prefix = t("webhook.fear_greed_prefix", lang="zh-TW")
+        assert expected_prefix in data["message"]
         assert data["data"]["composite_score"] == 38
         assert data["data"]["composite_level"] == "FEAR"

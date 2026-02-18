@@ -103,7 +103,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "low"
-        assert "微風輕拂" in result["label"]
+        assert result["label"] == "constants.stress_pain_low"
         assert result["emoji"] == "green"
 
     def test_loss_10_to_20_should_be_moderate(self):
@@ -112,7 +112,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "moderate"
-        assert "有感修正" in result["label"]
+        assert result["label"] == "constants.stress_pain_moderate"
         assert result["emoji"] == "yellow"
 
     def test_loss_20_to_30_should_be_high(self):
@@ -121,7 +121,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "high"
-        assert "傷筋動骨" in result["label"]
+        assert result["label"] == "constants.stress_pain_high"
         assert result["emoji"] == "orange"
 
     def test_loss_above_30_should_be_panic(self):
@@ -130,7 +130,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "panic"
-        assert "睡不著覺" in result["label"]
+        assert result["label"] == "constants.stress_pain_panic"
         assert result["emoji"] == "red"
 
     def test_boundary_10_should_be_moderate(self):
@@ -184,7 +184,7 @@ class TestClassifyPainLevel:
 
 
 class TestGenerateAdvice:
-    """Tests for advice generation."""
+    """Tests for advice generation (returns i18n keys)."""
 
     def test_panic_with_high_beta_should_return_aggressive_advice(self):
         # Act
@@ -192,9 +192,8 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("睡不著覺" in line for line in result)
-        assert any("Beta >= 1.5" in line for line in result)
-        assert any("低波動資產" in line for line in result)
+        assert "stress_test.panic_intro" in result
+        assert "stress_test.advice_beta_high" in result
 
     def test_panic_with_moderate_beta_should_return_balanced_advice(self):
         # Act
@@ -202,8 +201,7 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("Beta >= 1.2" in line for line in result)
-        assert any("獲利了結" in line for line in result)
+        assert "stress_test.advice_beta_moderate" in result
 
     def test_panic_with_low_beta_should_return_concentration_advice(self):
         # Act
@@ -211,8 +209,7 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("Beta < 1.2" in line for line in result)
-        assert any("集中度風險" in line for line in result)
+        assert "stress_test.advice_beta_low" in result
 
     def test_low_pain_should_return_empty_advice(self):
         # Act
@@ -240,21 +237,21 @@ class TestGenerateAdvice:
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("緊急備用金" in line for line in result)
+        assert "stress_test.advice_emergency_fund" in result
 
     def test_panic_advice_should_include_leverage_warning(self):
         # Act
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("槓桿" in line or "融資" in line for line in result)
+        assert "stress_test.advice_leverage" in result
 
     def test_panic_advice_should_include_thesis_broken_check(self):
         # Act
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("Thesis Broken" in line for line in result)
+        assert "stress_test.advice_thesis_broken" in result
 
 
 # ---------------------------------------------------------------------------
@@ -435,8 +432,7 @@ class TestCalculateStressTest:
 
         # Assert
         assert "disclaimer" in result
-        assert "CAPM" in result["disclaimer"]
-        assert "不構成投資建議" in result["disclaimer"]
+        assert result["disclaimer"] == "constants.stress_disclaimer"
 
     def test_should_round_all_monetary_values(self):
         # Arrange

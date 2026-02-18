@@ -93,7 +93,7 @@ class StockImportItem(BaseModel):
         """Each tag must be non-empty and under 50 chars."""
         for tag in v:
             if not tag or len(tag) > 50:
-                raise ValueError("每個標籤必須非空且不超過 50 字元")
+                raise ValueError("Each tag must be non-empty and ≤50 chars")
         return v
 
 
@@ -622,6 +622,7 @@ class TelegramSettingsResponse(BaseModel):
 class PreferencesRequest(BaseModel):
     """PUT /settings/preferences 請求 Body。"""
 
+    language: Optional[str] = None
     privacy_mode: bool
     notification_preferences: Optional[dict[str, bool]] = None
 
@@ -629,6 +630,7 @@ class PreferencesRequest(BaseModel):
 class PreferencesResponse(BaseModel):
     """GET /settings/preferences 回應。"""
 
+    language: str
     privacy_mode: bool
     notification_preferences: dict[str, bool]
 

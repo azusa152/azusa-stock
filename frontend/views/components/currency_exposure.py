@@ -13,6 +13,7 @@ from config import (
     DISPLAY_CURRENCY_OPTIONS,
     PRIVACY_MASK,
 )
+from i18n import t
 from utils import (
     api_put,
     fetch_currency_exposure,
@@ -42,12 +43,15 @@ _CUR_COLORS = {
 }
 
 _RISK_COLORS = {"low": "🟢", "medium": "🟡", "high": "🔴"}
-_RISK_LABELS = {"low": "低風險", "medium": "中風險", "high": "高風險"}
+
+def _get_risk_label(risk_level: str) -> str:
+    """Get localized risk label."""
+    return t(f"components.currency.risk.{risk_level}")
 
 _ALERT_TYPE_BADGES = {
-    "daily_spike": ("🔴", "單日劇烈波動"),
-    "short_term_swing": ("🟡", "短期波段變動"),
-    "long_term_trend": ("🔵", "長期趨勢變動"),
+    "daily_spike": ("🔴", lambda: t("components.currency.alert_type.daily_spike")),
+    "short_term_swing": ("🟡", lambda: t("components.currency.alert_type.short_term_swing")),
+    "long_term_trend": ("🔵", lambda: t("components.currency.alert_type.long_term_trend")),
 }
 
 # Regex: match numeric amounts followed by a currency code
@@ -77,18 +81,18 @@ def render_currency_exposure(
         display_cur: Display currency from rebalance (reserved for future use).
     """
     with st.status(
-        "💱 載入匯率曝險分析中...", expanded=True
+        t("components.currency.loading"), expanded=True
     ) as _fx_status:
         fx_data = fetch_currency_exposure()
         if fx_data:
             _fx_status.update(
-                label="✅ 匯率曝險分析載入完成",
+                label=t("components.currency.loaded"),
                 state="complete",
                 expanded=False,
             )
         else:
             _fx_status.update(
-                label="⚠️ 匯率曝險分析載入失敗",
+                label=t("components.currency.error"),
                 state="error",
                 expanded=True,
             )
@@ -105,7 +109,7 @@ def render_currency_exposure(
         if fx_calc_at:
             browser_tz = st.session_state.get("browser_tz")
             st.caption(
-                f"🕐 分析時間：{format_utc_timestamp(fx_calc_at, browser_tz)}"
+                t("components.currency.analysis_time", time=format_utc_timestamp(fx_calc_at, browser_tz))
             )
     with _fx_hdr_cols[1]:
         _fx_cur_idx = (
@@ -114,7 +118,7 @@ def render_currency_exposure(
             else 0
         )
         new_fx_home = st.selectbox(
-            "🏠 本幣",
+            t("components.currency.home_currency"),
             options=DISPLAY_CURRENCY_OPTIONS,
             index=_fx_cur_idx,
             key="fx_home_currency_selector",
@@ -133,7 +137,7 @@ def render_currency_exposure(
 
     # --- Two tabs: Cash vs Total ---
     fx_tab_cash, fx_tab_total = st.tabs(
-        ["💵 現金幣別曝險", "📊 全資產幣別曝險"]
+        [t("components.currency.tab.cash"), t("components.currency.tab.total")]
     )
 
     with fx_tab_cash:
@@ -157,7 +161,7 @@ def _render_cash_tab(
     total_cash = fx_data.get("total_cash_home", 0.0)
 
     if not cash_bd:
-        st.info("尚無現金部位，請先在 Step 2 輸入現金持倉。")
+        st.info(t("components.currency.no_cash"))
         return
 
     cash_risk = fx_data.get("risk_level", "low")
@@ -165,34 +169,35 @@ def _render_cash_tab(
     cash_m_cols = st.columns(3)
     with cash_m_cols[0]:
         st.metric(
-            f"💰 現金總額（{fx_home}）",
+            t("components.currency.cash_total", currency=fx_home),
             _mask_money(total_cash),
         )
     with cash_m_cols[1]:
-        st.metric("🌍 現金非本幣佔比", f"{cash_nhp:.1f}%")
+        st.metric(t("components.currency.cash_non_home_pct"), f"{cash_nhp:.1f}%")
     with cash_m_cols[2]:
         c_icon = _RISK_COLORS.get(cash_risk, "⚪")
-        c_label = _RISK_LABELS.get(cash_risk, cash_risk)
-        st.metric("風險等級", f"{c_icon} {c_label}")
+        c_label = _get_risk_label(cash_risk)
+        st.metric(t("components.currency.risk_level"), f"{c_icon} {c_label}")
 
     _render_fx_donut(
-        cash_bd, f"現金幣別分佈（{fx_home}）", fx_home
+        cash_bd, t("components.currency.cash_breakdown", currency=fx_home), fx_home
     )
     _render_fx_movements(fx_movements)
     _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
 
     # Cash-focused advice
     advice = fx_data.get("advice", [])
+    cash_keyword = t("config.category.cash")
     cash_advice = [
-        a for a in advice if "現金" in a or "💵" in a
+        a for a in advice if cash_keyword in a or "💵" in a
     ]
     if cash_advice:
-        st.markdown("**💡 現金幣別建議：**")
+        st.markdown(t("components.currency.cash_advice_title"))
         _render_advice(cash_advice)
 
     # Telegram alert button
     if st.button(
-        "📨 發送匯率曝險警報至 Telegram",
+        t("components.currency.telegram_button"),
         key="fx_alert_tg_cash_btn",
     ):
         level, msg = post_fx_exposure_alert()
@@ -211,18 +216,18 @@ def _render_total_tab(
     total_m_cols = st.columns(3)
     with total_m_cols[0]:
         st.metric(
-            f"💰 投資組合總市值（{fx_home}）",
+            t("components.currency.total_value", currency=fx_home),
             _mask_money(total_home),
         )
     with total_m_cols[1]:
-        st.metric("🌍 非本幣佔比", f"{all_nhp:.1f}%")
+        st.metric(t("components.currency.non_home_pct"), f"{all_nhp:.1f}%")
     with total_m_cols[2]:
         t_icon = _RISK_COLORS.get(risk_level, "⚪")
-        t_label = _RISK_LABELS.get(risk_level, risk_level)
-        st.metric("風險等級", f"{t_icon} {t_label}")
+        t_label = _get_risk_label(risk_level)
+        st.metric(t("components.currency.risk_level"), f"{t_icon} {t_label}")
 
     _render_fx_donut(
-        all_bd, f"全資產幣別分佈（{fx_home}）", fx_home
+        all_bd, t("components.currency.total_breakdown", currency=fx_home), fx_home
     )
     _render_fx_movements(fx_movements)
     _render_fx_rate_alerts(fx_data.get("fx_rate_alerts", []))
@@ -230,7 +235,7 @@ def _render_total_tab(
     # Full advice
     advice = fx_data.get("advice", [])
     if advice:
-        st.markdown("**💡 匯率曝險建議：**")
+        st.markdown(t("components.currency.total_advice_title"))
         _render_advice(advice)
 
 
@@ -244,7 +249,7 @@ def _render_fx_donut(
 ) -> None:
     """Render a currency breakdown donut chart."""
     if not bd_data:
-        st.info("暫無資料。")
+        st.info(t("components.currency.no_data"))
         return
 
     bd_labels = [b["currency"] for b in bd_data]
@@ -271,13 +276,13 @@ def _render_fx_donut(
             textposition="auto",
             marker=dict(colors=bd_colors),
             hovertemplate=(
-                "<b>%{label}</b><br>"
-                "佔比：%{percent}<extra></extra>"
+                f"<b>%{{label}}</b><br>"
+                f"{t('components.currency.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 if _is_privacy()
                 else (
-                    "<b>%{label}</b><br>"
-                    f"市值：%{{text}} {home}<br>"
-                    "佔比：%{percent}<extra></extra>"
+                    f"<b>%{{label}}</b><br>"
+                    f"{t('components.currency.chart.market_value')}：%{{text}} {home}<br>"
+                    f"{t('components.currency.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 )
             ),
         )
@@ -295,7 +300,7 @@ def _render_fx_movements(movements: list[dict]) -> None:
     """Render the FX movements table."""
     if not movements:
         return
-    st.markdown("**📉📈 近期匯率變動：**")
+    st.markdown(t("components.currency.movements_title"))
     mv_rows = []
     for mv in movements:
         direction_icon = (
@@ -306,13 +311,13 @@ def _render_fx_movements(movements: list[dict]) -> None:
         mv_rows.append(
             {
                 "": direction_icon,
-                "貨幣對": mv["pair"],
-                "現價": (
+                t("components.currency.movements.pair"): mv["pair"],
+                t("components.currency.movements.current_rate"): (
                     PRIVACY_MASK
                     if _is_privacy()
                     else f"{mv['current_rate']:.4f}"
                 ),
-                "變動": f"{mv['change_pct']:+.2f}%",
+                t("components.currency.movements.change"): f"{mv['change_pct']:+.2f}%",
             }
         )
     st.dataframe(
@@ -326,11 +331,11 @@ def _render_fx_rate_alerts(rate_alerts: list[dict]) -> None:
     """Render FX rate change alerts with colored badges."""
     if not rate_alerts:
         return
-    st.markdown("**⚡ 匯率變動警報：**")
+    st.markdown(t("components.currency.rate_alerts_title"))
     alert_rows = []
     for a in rate_alerts:
-        badge, label = _ALERT_TYPE_BADGES.get(
-            a["alert_type"], ("⚪", a["alert_type"])
+        badge, label_func = _ALERT_TYPE_BADGES.get(
+            a["alert_type"], ("⚪", lambda: a["alert_type"])
         )
         direction_icon = (
             "📈" if a["direction"] == "up" else "📉"
@@ -338,11 +343,11 @@ def _render_fx_rate_alerts(rate_alerts: list[dict]) -> None:
         alert_rows.append(
             {
                 "": f"{badge} {direction_icon}",
-                "類型": label,
-                "貨幣對": a["pair"],
-                "期間": a["period_label"],
-                "變動": f"{a['change_pct']:+.2f}%",
-                "現價": (
+                t("components.currency.alerts.type"): label_func(),
+                t("components.currency.alerts.pair"): a["pair"],
+                t("components.currency.alerts.period"): a["period_label"],
+                t("components.currency.alerts.change"): f"{a['change_pct']:+.2f}%",
+                t("components.currency.alerts.current_rate"): (
                     PRIVACY_MASK
                     if _is_privacy()
                     else f"{a['current_rate']:.4f}"

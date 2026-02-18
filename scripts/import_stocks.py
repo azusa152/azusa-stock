@@ -7,13 +7,18 @@ Folio — 股票觀察名單匯入腳本（Upsert 模式）
 使用方式：
     python3 scripts/import_stocks.py                              # 使用預設資料檔
     python3 scripts/import_stocks.py scripts/data/my_list.json    # 指定其他資料檔
+    python3 scripts/import_stocks.py --api-key YOUR_KEY           # 手動指定 API Key
+
+API Key 優先順序：--api-key > .env FOLIO_API_KEY > 無認證（dev mode）
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
 BASE_URL = "http://localhost:8000"
 API_URL = f"{BASE_URL}/ticker"
@@ -21,6 +26,8 @@ DEFAULT_DATA_FILE = Path(__file__).parent / "data" / "folio_watchlist.json"
 
 REQUIRED_FIELDS = {"ticker", "category", "thesis"}
 VALID_CATEGORIES = {"Trend_Setter", "Moat", "Growth", "Bond", "Cash"}
+
+HEADERS: dict[str, str] = {}
 
 
 def load_stock_list(file_path: Path) -> list[dict]:
@@ -73,7 +80,7 @@ def upsert_stock(item: dict) -> str:
         "thesis": item["thesis"],
         "tags": tags,
     }
-    resp = requests.post(API_URL, json=create_payload, timeout=10)
+    resp = requests.post(API_URL, json=create_payload, headers=HEADERS, timeout=10)
 
     if resp.status_code == 200:
         return "inserted"
@@ -87,6 +94,7 @@ def upsert_stock(item: dict) -> str:
         update_resp = requests.post(
             f"{API_URL}/{ticker}/thesis",
             json=update_payload,
+            headers=HEADERS,
             timeout=10,
         )
         if update_resp.status_code == 200:
@@ -102,19 +110,43 @@ def upsert_stock(item: dict) -> str:
     return "failed"
 
 
+def _mask_key(key: str) -> str:
+    """Show only the last 4 characters of an API key."""
+    if len(key) <= 4:
+        return "****"
+    return "****" + key[-4:]
+
+
 def main() -> None:
-    # 決定資料檔案路徑
-    if len(sys.argv) > 1:
-        data_file = Path(sys.argv[1])
-    else:
-        data_file = DEFAULT_DATA_FILE
+    global HEADERS  # noqa: PLW0603
+
+    load_dotenv()
+
+    api_key = os.getenv("FOLIO_API_KEY", "")
+
+    # Accept --api-key CLI override
+    for i, arg in enumerate(sys.argv):
+        if arg == "--api-key" and i + 1 < len(sys.argv):
+            api_key = sys.argv[i + 1]
+            break
+
+    if api_key:
+        HEADERS = {"X-API-Key": api_key}
+
+    # 決定資料檔案路徑：first positional arg that isn't a flag
+    data_file = DEFAULT_DATA_FILE
+    positional_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if positional_args:
+        data_file = Path(positional_args[0])
 
     stock_list = load_stock_list(data_file)
 
+    auth_display = _mask_key(api_key) if api_key else "(dev mode — no key)"
     print("=" * 60)
     print("  Folio — 股票觀察名單匯入（Upsert 模式）")
     print(f"  資料來源：{data_file}")
     print(f"  目標 API：{BASE_URL}")
+    print(f"  API Key ：{auth_display}")
     print(f"  共 {len(stock_list)} 檔股票")
     print("=" * 60)
     print()

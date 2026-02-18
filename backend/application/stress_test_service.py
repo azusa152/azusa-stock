@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from application.rebalance_service import _compute_holding_market_values
 from application.stock_service import StockNotFoundError
+from i18n import get_user_language, t
 from domain.constants import CATEGORY_FALLBACK_BETA, DEFAULT_USER_ID
 from domain.entities import Holding
 from domain.enums import StockCategory
@@ -54,7 +55,9 @@ def calculate_stress_test(
     )
 
     if not holdings:
-        raise StockNotFoundError("尚未輸入任何持倉，請先新增資產。")
+        raise StockNotFoundError(
+            t("withdrawal.no_holdings_stress", lang=get_user_language(session))
+        )
 
     # 2) 取得匯率：收集所有持倉幣別，批次取得相對 display_currency 的匯率
     holding_currencies = list({h.currency for h in holdings})

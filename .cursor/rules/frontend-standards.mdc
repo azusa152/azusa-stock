@@ -22,6 +22,16 @@ globs: ["frontend/**"]
 ## API Calls
 -   All backend calls go through helper functions in `frontend/utils.py`. Never call `requests` directly in view files.
 
+## i18n (Internationalization)
+-   All user-facing strings MUST use `from i18n import t` and call `t("key")`. Never hardcode display text.
+-   Language is stored in `st.session_state["language"]` (loaded from user preferences on app startup).
+-   Supported languages: `zh-TW` (default), `en`, `ja`, `zh-CN`.
+-   Locale files live in `frontend/i18n/locales/{en,ja,zh-CN,zh-TW}.json`.
+-   Key naming: dot-notation organized by page/component (e.g., `radar.add_stock`, `common.refresh`, `config.category.moat`).
+-   SOP content: stored as a single markdown string per locale (e.g., `radar.sop.content`).
+-   **Lazy evaluation:** Labels that depend on language (e.g., category labels, market options) MUST be wrapped in functions — not module-level dicts — to ensure `t()` is called at render time, not import time. See `get_category_labels()` in `frontend/config.py` for the pattern.
+-   String interpolation: Use Python `str.format()` syntax in locale JSON values (e.g., `"已新增 {ticker}"`), then `t("key", ticker="AAPL")`.
+
 ## Privacy Mode
 
 The app supports a cross-device privacy toggle that masks all sensitive monetary values.

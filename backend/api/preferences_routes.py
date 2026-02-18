@@ -8,12 +8,14 @@ from sqlmodel import Session
 
 from api.schemas import PreferencesRequest, PreferencesResponse
 from domain.constants import (
+    DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
     DEFAULT_USER_ID,
     ERROR_PREFERENCES_UPDATE_FAILED,
     GENERIC_PREFERENCES_ERROR,
 )
 from domain.entities import UserPreferences
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -34,10 +36,12 @@ def get_preferences(
     prefs = session.get(UserPreferences, DEFAULT_USER_ID)
     if not prefs:
         return PreferencesResponse(
+            language=DEFAULT_LANGUAGE,
             privacy_mode=False,
             notification_preferences=DEFAULT_NOTIFICATION_PREFERENCES,
         )
     return PreferencesResponse(
+        language=prefs.language,
         privacy_mode=prefs.privacy_mode,
         notification_preferences=prefs.get_notification_prefs(),
     )
@@ -56,12 +60,15 @@ def update_preferences(
     try:
         prefs = session.get(UserPreferences, DEFAULT_USER_ID)
         if prefs:
+            if payload.language is not None:
+                prefs.language = payload.language
             prefs.privacy_mode = payload.privacy_mode
             if payload.notification_preferences is not None:
                 prefs.set_notification_prefs(payload.notification_preferences)
         else:
             prefs = UserPreferences(
                 user_id=DEFAULT_USER_ID,
+                language=payload.language or DEFAULT_LANGUAGE,
                 privacy_mode=payload.privacy_mode,
             )
             if payload.notification_preferences is not None:
@@ -70,8 +77,13 @@ def update_preferences(
 
         session.commit()
         session.refresh(prefs)
-        logger.info("使用者偏好已更新：privacy_mode=%s", prefs.privacy_mode)
+        logger.info(
+            "使用者偏好已更新：language=%s, privacy_mode=%s",
+            prefs.language,
+            prefs.privacy_mode,
+        )
         return PreferencesResponse(
+            language=prefs.language,
             privacy_mode=prefs.privacy_mode,
             notification_preferences=prefs.get_notification_prefs(),
         )
@@ -81,6 +93,6 @@ def update_preferences(
             status_code=500,
             detail={
                 "error_code": ERROR_PREFERENCES_UPDATE_FAILED,
-                "detail": GENERIC_PREFERENCES_ERROR,
+                "detail": t(GENERIC_PREFERENCES_ERROR, lang=get_user_language(session)),
             },
         ) from e

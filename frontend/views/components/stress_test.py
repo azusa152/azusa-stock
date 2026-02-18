@@ -12,6 +12,7 @@ from config import (
     STRESS_SLIDER_MIN,
     STRESS_SLIDER_STEP,
 )
+from i18n import t
 from utils import fetch_stress_test, mask_money as _mask_money
 
 
@@ -21,26 +22,16 @@ def render_stress_test(display_currency: str = "USD") -> None:
     Args:
         display_currency: Currency for display (USD, TWD, JPY, etc.)
     """
-    st.markdown(
-        """
-        **模擬大盤崩盤情境，檢視你的組合能承受多大衝擊。**
-
-        基於線性 CAPM 模型（β 值）估算各持倉在市場大跌時的預期損失。
-        此工具幫助你評估：
-        - 組合整體抗跌能力
-        - 高 Beta 持倉的風險暴露
-        - 現金與債券的緩衝效果
-        """
-    )
+    st.markdown(t("components.stress.description"))
 
     # Slider for crash scenario
     scenario_drop_pct = st.slider(
-        "🌊 大盤崩盤情境 (Market Crash Scenario)",
+        t("components.stress.slider_label"),
         min_value=STRESS_SLIDER_MIN,
         max_value=STRESS_SLIDER_MAX,
         value=STRESS_SLIDER_DEFAULT,
         step=STRESS_SLIDER_STEP,
-        help="模擬大盤（如 S&P 500）下跌的百分比。例如 -20% 代表大盤跌 20%。",
+        help=t("components.stress.slider_help"),
     )
 
     # Fetch stress test results
@@ -50,7 +41,7 @@ def render_stress_test(display_currency: str = "USD") -> None:
     )
 
     if result is None:
-        st.warning("⚠️ 尚未輸入任何持倉，或無法取得壓力測試資料。請先在 Step 2 新增持倉。")
+        st.warning(t("components.stress.no_data"))
         return
 
     # Extract data
@@ -74,19 +65,19 @@ def render_stress_test(display_currency: str = "USD") -> None:
 
     with col1:
         st.metric(
-            label="組合加權 Beta",
+            label=t("components.stress.beta_label"),
             value=f"{portfolio_beta:.2f}",
-            help="組合整體 Beta 值。Beta > 1.0 表示比大盤波動更大，Beta < 1.0 表示較穩健。",
+            help=t("components.stress.beta_help"),
         )
 
     with col2:
         loss_display = _mask_money(total_loss, "${:,.0f}")
         st.metric(
-            label="預期蒸發金額",
+            label=t("components.stress.loss_label"),
             value=loss_display,
             delta=f"{total_loss_pct:.1f}%",
             delta_color="inverse",  # Red for losses
-            help="在此崩盤情境下，組合預期損失的金額與百分比。",
+            help=t("components.stress.loss_help"),
         )
 
     with col3:
@@ -94,7 +85,7 @@ def render_stress_test(display_currency: str = "USD") -> None:
         st.markdown(
             f"""
             <div style="text-align: center; padding: 10px; border-radius: 8px; background-color: {pain_color}15; border: 2px solid {pain_color};">
-                <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">痛苦等級</div>
+                <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">{t("components.stress.pain_label")}</div>
                 <div style="font-size: 1.5em; font-weight: bold; color: {pain_color};">{pain_level_label}</div>
             </div>
             """,
@@ -106,23 +97,23 @@ def render_stress_test(display_currency: str = "USD") -> None:
     # Pain meter - Conditional colored alert
     if pain_level_name == "panic":
         st.error(
-            f"🚨 **{pain_level_label}** — 組合在此情境下可能蒸發 {abs(total_loss_pct):.1f}%，風險極高！"
+            t("components.stress.pain.panic", label=pain_level_label, loss=abs(total_loss_pct))
         )
     elif pain_level_name == "high":
         st.warning(
-            f"⚠️ **{pain_level_label}** — 組合將承受明顯損失 ({abs(total_loss_pct):.1f}%)，需關注風險。"
+            t("components.stress.pain.high", label=pain_level_label, loss=abs(total_loss_pct))
         )
     elif pain_level_name == "moderate":
         st.info(
-            f"📊 **{pain_level_label}** — 組合有一定損失 ({abs(total_loss_pct):.1f}%)，屬於正常修正範圍。"
+            t("components.stress.pain.moderate", label=pain_level_label, loss=abs(total_loss_pct))
         )
     else:
         st.success(
-            f"✅ **{pain_level_label}** — 組合相當穩健，僅受輕微影響 ({abs(total_loss_pct):.1f}%)。"
+            t("components.stress.pain.low", label=pain_level_label, loss=abs(total_loss_pct))
         )
 
     # Holdings breakdown table
-    st.markdown("#### 📋 各持倉預期損失明細")
+    st.markdown(t("components.stress.breakdown_title"))
 
     if holdings_breakdown:
         # Sort by absolute expected loss (largest impact first)
@@ -144,12 +135,12 @@ def render_stress_test(display_currency: str = "USD") -> None:
 
             table_data.append(
                 {
-                    "標的": ticker,
-                    "分類": category,
-                    "Beta": f"{beta:.2f}",
-                    "市值": _mask_money(market_value, "${:,.0f}"),
-                    "預期跌幅": f"{expected_drop_pct:.1f}%",
-                    "預期損失": _mask_money(expected_loss, "${:,.0f}"),
+                    t("components.stress.table.ticker"): ticker,
+                    t("components.stress.table.category"): category,
+                    t("components.stress.table.beta"): f"{beta:.2f}",
+                    t("components.stress.table.market_value"): _mask_money(market_value, "${:,.0f}"),
+                    t("components.stress.table.expected_drop"): f"{expected_drop_pct:.1f}%",
+                    t("components.stress.table.expected_loss"): _mask_money(expected_loss, "${:,.0f}"),
                 }
             )
 
@@ -159,11 +150,11 @@ def render_stress_test(display_currency: str = "USD") -> None:
             hide_index=True,
         )
     else:
-        st.info("暫無持倉明細資料。")
+        st.info(t("components.stress.no_breakdown"))
 
     # Advice box (only in panic zone)
     if advice:
-        st.markdown("#### 💡 建議事項")
+        st.markdown(t("components.stress.advice_title"))
         with st.container():
             st.info("\n".join(advice))
 

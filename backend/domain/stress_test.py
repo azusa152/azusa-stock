@@ -4,7 +4,11 @@ Domain — 壓力測試純計算函式。
 所有函式均為純函式（無副作用），便於單元測試與複用。
 """
 
-from domain.constants import STRESS_DISCLAIMER, STRESS_PAIN_LEVELS
+from domain.constants import (
+    STRESS_DISCLAIMER,
+    STRESS_EMPTY_PAIN_LABEL,
+    STRESS_PAIN_LEVELS,
+)
 
 
 def calculate_portfolio_beta(holdings_with_beta: list[dict]) -> float:
@@ -64,7 +68,11 @@ def calculate_stress_test(
             "total_value": 0.0,
             "total_loss": 0.0,
             "total_loss_pct": 0.0,
-            "pain_level": {"level": "low", "label": "無持倉", "emoji": "green"},
+            "pain_level": {
+                "level": "low",
+                "label": STRESS_EMPTY_PAIN_LABEL,
+                "emoji": "green",
+            },
             "advice": [],
             "disclaimer": STRESS_DISCLAIMER,
             "holdings_breakdown": [],
@@ -156,43 +164,40 @@ def classify_pain_level(loss_pct: float) -> dict:
 
 def generate_advice(pain_level: str, portfolio_beta: float) -> list[str]:
     """
-    根據痛苦等級與組合 Beta 生成建議（繁體中文，Gooaye 風格）。
+    根據痛苦等級與組合 Beta 生成建議 i18n key 清單。
 
     僅在 panic 等級（損失 >= 30%）時提供建議。
+    回傳 i18n key 字串，由 API 層負責翻譯。
 
     Args:
         pain_level: 痛苦等級 (low / moderate / high / panic)
         portfolio_beta: 組合加權 Beta
 
     Returns:
-        建議清單（Traditional Chinese）
+        建議 i18n key 清單（須在 API 層使用 t() 翻譯）
     """
     if pain_level != "panic":
         return []
 
     advice = [
-        "🔴 組合在極端崩盤下將蒸發 30% 以上，已進入「睡不著覺」區間。",
-        "💡 建議立即檢視以下事項：",
+        "stress_test.panic_intro",
+        "stress_test.advice_header",
     ]
 
     # 根據 Beta 給出具體建議
     if portfolio_beta >= 1.5:
-        advice.append(
-            "   • 組合 Beta >= 1.5，高度激進。考慮增持低波動資產（債券、現金）以降低風險暴露。"
-        )
+        advice.append("stress_test.advice_beta_high")
     elif portfolio_beta >= 1.2:
-        advice.append(
-            "   • 組合 Beta >= 1.2，偏激進。建議部分獲利了結高 Beta 標的，鎖定帳面利潤。"
-        )
+        advice.append("stress_test.advice_beta_moderate")
     else:
-        advice.append("   • 組合 Beta < 1.2，但仍需關注個股集中度風險。")
+        advice.append("stress_test.advice_beta_low")
 
     advice.extend(
         [
-            "   • 確認緊急備用金充足（至少 6 個月生活費）。",
-            "   • 若使用槓桿或融資，務必預留安全邊際以防強制平倉。",
-            "   • 檢視持倉中是否有「Thesis Broken」訊號，優先減碼基本面惡化的標的。",
-            "⚠️ 壓力測試僅為情境推演，實際市場可能更極端。投資前請三思。",
+            "stress_test.advice_emergency_fund",
+            "stress_test.advice_leverage",
+            "stress_test.advice_thesis_broken",
+            "stress_test.advice_warning",
         ]
     )
 

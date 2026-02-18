@@ -35,6 +35,36 @@ export FOLIO_API_KEY="your-key-here"
 
 All `curl` commands below assume you'll add `-H "X-API-Key: $FOLIO_API_KEY"` when auth is enabled.
 
+## Language (i18n)
+
+Folio supports 4 languages. All API response messages and Telegram notifications are localized based on the user's saved preference.
+
+| Code | Language |
+|------|----------|
+| `zh-TW` | 繁體中文 (default) |
+| `en` | English |
+| `ja` | 日本語 |
+| `zh-CN` | 简体中文 |
+
+**Read current language:**
+
+```bash
+curl -s http://localhost:8000/settings/preferences \
+  -H "X-API-Key: $FOLIO_API_KEY"
+# Response includes: {"language": "zh-TW", ...}
+```
+
+**Change language:**
+
+```bash
+curl -s -X PUT http://localhost:8000/settings/preferences \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $FOLIO_API_KEY" \
+  -d '{"language": "en"}'
+```
+
+> **Note:** The `detail` field in error responses is localized — its language varies per user. Always branch on `error_code`, not `detail`.
+
 ## Quick Start
 
 ### 查看投資組合摘要
@@ -193,8 +223,8 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
-| `GET` | `/settings/preferences` | 使用者偏好設定（隱私模式等） |
-| `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert） |
+| `GET` | `/settings/preferences` | 使用者偏好設定（語言、隱私模式等） |
+| `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert），支援 `language` 欄位 (`zh-TW`/`en`/`ja`/`zh-CN`) |
 | `GET` | `/docs` | Swagger UI (互動式 API 文件) |
 | `GET` | `/openapi.json` | OpenAPI 規範 |
 

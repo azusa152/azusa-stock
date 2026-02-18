@@ -16,12 +16,13 @@ from config import (
     CATEGORY_COLOR_FALLBACK,
     CATEGORY_COLOR_MAP,
     CATEGORY_ICON_SHORT,
-    CATEGORY_LABELS,
     DRIFT_CHART_HEIGHT,
     PRIVACY_MASK,
     XRAY_TOP_N_DISPLAY,
     XRAY_WARN_THRESHOLD_PCT,
+    get_category_labels,
 )
+from i18n import t
 from utils import (
     fetch_rebalance,
     format_utc_timestamp,
@@ -68,25 +69,22 @@ def render_rebalance(
     # Auto-fetch rebalance (cached TTL = CACHE_TTL_REBALANCE)
     rebalance = None
     with st.status(
-        "📊 載入再平衡分析中...", expanded=True
+        t("components.rebalance.loading"), expanded=True
     ) as _rb_status:
         rebalance = fetch_rebalance(display_currency=display_cur)
         if rebalance:
             _rb_status.update(
-                label="✅ 再平衡分析載入完成",
+                label=t("components.rebalance.loaded"),
                 state="complete",
                 expanded=False,
             )
         else:
             _rb_status.update(
-                label="⚠️ 載入失敗",
+                label=t("components.rebalance.error"),
                 state="error",
                 expanded=True,
             )
-            st.warning(
-                "載入再平衡分析失敗，"
-                "請稍後再試或確認網路連線正常。"
-            )
+            st.warning(t("components.rebalance.error_hint"))
 
     if not rebalance:
         return
@@ -96,11 +94,11 @@ def render_rebalance(
     if calc_at:
         browser_tz = st.session_state.get("browser_tz")
         st.caption(
-            f"🕐 資料更新時間：{format_utc_timestamp(calc_at, browser_tz)}"
+            t("components.rebalance.data_time", time=format_utc_timestamp(calc_at, browser_tz))
         )
 
     st.metric(
-        f"💰 投資組合總市值（{display_cur}）",
+        t("components.rebalance.total_value", currency=display_cur),
         _mask_money(rebalance["total_value"]),
     )
 
@@ -121,7 +119,7 @@ def _render_pie_charts(rebalance: dict, display_cur: str) -> None:
     cats_data = rebalance.get("categories", {})
     cat_names = list(cats_data.keys())
     cat_labels = [
-        CATEGORY_LABELS.get(c, c).split("(")[0].strip()
+        get_category_labels().get(c, c).split("(")[0].strip()
         for c in cat_names
     ]
     total_val = rebalance["total_value"]
@@ -171,8 +169,8 @@ def _render_pie_charts(rebalance: dict, display_cur: str) -> None:
         cols=2,
         specs=[[{"type": "pie"}, {"type": "pie"}]],
         subplot_titles=[
-            f"🎯 目標配置（{display_cur}）",
-            f"📊 實際配置（{display_cur}）",
+            t("components.rebalance.chart.target", currency=display_cur),
+            t("components.rebalance.chart.actual", currency=display_cur),
         ],
     )
 
@@ -196,13 +194,13 @@ def _render_pie_charts(rebalance: dict, display_cur: str) -> None:
             textposition="auto",
             marker=dict(colors=target_colors),
             hovertemplate=(
-                "<b>%{label}</b><br>"
-                "佔比：%{percent}<extra></extra>"
+                f"<b>%{{label}}</b><br>"
+                f"{t('components.rebalance.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 if _privacy
                 else (
-                    "<b>%{label}</b><br>"
-                    f"目標金額：%{{text}} {display_cur}<br>"
-                    "佔比：%{percent}<extra></extra>"
+                    f"<b>%{{label}}</b><br>"
+                    f"{t('components.rebalance.chart.target_amount')}：%{{text}} {display_cur}<br>"
+                    f"{t('components.rebalance.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 )
             ),
         ),
@@ -225,13 +223,13 @@ def _render_pie_charts(rebalance: dict, display_cur: str) -> None:
             textposition="auto",
             marker=dict(colors=actual_colors),
             hovertemplate=(
-                "<b>%{label}</b><br>"
-                "佔比：%{percent}<extra></extra>"
+                f"<b>%{{label}}</b><br>"
+                f"{t('components.rebalance.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 if _privacy
                 else (
-                    "<b>%{label}</b><br>"
-                    f"市值：%{{text}} {display_cur}<br>"
-                    "佔比：%{percent}<extra></extra>"
+                    f"<b>%{{label}}</b><br>"
+                    f"{t('components.rebalance.chart.market_value')}：%{{text}} {display_cur}<br>"
+                    f"{t('components.rebalance.chart.weight_pct')}：%{{percent}}<extra></extra>"
                 )
             ),
         ),
@@ -252,7 +250,7 @@ def _render_drift_chart(rebalance: dict) -> None:
     cats_data = rebalance.get("categories", {})
     cat_names = list(cats_data.keys())
     cat_labels = [
-        CATEGORY_LABELS.get(c, c).split("(")[0].strip()
+        get_category_labels().get(c, c).split("(")[0].strip()
         for c in cat_names
     ]
     drift_vals = [cats_data[c]["drift_pct"] for c in cat_names]
@@ -269,8 +267,8 @@ def _render_drift_chart(rebalance: dict) -> None:
         )
     )
     fig_drift.update_layout(
-        title="偏移度 (Drift %)",
-        yaxis_title="偏移 (%)",
+        title=t("components.rebalance.drift_title"),
+        yaxis_title=t("components.rebalance.drift_yaxis"),
         height=DRIFT_CHART_HEIGHT,
         margin=dict(t=40, b=20, l=40, r=20),
     )
@@ -279,7 +277,7 @@ def _render_drift_chart(rebalance: dict) -> None:
 
 def _render_advice(rebalance: dict) -> None:
     """Render rebalance advice lines."""
-    st.markdown("**💡 再平衡建議：**")
+    st.markdown(t("components.rebalance.advice_title"))
     for adv in rebalance.get("advice", []):
         st.write(adv)
 
@@ -293,11 +291,11 @@ def _render_holdings_detail(
         return
 
     st.divider()
-    st.markdown(f"**📋 個股持倉明細（{display_cur}）：**")
+    st.markdown(t("components.rebalance.holdings_title", currency=display_cur))
     detail_rows = []
     for d in detail:
         cat_lbl = (
-            CATEGORY_LABELS.get(d["category"], d["category"])
+            get_category_labels().get(d["category"], d["category"])
             .split("(")[0]
             .strip()
         )
@@ -332,26 +330,26 @@ def _render_holdings_detail(
 
         detail_rows.append(
             {
-                "代號": d["ticker"],
-                "分類": cat_lbl,
-                "原幣": d.get("currency", "USD"),
-                "數量": _mask_qty(d["quantity"]),
-                "現價": (
+                t("components.rebalance.table.ticker"): d["ticker"],
+                t("components.rebalance.table.category"): cat_lbl,
+                t("components.rebalance.table.currency"): d.get("currency", "USD"),
+                t("components.rebalance.table.quantity"): _mask_qty(d["quantity"]),
+                t("components.rebalance.table.current_price"): (
                     _mask_money(d["current_price"])
                     if d.get("current_price")
                     else "—"
                 ),
-                "平均成本": (
+                t("components.rebalance.table.avg_cost"): (
                     _mask_money(d["avg_cost"])
                     if d.get("avg_cost")
                     else "—"
                 ),
-                f"市值({display_cur})": _mask_money(
+                t("components.rebalance.table.market_value", currency=display_cur): _mask_money(
                     d["market_value"]
                 ),
-                "未實現損益": pl_display,
-                "損益%": pl_pct_display,
-                "佔比": f"{d['weight_pct']:.1f}%",
+                t("components.rebalance.table.unrealized_pl"): pl_display,
+                t("components.rebalance.table.pl_pct"): pl_pct_display,
+                t("components.rebalance.table.weight"): f"{d['weight_pct']:.1f}%",
             }
         )
 
@@ -371,11 +369,9 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
 
     st.divider()
     st.markdown(
-        f"**🔬 穿透式持倉 X-Ray（{display_cur}）：**"
+        t("components.rebalance.xray_title", currency=display_cur)
     )
-    st.caption(
-        "解析 ETF 成分股，揭示直接持倉與 ETF 間接曝險的真實比例。"
-    )
+    st.caption(t("components.rebalance.xray_caption"))
 
     # -- Warning callouts --
     for entry in xray:
@@ -387,13 +383,12 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
                 entry.get("indirect_sources", [])
             )
             st.warning(
-                f"⚠️ **{entry['symbol']}** 直接持倉佔 "
-                f"{entry['direct_weight_pct']:.1f}%，"
-                f"加上 ETF 間接曝險（{sources}），"
-                f"真實曝險已達 "
-                f"**{entry['total_weight_pct']:.1f}%**，"
-                f"超過建議值 "
-                f"{XRAY_WARN_THRESHOLD_PCT:.0f}%。"
+                t("components.rebalance.xray_warning",
+                  symbol=entry['symbol'],
+                  direct_pct=entry['direct_weight_pct'],
+                  sources=sources,
+                  total_pct=entry['total_weight_pct'],
+                  threshold=XRAY_WARN_THRESHOLD_PCT)
             )
 
     # -- Stacked bar chart (top N) --
@@ -411,7 +406,7 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
         go.Bar(
             y=xray_symbols,
             x=xray_direct,
-            name="直接持倉",
+            name=t("components.rebalance.xray.direct"),
             orientation="h",
             marker_color="#4A90D9",
             text=[
@@ -425,7 +420,7 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
         go.Bar(
             y=xray_symbols,
             x=xray_indirect,
-            name="ETF 間接曝險",
+            name=t("components.rebalance.xray.indirect"),
             orientation="h",
             marker_color="#F5A623",
             text=[
@@ -440,9 +435,7 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
         x=XRAY_WARN_THRESHOLD_PCT,
         line_dash="dash",
         line_color="red",
-        annotation_text=(
-            f"風險門檻 {XRAY_WARN_THRESHOLD_PCT:.0f}%"
-        ),
+        annotation_text=t("components.rebalance.xray.threshold", threshold=XRAY_WARN_THRESHOLD_PCT),
         annotation_position="top right",
     )
     fig_xray.update_layout(
@@ -456,7 +449,7 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
             xanchor="right",
             x=1,
         ),
-        xaxis_title="佔比 (%)",
+        xaxis_title=t("components.rebalance.xray.xaxis"),
     )
     st.plotly_chart(fig_xray, use_container_width=True)
 
@@ -465,18 +458,18 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
     for e in xray:
         xray_rows.append(
             {
-                "標的": e["symbol"],
-                "名稱": e.get("name", ""),
-                "直接 (%)": f"{e['direct_weight_pct']:.1f}",
-                "間接 (%)": f"{e['indirect_weight_pct']:.1f}",
-                "真實曝險 (%)": f"{e['total_weight_pct']:.1f}",
-                f"直接市值({display_cur})": _mask_money(
+                t("components.rebalance.xray.table.symbol"): e["symbol"],
+                t("components.rebalance.xray.table.name"): e.get("name", ""),
+                t("components.rebalance.xray.table.direct_pct"): f"{e['direct_weight_pct']:.1f}",
+                t("components.rebalance.xray.table.indirect_pct"): f"{e['indirect_weight_pct']:.1f}",
+                t("components.rebalance.xray.table.total_pct"): f"{e['total_weight_pct']:.1f}",
+                t("components.rebalance.xray.table.direct_value", currency=display_cur): _mask_money(
                     e["direct_value"], "${:,.0f}"
                 ),
-                f"間接市值({display_cur})": _mask_money(
+                t("components.rebalance.xray.table.indirect_value", currency=display_cur): _mask_money(
                     e["indirect_value"], "${:,.0f}"
                 ),
-                "間接來源": ", ".join(
+                t("components.rebalance.xray.table.sources"): ", ".join(
                     e.get("indirect_sources", [])
                 ),
             }
@@ -490,7 +483,7 @@ def _render_xray(rebalance: dict, display_cur: str) -> None:
 
     # -- Telegram alert button --
     if st.button(
-        "📨 發送 X-Ray 警告至 Telegram",
+        t("components.rebalance.xray_telegram_button"),
         key="xray_tg_btn",
     ):
         level, msg = post_xray_alert(display_cur)

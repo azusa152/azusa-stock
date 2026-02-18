@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from domain.constants import WEBHOOK_ACTION_REGISTRY
+from i18n import t
 
 
 class TestWebhookHelp:
@@ -92,7 +93,8 @@ class TestWebhookScan:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
-        assert "背景" in body["message"] or "Telegram" in body["message"]
+        expected_msg = t("webhook.scan_started", lang="zh-TW")
+        assert body["message"] == expected_msg
 
 
 class TestWebhookMoat:
@@ -106,7 +108,8 @@ class TestWebhookMoat:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
-        assert "護城河" in body["message"]
+        expected_key = t("webhook.moat_result", lang="zh-TW")
+        assert expected_key in body["message"]
 
     def test_moat_should_fail_without_ticker(self, client):
         # Act
@@ -133,7 +136,8 @@ class TestWebhookAlerts:
         # Assert
         body = resp.json()
         assert body["success"] is True
-        assert "沒有" in body["message"]
+        expected_msg = t("webhook.no_alerts", lang="zh-TW")
+        assert expected_msg in body["message"]
 
     def test_alerts_should_fail_without_ticker(self, client):
         # Act
@@ -237,9 +241,11 @@ class TestWebhookFXWatch:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
-        assert "筆監控" in body["message"]
-        assert "筆觸發" in body["message"]
-        assert "筆已通知" in body["message"]
+        # Check that the expected translated message parts are present
+        expected_complete = t(
+            "webhook.fx_watch_complete", total=1, triggered=1, sent=1, lang="zh-TW"
+        )
+        assert body["message"] == expected_complete
         assert body["data"]["total_watches"] == 1
         assert body["data"]["triggered_alerts"] == 1
         assert body["data"]["sent_alerts"] == 1
@@ -270,7 +276,8 @@ class TestWebhookFXWatch:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is False
-        assert "外匯監控執行失敗" in body["message"]
+        expected_msg = t("webhook.fx_watch_failed", lang="zh-TW")
+        assert expected_msg in body["message"]
 
 
 class TestWebhookDiscoverability:
@@ -325,4 +332,7 @@ class TestWebhookUnknownAction:
         # Assert
         body = resp.json()
         assert body["success"] is False
-        assert "不支援" in body["message"]
+        expected_msg = t(
+            "webhook.unsupported_action", action="nonexistent", lang="zh-TW"
+        )
+        assert body["message"] == expected_msg

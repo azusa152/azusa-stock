@@ -53,7 +53,6 @@ from config import (
     CACHE_TTL_STOCKS,
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
-    CATEGORY_LABELS,
     CATEGORY_OPTIONS,
     DEFAULT_ALERT_THRESHOLD,
     DEFAULT_TAG_OPTIONS,
@@ -70,10 +69,11 @@ from config import (
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
     PRIVACY_MASK,
-    TICKER_DEFAULT_MARKET,
-    TICKER_SUFFIX_TO_MARKET,
     WHALEWISDOM_STOCK_URL,
+    get_category_labels,
+    get_ticker_market_label,
 )
+from i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -152,10 +152,7 @@ def format_utc_timestamp(iso_str: str, tz_name: str | None = None) -> str:
 
 def infer_market_label(ticker: str) -> str:
     """Infer market label from ticker suffix (e.g. '.TW' -> '🇹🇼 台股')."""
-    for suffix, label in TICKER_SUFFIX_TO_MARKET.items():
-        if ticker.upper().endswith(suffix):
-            return label
-    return TICKER_DEFAULT_MARKET
+    return get_ticker_market_label(ticker)
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +172,7 @@ def api_get(path: str) -> dict | list | None:
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
-        st.error(f"❌ API 請求失敗：{e}")
+        st.error(t("utils.api_error", error=e))
         return None
 
 
@@ -188,7 +185,7 @@ def api_post(path: str, json_data: dict | list) -> dict | None:
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
-        st.error(f"❌ API 請求失敗：{e}")
+        st.error(t("utils.api_error", error=e))
         return None
 
 
@@ -201,7 +198,7 @@ def api_patch(path: str, json_data: dict) -> dict | None:
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
-        st.error(f"❌ API 請求失敗：{e}")
+        st.error(t("utils.api_error", error=e))
         return None
 
 
@@ -214,7 +211,7 @@ def api_put(path: str, json_data: dict) -> dict | None:
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
-        st.error(f"❌ API 請求失敗：{e}")
+        st.error(t("utils.api_error", error=e))
         return None
 
 
@@ -225,7 +222,7 @@ def api_delete(path: str) -> dict | None:
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
-        st.error(f"❌ API 請求失敗：{e}")
+        st.error(t("utils.api_error", error=e))
         return None
 
 
@@ -531,16 +528,16 @@ def post_telegram_test() -> tuple[str, str]:
             timeout=API_POST_TIMEOUT,
         )
         if resp.ok:
-            return ("success", resp.json().get("message", "✅ 已發送"))
+            return ("success", resp.json().get("message", t("api.telegram_test_sent")))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("Telegram 測試 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ {detail}")
+        return ("error", t("api.http_error", detail=detail))
     except requests.RequestException as exc:
         logger.error("Telegram 測試 API 連線失敗: %s", exc)
-        return ("error", f"❌ 請求失敗：{exc}")
+        return ("error", t("api.request_failed", detail=str(exc)))
 
 
 def post_xray_alert(display_currency: str = "USD") -> tuple[str, str]:
@@ -558,16 +555,16 @@ def post_xray_alert(display_currency: str = "USD") -> tuple[str, str]:
         if resp.ok:
             data = resp.json()
             w_count = len(data.get("warnings", []))
-            return ("success", f"✅ {data.get('message', f'{w_count} 筆警告已發送')}")
+            return ("success", "✅ " + (data.get("message") or t("api.xray_warnings_sent", count=w_count)))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("X-Ray 警告 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 發送失敗：{detail}")
+        return ("error", t("api.send_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("X-Ray 警告 API 連線失敗: %s", exc)
-        return ("error", f"❌ 發送失敗：{exc}")
+        return ("error", t("api.send_failed", detail=str(exc)))
 
 
 def post_fx_exposure_alert() -> tuple[str, str]:
@@ -584,16 +581,16 @@ def post_fx_exposure_alert() -> tuple[str, str]:
         if resp.ok:
             data = resp.json()
             a_count = len(data.get("alerts", []))
-            return ("success", f"✅ {data.get('message', f'{a_count} 筆警報已發送')}")
+            return ("success", "✅ " + (data.get("message") or t("api.fx_alerts_sent", count=a_count)))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("匯率曝險警報 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 發送失敗：{detail}")
+        return ("error", t("api.send_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("匯率曝險警報 API 連線失敗: %s", exc)
-        return ("error", f"❌ 發送失敗：{exc}")
+        return ("error", t("api.send_failed", detail=str(exc)))
 
 
 def put_telegram_settings(payload: dict) -> tuple[str, str]:
@@ -609,16 +606,16 @@ def put_telegram_settings(payload: dict) -> tuple[str, str]:
             timeout=API_PUT_TIMEOUT,
         )
         if resp.ok:
-            return ("success", "✅ Telegram 設定已儲存")
+            return ("success", t("api.telegram_saved"))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("Telegram 設定 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 儲存失敗：{detail}")
+        return ("error", t("api.save_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("Telegram 設定 API 連線失敗: %s", exc)
-        return ("error", f"❌ 請求失敗：{exc}")
+        return ("error", t("api.request_failed", detail=str(exc)))
 
 
 def put_notification_preferences(
@@ -639,16 +636,16 @@ def put_notification_preferences(
             timeout=API_PUT_TIMEOUT,
         )
         if resp.ok:
-            return ("success", "✅ 通知偏好已儲存")
+            return ("success", t("api.notification_saved"))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("通知偏好 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 儲存失敗：{detail}")
+        return ("error", t("api.save_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("通知偏好 API 連線失敗: %s", exc)
-        return ("error", f"❌ 請求失敗：{exc}")
+        return ("error", t("api.request_failed", detail=str(exc)))
 
 
 def post_digest() -> tuple[str, str]:
@@ -663,9 +660,9 @@ def post_digest() -> tuple[str, str]:
             timeout=API_POST_TIMEOUT,
         )
         if resp.ok:
-            return ("success", resp.json().get("message", "✅ 已啟動"))
+            return ("success", resp.json().get("message", t("api.digest_started")))
         if resp.status_code == 409:
-            fallback = "每週摘要正在生成中，請稍後再試。"
+            fallback = t("api.digest_in_progress")
             try:
                 detail = resp.json().get("detail", fallback)
                 # Backend wraps in {"detail": {"error_code": ..., "detail": ...}}
@@ -682,10 +679,10 @@ def post_digest() -> tuple[str, str]:
         except Exception:
             detail = resp.text
         logger.warning("摘要 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ {detail}")
+        return ("error", t("api.http_error", detail=detail))
     except requests.RequestException as exc:
         logger.error("摘要 API 連線失敗: %s", exc)
-        return ("error", f"❌ 請求失敗：{exc}")
+        return ("error", t("api.request_failed", detail=str(exc)))
 
 
 # ---------------------------------------------------------------------------
@@ -706,16 +703,16 @@ def create_fx_watch(payload: dict) -> tuple[str, str]:
         )
         if resp.ok:
             pair = f"{payload.get('base_currency', '')}/{payload.get('quote_currency', '')}"
-            return ("success", f"✅ 已新增 {pair} 監控")
+            return ("success", t("api.fx_watch_created", pair=pair))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("FX Watch 新增 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 新增失敗：{detail}")
+        return ("error", t("api.create_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("FX Watch 新增 API 連線失敗: %s", exc)
-        return ("error", f"❌ 新增失敗：{exc}")
+        return ("error", t("api.create_failed", detail=str(exc)))
 
 
 def patch_fx_watch(watch_id: int, payload: dict) -> tuple[str, str]:
@@ -730,16 +727,16 @@ def patch_fx_watch(watch_id: int, payload: dict) -> tuple[str, str]:
             timeout=API_PATCH_TIMEOUT,
         )
         if resp.ok:
-            return ("success", "✅ 已更新")
+            return ("success", t("api.updated"))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("FX Watch 更新 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 更新失敗：{detail}")
+        return ("error", t("api.update_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("FX Watch 更新 API 連線失敗: %s", exc)
-        return ("error", f"❌ 更新失敗：{exc}")
+        return ("error", t("api.update_failed", detail=str(exc)))
 
 
 def toggle_fx_watch(watch_id: int, is_active: bool) -> bool:
@@ -793,16 +790,16 @@ def post_fx_watch_check() -> tuple[str, str]:
         )
         if resp.ok:
             data = resp.json()
-            return ("success", f"✅ 已完成 {data.get('total_watches', 0)} 筆監控分析")
+            return ("success", t("api.fx_check_done", count=data.get("total_watches", 0)))
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("FX Watch 檢查 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 檢查失敗：{detail}")
+        return ("error", t("api.check_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("FX Watch 檢查 API 連線失敗: %s", exc)
-        return ("error", f"❌ 檢查失敗：{exc}")
+        return ("error", t("api.check_failed", detail=str(exc)))
 
 
 def post_fx_watch_alert() -> tuple[str, str]:
@@ -819,18 +816,21 @@ def post_fx_watch_alert() -> tuple[str, str]:
             data = resp.json()
             return (
                 "success",
-                f"✅ {data.get('triggered_alerts', 0)} 筆觸發，"
-                f"{data.get('sent_alerts', 0)} 筆已發送",
+                t(
+                    "api.fx_alert_result",
+                    triggered=data.get("triggered_alerts", 0),
+                    sent=data.get("sent_alerts", 0),
+                ),
             )
         try:
             detail = resp.json().get("detail", resp.text)
         except Exception:
             detail = resp.text
         logger.warning("FX Watch 警報 API 回傳 %s: %s", resp.status_code, detail)
-        return ("error", f"❌ 發送失敗：{detail}")
+        return ("error", t("api.send_failed", detail=detail))
     except requests.RequestException as exc:
         logger.error("FX Watch 警報 API 連線失敗: %s", exc)
-        return ("error", f"❌ 發送失敗：{exc}")
+        return ("error", t("api.send_failed", detail=str(exc)))
 
 
 @st.cache_data(ttl=CACHE_TTL_FX_WATCH, show_spinner=False)
@@ -996,19 +996,19 @@ def mask_id(value: str, visible_suffix: int = 3) -> str:
 def render_thesis_history(history: list[dict]) -> None:
     """Render thesis version history (shared between stock cards and archive)."""
     if history:
-        st.markdown("**📜 歷史觀點紀錄：**")
+        st.markdown(t("utils.thesis.history_title"))
         for entry in history:
             ver = entry.get("version", "?")
             content = entry.get("content", "")
             created = entry.get("created_at", "")
             entry_tags = entry.get("tags", [])
-            st.markdown(f"**v{ver}** ({created[:10] if created else '未知日期'})")
+            st.markdown(t("utils.thesis.version", ver=ver, date=created[:10] if created else t("utils.thesis.unknown_date")))
             if entry_tags:
-                st.caption("標籤：" + " ".join(f"`{t}`" for t in entry_tags))
+                st.caption(t("utils.thesis.tags") + " ".join(f"`{tag}`" for tag in entry_tags))
             st.text(content)
             st.divider()
     else:
-        st.caption("尚無歷史觀點紀錄。")
+        st.caption(t("utils.thesis.no_history"))
 
 
 def _render_signal_metrics(signals: dict) -> None:
@@ -1026,11 +1026,11 @@ def _render_signal_metrics(signals: dict) -> None:
 
     metrics_col1, metrics_col2 = st.columns(2)
     with metrics_col1:
-        st.metric("現價", f"${price}")
-        st.metric("RSI(14)", rsi)
+        st.metric(t("utils.signals.price"), f"${price}")
+        st.metric(t("utils.signals.rsi"), rsi)
     with metrics_col2:
-        st.metric("200MA", f"${ma200}" if ma200 else "N/A")
-        st.metric("60MA", f"${ma60}" if ma60 else "N/A")
+        st.metric(t("utils.signals.ma200"), f"${ma200}" if ma200 else "N/A")
+        st.metric(t("utils.signals.ma60"), f"${ma60}" if ma60 else "N/A")
 
     chip_col1, chip_col2 = st.columns(2)
     with chip_col1:
@@ -1040,14 +1040,14 @@ def _render_signal_metrics(signals: dict) -> None:
                 if bias > BIAS_OVERHEATED_UI
                 else ("🟢" if bias < BIAS_OVERSOLD_UI else "⚪")
             )
-            st.metric(f"{bias_color} 乖離率 Bias", f"{bias}%")
+            st.metric(t("utils.signals.bias_with_color", color=bias_color), f"{bias}%")
         else:
-            st.metric("乖離率 Bias", "N/A")
+            st.metric(t("utils.signals.bias"), "N/A")
     with chip_col2:
         if volume_ratio is not None:
-            st.metric("量比 Vol Ratio", f"{volume_ratio}x")
+            st.metric(t("utils.signals.volume_ratio"), f"{volume_ratio}x")
         else:
-            st.metric("量比 Vol Ratio", "N/A")
+            st.metric(t("utils.signals.volume_ratio"), "N/A")
 
     for s in signals.get("status", []):
         st.write(s)
@@ -1055,7 +1055,7 @@ def _render_signal_metrics(signals: dict) -> None:
     fetched_at = signals.get("fetched_at")
     if fetched_at:
         browser_tz = st.session_state.get("browser_tz")
-        st.caption(f"🕐 資料更新：{format_utc_timestamp(fetched_at, browser_tz)}")
+        st.caption(t("utils.signals.data_updated", time=format_utc_timestamp(fetched_at, browser_tz)))
 
 
 def _render_moat_section(ticker: str, signals: dict) -> None:
@@ -1068,12 +1068,12 @@ def _render_moat_section(ticker: str, signals: dict) -> None:
 
         if curr_margin is not None and margin_change is not None:
             st.metric(
-                "最新毛利率 (Gross Margin)",
+                t("utils.moat.metric_label"),
                 f"{curr_margin:.1f}%",
                 delta=f"{margin_change:+.2f} pp (YoY)",
             )
         else:
-            st.metric("最新毛利率 (Gross Margin)", "N/A")
+            st.metric(t("utils.moat.metric_label"), "N/A")
 
         trend = moat_data.get("margin_trend", [])
         valid_trend = [t for t in trend if t.get("value") is not None]
@@ -1095,8 +1095,8 @@ def _render_moat_section(ticker: str, signals: dict) -> None:
                     marker=dict(size=5, color=line_color),
                     fill="tozeroy",
                     fillcolor=fill_color,
-                    hovertemplate="%{x}<br>毛利率: %{y:.1f}%<extra></extra>",
-                    name="毛利率",
+                    hovertemplate=f"%{{x}}<br>{t('chart.gross_margin')}: %{{y:.1f}}%<extra></extra>",
+                    name=t("chart.gross_margin"),
                 )
             )
 
@@ -1124,7 +1124,7 @@ def _render_moat_section(ticker: str, signals: dict) -> None:
                 fig, use_container_width=True, config={"displayModeBar": False}
             )
         else:
-            st.caption("⚠️ 毛利率趨勢資料不足，無法繪圖。")
+            st.caption(t("utils.moat.insufficient_data"))
 
         bias_val = signals.get("bias")
         price_is_weak = bias_val is not None and bias_val < PRICE_WEAK_BIAS_THRESHOLD
@@ -1134,31 +1134,21 @@ def _render_moat_section(ticker: str, signals: dict) -> None:
         )
 
         if margin_is_bad:
-            st.error(
-                "🔴 **警報 (Thesis Broken)**："
-                "護城河受損（毛利 YoY 衰退超過 2 個百分點），"
-                "基本面轉差，勿接刀。"
-            )
+            st.error(t("utils.moat.thesis_broken"))
         elif price_is_weak and margin_is_strong:
-            st.success(
-                "🟢 **錯殺機會 (Contrarian Buy)**："
-                "股價回檔但護城河變寬（毛利升），"
-                "基本面強勁，可留意佈局時機。"
-            )
+            st.success(t("utils.moat.contrarian_buy"))
         elif margin_is_strong:
-            st.success("🟢 **護城河穩固**：毛利率 YoY 成長，基本面健康。")
+            st.success(t("utils.moat.moat_stable"))
         elif price_is_weak:
-            st.warning(
-                "🟡 **股價偏弱**：乖離率偏低但護城河數據持平，留意後續季報。"
-            )
+            st.warning(t("utils.moat.price_weak"))
         else:
-            st.info("⚪ **觀察中**：護城河數據持平，持續觀察。")
+            st.info(t("utils.moat.observing"))
 
         details = moat_data.get("details", "")
         if details:
             st.caption(f"📊 {details}")
     else:
-        st.warning("⚠️ 無法取得財報數據（可能是新股），請稍後再試。")
+        st.warning(t("utils.moat.no_data"))
 
 
 def _render_scan_history_section(ticker: str) -> None:
@@ -1173,7 +1163,7 @@ def _render_scan_history_section(ticker: str) -> None:
             else:
                 break
         if latest_sig != "NORMAL" and consecutive > 1:
-            st.warning(f"⚠️ {latest_sig} 已連續 {consecutive} 次掃描")
+            st.warning(t("utils.scan_history.consecutive_warning", signal=latest_sig, count=consecutive))
 
         for entry in scan_hist:
             sig = entry.get("signal", "NORMAL")
@@ -1182,19 +1172,19 @@ def _render_scan_history_section(ticker: str) -> None:
             date_str = scanned[:16] if scanned else "N/A"
             st.caption(f"{sig_icon} {sig} — {date_str}")
     else:
-        st.caption("尚無掃描紀錄。")
+        st.caption(t("utils.scan_history.no_history"))
 
 
 def _render_price_alerts_section(ticker: str) -> None:
     """Render price alerts tab content (list + create form)."""
     alerts = fetch_alerts(ticker)
     if alerts:
-        st.markdown("**目前警報：**")
+        st.markdown(t("utils.alerts.current_title"))
         for a in alerts:
             op_str = "<" if a["operator"] == "lt" else ">"
             active_badge = "🟢" if a["is_active"] else "⚪"
             triggered = a.get("last_triggered_at")
-            trigger_info = f"（上次觸發：{triggered[:10]}）" if triggered else ""
+            trigger_info = t("utils.alerts.last_triggered", date=triggered[:10]) if triggered else ""
             col_a, col_b = st.columns([3, 1])
             with col_a:
                 st.caption(
@@ -1202,45 +1192,45 @@ def _render_price_alerts_section(ticker: str) -> None:
                     f"{a['threshold']}{trigger_info}"
                 )
             with col_b:
-                if st.button("🗑️", key=f"del_alert_{a['id']}", help="刪除此警報"):
+                if st.button("🗑️", key=f"del_alert_{a['id']}", help=t("utils.alerts.delete_help")):
                     api_delete(f"/alerts/{a['id']}")
                     fetch_alerts.clear()
                     refresh_ui()
         st.divider()
 
-    st.markdown("**➕ 新增警報：**")
+    st.markdown(t("utils.alerts.add_title"))
     alert_cols = st.columns(3)
     with alert_cols[0]:
         alert_metric = st.selectbox(
-            "指標",
+            t("utils.alerts.metric_label"),
             options=["rsi", "price", "bias"],
             key=f"alert_metric_{ticker}",
             label_visibility="collapsed",
         )
     with alert_cols[1]:
         alert_op = st.selectbox(
-            "條件",
+            t("utils.alerts.condition_label"),
             options=["lt", "gt"],
-            format_func=lambda x: "<（小於）" if x == "lt" else ">（大於）",
+            format_func=lambda x: t("utils.alerts.op_lt") if x == "lt" else t("utils.alerts.op_gt"),
             key=f"alert_op_{ticker}",
             label_visibility="collapsed",
         )
     with alert_cols[2]:
         alert_threshold = st.number_input(
-            "門檻",
+            t("utils.alerts.threshold_label"),
             value=DEFAULT_ALERT_THRESHOLD,
             step=1.0,
             key=f"alert_threshold_{ticker}",
             label_visibility="collapsed",
         )
 
-    if st.button("新增警報", key=f"add_alert_{ticker}"):
+    if st.button(t("utils.alerts.add_button"), key=f"add_alert_{ticker}"):
         result = api_post(
             f"/ticker/{ticker}/alerts",
             {"metric": alert_metric, "operator": alert_op, "threshold": alert_threshold},
         )
         if result:
-            st.success(result.get("message", "✅ 警報已建立"))
+            st.success(result.get("message", t("utils.alerts.created")))
             fetch_alerts.clear()
             refresh_ui()
 
@@ -1251,37 +1241,38 @@ def _render_thesis_editor(ticker: str, stock: dict) -> None:
     history = fetch_thesis_history(ticker)
     render_thesis_history(history or [])
 
-    st.markdown("**✏️ 新增觀點：**")
+    st.markdown(t("utils.thesis.add_title"))
     new_thesis_content = st.text_area(
-        "觀點內容",
+        t("utils.thesis.content_label"),
         key=f"thesis_input_{ticker}",
-        placeholder="寫下你對這檔股票的最新看法...",
+        placeholder=t("utils.thesis.placeholder"),
         label_visibility="collapsed",
     )
 
     all_tag_options = sorted(set(DEFAULT_TAG_OPTIONS + current_tags))
     selected_tags = st.multiselect(
-        "🏷️ 設定領域標籤",
+        t("utils.thesis.tags_label"),
         options=all_tag_options,
         default=current_tags,
         key=f"tag_select_{ticker}",
     )
 
-    if st.button("更新觀點", key=f"thesis_btn_{ticker}"):
+    if st.button(t("utils.thesis.update_button"), key=f"thesis_btn_{ticker}"):
         if new_thesis_content.strip():
             result = api_post(
                 f"/ticker/{ticker}/thesis",
                 {"content": new_thesis_content.strip(), "tags": selected_tags},
             )
             if result:
-                st.success(result.get("message", "✅ 觀點已更新"))
+                st.success(result.get("message", t("utils.thesis.updated")))
                 fetch_thesis_history.clear()
                 fetch_stocks.clear()
                 refresh_ui()
         else:
-            st.warning("⚠️ 請輸入觀點內容。")
+            st.warning(t("utils.thesis.empty_error"))
 
 
+@st.fragment
 def _render_price_chart(ticker: str) -> None:
     """Render interactive price trend chart with 60MA overlay."""
     price_data = fetch_price_history(ticker)
@@ -1289,7 +1280,7 @@ def _render_price_chart(ticker: str) -> None:
         period_tabs = list(PRICE_CHART_PERIODS.keys())
         default_idx = period_tabs.index(PRICE_CHART_DEFAULT_PERIOD)
         period_label = st.radio(
-            "趨勢區間",
+            t("chart.trend_period"),
             period_tabs,
             index=default_idx,
             horizontal=True,
@@ -1316,7 +1307,7 @@ def _render_price_chart(ticker: str) -> None:
                 fill="tozeroy",
                 fillcolor=fill_color,
                 hovertemplate="%{x}<br>$%{y:.2f}<extra></extra>",
-                name="收盤價",
+                name=t("chart.close_price"),
             )
         )
 
@@ -1355,7 +1346,7 @@ def _render_price_chart(ticker: str) -> None:
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
-        st.caption("📉 價格趨勢資料不足。")
+        st.caption(t("utils.price_chart.insufficient_data"))
 
 
 def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
@@ -1381,7 +1372,7 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
     # Build expander header with signal icon, ticker, category, price, daily change, and market
     last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
-    cat_label_short = CATEGORY_LABELS.get(cat, cat).split("(")[0].strip()
+    cat_label_short = get_category_labels().get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")
     price_str = f" | ${price}" if price and price != "N/A" else ""
 
@@ -1400,8 +1391,8 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            cat_label = CATEGORY_LABELS.get(cat, cat)
-            st.caption(f"分類：{cat_label}")
+            cat_label = get_category_labels().get(cat, cat)
+            st.caption(t("utils.stock_card.category", category=cat_label))
 
             # Dynamic tags
             current_tags = stock.get("current_tags", [])
@@ -1426,15 +1417,15 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                         ed = dt.strptime(earnings_date_str, "%Y-%m-%d")
                         days_left = (ed - dt.now()).days
                         badge = (
-                            f" ({days_left}天)"
+                            t("utils.stock_card.earnings_badge", days=days_left)
                             if 0 < days_left <= EARNINGS_BADGE_DAYS_THRESHOLD
                             else ""
                         )
-                        st.caption(f"📅 財報日：{earnings_date_str}{badge}")
+                        st.caption(t("utils.stock_card.earnings_date", date=earnings_date_str, badge=badge))
                     except ValueError:
-                        st.caption(f"📅 財報日：{earnings_date_str}")
+                        st.caption(t("utils.stock_card.earnings_date", date=earnings_date_str, badge=""))
                 else:
-                    st.caption("📅 財報日：N/A")
+                    st.caption(t("utils.earnings.na"))
 
             with info_cols[1]:
                 if cat in ("Moat", "Bond"):
@@ -1445,40 +1436,32 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                     if div_data and div_data.get("dividend_yield"):
                         dy = div_data["dividend_yield"]
                         ex_date = div_data.get("ex_dividend_date", "N/A")
-                        st.caption(f"💰 殖利率：{dy}% | 除息日：{ex_date}")
+                        st.caption(t("utils.stock_card.dividend_yield", dy=dy, ex_date=ex_date))
                     else:
-                        st.caption("💰 殖利率：N/A")
+                        st.caption(t("utils.dividend.na"))
 
             # -- Sub-sections via tabs --
-            _tab_labels = ["🐳 籌碼面", "📈 掃描歷史", "🔔 價格警報"]
+            _tab_labels = [t("utils.stock_card.tab.chips"), t("utils.stock_card.tab.scan_history"), t("utils.stock_card.tab.alerts")]
             _show_moat = stock.get("category") not in SKIP_MOAT_CATEGORIES
             if _show_moat:
-                _tab_labels.insert(1, "🏰 護城河")
+                _tab_labels.insert(1, t("utils.stock_card.tab.moat"))
             _tabs = st.tabs(_tab_labels)
             _tab_idx = 0
 
             # -- 13F Institutional Holdings --
             with _tabs[_tab_idx]:
                 st.link_button(
-                    "🐳 前往 WhaleWisdom 查看大戶動向",
+                    t("utils.stock_card.whalewisdom_button"),
                     WHALEWISDOM_STOCK_URL.format(ticker=ticker.lower()),
                     use_container_width=True,
                 )
-                st.caption(
-                    "💡 投資心法：點擊按鈕查看機構持倉。重點觀察"
-                    "波克夏 (Berkshire)、橋水 (Bridgewater) 等大基金"
-                    "是 'New Buy/Add' (佈局) 還是 'Sold Out' (離場)。"
-                    "跟單要跟「新增」而非庫存。"
-                )
+                st.caption(t("utils.stock_card.whalewisdom_hint"))
                 holders = signals.get("institutional_holders")
                 if holders and isinstance(holders, list) and len(holders) > 0:
-                    st.markdown("**📊 前五大機構持有者：**")
+                    st.markdown(t("utils.stock_card.top_holders_title"))
                     st.dataframe(holders, use_container_width=True, hide_index=True)
                 else:
-                    st.info(
-                        "⚠️ 機構持倉資料暫時無法取得，"
-                        "請點擊上方按鈕前往 WhaleWisdom 查看完整 13F 報告。"
-                    )
+                    st.info(t("utils.stock_card.no_holders"))
             _tab_idx += 1
 
             if _show_moat:
@@ -1494,14 +1477,14 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                 _render_price_alerts_section(ticker)
 
         with col2:
-            st.markdown("**💡 當前觀點：**")
-            st.info(stock.get("current_thesis", "尚無觀點"))
+            st.markdown(t("utils.stock_card.current_thesis_title"))
+            st.info(stock.get("current_thesis", t("utils.stock_card.no_thesis")))
 
             _render_price_chart(ticker)
 
             # -- Management tabs --
             _mgmt_tab_thesis, _mgmt_tab_cat, _mgmt_tab_remove = st.tabs(
-                ["📝 觀點版控", "🔄 切換分類", "🗑️ 移除追蹤"]
+                [t("utils.stock_card.mgmt.thesis"), t("utils.stock_card.mgmt.category"), t("utils.stock_card.mgmt.remove")]
             )
 
             with _mgmt_tab_thesis:
@@ -1510,44 +1493,44 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
             with _mgmt_tab_cat:
                 current_cat = stock.get("category", "Growth")
                 other_categories = [c for c in CATEGORY_OPTIONS if c != current_cat]
-                current_label = CATEGORY_LABELS.get(current_cat, current_cat)
-                st.caption(f"目前分類：**{current_label}**")
+                current_label = get_category_labels().get(current_cat, current_cat)
+                st.caption(t("utils.stock_card.current_category", category=current_label))
                 new_cat = st.selectbox(
-                    "新分類",
+                    t("utils.stock_card.new_category"),
                     options=other_categories,
-                    format_func=lambda x: CATEGORY_LABELS.get(x, x),
+                    format_func=lambda x: get_category_labels().get(x, x),
                     key=f"cat_select_{ticker}",
                     label_visibility="collapsed",
                 )
-                if st.button("確認切換", key=f"cat_btn_{ticker}"):
+                if st.button(t("utils.stock_card.confirm_switch"), key=f"cat_btn_{ticker}"):
                     result = api_patch(
                         f"/ticker/{ticker}/category", {"category": new_cat},
                     )
                     if result:
-                        st.success(result.get("message", "✅ 分類已切換"))
+                        st.success(result.get("message", t("utils.stock_card.category_changed")))
                         invalidate_stock_caches()
                         refresh_ui()
 
             with _mgmt_tab_remove:
-                st.warning("⚠️ 移除後股票將移至「已移除」分頁，可隨時查閱歷史紀錄。")
+                st.warning(t("utils.stock_card.remove_warning"))
                 removal_reason = st.text_area(
-                    "移除原因",
+                    t("utils.stock_card.removal_reason_label"),
                     key=f"removal_input_{ticker}",
-                    placeholder="寫下你移除這檔股票的原因...",
+                    placeholder=t("utils.stock_card.removal_placeholder"),
                     label_visibility="collapsed",
                 )
-                if st.button("確認移除", key=f"removal_btn_{ticker}", type="primary"):
+                if st.button(t("utils.stock_card.confirm_remove"), key=f"removal_btn_{ticker}", type="primary"):
                     if removal_reason.strip():
                         result = api_post(
                             f"/ticker/{ticker}/deactivate",
                             {"reason": removal_reason.strip()},
                         )
                         if result:
-                            st.success(result.get("message", "✅ 已移除"))
+                            st.success(result.get("message", t("utils.stock_card.removed")))
                             invalidate_stock_caches()
                             refresh_ui()
                     else:
-                        st.warning("⚠️ 請輸入移除原因。")
+                        st.warning(t("utils.stock_card.remove_reason_required"))
 
 
 def render_reorder_section(
@@ -1557,20 +1540,20 @@ def render_reorder_section(
     if len(stocks_in_cat) < REORDER_MIN_STOCKS:
         return
     reorder_on = st.checkbox(
-        "↕️ 拖曳排序", key=f"reorder_{category_key}", value=False
+        t("utils.reorder.checkbox"), key=f"reorder_{category_key}", value=False
     )
     if reorder_on:
         ticker_list = [s["ticker"] for s in stocks_in_cat]
         sorted_tickers = sort_items(ticker_list, key=f"sort_{category_key}")
         if sorted_tickers != ticker_list:
-            if st.button("💾 儲存排序", key=f"save_order_{category_key}"):
+            if st.button(t("utils.reorder.save_button"), key=f"save_order_{category_key}"):
                 result = api_put(
                     "/stocks/reorder", {"ordered_tickers": sorted_tickers}
                 )
                 if result:
-                    st.success("✅ 排序已儲存")
+                    st.success(t("utils.reorder.saved"))
                     fetch_stocks.clear()
                     fetch_enriched_stocks.clear()
                     refresh_ui()
         else:
-            st.caption("拖曳股票代號以調整顯示順序。")
+            st.caption(t("utils.reorder.hint"))
