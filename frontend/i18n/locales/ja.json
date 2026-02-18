@@ -7,7 +7,8 @@
     "dashboard": "ポートフォリオ概要",
     "radar": "投資レーダー",
     "allocation": "個人資産配分",
-    "fx_watch": "為替監視"
+    "fx_watch": "為替監視",
+    "smart_money": "師匠の足跡"
   },
   "common": {
     "refresh": "🔄 更新",
@@ -803,5 +804,70 @@
     "gross_margin_hover": "粗利率: {value}%",
     "close_price": "終値",
     "trend_period": "トレンド期間"
+  },
+  "smart_money": {
+    "title": "🏦 スマートマネー追跡",
+    "caption": "機関投資家の13F四半期報告を追跡し、ポートフォリオとの共鳴を発見する",
+    "no_gurus_hint": "📭 追跡中のグルーはいません。サイドバーからCIKを追加してください。",
+    "no_filing": "📭 {guru} の13F申告データがありません。「最新13F同期」をクリックしてください。",
+    "lagging_banner": "⚠️ 保有スナップショット基準日：{report_date}　申告日：{filing_date}　13Fデータは四半期報告であり、リアルタイムではありません。",
+    "edgar_link": "📄 SEC EDGAR原文を見る",
+    "edgar_link_help": "SEC EDGARの元の13F申告を開く",
+    "metric": {
+      "report_date": "基準日",
+      "filing_date": "申告日",
+      "total_value": "総保有額",
+      "holdings_count": "保有銘柄数"
+    },
+    "tab": {
+      "changes": "📊 保有変動",
+      "top": "🏆 上位10保有",
+      "great_minds": "🤝 英雄所見略同"
+    },
+    "action": {
+      "new_position": "新規建玉",
+      "sold_out": "全売却",
+      "increased": "買い増し",
+      "decreased": "減らした",
+      "unchanged": "変動なし"
+    },
+    "col": {
+      "value": "評価額",
+      "shares": "株数"
+    },
+    "changes": {
+      "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。"
+    },
+    "top": {
+      "no_data": "📭 保有データがありません。",
+      "weight_axis": "ポートフォリオ比重 (%)",
+      "table_title": "📋 上位10保有詳細"
+    },
+    "great_minds": {
+      "caption": "英雄所見略同：ウォッチリスト/保有とグルーポートフォリオの重複銘柄。⚠️ 13F四半期スナップショット基準、リアルタイムではありません。",
+      "empty": "📭 重複銘柄なし。ウォッチリストまたは保有を設定し、グルーの13Fを同期してください。",
+      "overlap_count": "重複銘柄数",
+      "guru_count_label": "グルー数"
+    },
+    "sidebar": {
+      "header": "🏦 スマートマネー",
+      "no_gurus": "📭 追跡中のグルーはいません。下から追加してください。",
+      "guru_selector": "グルーを選択",
+      "sync_button": "🔄 最新13F同期",
+      "sync_help": "SEC EDGARから最新の13F申告を取得します（少し時間がかかる場合があります）",
+      "syncing": "同期中...",
+      "sync_success": "✅ 同期完了",
+      "sync_skipped": "ℹ️ 最新の状態です",
+      "sync_error": "❌ 同期失敗：{msg}",
+      "add_guru_title": "➕ カスタムグルーを追加",
+      "add_name": "機関名（フル）",
+      "add_name_placeholder": "例: Berkshire Hathaway Inc",
+      "add_cik": "SEC CIKコード",
+      "add_display_name": "表示名",
+      "add_display_placeholder": "例: Warren Buffett",
+      "add_button": "グルーを追加",
+      "add_required": "⚠️ すべての欄を入力してください。",
+      "add_success": "✅ {display_name} を追加しました"
+    }
   }
 }

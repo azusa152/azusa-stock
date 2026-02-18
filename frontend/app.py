@@ -51,8 +51,9 @@ dashboard_page = st.Page("views/dashboard.py", title=t("nav.dashboard"), icon="�
 radar_page = st.Page("views/radar.py", title=t("nav.radar"), icon="📡", url_path="radar")
 allocation_page = st.Page("views/allocation.py", title=t("nav.allocation"), icon="💼", url_path="allocation")
 fx_watch_page = st.Page("views/fx_watch.py", title=t("nav.fx_watch"), icon="💱", url_path="fx_watch")
+smart_money_page = st.Page("views/smart_money.py", title=t("nav.smart_money"), icon="🏦", url_path="smart-money")
 
-pg = st.navigation([dashboard_page, radar_page, allocation_page, fx_watch_page])
+pg = st.navigation([dashboard_page, radar_page, allocation_page, fx_watch_page, smart_money_page])
 
 # ---------------------------------------------------------------------------
 # Custom CSS — global styles shared across all pages (safe after navigation)

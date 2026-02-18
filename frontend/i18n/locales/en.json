@@ -7,7 +7,8 @@
     "dashboard": "Portfolio Dashboard",
     "radar": "Investment Radar",
     "allocation": "Asset Allocation",
-    "fx_watch": "FX Watch"
+    "fx_watch": "FX Watch",
+    "smart_money": "Smart Money"
   },
   "common": {
     "refresh": "🔄 Refresh",
@@ -803,5 +804,70 @@
     "gross_margin_hover": "Gross Margin: {value}%",
     "close_price": "Close Price",
     "trend_period": "Trend Period"
+  },
+  "smart_money": {
+    "title": "🏦 Smart Money Tracker",
+    "caption": "Track top institutional investors' 13F holdings and find resonance with your portfolio",
+    "no_gurus_hint": "📭 No gurus tracked yet. Add a guru CIK in the sidebar.",
+    "no_filing": "📭 No 13F filing data for {guru}. Click 'Sync Latest 13F'.",
+    "lagging_banner": "⚠️ Holdings snapshot as of: {report_date}  ·  Filed: {filing_date}  ·  13F data is quarterly, not real-time.",
+    "edgar_link": "📄 View SEC EDGAR Filing",
+    "edgar_link_help": "Open the original 13F filing on SEC EDGAR",
+    "metric": {
+      "report_date": "Snapshot Date",
+      "filing_date": "Filed Date",
+      "total_value": "Total Value",
+      "holdings_count": "# Holdings"
+    },
+    "tab": {
+      "changes": "📊 Holding Changes",
+      "top": "🏆 Top 10 Holdings",
+      "great_minds": "🤝 Great Minds Think Alike"
+    },
+    "action": {
+      "new_position": "New Position",
+      "sold_out": "Sold Out",
+      "increased": "Increased",
+      "decreased": "Decreased",
+      "unchanged": "Unchanged"
+    },
+    "col": {
+      "value": "Value",
+      "shares": "Shares"
+    },
+    "changes": {
+      "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10)."
+    },
+    "top": {
+      "no_data": "📭 No holdings data available.",
+      "weight_axis": "Portfolio Weight (%)",
+      "table_title": "📋 Top 10 Holdings Detail"
+    },
+    "great_minds": {
+      "caption": "Great Minds Think Alike: stocks overlapping between your watchlist/holdings and guru portfolios. ⚠️ Based on 13F quarterly snapshots, not real-time.",
+      "empty": "📭 No overlapping stocks. Make sure you have a watchlist or holdings, and sync guru 13F data.",
+      "overlap_count": "Overlapping Stocks",
+      "guru_count_label": "Gurus"
+    },
+    "sidebar": {
+      "header": "🏦 Smart Money",
+      "no_gurus": "📭 No gurus tracked yet. Add one below.",
+      "guru_selector": "Select Guru",
+      "sync_button": "🔄 Sync Latest 13F",
+      "sync_help": "Fetch the latest 13F filing from SEC EDGAR (may take a moment)",
+      "syncing": "Syncing...",
+      "sync_success": "✅ Sync complete",
+      "sync_skipped": "ℹ️ Already up to date",
+      "sync_error": "❌ Sync failed: {msg}",
+      "add_guru_title": "➕ Add Custom Guru",
+      "add_name": "Institution Full Name",
+      "add_name_placeholder": "e.g. Berkshire Hathaway Inc",
+      "add_cik": "SEC CIK Code",
+      "add_display_name": "Display Name",
+      "add_display_placeholder": "e.g. Warren Buffett",
+      "add_button": "Add Guru",
+      "add_required": "⚠️ Please fill in all fields.",
+      "add_success": "✅ Added {display_name}"
+    }
   }
 }

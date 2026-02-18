@@ -22,6 +22,8 @@ from config import (
     API_FEAR_GREED_TIMEOUT,
     API_FX_HISTORY_TIMEOUT,
     API_GET_TIMEOUT,
+    API_GURU_GET_TIMEOUT,
+    API_GURU_SYNC_TIMEOUT,
     API_PATCH_TIMEOUT,
     API_POST_TIMEOUT,
     API_PRICE_HISTORY_TIMEOUT,
@@ -36,6 +38,8 @@ from config import (
     CACHE_TTL_ALERTS,
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
+    CACHE_TTL_GURU_FILING,
+    CACHE_TTL_GURU_LIST,
     CACHE_TTL_HOLDINGS,
     CACHE_TTL_LAST_SCAN,
     CACHE_TTL_MOAT,
@@ -44,6 +48,7 @@ from config import (
     CACHE_TTL_PROFILE,
     CACHE_TTL_REMOVED,
     CACHE_TTL_REBALANCE,
+    CACHE_TTL_RESONANCE,
     CACHE_TTL_SCAN_HISTORY,
     CACHE_TTL_SIGNALS,
     CACHE_TTL_STRESS_TEST,
@@ -1658,3 +1663,104 @@ def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None
                     refresh_ui()
         else:
             st.caption(t("utils.reorder.hint"))
+
+
+# ===========================================================================
+# Smart Money (大師足跡) — Cached Fetchers
+# ===========================================================================
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_LIST, show_spinner=False)
+def fetch_gurus() -> list | None:
+    """Fetch all active gurus."""
+    try:
+        resp = _session.get(f"{BACKEND_URL}/gurus", timeout=API_GURU_GET_TIMEOUT)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_filing(guru_id: int) -> dict | None:
+    """Fetch latest 13F filing summary for one guru."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/filing", timeout=API_GURU_GET_TIMEOUT
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_top_holdings(guru_id: int, n: int = 10) -> list | None:
+    """Fetch top N holdings by weight for one guru."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/top",
+            params={"n": n},
+            timeout=API_GURU_GET_TIMEOUT,
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_holding_changes(guru_id: int) -> list | None:
+    """Fetch all holdings with action != UNCHANGED for one guru."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/holdings", timeout=API_GURU_GET_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_RESONANCE, show_spinner=False)
+def fetch_great_minds() -> dict | None:
+    """Fetch Great Minds Think Alike resonance list."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/resonance/great-minds", timeout=API_GURU_GET_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+def sync_guru(guru_id: int) -> dict | None:
+    """Trigger 13F sync for a single guru (not cached — mutating)."""
+    try:
+        resp = _session.post(
+            f"{BACKEND_URL}/gurus/{guru_id}/sync", timeout=API_GURU_SYNC_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as exc:
+        logger.error("guru sync 失敗 (id=%s): %s", guru_id, exc)
+        return None
+
+
+def add_guru(name: str, cik: str, display_name: str) -> dict | None:
+    """Add a custom guru by CIK."""
+    return api_post("/gurus", {"name": name, "cik": cik, "display_name": display_name})
+
+
+def invalidate_guru_caches() -> None:
+    """Clear all Smart Money caches after sync or add."""
+    fetch_gurus.clear()
+    fetch_guru_filing.clear()
+    fetch_guru_top_holdings.clear()
+    fetch_guru_holding_changes.clear()
+    fetch_great_minds.clear()
