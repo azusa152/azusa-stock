@@ -491,3 +491,5 @@ GURU_FILING_CACHE_MAXSIZE = 50
 GURU_FILING_CACHE_TTL = 86400  # 24h (13F data is quarterly)
 DISK_GURU_FILING_TTL = 604800  # 7 days
 DISK_KEY_GURU_FILING = "guru_filing"
+DISK_SECTOR_TTL = 2592000  # 30 days (sectors change very rarely)
+DISK_KEY_SECTOR = "sector"

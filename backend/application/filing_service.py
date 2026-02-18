@@ -28,12 +28,18 @@ from domain.smart_money import (
     compute_change_pct,
     compute_holding_weight,
 )
+from infrastructure.market_data import get_ticker_sector
 from infrastructure.repositories import (
     find_all_active_gurus,
+    find_all_guru_summaries,
+    find_consensus_stocks,
     find_filing_by_accession,
+    find_filings_by_guru,
     find_guru_by_id,
     find_holdings_by_filing,
     find_latest_filing_by_guru,
+    find_notable_changes_all_gurus,
+    find_sector_breakdown,
     save_filing,
     save_holdings_batch,
 )
@@ -262,6 +268,51 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
     return [_holding_to_dict(h, filing) for h in changes]
 
 
+def get_dashboard_summary(session: Session) -> dict:
+    """
+    取得跨大師的聚合儀表板摘要。
+
+    Returns:
+        dict with keys:
+            gurus:            每位啟用中大師的最新申報摘要列表
+            season_highlights: 本季新建倉與清倉列表
+            consensus:        被多位大師持有的共識股票列表
+            sector_breakdown: 依行業板塊彙總的持倉分佈
+    """
+    return {
+        "gurus": find_all_guru_summaries(session),
+        "season_highlights": find_notable_changes_all_gurus(session),
+        "consensus": find_consensus_stocks(session),
+        "sector_breakdown": find_sector_breakdown(session),
+    }
+
+
+def get_guru_filing_history(session: Session, guru_id: int) -> list[dict]:
+    """
+    取得指定大師所有已同步申報的歷史列表（供時間軸顯示使用）。
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+
+    Returns:
+        申報列表（依 report_date 降序），每筆含 id, report_date, filing_date,
+        total_value, holdings_count, filing_url
+    """
+    filings = find_filings_by_guru(session, guru_id, limit=100)
+    return [
+        {
+            "id": f.id,
+            "report_date": f.report_date,
+            "filing_date": f.filing_date,
+            "total_value": f.total_value,
+            "holdings_count": f.holdings_count,
+            "filing_url": f.filing_url,
+        }
+        for f in filings
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
@@ -390,12 +441,29 @@ def _build_holdings(
     同時處理前季有但本季完全消失的 CUSIP（SOLD_OUT），
     這類倉位不出現在 EDGAR XML 中，需從 prev_map 補充建立。
     """
-    holdings = []
+    # Pass 1 — 解析所有 CUSIP → ticker 映射（含本季 + 前季清倉）
     current_cusips: set[str] = set()
+    cusip_to_ticker: dict[str, str | None] = {}
 
     for raw in raw_holdings:
         cusip = raw["cusip"]
         current_cusips.add(cusip)
+        cusip_to_ticker[cusip] = map_cusip_to_ticker(cusip, raw["company_name"])
+
+    for cusip in prev_map:
+        if cusip not in current_cusips:
+            cusip_to_ticker[cusip] = map_cusip_to_ticker(cusip, "")
+
+    # Pass 2 — 批次解析 sector（每個唯一 ticker 只呼叫一次 get_ticker_sector）
+    unique_tickers = {t for t in cusip_to_ticker.values() if t}
+    ticker_to_sector: dict[str, str | None] = {
+        t: get_ticker_sector(t) for t in unique_tickers
+    }
+
+    holdings = []
+
+    for raw in raw_holdings:
+        cusip = raw["cusip"]
         current_shares = raw["shares"]
         previous_shares = prev_map.get(cusip)
 
@@ -406,7 +474,8 @@ def _build_holdings(
             else None
         )
         weight_pct = compute_holding_weight(raw["value"], total_value)
-        ticker = map_cusip_to_ticker(cusip, raw["company_name"])
+        ticker = cusip_to_ticker[cusip]
+        sector = ticker_to_sector.get(ticker) if ticker else None
 
         holdings.append(
             GuruHolding(
@@ -420,13 +489,15 @@ def _build_holdings(
                 action=action.value,
                 change_pct=change_pct,
                 weight_pct=weight_pct,
+                sector=sector,
             )
         )
 
     # 前季存在但本季完全消失 → SOLD_OUT
-    for cusip, prev_shares in prev_map.items():
+    for cusip, _prev_shares in prev_map.items():
         if cusip not in current_cusips:
-            ticker = map_cusip_to_ticker(cusip, "")
+            ticker = cusip_to_ticker[cusip]
+            sector = ticker_to_sector.get(ticker) if ticker else None
             holdings.append(
                 GuruHolding(
                     filing_id=filing.id,
@@ -439,6 +510,7 @@ def _build_holdings(
                     action=HoldingAction.SOLD_OUT.value,
                     change_pct=-100.0,
                     weight_pct=0.0,
+                    sector=sector,
                 )
             )
 

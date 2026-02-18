@@ -56,6 +56,25 @@ def _make_filing(
     )
 
 
+def _make_filing_with_acc(
+    session: Session,
+    guru_id: int,
+    accession_number: str,
+    report_date: str,
+) -> GuruFiling:
+    return save_filing(
+        session,
+        GuruFiling(
+            guru_id=guru_id,
+            accession_number=accession_number,
+            report_date=report_date,
+            filing_date="2024-11-14",
+            total_value=900_000.0,
+            holdings_count=2,
+        ),
+    )
+
+
 def _make_holdings(session: Session, filing_id: int, guru_id: int, count: int) -> None:
     holdings = [
         GuruHolding(
@@ -490,3 +509,178 @@ class TestWebhookGuruSummary:
         actions = resp.json()["data"]["actions"]
         assert "guru_sync" in actions
         assert "guru_summary" in actions
+
+
+# ===========================================================================
+# GET /gurus/dashboard
+# ===========================================================================
+
+DASHBOARD_TARGET = "api.guru_routes.get_dashboard_summary"
+
+_DASHBOARD_DATA = {
+    "gurus": [
+        {
+            "id": 1,
+            "display_name": "Warren Buffett",
+            "latest_report_date": "2024-12-31",
+            "latest_filing_date": "2025-02-14",
+            "total_value": 267_530_000.0,
+            "holdings_count": 45,
+            "filing_count": 18,
+        }
+    ],
+    "season_highlights": {
+        "new_positions": [
+            {
+                "ticker": "NVDA",
+                "company_name": "NVIDIA Corp",
+                "guru_id": 1,
+                "guru_display_name": "Warren Buffett",
+                "value": 5_000_000.0,
+                "weight_pct": 1.8,
+                "change_pct": None,
+            }
+        ],
+        "sold_outs": [
+            {
+                "ticker": "PARA",
+                "company_name": "Paramount Global",
+                "guru_id": 1,
+                "guru_display_name": "Warren Buffett",
+                "value": 0.0,
+                "weight_pct": 0.0,
+                "change_pct": -100.0,
+            }
+        ],
+    },
+    "consensus": [
+        {
+            "ticker": "AAPL",
+            "guru_count": 2,
+            "gurus": ["Warren Buffett", "Ray Dalio"],
+            "total_value": 200_000_000.0,
+        }
+    ],
+    "sector_breakdown": [
+        {
+            "sector": "Technology",
+            "total_value": 500_000_000.0,
+            "holding_count": 10,
+            "weight_pct": 45.0,
+        }
+    ],
+}
+
+
+class TestGetDashboard:
+    def test_should_return_200_with_correct_shape(self, client):
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "gurus" in body
+        assert "season_highlights" in body
+        assert "consensus" in body
+        assert "sector_breakdown" in body
+
+    def test_should_map_guru_summary_fields(self, client):
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+
+        guru = resp.json()["gurus"][0]
+        assert guru["id"] == 1
+        assert guru["display_name"] == "Warren Buffett"
+        assert guru["latest_report_date"] == "2024-12-31"
+        assert guru["filing_count"] == 18
+
+    def test_should_map_season_highlights(self, client):
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+
+        highlights = resp.json()["season_highlights"]
+        assert len(highlights["new_positions"]) == 1
+        assert highlights["new_positions"][0]["ticker"] == "NVDA"
+        assert len(highlights["sold_outs"]) == 1
+        assert highlights["sold_outs"][0]["ticker"] == "PARA"
+
+    def test_should_map_consensus_stocks(self, client):
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+
+        consensus = resp.json()["consensus"]
+        assert len(consensus) == 1
+        assert consensus[0]["ticker"] == "AAPL"
+        assert consensus[0]["guru_count"] == 2
+
+    def test_should_map_sector_breakdown(self, client):
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+
+        breakdown = resp.json()["sector_breakdown"]
+        assert len(breakdown) == 1
+        assert breakdown[0]["sector"] == "Technology"
+        assert breakdown[0]["weight_pct"] == 45.0
+
+    def test_should_return_empty_collections_when_no_data(self, client):
+        empty_data = {
+            "gurus": [],
+            "season_highlights": {"new_positions": [], "sold_outs": []},
+            "consensus": [],
+            "sector_breakdown": [],
+        }
+        with patch(DASHBOARD_TARGET, return_value=empty_data):
+            resp = client.get("/gurus/dashboard")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["gurus"] == []
+        assert body["consensus"] == []
+        assert body["sector_breakdown"] == []
+        assert body["season_highlights"]["new_positions"] == []
+        assert body["season_highlights"]["sold_outs"] == []
+
+
+# ===========================================================================
+# GET /gurus/{guru_id}/filings
+# ===========================================================================
+
+
+class TestGetFilingHistory:
+    def test_should_return_filings_list(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0009000001")
+            guru_id = guru.id
+            _make_filing(session, guru_id, report_date="2024-12-31")
+            _make_filing_with_acc(session, guru_id, "ACC-Q3", "2024-09-30")
+
+        resp = client.get(f"/gurus/{guru_id}/filings")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "filings" in body
+        assert len(body["filings"]) == 2
+        # Should be descending by report_date
+        assert body["filings"][0]["report_date"] >= body["filings"][1]["report_date"]
+
+    def test_should_return_empty_list_when_no_filings(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0009000002")
+            guru_id = guru.id
+
+        resp = client.get(f"/gurus/{guru_id}/filings")
+        assert resp.status_code == 200
+        assert resp.json()["filings"] == []
+
+    def test_should_include_required_fields(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0009000003")
+            guru_id = guru.id
+            _make_filing(session, guru_id)
+
+        resp = client.get(f"/gurus/{guru_id}/filings")
+        filing = resp.json()["filings"][0]
+        assert "id" in filing
+        assert "report_date" in filing
+        assert "filing_date" in filing
+        assert "total_value" in filing
+        assert "holdings_count" in filing

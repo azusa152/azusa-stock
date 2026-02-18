@@ -24,20 +24,30 @@ from sqlmodel import Session
 
 from api.rate_limit import limiter
 from api.schemas import (
+    ConsensusStockItem,
+    DashboardResponse,
+    FilingHistoryItem,
+    FilingHistoryResponse,
     GreatMindsEntryResponse,
     GreatMindsResponse,
     GuruCreate,
     GuruFilingResponse,
     GuruHoldingResponse,
     GuruResponse,
+    GuruSummaryItem,
     ResonanceEntryResponse,
     ResonanceResponse,
     ResonanceTickerResponse,
+    SeasonHighlightItem,
+    SeasonHighlights,
+    SectorBreakdownItem,
     SyncAllResponse,
     SyncResponse,
 )
 from application.filing_service import (
+    get_dashboard_summary,
     get_filing_summary,
+    get_guru_filing_history,
     get_holding_changes,
     sync_all_gurus,
     sync_guru_filing,
@@ -319,6 +329,70 @@ def get_top_holdings(
         )
         for h in top
     ]
+
+
+# ===========================================================================
+# Dashboard Aggregation
+# ===========================================================================
+
+
+@router.get(
+    "/dashboard",
+    response_model=DashboardResponse,
+    summary="Aggregated dashboard summary across all gurus",
+)
+def get_dashboard(
+    session: Session = Depends(get_session),
+) -> DashboardResponse:
+    """
+    取得跨大師的聚合儀表板摘要，供 Smart Money 總覽頁面使用。
+
+    回傳：
+    - gurus: 每位啟用中大師的最新申報摘要（含申報總筆數）
+    - season_highlights: 本季新建倉與清倉列表
+    - consensus: 被多位大師同時持有的共識股票列表
+    - sector_breakdown: 依行業板塊彙總的持倉分佈
+
+    ⚠️ 基於 13F 申報快照，非即時資料。
+    """
+    data = get_dashboard_summary(session)
+
+    gurus = [GuruSummaryItem(**g) for g in data["gurus"]]
+
+    highlights_raw = data["season_highlights"]
+    season_highlights = SeasonHighlights(
+        new_positions=[SeasonHighlightItem(**h) for h in highlights_raw["new_positions"]],
+        sold_outs=[SeasonHighlightItem(**h) for h in highlights_raw["sold_outs"]],
+    )
+
+    consensus = [ConsensusStockItem(**c) for c in data["consensus"]]
+    sector_breakdown = [SectorBreakdownItem(**s) for s in data["sector_breakdown"]]
+
+    return DashboardResponse(
+        gurus=gurus,
+        season_highlights=season_highlights,
+        consensus=consensus,
+        sector_breakdown=sector_breakdown,
+    )
+
+
+@router.get(
+    "/{guru_id}/filings",
+    response_model=FilingHistoryResponse,
+    summary="Historical 13F filings list for a guru",
+)
+def get_filing_history(
+    guru_id: int,
+    session: Session = Depends(get_session),
+) -> FilingHistoryResponse:
+    """
+    取得指定大師所有已同步申報的歷史列表（依 report_date 降序）。
+    供 Smart Money 頁面時間軸顯示使用。
+    """
+    filings = get_guru_filing_history(session, guru_id)
+    return FilingHistoryResponse(
+        filings=[FilingHistoryItem(**f) for f in filings],
+    )
 
 
 # ===========================================================================

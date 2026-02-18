@@ -244,6 +244,7 @@ class GuruHolding(SQLModel, table=True):
     )
     change_pct: Optional[float] = Field(default=None, description="持股數量變動百分比")
     weight_pct: Optional[float] = Field(default=None, description="佔該大師總持倉比例")
+    sector: Optional[str] = Field(default=None, description="GICS 行業板塊（yfinance）")
 
 
 class FXWatchConfig(SQLModel, table=True):

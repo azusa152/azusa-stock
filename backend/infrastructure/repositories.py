@@ -498,3 +498,236 @@ def save_holdings_batch(session: Session, holdings: list[GuruHolding]) -> None:
     for holding in holdings:
         session.add(holding)
     session.commit()
+
+
+def _latest_filing_ids_subquery():
+    """
+    共用子查詢：回傳每位大師最新申報的 filing_id 集合。
+
+    使用方式：
+        latest_ids = _latest_filing_ids_subquery()
+        stmt = select(GuruHolding).where(
+            GuruHolding.filing_id.in_(select(latest_ids.c.filing_id))
+        )
+    """
+    latest_date_subq = (
+        select(
+            GuruFiling.guru_id,
+            func.max(GuruFiling.report_date).label("max_report"),
+        ).group_by(GuruFiling.guru_id)
+    ).subquery()
+
+    return (
+        select(GuruFiling.id.label("filing_id")).join(
+            latest_date_subq,
+            (GuruFiling.guru_id == latest_date_subq.c.guru_id)
+            & (GuruFiling.report_date == latest_date_subq.c.max_report),
+        )
+    ).subquery()
+
+
+def find_all_guru_summaries(session: Session) -> list[dict]:
+    """
+    查詢所有啟用中大師的最新申報摘要（含申報總筆數）。
+
+    回傳 list of dict，每筆含：
+        id, display_name, latest_report_date, latest_filing_date,
+        total_value, holdings_count, filing_count
+    """
+    # 子查詢：每位大師最新申報日期
+    latest_subq = (
+        select(
+            GuruFiling.guru_id,
+            func.max(GuruFiling.report_date).label("max_report"),
+        ).group_by(GuruFiling.guru_id)
+    ).subquery()
+
+    # 每位大師的申報數
+    count_subq = (
+        select(
+            GuruFiling.guru_id,
+            func.count(GuruFiling.id).label("filing_count"),
+        ).group_by(GuruFiling.guru_id)
+    ).subquery()
+
+    # 取得最新申報記錄
+    latest_filing_stmt = select(GuruFiling).join(
+        latest_subq,
+        (GuruFiling.guru_id == latest_subq.c.guru_id)
+        & (GuruFiling.report_date == latest_subq.c.max_report),
+    )
+    latest_filings = {f.guru_id: f for f in session.exec(latest_filing_stmt).all()}
+
+    # 取得申報數
+    filing_counts = {
+        row[0]: row[1]
+        for row in session.exec(
+            select(count_subq.c.guru_id, count_subq.c.filing_count)
+        ).all()
+    }
+
+    gurus = session.exec(
+        select(Guru).where(Guru.is_active == True).order_by(Guru.id)  # noqa: E712
+    ).all()
+
+    results = []
+    for guru in gurus:
+        filing = latest_filings.get(guru.id)
+        results.append(
+            {
+                "id": guru.id,
+                "display_name": guru.display_name,
+                "latest_report_date": filing.report_date if filing else None,
+                "latest_filing_date": filing.filing_date if filing else None,
+                "total_value": filing.total_value if filing else None,
+                "holdings_count": filing.holdings_count if filing else 0,
+                "filing_count": filing_counts.get(guru.id, 0),
+            }
+        )
+    return results
+
+
+def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
+    """
+    查詢所有大師最新申報中的新建倉（NEW_POSITION）和清倉（SOLD_OUT）。
+
+    回傳 dict with keys "new_positions" and "sold_outs"，每筆含：
+        ticker, company_name, guru_id, guru_display_name, value, weight_pct, change_pct
+    """
+    from domain.enums import HoldingAction
+
+    latest_filing_ids_subq = _latest_filing_ids_subquery()
+
+    notable_stmt = (
+        select(GuruHolding, Guru.display_name)
+        .join(
+            latest_filing_ids_subq,
+            GuruHolding.filing_id == latest_filing_ids_subq.c.filing_id,
+        )
+        .join(Guru, GuruHolding.guru_id == Guru.id)
+        .where(
+            GuruHolding.action.in_(  # type: ignore[union-attr]
+                [HoldingAction.NEW_POSITION.value, HoldingAction.SOLD_OUT.value]
+            )
+        )
+    )
+    rows = session.exec(notable_stmt).all()
+
+    new_positions = []
+    sold_outs = []
+    for holding, guru_display_name in rows:
+        entry = {
+            "ticker": holding.ticker,
+            "company_name": holding.company_name,
+            "guru_id": holding.guru_id,
+            "guru_display_name": guru_display_name,
+            "value": holding.value,
+            "weight_pct": holding.weight_pct,
+            "change_pct": holding.change_pct,
+        }
+        if holding.action == HoldingAction.NEW_POSITION.value:
+            new_positions.append(entry)
+        else:
+            sold_outs.append(entry)
+
+    return {"new_positions": new_positions, "sold_outs": sold_outs}
+
+
+def find_consensus_stocks(session: Session) -> list[dict]:
+    """
+    查詢被多位大師同時持有的股票（最新申報），依持有大師數量降序排列。
+
+    回傳 list of dict，每筆含：
+        ticker, guru_count, gurus (list of display_name), total_value
+    """
+    from domain.enums import HoldingAction
+
+    latest_filing_ids_subq = _latest_filing_ids_subquery()
+
+    # 取得所有最新申報中有 ticker 的持倉（排除 SOLD_OUT）
+    holdings_stmt = (
+        select(GuruHolding, Guru.display_name)
+        .join(
+            latest_filing_ids_subq,
+            GuruHolding.filing_id == latest_filing_ids_subq.c.filing_id,
+        )
+        .join(Guru, GuruHolding.guru_id == Guru.id)
+        .where(
+            GuruHolding.ticker.isnot(None),  # type: ignore[union-attr]
+            GuruHolding.action != HoldingAction.SOLD_OUT.value,
+        )
+    )
+    rows = session.exec(holdings_stmt).all()
+
+    # 聚合：ticker → {guru_count, gurus, total_value}
+    ticker_map: dict[str, dict] = {}
+    for holding, guru_display_name in rows:
+        t = holding.ticker
+        if t not in ticker_map:
+            ticker_map[t] = {"gurus": [], "total_value": 0.0}
+        if guru_display_name not in ticker_map[t]["gurus"]:
+            ticker_map[t]["gurus"].append(guru_display_name)
+        ticker_map[t]["total_value"] += holding.value
+
+    # 只保留被多位大師持有的，依 guru_count 降序
+    consensus = [
+        {
+            "ticker": t,
+            "guru_count": len(d["gurus"]),
+            "gurus": d["gurus"],
+            "total_value": d["total_value"],
+        }
+        for t, d in ticker_map.items()
+        if len(d["gurus"]) > 1
+    ]
+    consensus.sort(key=lambda x: x["guru_count"], reverse=True)
+    return consensus
+
+
+def find_sector_breakdown(session: Session) -> list[dict]:
+    """
+    彙總所有大師最新申報中有 sector 資料的持倉，依板塊分組。
+
+    回傳 list of dict（依 weight_pct 降序），每筆含：
+        sector, total_value, holding_count, weight_pct
+    """
+    from domain.enums import HoldingAction
+
+    latest_filing_ids_subq = _latest_filing_ids_subquery()
+
+    holdings_stmt = (
+        select(GuruHolding)
+        .join(
+            latest_filing_ids_subq,
+            GuruHolding.filing_id == latest_filing_ids_subq.c.filing_id,
+        )
+        .where(
+            GuruHolding.sector.isnot(None),  # type: ignore[union-attr]
+            GuruHolding.action != HoldingAction.SOLD_OUT.value,
+        )
+    )
+    holdings = session.exec(holdings_stmt).all()
+
+    sector_map: dict[str, dict] = {}
+    for h in holdings:
+        s = h.sector
+        if s not in sector_map:
+            sector_map[s] = {"total_value": 0.0, "holding_count": 0}
+        sector_map[s]["total_value"] += h.value
+        sector_map[s]["holding_count"] += 1
+
+    grand_total = sum(d["total_value"] for d in sector_map.values())
+
+    result = []
+    for sector, d in sector_map.items():
+        weight_pct = (d["total_value"] / grand_total * 100) if grand_total > 0 else 0.0
+        result.append(
+            {
+                "sector": sector,
+                "total_value": d["total_value"],
+                "holding_count": d["holding_count"],
+                "weight_pct": round(weight_pct, 2),
+            }
+        )
+    result.sort(key=lambda x: x["weight_pct"], reverse=True)
+    return result

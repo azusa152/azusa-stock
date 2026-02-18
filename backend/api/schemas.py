@@ -868,6 +868,86 @@ class GreatMindsResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Dashboard Schemas (大師儀表板聚合)
+# ---------------------------------------------------------------------------
+
+
+class GuruSummaryItem(BaseModel):
+    """GET /gurus/dashboard 中單一大師的摘要卡片。"""
+
+    id: int
+    display_name: str
+    latest_report_date: Optional[str] = None
+    latest_filing_date: Optional[str] = None
+    total_value: Optional[float] = None
+    holdings_count: int = 0
+    filing_count: int = 0
+
+
+class SeasonHighlightItem(BaseModel):
+    """本季重點變動（新建倉或清倉）的單筆記錄。"""
+
+    ticker: Optional[str] = None
+    company_name: str = ""
+    guru_id: int
+    guru_display_name: str
+    value: float = 0.0
+    weight_pct: Optional[float] = None
+    change_pct: Optional[float] = None
+
+
+class SeasonHighlights(BaseModel):
+    """本季新建倉與清倉彙總。"""
+
+    new_positions: list[SeasonHighlightItem] = []
+    sold_outs: list[SeasonHighlightItem] = []
+
+
+class ConsensusStockItem(BaseModel):
+    """被多位大師同時持有的共識股票。"""
+
+    ticker: str
+    guru_count: int
+    gurus: list[str] = []
+    total_value: float = 0.0
+
+
+class SectorBreakdownItem(BaseModel):
+    """依行業板塊彙總的持倉分佈單筆。"""
+
+    sector: str
+    total_value: float
+    holding_count: int
+    weight_pct: float
+
+
+class DashboardResponse(BaseModel):
+    """GET /gurus/dashboard 完整回應。"""
+
+    gurus: list[GuruSummaryItem] = []
+    season_highlights: SeasonHighlights = SeasonHighlights()
+    consensus: list[ConsensusStockItem] = []
+    sector_breakdown: list[SectorBreakdownItem] = []
+
+
+class FilingHistoryItem(BaseModel):
+    """GET /gurus/{guru_id}/filings 中的單筆申報摘要。"""
+
+    id: int
+    report_date: str
+    filing_date: str
+    total_value: Optional[float] = None
+    holdings_count: int = 0
+    filing_url: str = ""
+
+
+class FilingHistoryResponse(BaseModel):
+    """GET /gurus/{guru_id}/filings 完整回應。"""
+
+    filings: list[FilingHistoryItem] = []
+
+
+# ---------------------------------------------------------------------------
 # Stress Test Schemas
 # ---------------------------------------------------------------------------
 
