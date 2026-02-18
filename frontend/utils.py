@@ -22,6 +22,7 @@ from config import (
     API_FEAR_GREED_TIMEOUT,
     API_FX_HISTORY_TIMEOUT,
     API_GET_TIMEOUT,
+    API_GURU_DASHBOARD_TIMEOUT,
     API_GURU_GET_TIMEOUT,
     API_GURU_SYNC_TIMEOUT,
     API_PATCH_TIMEOUT,
@@ -38,6 +39,7 @@ from config import (
     CACHE_TTL_ALERTS,
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
+    CACHE_TTL_GURU_DASHBOARD,
     CACHE_TTL_GURU_FILING,
     CACHE_TTL_GURU_LIST,
     CACHE_TTL_HOLDINGS,
@@ -1755,6 +1757,35 @@ def fetch_great_minds() -> dict | None:
         return None
 
 
+@st.cache_data(ttl=CACHE_TTL_GURU_DASHBOARD, show_spinner=False)
+def fetch_guru_dashboard() -> dict | None:
+    """Fetch aggregated dashboard summary across all gurus (GET /gurus/dashboard)."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/dashboard", timeout=API_GURU_DASHBOARD_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_filings(guru_id: int) -> list | None:
+    """Fetch all synced filing history for one guru (GET /gurus/{id}/filings)."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/filings", timeout=API_GURU_GET_TIMEOUT
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("filings", [])
+    except requests.RequestException:
+        return None
+
+
 def sync_guru(guru_id: int) -> dict | None:
     """Trigger 13F sync for a single guru (not cached — mutating)."""
     try:
@@ -1811,5 +1842,7 @@ def invalidate_guru_caches() -> None:
     fetch_guru_filing.clear()
     fetch_guru_top_holdings.clear()
     fetch_guru_holding_changes.clear()
+    fetch_guru_dashboard.clear()
+    fetch_guru_filings.clear()
     fetch_great_minds.clear()
     fetch_resonance_overview.clear()

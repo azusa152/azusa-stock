@@ -355,11 +355,14 @@ XRAY_TOP_N_DISPLAY = 15
 # ---------------------------------------------------------------------------
 CACHE_TTL_GURU_LIST = 300           # 5 minutes (guru list rarely changes)
 CACHE_TTL_GURU_FILING = 86400       # 24 hours (13F data is quarterly)
+CACHE_TTL_GURU_DASHBOARD = 3600     # 1 hour (aggregated dashboard data)
 CACHE_TTL_RESONANCE = 86400         # 24 hours (derived from 13F data)
 API_GURU_SYNC_TIMEOUT = 120         # EDGAR fetch can be slow
 API_GURU_GET_TIMEOUT = 20
+API_GURU_DASHBOARD_TIMEOUT = 30     # dashboard aggregation can be slow on first call
 
 SMART_MONEY_TOP_N = 10
+SMART_MONEY_STALE_DAYS = 120  # report date older than this shown as stale on guru cards
 
 # Action color coding (PRD section 4.2: green=buy/new, red=sell/out, gray=hold)
 HOLDING_ACTION_COLORS: dict[str, str] = {

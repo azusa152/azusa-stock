@@ -883,6 +883,44 @@
       "add_button": "添加大师",
       "add_required": "⚠️ 请填写所有字段。",
       "add_success": "✅ 已添加 {display_name}"
+    },
+    "overview": {
+      "tab": "📊 总览",
+      "add_guru_tab": "➕ 添加大师",
+      "guru_cards_header": "大师状态",
+      "highlights_header": "本季亮点",
+      "new_positions_header": "🟢 新建仓",
+      "sold_outs_header": "🔴 清仓",
+      "highlights_empty": "📭 本季尚无新建仓或清仓记录。",
+      "consensus_header": "🤝 共识持股",
+      "consensus_empty": "📭 目前无多位大师同时持有的股票。",
+      "consensus_gurus": "持有大师",
+      "sector_header": "🏭 板块配置",
+      "sector_empty": "📭 板块数据不足（请先同步大师13F数据）。",
+      "no_data": "📭 暂无大师数据，系统正在后台加载历史申报，请稍后再试。",
+      "stale_label": "⚠️ 数据较旧",
+      "recent_label": "✅ 最新",
+      "total_value_label": "持仓总值",
+      "holdings_count_label": "持仓数量",
+      "filing_count_label": "申报笔数",
+      "report_date_label": "最新基准日",
+      "sync_button": "🔄 同步",
+      "filing_history_expander": "📅 申报历史 ({count} 笔)",
+      "filing_history_row": "📄 {report_date}  ·  公告：{filing_date}  ·  {total_value}  ·  {holdings_count} 笔",
+      "sector_weight_axis": "配置比重 (%)"
+    },
+    "add_guru": {
+      "title": "➕ 添加自定义大师",
+      "description": "填入机构的SEC EDGAR信息以开始追踪其13F持仓。",
+      "name_label": "机构全名",
+      "name_placeholder": "例如 Berkshire Hathaway Inc",
+      "cik_label": "SEC CIK代码",
+      "cik_placeholder": "0001067983",
+      "display_label": "显示名称",
+      "display_placeholder": "例如 Warren Buffett",
+      "submit_button": "添加大师",
+      "required_warning": "⚠️ 请填写所有字段。",
+      "success": "✅ 已添加 {display_name}，请切换至总览页面查看。"
     }
   }
 }

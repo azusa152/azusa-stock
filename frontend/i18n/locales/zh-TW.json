@@ -883,6 +883,44 @@
       "add_button": "新增大師",
       "add_required": "⚠️ 請填寫所有欄位。",
       "add_success": "✅ 已新增 {display_name}"
+    },
+    "overview": {
+      "tab": "📊 總覽",
+      "add_guru_tab": "➕ 新增大師",
+      "guru_cards_header": "大師狀態",
+      "highlights_header": "本季亮點",
+      "new_positions_header": "🟢 新建倉",
+      "sold_outs_header": "🔴 清倉",
+      "highlights_empty": "📭 本季尚無新建倉或清倉記錄。",
+      "consensus_header": "🤝 共識持股",
+      "consensus_empty": "📭 目前無多位大師同時持有的股票。",
+      "consensus_gurus": "持有大師",
+      "sector_header": "🏭 板塊配置",
+      "sector_empty": "📭 板塊資料不足（請先同步大師 13F 資料）。",
+      "no_data": "📭 尚無大師資料，系統正在背景載入歷史申報，請稍後再試。",
+      "stale_label": "⚠️ 資料較舊",
+      "recent_label": "✅ 最新",
+      "total_value_label": "持倉總值",
+      "holdings_count_label": "持倉檔數",
+      "filing_count_label": "申報筆數",
+      "report_date_label": "最新基準日",
+      "sync_button": "🔄 同步",
+      "filing_history_expander": "📅 申報歷史 ({count} 筆)",
+      "filing_history_row": "📄 {report_date}  ·  公告：{filing_date}  ·  {total_value}  ·  {holdings_count} 筆",
+      "sector_weight_axis": "配置比重 (%)"
+    },
+    "add_guru": {
+      "title": "➕ 新增自訂大師",
+      "description": "填入機構的 SEC EDGAR 資訊以開始追蹤其 13F 持倉。",
+      "name_label": "機構全名",
+      "name_placeholder": "例如 Berkshire Hathaway Inc",
+      "cik_label": "SEC CIK 代碼",
+      "cik_placeholder": "0001067983",
+      "display_label": "顯示名稱",
+      "display_placeholder": "例如 Warren Buffett",
+      "submit_button": "新增大師",
+      "required_warning": "⚠️ 請填寫所有欄位。",
+      "success": "✅ 已新增 {display_name}，請切換至總覽頁面查看。"
     }
   }
 }

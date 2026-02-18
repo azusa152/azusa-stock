@@ -883,6 +883,44 @@
       "add_button": "Add Guru",
       "add_required": "⚠️ Please fill in all fields.",
       "add_success": "✅ Added {display_name}"
+    },
+    "overview": {
+      "tab": "📊 Overview",
+      "add_guru_tab": "➕ Add Guru",
+      "guru_cards_header": "Guru Status",
+      "highlights_header": "Season Highlights",
+      "new_positions_header": "🟢 New Positions",
+      "sold_outs_header": "🔴 Sold Outs",
+      "highlights_empty": "📭 No new positions or sold outs this season.",
+      "consensus_header": "🤝 Consensus Holdings",
+      "consensus_empty": "📭 No stocks held by multiple gurus yet.",
+      "consensus_gurus": "Gurus holding",
+      "sector_header": "🏭 Sector Allocation",
+      "sector_empty": "📭 Insufficient sector data (sync guru 13F filings first).",
+      "no_data": "📭 No guru data yet. Historical filings are loading in the background — check back shortly.",
+      "stale_label": "⚠️ Stale",
+      "recent_label": "✅ Recent",
+      "total_value_label": "Total Value",
+      "holdings_count_label": "Holdings",
+      "filing_count_label": "Filings",
+      "report_date_label": "Latest Report",
+      "sync_button": "🔄 Sync",
+      "filing_history_expander": "📅 Filing History ({count})",
+      "filing_history_row": "📄 {report_date}  ·  Filed: {filing_date}  ·  {total_value}  ·  {holdings_count} holdings",
+      "sector_weight_axis": "Weight (%)"
+    },
+    "add_guru": {
+      "title": "➕ Add Custom Guru",
+      "description": "Enter the institution's SEC EDGAR details to start tracking their 13F holdings.",
+      "name_label": "Institution Full Name",
+      "name_placeholder": "e.g. Berkshire Hathaway Inc",
+      "cik_label": "SEC CIK Code",
+      "cik_placeholder": "0001067983",
+      "display_label": "Display Name",
+      "display_placeholder": "e.g. Warren Buffett",
+      "submit_button": "Add Guru",
+      "required_warning": "⚠️ Please fill in all fields.",
+      "success": "✅ Added {display_name}. Switch to the Overview tab to see it."
     }
   }
 }
