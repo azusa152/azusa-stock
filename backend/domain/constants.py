@@ -315,6 +315,7 @@ NOTIFICATION_TYPES = {
     "xray_alerts": "constants.notification_xray_alerts",
     "fx_alerts": "constants.notification_fx_alerts",
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
+    "guru_alerts": "constants.notification_guru_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
     k: True for k in NOTIFICATION_TYPES

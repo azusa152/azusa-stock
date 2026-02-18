@@ -205,10 +205,26 @@
     "notification_xray_alerts": "X-Ray 集中度警告",
     "notification_fx_alerts": "匯率曝險警報",
     "notification_fx_watch_alerts": "外匯換匯時機警報",
+    "notification_guru_alerts": "大師 13F 季報與共鳴警報",
     "stress_pain_low": "微風輕拂 (Just a Scratch)",
     "stress_pain_moderate": "有感修正 (Correction)",
     "stress_pain_high": "傷筋動骨 (Bear Market)",
     "stress_pain_panic": "睡不著覺 (Panic Zone)",
     "stress_disclaimer": "⚠️ 此為線性 CAPM 簡化模型，實際崩盤中相關性會趨近 1、流動性枯竭可能導致更大跌幅。本模擬僅供參考，不構成投資建議。"
+  },
+  "guru": {
+    "filing_digest_title": "📋 <b>13F 季報摘要（{report_date}）</b>",
+    "digest_no_updates": "📋 目前無大師申報更新。",
+    "digest_changes": "  🟢 新建倉 {new}　🔴 清倉 {sold}　📈 加碼 {inc}　📉 減碼 {dec}",
+    "digest_no_changes": "  本季無重大持倉變動。",
+    "digest_sent": "✅ 13F 季報摘要已發送，共 {count} 位大師。",
+    "lagging_disclaimer_short": "⚠️ 以上為 13F 申報持倉快照，非即時資料，請注意時間落差。",
+    "resonance_alerts_title": "🔔 <b>大師持倉共鳴警報</b>",
+    "resonance_alert": "{icon} <b>{guru_name}</b> 本季{action} <b>{ticker}</b>，此標的在您的關注清單中。",
+    "action_new_position": "新建倉",
+    "action_sold_out": "清倉",
+    "action_increased": "加碼",
+    "action_decreased": "減碼",
+    "action_unchanged": "持平"
   }
 }

@@ -205,10 +205,26 @@
     "notification_xray_alerts": "X-Ray集中度警告",
     "notification_fx_alerts": "為替エクスポージャーアラート",
     "notification_fx_watch_alerts": "外為換金タイミングアラート",
+    "notification_guru_alerts": "guru 13F 四半期レポート・共鳴アラート",
     "stress_pain_low": "そよ風 (Just a Scratch)",
     "stress_pain_moderate": "実感できる調整 (Correction)",
     "stress_pain_high": "かなりのダメージ (Bear Market)",
     "stress_pain_panic": "眠れない夜 (Panic Zone)",
     "stress_disclaimer": "⚠️ これは線形CAPMの簡易モデルです。実際の暴落では相関が1に近づき、流動性枯渇によりさらに大きな下落が発生する可能性があります。本シミュレーションは参考用であり、投資助言ではありません。"
+  },
+  "guru": {
+    "filing_digest_title": "📋 <b>13F 四半期レポートまとめ（{report_date}）</b>",
+    "digest_no_updates": "📋 現在、guruレポートの更新はありません。",
+    "digest_changes": "  🟢 新規 {new}　🔴 売却 {sold}　📈 買増 {inc}　📉 売減 {dec}",
+    "digest_no_changes": "  今四半期は重大なポジション変更はありません。",
+    "digest_sent": "✅ 13F レポートまとめを {count} 人の guru に送信しました。",
+    "lagging_disclaimer_short": "⚠️ このデータは 13F 申告の保有スナップショットであり、リアルタイムではありません。",
+    "resonance_alerts_title": "🔔 <b>guru 共鳴アラート</b>",
+    "resonance_alert": "{icon} <b>{guru_name}</b> が <b>{ticker}</b> を{action}しました（ウォッチリストに登録済み）。",
+    "action_new_position": "新規取得",
+    "action_sold_out": "全売却",
+    "action_increased": "買い増し",
+    "action_decreased": "一部売却",
+    "action_unchanged": "変化なし"
   }
 }

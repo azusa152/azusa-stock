@@ -205,10 +205,26 @@
     "notification_xray_alerts": "X-Ray concentration warnings",
     "notification_fx_alerts": "FX exposure alerts",
     "notification_fx_watch_alerts": "FX exchange timing alerts",
+    "notification_guru_alerts": "Guru 13F filing digest & resonance alerts",
     "stress_pain_low": "Just a Scratch",
     "stress_pain_moderate": "Noticeable Correction",
     "stress_pain_high": "Significant Damage (Bear Market)",
     "stress_pain_panic": "Sleepless Nights (Panic Zone)",
     "stress_disclaimer": "⚠️ This is a simplified linear CAPM model. In actual crashes, correlations tend toward 1 and liquidity drought may cause larger declines. This simulation is for reference only and does not constitute investment advice."
+  },
+  "guru": {
+    "filing_digest_title": "📋 <b>13F Filing Digest ({report_date})</b>",
+    "digest_no_updates": "📋 No guru filing updates available.",
+    "digest_changes": "  🟢 New {new}　🔴 Sold {sold}　📈 Added {inc}　📉 Trimmed {dec}",
+    "digest_no_changes": "  No significant position changes this quarter.",
+    "digest_sent": "✅ 13F digest sent for {count} gurus.",
+    "lagging_disclaimer_short": "⚠️ Data reflects 13F snapshot holdings — not real-time positions. Time lag applies.",
+    "resonance_alerts_title": "🔔 <b>Guru Resonance Alerts</b>",
+    "resonance_alert": "{icon} <b>{guru_name}</b> {action} <b>{ticker}</b> — this stock is on your watchlist.",
+    "action_new_position": "opened a new position in",
+    "action_sold_out": "fully exited",
+    "action_increased": "increased",
+    "action_decreased": "trimmed",
+    "action_unchanged": "unchanged"
   }
 }
