@@ -1272,6 +1272,7 @@ def _render_thesis_editor(ticker: str, stock: dict) -> None:
             st.warning(t("utils.thesis.empty_error"))
 
 
+@st.fragment
 def _render_price_chart(ticker: str) -> None:
     """Render interactive price trend chart with 60MA overlay."""
     price_data = fetch_price_history(ticker)
