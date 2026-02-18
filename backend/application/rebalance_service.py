@@ -22,6 +22,7 @@ from domain.fx_analysis import (
     determine_fx_risk_level,
 )
 from domain.rebalance import calculate_rebalance as _pure_rebalance
+from i18n import get_user_language, t
 from infrastructure.market_data import (
     get_etf_top_holdings,
     get_exchange_rates,
@@ -145,6 +146,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     4. 對非現金持倉查詢即時價格
     5. 委託 domain.rebalance 純函式計算偏移與建議
     """
+    lang = get_user_language(session)
+
     # 1) 取得目標配置
     profile = session.exec(
         select(UserInvestmentProfile)
@@ -153,7 +156,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     ).first()
 
     if not profile:
-        raise StockNotFoundError("尚未設定投資組合目標配置，請先選擇投資人格。")
+        raise StockNotFoundError(t("rebalance.no_profile", lang=lang))
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
@@ -163,7 +166,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     ).all()
 
     if not holdings:
-        raise StockNotFoundError("尚未輸入任何持倉，請先新增資產。")
+        raise StockNotFoundError(t("rebalance.no_holdings", lang=lang))
 
     # 3) 取得匯率：收集所有持倉幣別，批次取得相對 display_currency 的匯率
     holding_currencies = list({h.currency for h in holdings})
@@ -348,6 +351,7 @@ def send_xray_warnings(
     檢查 X-Ray 結果，對超過單一標的風險門檻的持倉發送 Telegram 警告。
     回傳已發送的警告訊息列表。
     """
+    lang = get_user_language(session)
     warnings: list[str] = []
     for entry in xray_entries:
         total_pct = entry.get("total_weight_pct", 0.0)
@@ -356,17 +360,22 @@ def send_xray_warnings(
             symbol = entry["symbol"]
             direct_pct = entry.get("direct_weight_pct", 0.0)
             sources = ", ".join(entry.get("indirect_sources", []))
-            msg = (
-                f"⚠️ X-Ray 警告：{symbol} 直接持倉佔 {direct_pct:.1f}%，"
-                f"加上 ETF 間接曝險（{sources}），"
-                f"真實曝險已達 {total_pct:.1f}%，"
-                f"超過單一標的風險建議值 {XRAY_SINGLE_STOCK_WARN_PCT:.0f}%。"
+            msg = t(
+                "rebalance.xray_warning",
+                lang=lang,
+                symbol=symbol,
+                direct_pct=direct_pct,
+                sources=sources,
+                total_pct=total_pct,
+                threshold=XRAY_SINGLE_STOCK_WARN_PCT,
             )
             warnings.append(msg)
 
     if warnings:
         if is_notification_enabled(session, "xray_alerts"):
-            full_msg = "🔬 穿透式持倉 X-Ray 分析\n\n" + "\n\n".join(warnings)
+            full_msg = (
+                t("rebalance.xray_header", lang=lang) + "\n\n" + "\n\n".join(warnings)
+            )
             try:
                 send_telegram_message_dual(full_msg, session)
                 logger.info("已發送 X-Ray 警告（%d 筆）", len(warnings))
@@ -418,7 +427,9 @@ def calculate_currency_exposure(
             "total_cash_home": 0.0,
             "fx_movements": [],
             "risk_level": "low",
-            "advice": ["尚無持倉資料。"],
+            "advice": [
+                t("rebalance.no_holdings_data", lang=get_user_language(session))
+            ],
             "calculated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -538,6 +549,7 @@ def calculate_currency_exposure(
     ]
 
     # 9) 建議（包含現金部位資訊）
+    lang = get_user_language(session)
     advice = _generate_fx_advice(
         home_currency,
         breakdown,
@@ -548,6 +560,7 @@ def calculate_currency_exposure(
         cash_breakdown=cash_breakdown,
         cash_non_home_pct=cash_non_home_pct,
         total_cash_home=total_cash_home,
+        lang=lang,
     )
 
     return {
@@ -577,6 +590,7 @@ def _generate_fx_advice(
     cash_breakdown: list[dict] | None = None,
     cash_non_home_pct: float = 0.0,
     total_cash_home: float = 0.0,
+    lang: str = "zh-TW",
 ) -> list[str]:
     """根據匯率變動警報產出建議文字。"""
     advice: list[str] = []
@@ -584,20 +598,17 @@ def _generate_fx_advice(
 
     # 匯率變動風險摘要
     if risk_level == "high":
-        advice.append(
-            "🔴 偵測到單日劇烈匯率波動，匯率風險為高。"
-            "建議立即檢視外幣部位，評估是否需要避險。"
-        )
+        advice.append(t("rebalance.fx_risk_high", lang=lang))
     elif risk_level == "medium":
-        advice.append(
-            "🟡 偵測到近期匯率明顯波動（5 日），匯率風險為中等。持續關注外幣匯率走勢。"
-        )
+        advice.append(t("rebalance.fx_risk_medium", lang=lang))
     else:
-        advice.append("🟢 近期匯率變動穩定，匯率風險較低。")
+        advice.append(t("rebalance.fx_risk_low", lang=lang))
 
     # 非本幣佔比資訊（保留但不作為警報觸發）
     if non_home_pct > 0:
-        advice.append(f"📊 非本幣（{home_currency}）資產佔比 {non_home_pct:.1f}%。")
+        advice.append(
+            t("rebalance.non_home_pct", lang=lang, home=home_currency, pct=non_home_pct)
+        )
 
     # 現金部位專屬建議
     if cash_breakdown:
@@ -606,9 +617,14 @@ def _generate_fx_advice(
             top_cash_cur = foreign_cash[0]["currency"]
             top_cash_val = foreign_cash[0]["value"]
             advice.append(
-                f"💵 您的現金部位中，{cash_non_home_pct:.1f}% 為非本幣。"
-                f"最大外幣現金為 {top_cash_cur}（約 {top_cash_val:,.0f} {home_currency}），"
-                f"受匯率波動直接影響。"
+                t(
+                    "rebalance.foreign_cash_warning",
+                    lang=lang,
+                    pct=cash_non_home_pct,
+                    currency=top_cash_cur,
+                    value=top_cash_val,
+                    home=home_currency,
+                )
             )
 
     # 個別警報詳情
@@ -617,21 +633,42 @@ def _generate_fx_advice(
         base_cur = alert.pair.split("/")[0]
         cash_amt = cash_by_cur.get(base_cur, 0.0)
         cash_note = (
-            f"（其中 {base_cur} 現金約 {cash_amt:,.0f} {home_currency} 直接受影響）"
+            t(
+                "rebalance.cash_impact",
+                lang=lang,
+                currency=base_cur,
+                amount=cash_amt,
+                home=home_currency,
+            )
             if cash_amt > 0
             else ""
         )
         type_label = FX_ALERT_LABEL.get(alert.alert_type.value, alert.alert_type.value)
         if alert.direction == "up":
             advice.append(
-                f"📈 {alert.pair} {type_label}：{alert.period_label}升值 "
-                f"{alert.change_pct:+.2f}%，現價 {alert.current_rate:.4f}。{cash_note}"
+                t(
+                    "rebalance.fx_alert_up",
+                    lang=lang,
+                    pair=alert.pair,
+                    type_label=type_label,
+                    period=alert.period_label,
+                    change_pct=alert.change_pct,
+                    rate=alert.current_rate,
+                    cash_note=cash_note,
+                )
             )
         else:
             advice.append(
-                f"📉 {alert.pair} {type_label}：{alert.period_label}貶值 "
-                f"{alert.change_pct:+.2f}%，現價 {alert.current_rate:.4f}。"
-                f"建議留意避險。{cash_note}"
+                t(
+                    "rebalance.fx_alert_down",
+                    lang=lang,
+                    pair=alert.pair,
+                    type_label=type_label,
+                    period=alert.period_label,
+                    change_pct=alert.change_pct,
+                    rate=alert.current_rate,
+                    cash_note=cash_note,
+                )
             )
 
     return advice
@@ -729,7 +766,8 @@ def calculate_withdrawal(
     ).first()
 
     if not profile:
-        raise StockNotFoundError("尚未設定投資組合目標配置，請先選擇投資人格。")
+        lang = get_user_language(session)
+        raise StockNotFoundError(t("withdrawal.no_profile", lang=lang))
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
@@ -739,13 +777,14 @@ def calculate_withdrawal(
     ).all()
 
     if not holdings:
+        lang = get_user_language(session)
         return {
             "recommendations": [],
             "total_sell_value": 0.0,
             "target_amount": target_amount,
             "shortfall": target_amount,
             "post_sell_drifts": {},
-            "message": "⚠️ 尚未輸入任何持倉，無法計算提款建議。",
+            "message": t("withdrawal.no_holdings", lang=lang),
         }
 
     # 3) 取得匯率
@@ -822,15 +861,18 @@ def calculate_withdrawal(
         for r in plan.recommendations
     ]
 
+    lang = get_user_language(session)
     if plan.shortfall > 0:
-        message = (
-            f"⚠️ 投資組合市值不足，缺口 {plan.shortfall:,.2f} {display_currency}。"
-            f"以下為最大可提取建議。"
+        message = t(
+            "withdrawal.shortfall",
+            lang=lang,
+            amount=f"{plan.shortfall:,.2f}",
+            currency=display_currency,
         )
     elif not plan.recommendations:
-        message = "⚠️ 無可賣出的持倉。"
+        message = t("withdrawal.no_sellable", lang=lang)
     else:
-        message = f"✅ 聰明提款建議已產生，共 {len(recs)} 筆賣出建議。"
+        message = t("withdrawal.plan_generated", lang=lang, count=len(recs))
 
     result = {
         "recommendations": recs,
@@ -845,7 +887,10 @@ def calculate_withdrawal(
     if notify and plan.recommendations:
         if is_notification_enabled(session, "withdrawal"):
             try:
-                tg_msg = format_withdrawal_telegram(plan, display_currency)
+                withdrawal_lang = get_user_language(session)
+                tg_msg = format_withdrawal_telegram(
+                    plan, display_currency, lang=withdrawal_lang
+                )
                 send_telegram_message_dual(tg_msg, session)
                 logger.info("聰明提款建議已發送至 Telegram。")
             except Exception as e:

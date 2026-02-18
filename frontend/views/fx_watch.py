@@ -6,9 +6,10 @@ FX Watch — 外匯換匯時機監控
 import streamlit as st
 from datetime import datetime
 
+from i18n import t
 from config import (
     FX_CURRENCY_OPTIONS,
-    PRIVACY_TOGGLE_LABEL,
+    get_privacy_toggle_label,
 )
 from utils import (
     create_fx_watch,
@@ -54,8 +55,7 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
 
     from config import (
         FX_CHART_HEIGHT,
-        FX_CHART_PERIODS,
-        FX_CHART_DEFAULT_PERIOD,
+        get_fx_chart_periods,
     )
     from utils import fetch_fx_history
 
@@ -63,21 +63,23 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
     fx_data = fetch_fx_history(base, quote)
 
     if not fx_data or len(fx_data) < 5:
-        st.caption("📉 匯率歷史資料不足（需至少 5 個交易日）。")
+        st.caption(t("fx_watch.chart.insufficient_data"))
         return
 
     # Period selection (horizontal radio buttons)
+    fx_chart_periods = get_fx_chart_periods()
+    period_keys = list(fx_chart_periods.keys())
     period_label = st.radio(
-        "趨勢區間",
-        list(FX_CHART_PERIODS.keys()),
-        index=list(FX_CHART_PERIODS.keys()).index(FX_CHART_DEFAULT_PERIOD),
+        t("fx_watch.chart.period_label"),
+        period_keys,
+        index=len(period_keys) - 1,
         horizontal=True,
         key=f"fx_chart_period_{watch_id}",
         label_visibility="collapsed",
     )
 
     # Slice data to selected period (client-side filtering, no re-fetch)
-    n_days = FX_CHART_PERIODS[period_label]
+    n_days = fx_chart_periods[period_label]
     sliced = fx_data[-n_days:] if len(fx_data) >= n_days else fx_data
 
     dates = [d["date"] for d in sliced]
@@ -98,7 +100,7 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
             line=dict(color=line_color, width=2),
             fill="tozeroy",
             fillcolor=fill_color,
-            hovertemplate="%{x}<br>匯率: %{y:.4f}<extra></extra>",
+            hovertemplate=t("fx_watch.chart.hover_template", x="%{x}", y="%{y:.4f}"),
         )
     )
 
@@ -109,7 +111,7 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
             y=recent_high,
             line_dash="dash",
             line_color="#FFA500",  # Orange
-            annotation_text=f"{recent_high_days}日高點: {recent_high:.4f}",
+            annotation_text=t("fx_watch.chart.high_annotation", days=recent_high_days, high=recent_high),
             annotation_position="right",
         )
 
@@ -145,119 +147,15 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
 # Title row with privacy toggle
 _title_cols = st.columns([4, 1])
 with _title_cols[0]:
-    st.title("💱 外匯換匯時機監控")
-    st.caption("設定外匯監控配置，當匯率接近高點或連續上漲時自動發送 Telegram 通知")
+    st.title(t("fx_watch.title"))
+    st.caption(t("fx_watch.caption"))
 
 with _title_cols[1]:
-    st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode", on_change=_on_privacy_change)
+    st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
 
 # Usage manual (collapsible)
-with st.expander("📖 使用說明"):
-    st.markdown("""
-    ### 功能說明
-
-    **外匯換匯時機監控** 提供完整的換匯時機管理與分析系統：
-
-    1. **近期高點偵測**：當匯率接近 N 日內的歷史高點時發出警報（預設容差 2%）
-    2. **連續上漲追蹤**：當匯率連續上漲 N 日時發出警報（預設 3 日）
-    3. **彈性條件組合**：可獨立啟用/停用兩種偵測條件（OR 邏輯）
-    4. **智慧冷卻機制**：避免重複通知，預設 24 小時內同一配置不重複警報
-    5. **即時換匯建議**：監控表格直接顯示 AI 分析建議與推薦理由
-    6. **互動式趨勢圖**：3 個月歷史匯率走勢，視覺化參考線與期間選擇
-
-    ### 使用流程
-
-    **步驟 1：新增監控配置**
-    1. 點擊左側 **➕ 新增監控配置** 展開設定表單
-    2. 選擇貨幣對：基礎貨幣（持有的貨幣）→ 報價貨幣（想兌換成的貨幣）
-       - 例如：持有 USD 想換 TWD → 選擇 USD/TWD
-       - 支援 9 種貨幣：USD、TWD、JPY、EUR、GBP、CNY、HKD、SGD、THB
-    3. 調整偵測條件：
-       - **近期高點回溯天數**（5-90 日）：判斷「近期高點」的回溯期間
-       - **連續上漲天數門檻**（2-10 日）：連續上漲多少天後警報
-    4. 設定警報開關：
-       - **啟用近期高點警報**：匯率接近高點時提醒
-       - **啟用連續上漲警報**：連續上漲達門檻時提醒
-       - 至少須啟用一項（兩項可同時啟用，任一條件滿足即警報）
-    5. 設定提醒間隔（1-168 小時）：同一配置在此期間內不重複發送警報
-    6. 點擊 **➕ 新增監控** 完成設定
-
-    **步驟 2：查看監控配置與換匯建議**
-    - **監控配置列表**：顯示所有配置的詳細參數
-    - **換匯建議欄位**：即時顯示 AI 分析結果
-      - 🟢 **建議換匯**：當前匯率符合換匯條件（接近高點或連續上漲）
-      - ⚪ **暫不換匯**：當前匯率未達換匯條件，建議持續觀察
-      - ⏳ **分析中...**：系統正在計算分析結果
-    - **換匯分析詳情**：展開查看詳細推薦理由、當前匯率、檢測參數
-
-    **步驟 3：查看匯率趨勢圖**
-    1. 在 **📈 匯率趨勢圖** 區塊，展開想查看的貨幣對
-    2. 趨勢圖特色：
-       - **3 個月歷史資料**：顯示近 90 個交易日的收盤匯率
-       - **期間選擇**：點選 1 個月 / 2 個月 / 3 個月 切換顯示區間（無需重新載入）
-       - **顏色編碼**：
-         - 🟢 **綠色**：期間內匯率上漲（期末 ≥ 期初）
-         - 🔴 **紅色**：期間內匯率下跌（期末 < 期初）
-       - **參考線**：橘色虛線標示「N 日高點」位置（N = 您設定的回溯天數）
-       - **懸停提示**：滑鼠移到圖表上顯示日期與精確匯率（4 位小數）
-    3. 圖表下方顯示監控設定、警報狀態、最後警報時間
-
-    **步驟 4：管理監控配置**
-    - **快速操作區塊**：每個配置有內嵌操作按鈕
-      - 🟢 **啟用** / 🔴 **停用**：切換配置的啟用狀態（停用後不檢查、不警報）
-      - 🗑️ **刪除**：移除配置（無法復原，需重新建立）
-    - 操作後自動重新整理頁面，立即生效
-
-    ### 進階功能
-
-    **🔍 手動檢查**
-    - 功能：立即分析所有啟用中的監控配置，產出換匯建議
-    - 用途：快速查看當前市場是否有換匯機會
-    - 特性：**不發送 Telegram 通知**，僅在頁面顯示結果
-    - 結果顯示：
-      - 🎯 綠色方框：建議換匯（should_alert = true）
-      - 💡 藍色方框：暫不換匯（should_alert = false）
-      - 包含詳細推薦理由、當前匯率
-
-    **📨 立即發送警報**
-    - 功能：檢查所有啟用中的配置，發送 Telegram 換匯警報
-    - 用途：手動觸發通知（例如想立即收到當前建議）
-    - 特性：
-      - **受冷卻機制限制**：若某配置在提醒間隔內已發送過，不會重複發送
-      - 顯示統計：總監控數、觸發警報數、實際發送數
-      - 列出所有觸發警報的貨幣對與建議內容
-    - 差異：手動檢查不發通知，立即警報會發 Telegram
-
-    **🔒 隱私模式**
-    - 功能：一鍵隱藏匯率趨勢圖
-    - 用途：展示畫面、截圖分享時保護資訊
-    - 開啟方式：點擊右上角 **🙈 隱私模式** 切換開關
-    - 影響範圍：整個趨勢圖區塊隱藏，其他資訊（表格、建議）不受影響
-
-    ### 常見問題
-
-    **Q：如何判斷現在是否該換匯？**
-    A：查看「換匯建議」欄位：
-    - 🟢 建議換匯 → 匯率符合您設定的條件（接近高點或連續上漲），可考慮換匯
-    - ⚪ 暫不換匯 → 匯率未達條件，建議持續觀察
-
-    **Q：為什麼我的配置顯示「暫不換匯」但匯率很高？**
-    A：系統判斷基於您設定的參數（回溯天數、連續上漲門檻）。若匯率雖高但未達「近期高點」（例如 30 日內更高）或未連續上漲，仍會顯示暫不換匯。可調整參數或查看趨勢圖自行判斷。
-
-    **Q：「手動檢查」和「立即發送警報」有什麼差別？**
-    A：
-    - **手動檢查**：僅在頁面顯示分析結果，不發 Telegram 通知（適合快速查看）
-    - **立即發送警報**：分析後發送 Telegram 通知（適合想收到推送提醒）
-
-    **Q：我可以監控多少個貨幣對？**
-    A：無上限，但建議聚焦在實際需要的貨幣對（例如常用的 USD/TWD、JPY/TWD），避免警報過多。
-
-    **Q：系統多久自動檢查一次？**
-    A：後端定時任務每 6 小時自動檢查一次所有啟用中的配置，若符合條件且未在冷卻期內，自動發送 Telegram 警報（見 docker-compose.yml 設定）。
-
-    **Q：為什麼我刪除配置後還收到通知？**
-    A：可能是刪除前已觸發警報但尚未發送。請確認 Telegram 通知時間戳，若在刪除後則可能是緩存問題，請重新整理頁面。
-    """)
+with st.expander(t("fx_watch.sop_title")):
+    st.markdown(t("fx_watch.sop_content"))
 
 # ---------------------------------------------------------------------------
 # Edit Watch Popover
@@ -265,12 +163,12 @@ with st.expander("📖 使用說明"):
 
 def edit_watch_popover(watch: dict):
     """Popover for editing watch configuration inline."""
-    with st.popover("⚙️ 編輯", use_container_width=True):
-        st.markdown(f"**編輯 {watch['base_currency']}/{watch['quote_currency']}**")
+    with st.popover(t("fx_watch.edit.button"), use_container_width=True):
+        st.markdown(f"**{t('fx_watch.edit.title', pair=watch['base_currency'] + '/' + watch['quote_currency'])}**")
 
         # Detection settings
         recent_high_days = st.slider(
-            "近期高點回溯天數",
+            t("fx_watch.form.recent_high_days"),
             min_value=5,
             max_value=90,
             value=watch["recent_high_days"],
@@ -279,7 +177,7 @@ def edit_watch_popover(watch: dict):
         )
 
         consecutive_days = st.slider(
-            "連續上漲天數門檻",
+            t("fx_watch.form.consecutive_days"),
             min_value=2,
             max_value=10,
             value=watch["consecutive_increase_days"],
@@ -291,19 +189,19 @@ def edit_watch_popover(watch: dict):
 
         # Alert toggles
         alert_on_high = st.checkbox(
-            "啟用近期高點警報",
+            t("fx_watch.form.alert_on_high"),
             value=watch["alert_on_recent_high"],
             key=f"edit_high_{watch['id']}"
         )
 
         alert_on_consecutive = st.checkbox(
-            "啟用連續上漲警報",
+            t("fx_watch.form.alert_on_consecutive"),
             value=watch["alert_on_consecutive_increase"],
             key=f"edit_consecutive_{watch['id']}"
         )
 
         reminder_hours = st.number_input(
-            "提醒間隔（小時）",
+            t("fx_watch.form.reminder_hours"),
             min_value=1,
             max_value=168,
             value=watch["reminder_interval_hours"],
@@ -314,10 +212,10 @@ def edit_watch_popover(watch: dict):
         st.divider()
 
         # Save button
-        if st.button("💾 儲存變更", key=f"save_edit_{watch['id']}", use_container_width=True):
+        if st.button(t("fx_watch.form.save"), key=f"save_edit_{watch['id']}", use_container_width=True):
             # Validation
             if not alert_on_high and not alert_on_consecutive:
-                st.warning("⚠️ 至少要啟用一項警報條件")
+                st.warning(t("fx_watch.form.error_no_alert"))
             else:
                 payload = {
                     "recent_high_days": recent_high_days,
@@ -338,104 +236,95 @@ def edit_watch_popover(watch: dict):
 # Add Watch Dialog
 # ---------------------------------------------------------------------------
 
-@st.dialog("➕ 新增監控配置", width="large")
+@st.dialog(t("fx_watch.dialog.title"), width="large")
 def add_watch_dialog():
     """Dialog for adding a new FX watch configuration."""
     with st.form("add_fx_watch_form", clear_on_submit=False):
-        # Currency pair (2-column layout)
-        # NOTE: Both selectboxes use the FULL options list because st.form
-        # does not rerun on widget change — dynamic filtering would cause
-        # index drift between the rendered options and submitted values.
         col_base, col_quote = st.columns(2)
         with col_base:
             base_currency = st.selectbox(
-                "基礎貨幣",
+                t("fx_watch.form.base_currency"),
                 options=FX_CURRENCY_OPTIONS,
-                index=0,  # USD
-                help="您想兌換的貨幣（例如持有 USD 想換成 TWD）",
+                index=0,
+                help=t("fx_watch.form.base_currency_help"),
                 key="add_dialog_base"
             )
 
         with col_quote:
             quote_currency = st.selectbox(
-                "報價貨幣",
+                t("fx_watch.form.quote_currency"),
                 options=FX_CURRENCY_OPTIONS,
-                index=1,  # TWD
-                help="您想兌換成的貨幣（必須與基礎貨幣不同）",
+                index=1,
+                help=t("fx_watch.form.quote_currency_help"),
                 key="add_dialog_quote"
             )
 
         st.divider()
 
-        # Detection settings (2-column layout)
         col_recent, col_consec = st.columns(2)
         with col_recent:
             recent_high_days = st.slider(
-                "近期高點回溯天數",
+                t("fx_watch.form.recent_high_days"),
                 min_value=5,
                 max_value=90,
                 value=30,
                 step=5,
-                help="判斷「近期高點」的回溯天數"
+                help=t("fx_watch.form.recent_high_days_help")
             )
 
         with col_consec:
             consecutive_days = st.slider(
-                "連續上漲天數門檻",
+                t("fx_watch.form.consecutive_days"),
                 min_value=2,
                 max_value=10,
                 value=3,
                 step=1,
-                help="連續上漲多少天後發出警報"
+                help=t("fx_watch.form.consecutive_days_help")
             )
 
         st.divider()
 
-        # Alert toggles (2-column layout)
         col_toggle1, col_toggle2 = st.columns(2)
         with col_toggle1:
             alert_on_high = st.checkbox(
-                "啟用近期高點警報",
+                t("fx_watch.form.alert_on_high"),
                 value=True,
-                help="當匯率接近近期高點時發送警報"
+                help=t("fx_watch.form.alert_on_high_help")
             )
 
         with col_toggle2:
             alert_on_consecutive = st.checkbox(
-                "啟用連續上漲警報",
+                t("fx_watch.form.alert_on_consecutive"),
                 value=True,
-                help="當匯率連續上漲達門檻時發送警報"
+                help=t("fx_watch.form.alert_on_consecutive_help")
             )
 
-        # Reminder interval
         reminder_hours = st.number_input(
-            "提醒間隔（小時）",
+            t("fx_watch.form.reminder_hours"),
             min_value=1,
             max_value=168,
             value=24,
             step=1,
-            help="避免重複通知，同一配置在此時間內不重複警報"
+            help=t("fx_watch.form.reminder_hours_help")
         )
 
         st.divider()
 
-        # Submit buttons
         col_submit, col_cancel = st.columns([1, 1])
         with col_submit:
-            submitted = st.form_submit_button("✅ 新增監控", use_container_width=True, type="primary")
+            submitted = st.form_submit_button(t("fx_watch.form.submit"), use_container_width=True, type="primary")
         with col_cancel:
-            cancelled = st.form_submit_button("❌ 取消", use_container_width=True)
+            cancelled = st.form_submit_button(t("fx_watch.form.cancel"), use_container_width=True)
 
         if cancelled:
             st.session_state["show_add_dialog"] = False
             st.rerun()
 
         if submitted:
-            # Validation
             if base_currency == quote_currency:
-                st.error("⚠️ 基礎貨幣與報價貨幣不能相同")
+                st.error(t("fx_watch.form.error_same_currency"))
             elif not alert_on_high and not alert_on_consecutive:
-                st.warning("⚠️ 至少要啟用一項警報條件")
+                st.warning(t("fx_watch.form.error_no_alert"))
             else:
                 payload = {
                     "base_currency": base_currency,
@@ -468,14 +357,13 @@ if "show_add_dialog" not in st.session_state:
 top_row = st.columns([2, 2, 2, 1, 1, 1])
 
 with top_row[0]:
-    st.metric("總監控數", len(watches) if watches else 0)
+    st.metric(t("fx_watch.metric.total"), len(watches) if watches else 0)
 
 with top_row[1]:
     active_count = sum(1 for w in watches if w.get("is_active", False)) if watches else 0
-    st.metric("啟用中", active_count)
+    st.metric(t("fx_watch.metric.active"), active_count)
 
 with top_row[2]:
-    # Show last alert time from most recent watch
     if watches:
         last_times = [
             w.get("last_alerted_at")
@@ -484,16 +372,15 @@ with top_row[2]:
         ]
         if last_times:
             latest = max(last_times)
-            st.metric("最後警報", datetime.fromisoformat(latest).strftime("%m/%d %H:%M"))
+            st.metric(t("fx_watch.metric.last_alert"), datetime.fromisoformat(latest).strftime("%m/%d %H:%M"))
         else:
-            st.metric("最後警報", "尚未發送")
+            st.metric(t("fx_watch.metric.last_alert"), t("fx_watch.metric.not_sent"))
     else:
-        st.metric("最後警報", "—")
+        st.metric(t("fx_watch.metric.last_alert"), "—")
 
 with top_row[3]:
-    # Manual check button (disabled if no watches)
-    if st.button("🔍 檢查", use_container_width=True, help="立即分析所有監控配置（不發送通知）", disabled=not watches):
-        with st.spinner("分析中..."):
+    if st.button(t("fx_watch.action.check"), use_container_width=True, help=t("fx_watch.action.check_help"), disabled=not watches):
+        with st.spinner(t("fx_watch.action.analyzing")):
             level, msg = post_fx_watch_check()
             show_toast(level, msg)
             if level == "success":
@@ -501,9 +388,8 @@ with top_row[3]:
                 _refresh_ui()
 
 with top_row[4]:
-    # Instant alert button (disabled if no watches)
-    if st.button("📨 警報", use_container_width=True, help="手動觸發 Telegram 通知（受冷卻機制限制）", disabled=not watches):
-        with st.spinner("發送中..."):
+    if st.button(t("fx_watch.action.alert"), use_container_width=True, help=t("fx_watch.action.alert_help"), disabled=not watches):
+        with st.spinner(t("fx_watch.action.sending")):
             level, msg = post_fx_watch_alert()
             show_toast(level, msg)
             if level == "success":
@@ -511,9 +397,7 @@ with top_row[4]:
                 _refresh_ui()
 
 with top_row[5]:
-    # Add watch button (always enabled)
-    if st.button("➕ 新增", use_container_width=True, type="primary", help="新增外匯監控配置"):
-        # Clear any existing form state to ensure clean dialog
+    if st.button(t("fx_watch.action.add"), use_container_width=True, type="primary", help=t("fx_watch.action.add_help")):
         for key in list(st.session_state.keys()):
             if key.startswith("add_dialog_"):
                 del st.session_state[key]
@@ -522,24 +406,21 @@ with top_row[5]:
 
 st.divider()
 
-# Show add dialog if flag is set
 if st.session_state.get("show_add_dialog", False):
     add_watch_dialog()
 
-# Empty state check
 if not watches:
-    st.info("📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始")
-    st.caption("💡 最常用的監控配置：USD/TWD（美元兌台幣），可追蹤換匯時機。")
+    st.info(t("fx_watch.empty.message"))
+    st.caption(t("fx_watch.empty.hint"))
     st.stop()
 
-# Get analysis data (helper lives in utils.py, shared cache with invalidation)
 analysis_map = fetch_fx_watch_analysis()
 
 # ---------------------------------------------------------------------------
 # Unified Card Layout (one card per watch)
 # ---------------------------------------------------------------------------
 
-st.subheader("📋 監控配置")
+st.subheader(t("fx_watch.list.title"))
 
 for watch in watches:
     watch_id = watch["id"]
@@ -560,7 +441,7 @@ for watch in watches:
         else:
             badge = f"⚪ {recommendation}"
     else:
-        badge = "⏳ 分析中..."
+        badge = t("fx_watch.analysis.waiting")
 
     status_icon = "🟢" if is_active else "🔴"
     expander_title = f"{status_icon} 💱 {pair} — {rate_str} — {badge}"
@@ -571,39 +452,36 @@ for watch in watches:
         action_cols = st.columns([1, 1, 1, 3])
 
         with action_cols[0]:
-            # Status toggle
-            toggle_label = "🔴 停用" if is_active else "🟢 啟用"
+            toggle_label = t("fx_watch.card.disable") if is_active else t("fx_watch.card.enable")
             if st.button(
                 toggle_label,
                 key=f"toggle_{watch_id}",
                 use_container_width=True,
-                help="啟用/停用監控"
+                help=t("fx_watch.card.toggle_help")
             ):
                 if toggle_fx_watch(watch_id, is_active):
                     invalidate_fx_watch_caches()
                     _refresh_ui()
                 else:
-                    st.error("❌ 切換失敗，請稍後再試")
+                    st.error(t("fx_watch.card.toggle_error"))
 
         with action_cols[1]:
             edit_watch_popover(watch)
 
         with action_cols[2]:
-            if st.button("🗑️ 刪除", key=f"delete_{watch_id}", use_container_width=True):
+            if st.button(t("fx_watch.card.delete"), key=f"delete_{watch_id}", use_container_width=True):
                 if delete_fx_watch(watch_id):
                     invalidate_fx_watch_caches()
                     _refresh_ui()
                 else:
-                    st.error("❌ 刪除失敗，請稍後再試")
+                    st.error(t("fx_watch.card.delete_error"))
 
         st.divider()
 
-        # Body: Chart (left) + Analysis (right) - 2 column layout
         if not _is_privacy():
             body_cols = st.columns([3, 2])
 
             with body_cols[0]:
-                # Chart
                 _render_fx_chart(
                     watch["base_currency"],
                     watch["quote_currency"],
@@ -612,36 +490,32 @@ for watch in watches:
                 )
 
             with body_cols[1]:
-                # Analysis reasoning
                 if analysis:
                     reasoning = analysis.get("reasoning", "")
-                    st.markdown("**📊 分析原因**")
+                    st.markdown(t("fx_watch.analysis.title"))
                     st.caption(reasoning)
                 else:
-                    st.caption("⏳ 等待分析...")
+                    st.caption(t("fx_watch.analysis.waiting"))
 
                 st.divider()
 
-                # Config summary
-                st.markdown("**⚙️ 監控設定**")
-                st.caption(f"• 近期高點: {watch['recent_high_days']} 日")
-                st.caption(f"• 連續上漲: {watch['consecutive_increase_days']} 日")
-                st.caption(f"• 間隔: {watch['reminder_interval_hours']} 小時")
+                st.markdown(t("fx_watch.settings.title"))
+                st.caption(t("fx_watch.settings.recent_high", days=watch['recent_high_days']))
+                st.caption(t("fx_watch.settings.consecutive", days=watch['consecutive_increase_days']))
+                st.caption(t("fx_watch.settings.interval", hours=watch['reminder_interval_hours']))
 
                 high_icon = "✅" if watch["alert_on_recent_high"] else "❌"
                 consec_icon = "✅" if watch["alert_on_consecutive_increase"] else "❌"
-                st.caption(f"• 高點警報: {high_icon}")
-                st.caption(f"• 上漲警報: {consec_icon}")
+                st.caption(t("fx_watch.settings.high_alert", icon=high_icon))
+                st.caption(t("fx_watch.settings.consec_alert", icon=consec_icon))
 
-                # Last alert
                 last_alert = watch.get("last_alerted_at")
                 if last_alert:
                     alert_time = datetime.fromisoformat(last_alert).strftime("%Y-%m-%d %H:%M")
-                    st.caption(f"• 最後警報: {alert_time}")
+                    st.caption(t("fx_watch.settings.last_alert_time", time=alert_time))
                 else:
-                    st.caption("• 最後警報: 尚未發送")
+                    st.caption(t("fx_watch.settings.last_alert_none"))
         else:
-            # Privacy mode: hide chart and analysis
-            st.info("🔒 隱私模式已啟用，圖表與分析已隱藏。")
+            st.info(t("fx_watch.privacy_enabled"))
 
 st.divider()

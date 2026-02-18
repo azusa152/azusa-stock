@@ -80,7 +80,7 @@ TELEGRAM_REQUEST_TIMEOUT = 10
 # ---------------------------------------------------------------------------
 SKIP_SIGNALS_CATEGORIES = ["Cash"]  # Cash 類不進行 yfinance 訊號掃描
 SKIP_MOAT_CATEGORIES = ["Bond", "Cash"]  # 債券與現金不適用護城河分析
-REMOVAL_REASON_UNKNOWN = "未知"
+REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 
 # ---------------------------------------------------------------------------
 # Default Parameter Values
@@ -89,7 +89,7 @@ DEFAULT_ALERT_METRIC = "rsi"
 DEFAULT_ALERT_OPERATOR = "lt"
 DEFAULT_ALERT_THRESHOLD = 30.0
 DEFAULT_IMPORT_CATEGORY = "Growth"
-DEFAULT_WEBHOOK_THESIS = "由 AI agent 新增。"
+DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 
 # ---------------------------------------------------------------------------
 # Category Display Order & Icons
@@ -109,6 +109,18 @@ CATEGORY_ICON: dict[str, str] = {
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
+
+# ---------------------------------------------------------------------------
+# i18n Language Support
+# ---------------------------------------------------------------------------
+SUPPORTED_LANGUAGES = ["zh-TW", "en", "ja", "zh-CN"]
+DEFAULT_LANGUAGE = "zh-TW"
+LANGUAGE_LABELS = {
+    "zh-TW": "繁體中文",
+    "en": "English",
+    "ja": "日本語",
+    "zh-CN": "简体中文",
+}
 
 # ---------------------------------------------------------------------------
 # Smart Withdrawal (聰明提款機)
@@ -232,9 +244,9 @@ DISK_KEY_ETF_HOLDINGS = "etf_holdings"
 DISK_KEY_FEAR_GREED = "fear_greed"
 
 # ---------------------------------------------------------------------------
-# Webhook Messages
+# Webhook Messages (use t("webhook.missing_ticker") at call sites)
 # ---------------------------------------------------------------------------
-WEBHOOK_MISSING_TICKER = "請提供 ticker 參數。"
+WEBHOOK_MISSING_TICKER = "webhook.missing_ticker"  # i18n key
 
 # ---------------------------------------------------------------------------
 # Webhook Action Registry — single source of truth for AI agent actions
@@ -296,12 +308,12 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
 # Notification Preferences — toggleable notification types
 # ---------------------------------------------------------------------------
 NOTIFICATION_TYPES = {
-    "scan_alerts": "掃描訊號通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
-    "price_alerts": "自訂價格警報觸發通知",
-    "weekly_digest": "每週投資摘要",
-    "xray_alerts": "X-Ray 集中度警告",
-    "fx_alerts": "匯率曝險警報",
-    "fx_watch_alerts": "外匯換匯時機警報",
+    "scan_alerts": "constants.notification_scan_alerts",
+    "price_alerts": "constants.notification_price_alerts",
+    "weekly_digest": "constants.notification_weekly_digest",
+    "xray_alerts": "constants.notification_xray_alerts",
+    "fx_alerts": "constants.notification_fx_alerts",
+    "fx_watch_alerts": "constants.notification_fx_watch_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
     k: True for k in NOTIFICATION_TYPES
@@ -326,13 +338,13 @@ ERROR_INVALID_INPUT = "INVALID_INPUT"
 ERROR_INTERNAL_ERROR = "INTERNAL_ERROR"
 
 # ---------------------------------------------------------------------------
-# Generic Error Messages — sanitized messages to prevent information leakage
+# Generic Error Messages — i18n keys, resolve with t() at call sites
 # ---------------------------------------------------------------------------
-GENERIC_ERROR_MESSAGE = "操作失敗，請稍後再試。"
-GENERIC_VALIDATION_ERROR = "輸入資料格式不正確。"
-GENERIC_TELEGRAM_ERROR = "Telegram 通知設定失敗。"
-GENERIC_PREFERENCES_ERROR = "偏好設定更新失敗。"
-GENERIC_WEBHOOK_ERROR = "處理請求時發生錯誤。"
+GENERIC_ERROR_MESSAGE = "constants.generic_error"
+GENERIC_VALIDATION_ERROR = "constants.generic_validation_error"
+GENERIC_TELEGRAM_ERROR = "constants.generic_telegram_error"
+GENERIC_PREFERENCES_ERROR = "constants.generic_preferences_error"
+GENERIC_WEBHOOK_ERROR = "constants.generic_webhook_error"
 
 # ---------------------------------------------------------------------------
 # curl_cffi
@@ -372,30 +384,28 @@ STRESS_PAIN_LEVELS = [
     {
         "threshold": 0,
         "level": "low",
-        "label": "微風輕拂 (Just a Scratch)",
+        "label": "constants.stress_pain_low",
         "emoji": "green",
     },
     {
         "threshold": 10,
         "level": "moderate",
-        "label": "有感修正 (Correction)",
+        "label": "constants.stress_pain_moderate",
         "emoji": "yellow",
     },
     {
         "threshold": 20,
         "level": "high",
-        "label": "傷筋動骨 (Bear Market)",
+        "label": "constants.stress_pain_high",
         "emoji": "orange",
     },
     {
         "threshold": 30,
         "level": "panic",
-        "label": "睡不著覺 (Panic Zone)",
+        "label": "constants.stress_pain_panic",
         "emoji": "red",
     },
 ]
 
-STRESS_DISCLAIMER = (
-    "⚠️ 此為線性 CAPM 簡化模型，實際崩盤中相關性會趨近 1、"
-    "流動性枯竭可能導致更大跌幅。本模擬僅供參考，不構成投資建議。"
-)
+STRESS_DISCLAIMER = "constants.stress_disclaimer"  # i18n key
+STRESS_EMPTY_PAIN_LABEL = "stress_test.no_holdings"  # i18n key (when no holdings)

@@ -57,6 +57,7 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from infrastructure.market_data import (
     get_dividend_info,
@@ -384,7 +385,7 @@ def import_stocks_route(
             status_code=400,
             detail={
                 "error_code": ERROR_INVALID_INPUT,
-                "detail": GENERIC_VALIDATION_ERROR,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=get_user_language(session)),
             },
         )
 
@@ -437,4 +438,7 @@ async def webhook_route(
         return WebhookResponse(**result)
     except Exception as e:
         logger.error("Webhook 處理失敗：%s", e, exc_info=True)
-        return WebhookResponse(success=False, message=GENERIC_WEBHOOK_ERROR)
+        return WebhookResponse(
+            success=False,
+            message=t(GENERIC_WEBHOOK_ERROR, lang=get_user_language(session)),
+        )

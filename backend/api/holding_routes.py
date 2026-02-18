@@ -38,6 +38,7 @@ from domain.constants import (
     GENERIC_VALIDATION_ERROR,
 )
 from domain.entities import Holding
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -143,7 +144,10 @@ def update_holding(
     if not holding:
         raise HTTPException(
             status_code=404,
-            detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"},
+            detail={
+                "error_code": ERROR_HOLDING_NOT_FOUND,
+                "detail": t("api.holding_not_found", lang=get_user_language(session)),
+            },
         )
     holding.ticker = payload.ticker.strip().upper()
     holding.category = payload.category
@@ -171,13 +175,20 @@ def delete_holding(
     if not holding:
         raise HTTPException(
             status_code=404,
-            detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"},
+            detail={
+                "error_code": ERROR_HOLDING_NOT_FOUND,
+                "detail": t("api.holding_not_found", lang=get_user_language(session)),
+            },
         )
     ticker = holding.ticker
     session.delete(holding)
     session.commit()
     logger.info("刪除持倉：%s", ticker)
-    return {"message": f"持倉 {ticker} 已刪除。"}
+    return {
+        "message": t(
+            "api.holding_deleted", lang=get_user_language(session), ticker=ticker
+        )
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +241,7 @@ def import_holdings(
             status_code=400,
             detail={
                 "error_code": ERROR_INVALID_INPUT,
-                "detail": GENERIC_VALIDATION_ERROR,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=get_user_language(session)),
             },
         )
 
@@ -261,12 +272,18 @@ def import_holdings(
             count += 1
         except Exception as e:
             logger.warning("持倉匯入第 %d 筆失敗：%s", i + 1, e)
-            errors.append(f"第 {i + 1} 筆匯入失敗")
+            errors.append(
+                t(
+                    "api.import_item_failed",
+                    lang=get_user_language(session),
+                    index=i + 1,
+                )
+            )
 
     session.commit()
     logger.info("匯入持倉完成：%d 筆成功，%d 筆失敗。", count, len(errors))
     return {
-        "message": f"匯入完成：{count} 筆成功。",
+        "message": t("api.import_done", lang=get_user_language(session), count=count),
         "imported": count,
         "errors": errors,
     }
@@ -317,7 +334,9 @@ def trigger_xray_alert(
         xray = rebalance.get("xray", [])
         warnings = send_xray_warnings(xray, display_currency, session)
         return {
-            "message": f"X-Ray 分析完成，{len(warnings)} 筆警告已發送。",
+            "message": t(
+                "api.xray_done", lang=get_user_language(session), count=len(warnings)
+            ),
             "warnings": warnings,
         }
     except StockNotFoundError as e:
@@ -392,7 +411,9 @@ def trigger_fx_alert(
     """檢查匯率曝險並發送 Telegram 警報。"""
     alerts = send_fx_alerts(session)
     return {
-        "message": f"匯率曝險檢查完成，{len(alerts)} 筆警報已發送。",
+        "message": t(
+            "api.fx_alert_done", lang=get_user_language(session), count=len(alerts)
+        ),
         "alerts": alerts,
     }
 
@@ -433,7 +454,9 @@ def get_stress_test(
             status_code=422,
             detail={
                 "error_code": "INVALID_SCENARIO_DROP",
-                "detail": "scenario_drop_pct 必須在 -50 到 0 之間",
+                "detail": t(
+                    "api.scenario_range_error", lang=get_user_language(session)
+                ),
             },
         )
 
@@ -443,6 +466,14 @@ def get_stress_test(
             scenario_drop_pct=scenario_drop_pct,
             display_currency=display_currency.strip().upper(),
         )
+        lang = get_user_language(session)
+        # Translate i18n keys in pain_level, disclaimer, and advice
+        result["pain_level"] = {
+            **result["pain_level"],
+            "label": t(result["pain_level"]["label"], lang=lang),
+        }
+        result["disclaimer"] = t(result["disclaimer"], lang=lang)
+        result["advice"] = [t(advice_key, lang=lang) for advice_key in result["advice"]]
         return StressTestResponse(**result)
     except StockNotFoundError as e:
         raise HTTPException(

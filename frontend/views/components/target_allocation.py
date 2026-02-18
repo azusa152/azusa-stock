@@ -6,10 +6,11 @@ Reusable component for rendering Step 1: persona selection and target config edi
 import streamlit as st
 
 from config import (
-    CATEGORY_LABELS,
     CATEGORY_OPTIONS,
     DISPLAY_CURRENCY_OPTIONS,
+    get_category_labels,
 )
+from i18n import t
 from utils import (
     api_post,
     api_put,
@@ -65,13 +66,13 @@ def _render_template_card(
         non_zero = {k: v for k, v in cfg.items() if v > 0}
         if non_zero:
             parts = [
-                f"{CATEGORY_LABELS.get(k, k).split(' ')[0]} {v}%"
+                f"{get_category_labels().get(k, k).split(' ')[0]} {v}%"
                 for k, v in non_zero.items()
             ]
             st.caption(" · ".join(parts))
 
         if st.button(
-            "選擇此範本",
+            t("components.target.select_template"),
             key=f"{key_prefix}_{tmpl['id']}",
             use_container_width=True,
         ):
@@ -85,7 +86,7 @@ def _render_template_card(
                 },
             )
             if result:
-                st.success(success_msg)
+                st.success(t("components.target.template_applied", name=tmpl['name']))
                 invalidate_profile_caches()
                 st.rerun()
 
@@ -98,11 +99,11 @@ def _render_existing_profile(
     with prof_cols[0]:
         home_cur = profile.get("home_currency", "TWD")
         st.success(
-            f"✅ 目前使用配置：**{profile['name']}** ｜ 🏠 本幣：{home_cur}"
+            t("components.target.current_profile", name=profile['name'], currency=home_cur)
         )
     with prof_cols[1]:
         switch_clicked = st.button(
-            "🔄 切換風格", key="switch_persona_btn"
+            t("components.target.switch_button"), key="switch_persona_btn"
         )
 
     target = profile.get("config", {})
@@ -110,7 +111,7 @@ def _render_existing_profile(
     target_cols = st.columns(len(CATEGORY_OPTIONS))
     for i, cat in enumerate(CATEGORY_OPTIONS):
         with target_cols[i]:
-            label = CATEGORY_LABELS.get(cat, cat)
+            label = get_category_labels().get(cat, cat)
             pct = target.get(cat, 0)
             st.metric(label.split(" ")[0], f"{pct}%")
 
@@ -119,7 +120,7 @@ def _render_existing_profile(
         _render_switch_picker(templates, profile)
 
     # -- Adjust percentages (toggle) --
-    if st.button("✏️ 調整目標配置", key="toggle_config_editor"):
+    if st.button(t("components.target.adjust_button"), key="toggle_config_editor"):
         st.session_state["show_config_editor"] = not st.session_state.get(
             "show_config_editor", False
         )
@@ -131,7 +132,7 @@ def _render_switch_picker(
     templates: list[dict], profile: dict
 ) -> None:
     """Render the persona switch picker."""
-    st.markdown("**🔄 選擇新的投資風格範本**")
+    st.markdown(t("components.target.switch_picker_title"))
     if templates:
         home_cur = profile.get("home_currency", "TWD")
         sw_cols = st.columns(3)
@@ -141,10 +142,10 @@ def _render_switch_picker(
                     tmpl,
                     key_prefix="switch_tmpl",
                     home_currency=home_cur,
-                    success_msg=f"✅ 已切換至「{tmpl['name']}」",
+                    success_msg=t("components.target.switched", name=tmpl['name']),
                 )
     else:
-        st.warning("⚠️ 無法載入範本。")
+        st.warning(t("components.target.no_templates"))
 
 
 def _render_config_editor(profile: dict, target: dict) -> None:
@@ -154,7 +155,7 @@ def _render_config_editor(profile: dict, target: dict) -> None:
     for i, cat in enumerate(CATEGORY_OPTIONS):
         with edit_cols[i]:
             label = (
-                CATEGORY_LABELS.get(cat, cat)
+                get_category_labels().get(cat, cat)
                 .split("(")[0]
                 .strip()
             )
@@ -169,27 +170,25 @@ def _render_config_editor(profile: dict, target: dict) -> None:
 
     total_pct = sum(new_config.values())
     if abs(total_pct - 100) > 0.01:
-        st.warning(
-            f"⚠️ 配置合計 {total_pct:.0f}%，應為 100%。"
-        )
+        st.warning(t("components.target.total_warning", total=total_pct))
     else:
-        if st.button("💾 儲存配置", key="save_profile"):
+        if st.button(t("components.target.save_button"), key="save_profile"):
             result = api_put(
                 f"/profiles/{profile['id']}",
                 {"config": new_config},
             )
             if result:
-                st.success("✅ 配置已更新")
+                st.success(t("components.target.save_success"))
                 invalidate_profile_caches()
                 st.rerun()
 
 
 def _render_initial_setup(templates: list[dict]) -> None:
     """Render UI for first-time profile setup."""
-    st.info("📋 尚未設定投資組合目標，請選擇一個投資人格範本開始：")
+    st.info(t("components.target.initial_hint"))
 
     init_home_cur = st.selectbox(
-        "🏠 本幣 (Home Currency)",
+        t("components.target.home_currency_label"),
         options=DISPLAY_CURRENCY_OPTIONS,
         index=(
             DISPLAY_CURRENCY_OPTIONS.index("TWD")
@@ -197,7 +196,7 @@ def _render_initial_setup(templates: list[dict]) -> None:
             else 0
         ),
         key="init_home_currency",
-        help="用於匯率曝險計算的基準幣別。",
+        help=t("components.target.home_currency_help"),
     )
 
     if templates:
@@ -208,7 +207,7 @@ def _render_initial_setup(templates: list[dict]) -> None:
                     tmpl,
                     key_prefix="pick_template",
                     home_currency=init_home_cur,
-                    success_msg=f"✅ 已套用「{tmpl['name']}」",
+                    success_msg=t("components.target.template_applied", name=tmpl['name']),
                 )
     else:
-        st.warning("⚠️ 無法載入範本，請確認後端服務。")
+        st.warning(t("components.target.no_templates_backend"))

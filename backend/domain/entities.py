@@ -9,7 +9,11 @@ from typing import Optional
 
 from sqlmodel import Column, Field, SQLModel, String
 
-from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES, DEFAULT_USER_ID
+from domain.constants import (
+    DEFAULT_LANGUAGE,
+    DEFAULT_NOTIFICATION_PREFERENCES,
+    DEFAULT_USER_ID,
+)
 from domain.enums import ScanSignal, StockCategory
 
 
@@ -163,6 +167,7 @@ class UserPreferences(SQLModel, table=True):
     user_id: str = Field(
         default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID"
     )
+    language: str = Field(default=DEFAULT_LANGUAGE, description="偏好語言")
     privacy_mode: bool = Field(default=False, description="是否啟用隱私模式")
     notification_preferences: str = Field(
         default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),

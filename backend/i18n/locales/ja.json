@@ -1,0 +1,192 @@
+{
+  "common": {
+    "generic_error": "操作に失敗しました。後でもう一度お試しください。",
+    "validation_error": "入力データの形式が正しくありません。",
+    "telegram_error": "Telegram通知の設定に失敗しました。",
+    "preferences_error": "設定の更新に失敗しました。",
+    "webhook_error": "リクエストの処理中にエラーが発生しました。",
+    "unknown": "不明",
+    "sell": "売却",
+    "reason": "理由",
+    "priority": "優先度"
+  },
+  "webhook": {
+    "missing_ticker": "tickerパラメータを指定してください。",
+    "alert_status": {
+      "active": "有効",
+      "inactive": "無効"
+    },
+    "fear_greed_prefix": "恐怖貪欲指数",
+    "price_alerts_header": "{ticker} 価格アラート：",
+    "signals_line": "{ticker} — 現在値 ${price}, RSI={rsi}, Bias={bias}%"
+  },
+  "stock": {
+    "not_found": "銘柄 {ticker} が見つかりません。",
+    "already_exists": "銘柄 {ticker} はすでにウォッチリストに存在します。",
+    "already_inactive": "銘柄 {ticker} はすでに無効化されています。",
+    "already_active": "銘柄 {ticker} はすでに有効化されています。",
+    "category_unchanged": "銘柄 {ticker} はすでに {category} カテゴリです。",
+    "category_changed": "✅ {ticker} のカテゴリを「{old}」から「{new}」に変更しました。",
+    "category_change_log": "[カテゴリ変更] {old} → {new}",
+    "removed": "✅ {ticker} をウォッチリストから削除しました。",
+    "removed_log": "[削除] {reason}",
+    "reactivated": "✅ {ticker} の追跡を再開しました。",
+    "reactivated_log": "[追跡再開]",
+    "display_order_updated": "✅ {count}銘柄の表示順序を更新しました。",
+    "thesis_updated": "✅ {ticker} の投資論をバージョン{version}に更新しました。",
+    "added": "✅ {ticker} を {category} カテゴリに追加しました。",
+    "import_missing_ticker": "tickerフィールドがありません",
+    "import_invalid_category": "{ticker}: 無効なカテゴリ {category}",
+    "import_complete": "✅ インポート完了: {created}件追加、{updated}件更新、{errors}件エラー。",
+    "moat_not_applicable": "{category} はモート分析対象外です"
+  },
+  "scan": {
+    "in_progress": "スキャン実行中です。後でもう一度お試しください。",
+    "started": "スキャンを開始しました。結果はTelegramで通知されます。",
+    "alert_header": "🔔 <b>Folio スキャン（差分通知）</b>\n市場センチメント: {market_status} | 恐怖貪欲指数: {fg_label}\n",
+    "resolved_section": "✅ <b>正常に戻りました</b>\n{tickers}",
+    "price_alert_header": "⚡ <b>価格アラート発動</b>",
+    "price_alert_triggered": "🔔 {ticker} {metric}={value} {op_symbol} {threshold}",
+    "alert_created": "✅ アラート作成: {ticker} {metric} {op} {threshold}",
+    "alert_not_found": "⚠️ アラートが見つかりません。",
+    "alert_deleted": "✅ アラートを削除しました。",
+    "moat_not_applicable": "{category} はモート分析対象外です",
+    "thesis_broken_alert": "🔴 {ticker} モートが弱体化！{details}",
+    "contrarian_buy_alert": "🟢 {ticker} 逆張り買いシグナル（RSI={rsi}、市場ポジティブ）",
+    "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
+    "moat_stable_alert": "🟢 {ticker} {details}",
+    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+  },
+  "notification": {
+    "change_label": "変化",
+    "times_label": "回"
+  },
+  "formatter": {
+    "sell": "売却",
+    "shares": "株",
+    "reason": "理由",
+    "priority": "優先度"
+  },
+  "rebalance": {
+    "no_profile": "投資プロファイルが設定されていません。先にポートフォリオ目標を設定してください。",
+    "no_holdings": "保有資産が入力されていません。先に資産を追加してください。",
+    "no_holdings_data": "保有データがありません。",
+    "xray_header": "🔬 X-Rayポジション分析",
+    "xray_warning": "⚠️ X-Ray警告: {symbol} 直接保有 {direct_pct:.1f}%、ETF間接エクスポージャー（{sources}）、実質エクスポージャー {total_pct:.1f}%、単一銘柄リスク閾値 {threshold:.0f}% を超過。",
+    "fx_risk_high": "🔴 急激な為替変動を検出。為替リスクは高です。外貨ポジションの即時確認を推奨します。",
+    "fx_risk_medium": "🟡 最近の為替ボラティリティ（5日間）を検出。為替リスクは中です。引き続き為替トレンドを監視してください。",
+    "fx_risk_low": "🟢 最近の為替変動は安定しており、為替リスクは低めです。",
+    "non_home_pct": "📊 非本国通貨（{home}）資産: {pct:.1f}%。",
+    "foreign_cash_warning": "💵 現金の {pct:.1f}% が外貨です。最大外貨現金: {currency}（約 {value:,.0f} {home}）、為替変動の直接影響を受けます。",
+    "cash_impact": "（うち {currency} 現金約 {amount:,.0f} {home} が直接影響）",
+    "fx_alert_up": "📈 {pair} {type_label}: {period}で {change_pct:+.2f}% 上昇、現在レート {rate:.4f}。{cash_note}",
+    "fx_alert_down": "📉 {pair} {type_label}: {period}で {change_pct:+.2f}% 下落、現在レート {rate:.4f}。ヘッジを検討してください。{cash_note}",
+    "fx_exposure_title": "💱 為替エクスポージャー監視",
+    "withdrawal_insufficient": "⚠️ 保有資産が入力されていません。出金プランを計算できません。",
+    "withdrawal_shortfall_total": "⚠️ ポートフォリオ評価額不足、不足額: {amount} {currency}。",
+    "withdrawal_no_sellable": "⚠️ 売却可能な保有資産がありません。",
+    "withdrawal_success": "✅ 出金プランを生成しました。{count}件の売却推奨があります。"
+  },
+  "fx_watch": {
+    "alert_header": "💱 外貨両替タイミングアラート\n\n",
+    "current_rate": "💱 現在レート: {rate}"
+  },
+  "stress_test": {
+    "no_holdings": "保有なし",
+    "panic_intro": "🔴 極端な暴落時にポートフォリオは30%以上蒸発し、「眠れないゾーン」に入ります。",
+    "advice_header": "💡 即時対応を推奨:",
+    "advice_beta_high": "   • ポートフォリオベータ >= 1.5、非常にアグレッシブです。低ボラティリティ資産（債券、現金）の追加でリスク削減を検討してください。",
+    "advice_beta_moderate": "   • ポートフォリオベータ >= 1.2、ややアグレッシブです。高ベータポジションの部分利確をお勧めします。",
+    "advice_beta_low": "   • ポートフォリオベータ < 1.2ですが、個別銘柄の集中リスクには注意が必要です。",
+    "advice_emergency_fund": "   • 緊急予備資金が十分であることを確認してください（最低6ヶ月分の生活費）。",
+    "advice_leverage": "   • レバレッジや信用取引を利用している場合、強制決済を避けるために安全マージンを確保してください。",
+    "advice_thesis_broken": "   • 保有銘柄に「Thesis Broken」シグナルがあるか確認し、ファンダメンタルズが悪化しているポジションを優先的に削減してください。",
+    "advice_warning": "⚠️ ストレステストはシナリオモデリングのみです。実際の市場はより極端になる可能性があります。慎重に投資してください。",
+    "pain_low": "かすり傷程度",
+    "pain_moderate": "調整局面",
+    "pain_high": "ベアマーケット",
+    "pain_panic": "パニックゾーン",
+    "disclaimer": "⚠️ これは簡略化された線形CAPMモデルです。実際の暴落時には相関が1に近づき、流動性が枯渇し、より大きな損失が発生する可能性があります。このシミュレーションは参考のみで、投資アドバイスではありません。"
+  },
+  "withdrawal": {
+    "rebalance_reason": "{icon} {category} がオーバーウェイト {drift}%、売却で利益確定し目標配分に戻します。",
+    "tax_reason": "📉 含み損ポジション、売却でTax-Loss Harvestingによりキャピタルゲイン税を相殺できます。",
+    "liquidity_high_reason": "{icon} {category} 流動性が高く、出金に優先使用し、複利効果のあるコア資産を温存します。",
+    "liquidity_default_reason": "{icon} {category} 資産を現金化し出金不足分を補います。",
+    "no_profile": "ポートフォリオ目標配分が未設定です。先に投資家プロファイルを選択してください。",
+    "no_holdings": "⚠️ 保有がありません。出金プランを計算できません。",
+    "shortfall": "⚠️ ポートフォリオ時価が不足、不足額 {amount} {currency}。以下は最大出金提案です。",
+    "no_sellable": "⚠️ 売却可能な保有がありません。",
+    "plan_generated": "✅ スマート出金プランを生成しました。{count} 件の売却提案。",
+    "no_holdings_stress": "保有がありません。先に資産を追加してください。"
+  },
+  "telegram": {
+    "not_configured": "Telegram Chat IDが設定されていません。先に設定を保存してください。"
+  },
+  "market": {
+    "no_trend_stocks": "分析可能なトレンドセッター銘柄がありません",
+    "sentiment_caution": "市場センチメント: 警戒 — トレンドセッターの{pct}%が60MAを下回っています（{below}/{total}）",
+    "sentiment_caution_detail": "トレンドセッターの大半が弱含み（{below}/{total} が60MAを下回る）",
+    "sentiment_positive": "市場センチメント: ポジティブ — トレンドセッターの{pct}%が60MAを下回っています（{below}/{total}）",
+    "sentiment_positive_detail": "トレンドセッターは全体的に安定（{below}/{total} が60MAを下回る）",
+    "sentiment_default": "判断不能、ポジティブとみなします",
+    "caution_details": "大半のトレンドセッターが軟調（{below}/{total} が60MA割れ）",
+    "positive_details": "トレンドセッター全体は堅調（{below}/{total} が60MA割れ）",
+    "fallback_optimistic": "判定不能、デフォルトで楽観的",
+    "insufficient_history": "⚠️ {ticker} テクニカル指標の計算に十分な履歴データがありません。",
+    "signals_fetch_error": "⚠️ {ticker} のテクニカルシグナル取得に失敗：{error}"
+  },
+  "holding": {
+    "not_found": "保有が見つかりません。",
+    "deleted": "保有 {ticker} を削除しました。",
+    "import_error": "{index}行目のインポートエラー",
+    "import_success": "インポート完了: {count}件成功。",
+    "xray_complete": "X-Ray分析完了、{count}件の警告を送信しました。",
+    "fx_alert_complete": "為替エクスポージャーチェック完了、{count}件のアラートを送信しました。",
+    "scenario_range_error": "scenario_drop_pctは-50から0の間である必要があります",
+    "no_holdings_error": "保有資産が入力されていません。先に資産を追加してください。"
+  },
+  "persona": {
+    "not_found": "プロファイルが見つかりません。",
+    "disabled": "プロファイル '{name}' は無効化されています。"
+  },
+  "api": {
+    "digest_in_progress": "週次ダイジェスト生成中です。しばらくお待ちください。",
+    "digest_started": "週次サマリーを開始しました。結果はTelegramで通知されます。",
+    "holding_not_found": "保有が見つかりません。",
+    "holding_deleted": "保有 {ticker} を削除しました。",
+    "import_item_failed": "{index} 番目のインポートに失敗",
+    "import_done": "インポート完了：{count} 件成功。",
+    "xray_done": "X-Ray分析完了、{count} 件の警告を送信。",
+    "fx_alert_done": "為替エクスポージャーチェック完了、{count} 件のアラートを送信。",
+    "scenario_range_error": "scenario_drop_pctは-50から0の間である必要があります",
+    "profile_not_found": "プロファイルが見つかりません。",
+    "profile_deactivated": "プロファイル '{name}' を無効化しました。",
+    "scan_in_progress": "スキャン実行中です。しばらくお待ちください。",
+    "scan_started": "スキャンを開始しました。結果はTelegramで通知されます。",
+    "telegram_not_configured": "Telegram Chat IDが未設定です。先に設定を保存してください。",
+    "telegram_test_msg": "✅ <b>Folio テストメッセージ</b>\n\nおめでとうございます！Telegram通知設定は正常に動作しています。",
+    "telegram_test_sent": "✅ テストメッセージを送信しました。Telegramを確認してください。",
+    "tag_validation_error": "各タグは空でなく、50文字以内である必要があります"
+  },
+  "constants": {
+    "removal_reason_unknown": "不明",
+    "default_webhook_thesis": "AIエージェントにより追加。",
+    "generic_error": "操作に失敗しました。しばらくしてから再試行してください。",
+    "generic_validation_error": "入力データの形式が正しくありません。",
+    "generic_telegram_error": "Telegram通知の設定に失敗しました。",
+    "generic_preferences_error": "設定の更新に失敗しました。",
+    "generic_webhook_error": "リクエスト処理中にエラーが発生しました。",
+    "notification_scan_alerts": "スキャンシグナル通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
+    "notification_price_alerts": "カスタム価格アラートトリガー",
+    "notification_weekly_digest": "週次投資ダイジェスト",
+    "notification_xray_alerts": "X-Ray集中度警告",
+    "notification_fx_alerts": "為替エクスポージャーアラート",
+    "notification_fx_watch_alerts": "外為換金タイミングアラート",
+    "stress_pain_low": "そよ風 (Just a Scratch)",
+    "stress_pain_moderate": "実感できる調整 (Correction)",
+    "stress_pain_high": "かなりのダメージ (Bear Market)",
+    "stress_pain_panic": "眠れない夜 (Panic Zone)",
+    "stress_disclaimer": "⚠️ これは線形CAPMの簡易モデルです。実際の暴落では相関が1に近づき、流動性枯渇によりさらに大きな下落が発生する可能性があります。本シミュレーションは参考用であり、投資助言ではありません。"
+  }
+}

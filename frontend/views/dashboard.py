@@ -11,24 +11,23 @@ from config import (
     CATEGORY_COLOR_FALLBACK,
     CATEGORY_COLOR_MAP,
     CATEGORY_ICON_SHORT,
-    CATEGORY_LABELS,
     DASHBOARD_ALLOCATION_CHART_HEIGHT,
     DASHBOARD_DRIFT_CHART_HEIGHT,
     DASHBOARD_TOP_HOLDINGS_LIMIT,
     DISPLAY_CURRENCY_OPTIONS,
-    FEAR_GREED_CNN_UNAVAILABLE_MSG,
-    FEAR_GREED_DEFAULT_LABEL,
     FEAR_GREED_GAUGE_BANDS,
     FEAR_GREED_GAUGE_HEIGHT,
-    FEAR_GREED_LABELS,
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
-    MARKET_SENTIMENT_DEFAULT_LABEL,
-    MARKET_SENTIMENT_LABELS,
-    PRIVACY_MASK,  # still used directly in the holdings table
-    PRIVACY_TOGGLE_LABEL,
+    PRIVACY_MASK,
     SCAN_SIGNAL_ICONS,
+    get_cnn_unavailable_msg,
+    get_fear_greed_label,
+    get_market_sentiment_label,
+    get_category_labels,
+    get_privacy_toggle_label,
 )
+from i18n import t
 from utils import (
     fetch_fear_greed,
     fetch_holdings,
@@ -76,11 +75,11 @@ def _health_color(score: float) -> str:
 # -- Title row with privacy toggle and refresh button --
 _title_cols = st.columns([5, 1, 1])
 with _title_cols[0]:
-    st.title("📊 投資組合總覽")
+    st.title(t("dashboard.title"))
 with _title_cols[1]:
-    st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode", on_change=_on_privacy_change)
+    st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
 with _title_cols[2]:
-    if st.button("🔄 重新整理", use_container_width=True):
+    if st.button(t("common.refresh"), use_container_width=True):
         invalidate_all_caches()
         refresh_ui()
 
@@ -89,106 +88,8 @@ with _title_cols[2]:
 # SOP Manual
 # ---------------------------------------------------------------------------
 
-with st.expander("📖 投資組合總覽：使用說明書", expanded=False):
-    st.markdown("""
-### 頁面總覽
-
-本頁面是你的**投資儀表板首頁**，提供一眼式的投資組合健康狀態總覽。所有數據來自系統即時計算，無需手動操作。
-
----
-
-### 🕐 資料更新時間
-
-頁面頂部顯示兩個時間戳：
-
-- **💰 價格資料更新** — 最近一次透過 yfinance 取得即時股價的時間。對應再平衡分析中的市值計算
-- **🔍 上次掃描** — 最近一次執行三層漏斗掃描的時間。掃描每 30 分鐘自動執行一次
-
-> 若兩者時間差距過大，可前往「投資雷達」頁面手動觸發掃描。
-
----
-
-### 🎯 恐懼與貪婪指數（半圓儀表板）
-
-KPI 列上方的半圓儀表板顯示**綜合恐懼與貪婪指數**（0–100 分）。
-
-**資料來源（優先順序）：**
-- **CNN Fear & Greed Index（優先）** — CNN 綜合七項市場指標（含 VIX）的情緒指數，直接作為分數
-- **VIX（備援）** — 僅在 CNN 不可用時，以 VIX 指數換算分數作為替代。儀表板下方會顯示警告
-
-**色帶含義（由左至右）：**
-
-| 分數範圍 | 顏色 | 等級 |
-|----------|------|------|
-| 0–25 | 🟥 深紅 | 極度恐懼 |
-| 25–45 | 🟧 橘色 | 恐懼 |
-| 45–55 | 🟨 黃色 | 中性 |
-| 55–75 | 🟩 淺綠 | 貪婪 |
-| 75–100 | 🟢 深綠 | 極度貪婪 |
-
-**如何解讀：** 指針指向的位置即為當前市場情緒。儀表板下方顯示 VIX 值與日變動、CNN 分數（若可用）。
-
----
-
-### KPI 指標列（四個卡片）
-
-| 指標 | 說明 | 如何解讀 |
-|------|------|----------|
-| **市場情緒** | 基於風向球（Trend Setter）股票是否跌破 60 日均線的比例 | ☀️ 晴天 = 多數風向球在均線之上，市場偏多；🌧️ 雨天 = 超過半數跌破，市場偏空 |
-| **總市值** | 所有持倉的市值加總（以選定幣別顯示），含日漲跌幅 | 顯示相對前一交易日的漲跌幅與金額變動（▲上漲 / ▼下跌）。隱私模式下僅顯示百分比，金額遮蔽為 `***`。可透過頁面上方幣別選單切換顯示幣別 |
-| **健康分數** | 追蹤中股票訊號為「NORMAL」的比例 | ≥ 80% 綠色（健康）、≥ 50% 黃色（留意）、< 50% 紅色（警戒）。分子/分母顯示正常股數與總股數 |
-| **追蹤 / 持倉** | 雷達追蹤的股票檔數 vs 實際持倉筆數 | 兩者差距大代表有些追蹤中的股票尚未建立持倉，或持倉中有雷達未追蹤的標的 |
-
----
-
-### 🎯 目標 vs 實際配置（雙圓餅圖）
-
-並排顯示兩個甜甜圈圖：**左邊是目標配置**（你在投資人格中設定的理想比例），**右邊是實際配置**（當前持倉的市值比例）。兩張圖使用相同的分類顏色，方便直觀對比每個分類是否偏離目標。
-
----
-
-### 📊 偏移度 Drift（長條圖）
-
-每個分類的**實際配置與目標配置的差距**（百分點）。
-
-- **正值**（向上）= 超配，該分類佔比高於目標
-- **負值**（向下）= 低配，該分類佔比低於目標
-- 橘色虛線標示 **±5%** 警戒線，超過時長條變紅色
-- 展開「💡 再平衡建議」可查看系統自動產生的加減碼建議
-
----
-
-### ⚠️ 訊號警報
-
-列出所有**訊號非 NORMAL** 的追蹤股票：
-
-| 訊號 | 圖示 | 含義 |
-|------|------|------|
-| `THESIS_BROKEN` | 🔴 | 護城河受損（毛利率大幅衰退），基本面轉差 |
-| `CONTRARIAN_BUY` | 🟢 | RSI 偏低但護城河穩固，可能是錯殺機會 |
-| `OVERHEATED` | 🟠 | 乖離率過高，股價短期可能過熱 |
-
-若所有股票均為 NORMAL，會顯示綠色「✅ 所有追蹤股票訊號正常！」。
-
----
-
-### 🏆 前 10 大持倉
-
-依**權重（佔總市值比例）**排序的前 10 大持倉，顯示股票代號、分類、權重百分比、市值與日漲跌幅。
-
-- **日漲跌** — 顯示個股相對前一交易日的漲跌幅（▲上漲 / ▼下跌），數據來自 yfinance 歷史資料
-- **隱私模式** — 市值欄位會以 `***` 遮蔽，但日漲跌百分比仍然顯示
-
-> 💡 若單一持倉權重超過 15%，建議留意集中度風險。可前往「個人資產配置」頁的 X-Ray 穿透分析查看更詳細的曝險。
->
-> ⚠️ **注意**：日漲跌數據需要至少 2 天的歷史資料。新加入的股票或資料不足時會顯示 `N/A`。
-
----
-
-### 🙈 隱私模式（跨裝置同步）
-
-右上角的隱私模式開關會遮蔽所有**金額相關數字**（總市值、持倉市值），僅保留百分比與分類結構。設定會儲存至資料庫，跨裝置、跨 session 同步生效。在「個人資產配置」頁面也可切換，兩頁面同步。
-""")
+with st.expander(t("dashboard.sop.title"), expanded=False):
+    st.markdown(t("dashboard.sop.content"))
 
 
 # -- Fetch data --
@@ -198,7 +99,7 @@ holdings_data = fetch_holdings()
 
 # Currency selector (in sidebar-like position, below title)
 display_currency = st.selectbox(
-    "顯示幣別",
+    t("dashboard.currency_selector"),
     options=DISPLAY_CURRENCY_OPTIONS,
     index=0,
     key="dashboard_currency",
@@ -217,17 +118,17 @@ browser_tz = st.session_state.get("browser_tz")
 # Price data timestamp from rebalance
 if rebalance_data and rebalance_data.get("calculated_at"):
     price_ts = format_utc_timestamp(rebalance_data["calculated_at"], browser_tz)
-    _ts_parts.append(f"💰 價格資料更新：{price_ts}")
+    _ts_parts.append(t("dashboard.price_updated", timestamp=price_ts))
 
 # Last scan timestamp
 if last_scan_data and last_scan_data.get("last_scanned_at"):
     scan_ts = format_utc_timestamp(last_scan_data["last_scanned_at"], browser_tz)
-    _ts_parts.append(f"🔍 上次掃描：{scan_ts}")
+    _ts_parts.append(t("dashboard.last_scan", timestamp=scan_ts))
 
 if _ts_parts:
     st.caption(" ｜ ".join(_ts_parts))
 else:
-    st.caption("⏳ 尚無資料更新紀錄")
+    st.caption(t("dashboard.no_update_record"))
 
 
 # ---------------------------------------------------------------------------
@@ -236,13 +137,13 @@ else:
 # Page paths must match the strings in app.py st.Page(...) registration.
 if not stocks_data and not rebalance_data:
     st.divider()
-    st.info("👋 歡迎使用 Folio！開始設定你的投資組合。")
+    st.info(t("dashboard.welcome"))
     _onb_a, _onb_b, _ = st.columns([1, 1, 2])
     with _onb_a:
-        if st.button("💼 設定投資人格", use_container_width=True):
+        if st.button(t("dashboard.welcome_button_persona"), use_container_width=True):
             st.switch_page("views/allocation.py")
     with _onb_b:
-        if st.button("📡 追蹤股票", use_container_width=True):
+        if st.button(t("dashboard.welcome_button_track"), use_container_width=True):
             st.switch_page("views/radar.py")
     st.stop()
 
@@ -255,7 +156,7 @@ fear_greed_data = fetch_fear_greed()
 if fear_greed_data:
     fg_level = fear_greed_data.get("composite_level", "N/A")
     fg_score = fear_greed_data.get("composite_score", 50)
-    fg_info = FEAR_GREED_LABELS.get(fg_level, FEAR_GREED_LABELS["N/A"])
+    fg_info = get_fear_greed_label(fg_level)
     vix_data = fear_greed_data.get("vix") or {}
     vix_val = vix_data.get("value")
     vix_change = vix_data.get("change_1d")
@@ -298,11 +199,11 @@ if fear_greed_data:
     if cnn_score is not None:
         caption_parts.append(f"CNN={cnn_score}")
     else:
-        caption_parts.append(FEAR_GREED_CNN_UNAVAILABLE_MSG)
+        caption_parts.append(get_cnn_unavailable_msg())
 
     st.caption(" ｜ ".join(caption_parts))
 else:
-    st.caption(FEAR_GREED_DEFAULT_LABEL)
+    st.caption(get_fear_greed_label("N/A")["label"])
 
 
 # ---------------------------------------------------------------------------
@@ -313,14 +214,12 @@ kpi_cols = st.columns(4)
 # -- 1a. Market Sentiment --
 with kpi_cols[0]:
     market_status = (last_scan_data or {}).get("market_status")
-    if market_status and market_status in MARKET_SENTIMENT_LABELS:
-        sentiment_info = MARKET_SENTIMENT_LABELS[market_status]
-        st.metric("市場情緒", sentiment_info["label"])
+    sentiment_info = get_market_sentiment_label(market_status or "")
+    st.metric(t("dashboard.market_sentiment"), sentiment_info["label"])
+    if market_status:
         details = (last_scan_data or {}).get("market_status_details", "")
         if details:
             st.caption(details)
-    else:
-        st.metric("市場情緒", MARKET_SENTIMENT_DEFAULT_LABEL)
 
 # -- 1b. Total Portfolio Value --
 with kpi_cols[1]:
@@ -345,32 +244,32 @@ with kpi_cols[1]:
             delta_color = "off"
 
         st.metric(
-            "總市值",
+            t("dashboard.total_market_value"),
             _mask_money(total_val),
             delta=delta_str,
             delta_color=delta_color,
         )
     else:
-        st.metric("總市值", "N/A")
+        st.metric(t("dashboard.total_market_value"), "N/A")
 
 # -- 1c. Health Score --
 with kpi_cols[2]:
     health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
     if total_cnt > 0:
         st.metric(
-            "健康分數",
+            t("dashboard.health_score"),
             f"{health_pct:.0f}%",
-            delta=f"{normal_cnt}/{total_cnt} 正常",
+            delta=t("dashboard.health_delta", normal=normal_cnt, total=total_cnt),
             delta_color=_health_color(health_pct),
         )
     else:
-        st.metric("健康分數", "N/A")
+        st.metric(t("dashboard.health_score"), "N/A")
 
 # -- 1d. Tracking & Holdings Count --
 with kpi_cols[3]:
     stock_count = len(stocks_data) if stocks_data else 0
     holding_count = len(holdings_data) if holdings_data else 0
-    st.metric("追蹤 / 持倉", f"{stock_count} 檔 / {holding_count} 筆")
+    st.metric(t("dashboard.kpi.tracking_holdings"), t("dashboard.kpi.tracking_holdings_value", stocks=stock_count, holdings=holding_count))
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +281,7 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
     breakdown = rebalance_data["categories"]
 
     # -- 2a. Dual Donut Chart: Target vs Actual (side by side) --
-    st.subheader("🎯 目標 vs 實際配置")
+    st.subheader(t("dashboard.allocation_title"))
 
     target_alloc = profile_data.get("config", {})
     cat_labels = []
@@ -391,7 +290,7 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
     colors = []
 
     for cat_key, target_pct in target_alloc.items():
-        cat_display = CATEGORY_LABELS.get(cat_key, cat_key)
+        cat_display = get_category_labels().get(cat_key, cat_key)
         icon = CATEGORY_ICON_SHORT.get(cat_key, "")
         cat_labels.append(f"{icon} {cat_display.split('(')[0].strip()}")
         target_vals.append(target_pct)
@@ -403,7 +302,7 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
         rows=1,
         cols=2,
         specs=[[{"type": "pie"}, {"type": "pie"}]],
-        subplot_titles=["🎯 目標配置", "📊 實際配置"],
+        subplot_titles=[t("dashboard.chart.target"), t("dashboard.chart.actual")],
     )
 
     # Left donut — Target allocation
@@ -416,8 +315,8 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
             textinfo="label+percent",
             textposition="auto",
             hovertemplate=(
-                "<b>%{label}</b><br>"
-                "目標佔比：%{percent}<extra></extra>"
+                f"<b>%{{label}}</b><br>"
+                f"{t('dashboard.chart.target_pct')}：%{{percent}}<extra></extra>"
             ),
         ),
         row=1,
@@ -434,8 +333,8 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
             textinfo="label+percent",
             textposition="auto",
             hovertemplate=(
-                "<b>%{label}</b><br>"
-                "實際佔比：%{percent}<extra></extra>"
+                f"<b>%{{label}}</b><br>"
+                f"{t('dashboard.chart.actual_pct')}：%{{percent}}<extra></extra>"
             ),
         ),
         row=1,
@@ -450,7 +349,7 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
     st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
 
     # -- 2b. Drift Bar Chart --
-    st.subheader("📊 偏移度 Drift")
+    st.subheader(t("dashboard.drift_title"))
     drift_labels = []
     drift_vals = []
     drift_colors = []
@@ -477,7 +376,7 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
     fig_drift.update_layout(
         height=DASHBOARD_DRIFT_CHART_HEIGHT,
         margin=dict(l=20, r=20, t=30, b=20),
-        yaxis_title="偏移 (%)",
+        yaxis_title=t("dashboard.chart.drift_yaxis"),
         showlegend=False,
     )
     st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
@@ -485,17 +384,17 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
     # Rebalance advice summary
     advice = rebalance_data.get("advice", [])
     if advice:
-        with st.expander("💡 再平衡建議", expanded=False):
+        with st.expander(t("dashboard.rebalance_advice_title"), expanded=False):
             for item in advice[:5]:
                 st.write(item)
 else:
-    st.info("📭 尚無配置資料。請先設定投資人格並新增持倉。")
+    st.info(t("dashboard.no_allocation_data"))
     col_a, col_b, _ = st.columns([1, 1, 2])
     with col_a:
-        if st.button("💼 前往設定投資人格", use_container_width=True):
+        if st.button(t("dashboard.button_setup_persona"), use_container_width=True):
             st.switch_page("views/allocation.py")
     with col_b:
-        if st.button("📡 前往追蹤股票", use_container_width=True):
+        if st.button(t("dashboard.button_track_stock"), use_container_width=True):
             st.switch_page("views/radar.py")
 
 
@@ -503,7 +402,7 @@ else:
 # Section 3: Signal Alerts
 # ---------------------------------------------------------------------------
 st.divider()
-st.subheader("⚠️ 訊號警報")
+st.subheader(t("dashboard.signal_alerts_title"))
 
 if stocks_data:
     alert_stocks = [
@@ -514,16 +413,16 @@ if stocks_data:
         for s in alert_stocks:
             signal = s.get("last_scan_signal", "NORMAL")
             icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
-            cat_label = CATEGORY_LABELS.get(s.get("category", ""), s.get("category", ""))
+            cat_label = get_category_labels().get(s.get("category", ""), s.get("category", ""))
             cat_short = cat_label.split("(")[0].strip()
             st.markdown(f"{icon} **{s['ticker']}** — {cat_short} — `{signal}`")
     else:
-        st.success("✅ 所有追蹤股票訊號正常！")
+        st.success(t("dashboard.all_signals_normal"))
 else:
-    st.info("📭 尚未追蹤任何股票。前往投資雷達開始追蹤。")
+    st.info(t("dashboard.no_tracking_stocks"))
     _sig_a, _ = st.columns([1, 3])
     with _sig_a:
-        if st.button("📡 前往投資雷達新增股票", use_container_width=True):
+        if st.button(t("dashboard.button_goto_radar"), use_container_width=True):
             st.switch_page("views/radar.py")
 
 
@@ -531,7 +430,7 @@ else:
 # Section 4: Top Holdings
 # ---------------------------------------------------------------------------
 st.divider()
-st.subheader(f"🏆 前 {DASHBOARD_TOP_HOLDINGS_LIMIT} 大持倉")
+st.subheader(t("dashboard.top_holdings_title", limit=DASHBOARD_TOP_HOLDINGS_LIMIT))
 
 if rebalance_data and rebalance_data.get("holdings_detail"):
     holdings_detail = rebalance_data["holdings_detail"]
@@ -554,20 +453,20 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
             change_str = "N/A"
 
         rows.append({
-            "股票": h.get("ticker", ""),
-            "分類": f"{icon} {cat}",
-            "權重": f"{h.get('weight_pct', 0):.1f}%",
-            "市值": PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}",
-            "日漲跌": change_str,
+            t("dashboard.holdings_table.ticker"): h.get("ticker", ""),
+            t("dashboard.holdings_table.category"): f"{icon} {cat}",
+            t("dashboard.holdings_table.weight"): f"{h.get('weight_pct', 0):.1f}%",
+            t("dashboard.holdings_table.market_value"): PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}",
+            t("dashboard.holdings_table.daily_change"): change_str,
         })
 
     if rows:
         st.dataframe(rows, use_container_width=True, hide_index=True)
     else:
-        st.caption("無持倉資料。")
+        st.caption(t("dashboard.no_holdings"))
 else:
-    st.info("📭 尚無持倉資料。請先新增持倉以查看分析。")
+    st.info(t("dashboard.no_holdings_data"))
     _hold_a, _ = st.columns([1, 3])
     with _hold_a:
-        if st.button("💼 前往新增持倉", use_container_width=True):
+        if st.button(t("dashboard.button_add_holdings"), use_container_width=True):
             st.switch_page("views/allocation.py")

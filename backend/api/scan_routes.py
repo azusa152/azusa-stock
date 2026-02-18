@@ -20,6 +20,7 @@ from api.schemas import (
 from application.formatters import format_fear_greed_label
 from application.services import run_scan, send_weekly_digest
 from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
+from i18n import get_user_language, t
 from infrastructure import repositories as repo
 from infrastructure.database import engine, get_session
 from infrastructure.market_data import get_fear_greed_index
@@ -104,7 +105,9 @@ def get_fear_greed() -> FearGreedResponse:
     "/scan", response_model=AcceptedResponse, summary="Trigger background scan"
 )
 @limiter.limit("5/minute")
-async def run_scan_route(request: Request) -> AcceptedResponse:
+async def run_scan_route(
+    request: Request, session: Session = Depends(get_session)
+) -> AcceptedResponse:
     """
     觸發 V2 三層漏斗掃描（非同步），結果透過 Telegram 通知。
 
@@ -115,7 +118,7 @@ async def run_scan_route(request: Request) -> AcceptedResponse:
             status_code=409,
             detail={
                 "error_code": ERROR_SCAN_IN_PROGRESS,
-                "detail": "掃描正在執行中，請稍後再試。",
+                "detail": t("api.scan_in_progress", lang=get_user_language(session)),
             },
         )
 
@@ -129,7 +132,8 @@ async def run_scan_route(request: Request) -> AcceptedResponse:
     thread.start()
     logger.info("掃描已在背景執行緒啟動。")
     return AcceptedResponse(
-        status="accepted", message="掃描已啟動，結果將透過 Telegram 通知。"
+        status="accepted",
+        message=t("api.scan_started", lang=get_user_language(session)),
     )
 
 
@@ -137,7 +141,9 @@ async def run_scan_route(request: Request) -> AcceptedResponse:
     "/digest", response_model=AcceptedResponse, summary="Trigger weekly digest"
 )
 @limiter.limit("5/minute")
-async def run_digest_route(request: Request) -> AcceptedResponse:
+async def run_digest_route(
+    request: Request, session: Session = Depends(get_session)
+) -> AcceptedResponse:
     """
     觸發每週摘要（非同步），結果透過 Telegram 通知。
 
@@ -148,7 +154,7 @@ async def run_digest_route(request: Request) -> AcceptedResponse:
             status_code=409,
             detail={
                 "error_code": ERROR_DIGEST_IN_PROGRESS,
-                "detail": "每週摘要正在生成中，請稍後再試。",
+                "detail": t("api.digest_in_progress", lang=get_user_language(session)),
             },
         )
 
@@ -162,5 +168,6 @@ async def run_digest_route(request: Request) -> AcceptedResponse:
     thread.start()
     logger.info("每週摘要已在背景執行緒啟動。")
     return AcceptedResponse(
-        status="accepted", message="每週摘要已啟動，結果將透過 Telegram 通知。"
+        status="accepted",
+        message=t("api.digest_started", lang=get_user_language(session)),
     )

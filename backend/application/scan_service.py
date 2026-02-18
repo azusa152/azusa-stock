@@ -30,6 +30,7 @@ from domain.enums import (
     ScanSignal,
     StockCategory,
 )
+from i18n import get_user_language, t
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
@@ -60,6 +61,7 @@ def run_scan(session: Session) -> dict:
     Decision Engine 產生每檔股票的 signal，並透過 Telegram 通知。
     """
     logger.info("三層漏斗掃描啟動...")
+    lang = get_user_language(session)
 
     # === Layer 1: 市場情緒 ===
     trend_stocks = repo.find_active_stocks_by_category(
@@ -83,7 +85,7 @@ def run_scan(session: Session) -> dict:
     fear_greed = get_fear_greed_index()
     fg_level = fear_greed.get("composite_level", "N/A")
     fg_score = fear_greed.get("composite_score", 50)
-    fg_label = format_fear_greed_label(fg_level, fg_score)
+    fg_label = format_fear_greed_label(fg_level, fg_score, lang=lang)
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
@@ -97,10 +99,11 @@ def run_scan(session: Session) -> dict:
         alerts: list[str] = []
 
         if stock.category.value in SKIP_MOAT_CATEGORIES:
+            moat_not_applicable = t("scan.moat_not_applicable", lang=lang, category=stock.category.value)
             moat_result = {
                 "ticker": ticker,
                 "moat": MoatStatus.NOT_AVAILABLE.value,
-                "details": f"{stock.category.value} 不適用護城河分析",
+                "details": moat_not_applicable,
             }
         else:
             moat_result = analyze_moat_trend(ticker)
@@ -128,16 +131,16 @@ def run_scan(session: Session) -> dict:
         signal = determine_scan_signal(moat_value, mkt_status, rsi, bias)
 
         if signal == ScanSignal.THESIS_BROKEN:
-            alerts.append(f"🔴 {ticker} 護城河鬆動！{moat_details}")
+            alerts.append(t("scan.thesis_broken_alert", lang=lang, ticker=ticker, details=moat_details))
         elif signal == ScanSignal.CONTRARIAN_BUY:
-            alerts.append(f"🟢 {ticker} 逆勢買入訊號（RSI={rsi}，市場正面）")
+            alerts.append(t("scan.contrarian_buy_alert", lang=lang, ticker=ticker, rsi=rsi))
         elif signal == ScanSignal.OVERHEATED:
-            alerts.append(f"🟠 {ticker} 乖離率過熱（Bias={bias}%）")
+            alerts.append(t("scan.overheated_alert", lang=lang, ticker=ticker, bias=bias))
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
-            alerts.append(f"🟢 {ticker} {moat_details}")
+            alerts.append(t("scan.moat_stable_alert", lang=lang, ticker=ticker, details=moat_details))
         if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
-            alerts.append(f"⚠️ {ticker} {moat_details}")
+            alerts.append(t("scan.moat_unavailable_alert", lang=lang, ticker=ticker, details=moat_details))
 
         logger.info(
             "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
@@ -188,7 +191,7 @@ def run_scan(session: Session) -> dict:
     session.commit()
 
     # === 檢查自訂價格警報 ===
-    _check_price_alerts(session, results)
+    _check_price_alerts(session, results, lang)
 
     # === 差異比對 + 通知 ===
     category_icon = CATEGORY_ICON
@@ -226,10 +229,7 @@ def run_scan(session: Session) -> dict:
             len(new_or_changed),
             len(resolved),
         )
-        header = (
-            f"🔔 <b>Folio 掃描（差異通知）</b>\n"
-            f"市場情緒：{market_status_value} | 恐懼貪婪：{fg_label}\n"
-        )
+        header = t("scan.alert_header", lang=lang, market_status=market_status_value, fg_label=fg_label)
 
         # 新增/惡化的股票依類別分組
         body_parts: list[str] = []
@@ -251,7 +251,8 @@ def run_scan(session: Session) -> dict:
         # 恢復正常的股票
         if resolved:
             resolved_tickers = ", ".join(r["ticker"] for r in resolved)
-            body_parts.append(f"\n✅ <b>已恢復正常</b>\n{resolved_tickers}")
+            resolved_section = t("scan.resolved_section", lang=lang, tickers=resolved_tickers)
+            body_parts.append(f"\n{resolved_section}")
 
         if is_notification_enabled(session, "scan_alerts"):
             send_telegram_message_dual(header + "\n".join(body_parts), session)
@@ -267,7 +268,7 @@ def run_scan(session: Session) -> dict:
     }
 
 
-def _check_price_alerts(session: Session, results: list[dict]) -> None:
+def _check_price_alerts(session: Session, results: list[dict], lang: str) -> None:
     """檢查所有啟用中的自訂價格警報，觸發時發送 Telegram 通知。"""
     all_alerts = repo.find_all_active_alerts(session)
     if not all_alerts:
@@ -323,7 +324,7 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
     if triggered_msgs:
         session.commit()
         if is_notification_enabled(session, "price_alerts"):
-            msg = "⚡ <b>自訂價格警報觸發</b>\n\n" + "\n".join(triggered_msgs)
+            msg = t("scan.price_alert_header", lang=lang) + "\n\n" + "\n".join(triggered_msgs)
             send_telegram_message_dual(msg, session)
             logger.warning("觸發 %d 個自訂價格警報。", len(triggered_msgs))
         else:
@@ -384,6 +385,7 @@ def create_price_alert(
     """建立自訂價格警報。"""
     stock = _get_stock_or_raise(session, ticker)
     ticker_upper = stock.ticker
+    lang = get_user_language(session)
 
     alert = PriceAlert(
         stock_ticker=ticker_upper,
@@ -394,7 +396,7 @@ def create_price_alert(
     saved = repo.create_price_alert(session, alert)
     op_label = "<" if operator == "lt" else ">"
     return {
-        "message": f"✅ 已建立警報：{ticker_upper} {metric} {op_label} {threshold}",
+        "message": t("scan.alert_created", lang=lang, ticker=ticker_upper, metric=metric, op=op_label, threshold=threshold),
         "id": saved.id,
     }
 
@@ -419,8 +421,9 @@ def list_price_alerts(session: Session, ticker: str) -> list[dict]:
 
 def delete_price_alert(session: Session, alert_id: int) -> dict:
     """刪除價格警報。"""
+    lang = get_user_language(session)
     alert = repo.find_price_alert_by_id(session, alert_id)
     if not alert:
-        return {"message": "⚠️ 找不到此警報。"}
+        return {"message": t("scan.alert_not_found", lang=lang)}
     repo.delete_price_alert(session, alert)
-    return {"message": "✅ 警報已刪除。"}
+    return {"message": t("scan.alert_deleted", lang=lang)}

@@ -3,7 +3,12 @@ Import validation tests — stock and holding import endpoints.
 Tests Pydantic field validation, max payload size, and error responses.
 """
 
-from domain.constants import ERROR_INVALID_INPUT, GENERIC_VALIDATION_ERROR
+from domain.constants import (
+    DEFAULT_LANGUAGE,
+    ERROR_INVALID_INPUT,
+    GENERIC_VALIDATION_ERROR,
+)
+from i18n import t
 
 # Valid categories: Trend_Setter, Moat, Growth, Bond, Cash
 VALID_CATEGORY = "Growth"
@@ -105,7 +110,9 @@ def test_stock_import_oversized_list(client):
     assert response.status_code == 400
     data = response.json()
     assert data["detail"]["error_code"] == ERROR_INVALID_INPUT
-    assert data["detail"]["detail"] == GENERIC_VALIDATION_ERROR
+    assert data["detail"]["detail"] == t(
+        GENERIC_VALIDATION_ERROR, lang=DEFAULT_LANGUAGE
+    )
 
 
 def test_stock_import_tags_validation(client):
@@ -253,7 +260,9 @@ def test_holding_import_oversized_list(client):
     assert response.status_code == 400
     data = response.json()
     assert data["detail"]["error_code"] == ERROR_INVALID_INPUT
-    assert data["detail"]["detail"] == GENERIC_VALIDATION_ERROR
+    assert data["detail"]["detail"] == t(
+        GENERIC_VALIDATION_ERROR, lang=DEFAULT_LANGUAGE
+    )
 
 
 def test_holding_import_ticker_too_long(client):

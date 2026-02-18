@@ -6,12 +6,14 @@ Tests webhook, telegram, and preferences endpoints for exception handling.
 from unittest.mock import patch
 
 from domain.constants import (
+    DEFAULT_LANGUAGE,
     ERROR_PREFERENCES_UPDATE_FAILED,
     ERROR_TELEGRAM_SEND_FAILED,
     GENERIC_PREFERENCES_ERROR,
     GENERIC_TELEGRAM_ERROR,
     GENERIC_WEBHOOK_ERROR,
 )
+from i18n import t
 
 
 def test_webhook_exception_sanitized(client):
@@ -28,7 +30,7 @@ def test_webhook_exception_sanitized(client):
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
-        assert data["message"] == GENERIC_WEBHOOK_ERROR
+        assert data["message"] == t(GENERIC_WEBHOOK_ERROR, lang=DEFAULT_LANGUAGE)
         # Should NOT leak exception message
         assert "Database connection failed" not in data["message"]
         assert "secret info" not in data["message"]
@@ -65,7 +67,9 @@ def test_telegram_test_send_exception_sanitized(client):
         assert response.status_code == 500
         data = response.json()
         assert data["detail"]["error_code"] == ERROR_TELEGRAM_SEND_FAILED
-        assert data["detail"]["detail"] == GENERIC_TELEGRAM_ERROR
+        assert data["detail"]["detail"] == t(
+            GENERIC_TELEGRAM_ERROR, lang=DEFAULT_LANGUAGE
+        )
         # Should NOT leak exception message or token
         assert "HTTP 403" not in str(data)
         assert "sk-test-12345" not in str(data)
@@ -78,7 +82,9 @@ def test_telegram_test_not_configured(client):
     assert response.status_code == 400
     data = response.json()
     # This is an expected user error, not sanitized
-    assert "尚未設定 Telegram Chat ID" in data["detail"]["detail"]
+    assert data["detail"]["detail"] == t(
+        "api.telegram_not_configured", lang=DEFAULT_LANGUAGE
+    )
 
 
 def test_preferences_update_exception_sanitized(client):
@@ -101,7 +107,9 @@ def test_preferences_update_exception_sanitized(client):
         assert response.status_code == 500
         data = response.json()
         assert data["detail"]["error_code"] == ERROR_PREFERENCES_UPDATE_FAILED
-        assert data["detail"]["detail"] == GENERIC_PREFERENCES_ERROR
+        assert data["detail"]["detail"] == t(
+            GENERIC_PREFERENCES_ERROR, lang=DEFAULT_LANGUAGE
+        )
         # Should NOT leak exception message or file path
         assert "Database disk image" not in str(data)
         assert "/app/data/radar.db" not in str(data)

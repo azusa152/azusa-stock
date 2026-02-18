@@ -1,0 +1,192 @@
+{
+  "common": {
+    "generic_error": "Operation failed, please try again later.",
+    "validation_error": "Invalid input data format.",
+    "telegram_error": "Failed to configure Telegram notifications.",
+    "preferences_error": "Failed to update preferences.",
+    "webhook_error": "Error processing request.",
+    "unknown": "Unknown",
+    "sell": "Sell",
+    "reason": "Reason",
+    "priority": "Priority"
+  },
+  "webhook": {
+    "missing_ticker": "Please provide ticker parameter.",
+    "alert_status": {
+      "active": "active",
+      "inactive": "inactive"
+    },
+    "fear_greed_prefix": "Fear & Greed Index",
+    "price_alerts_header": "{ticker} price alerts:",
+    "signals_line": "{ticker} — Price ${price}, RSI={rsi}, Bias={bias}%"
+  },
+  "stock": {
+    "not_found": "Stock {ticker} not found.",
+    "already_exists": "Stock {ticker} already exists in watchlist.",
+    "already_inactive": "Stock {ticker} is already inactive.",
+    "already_active": "Stock {ticker} is already active.",
+    "category_unchanged": "Stock {ticker} is already in {category} category.",
+    "category_changed": "✅ {ticker} category changed from \"{old}\" to \"{new}\".",
+    "category_change_log": "[Category Change] {old} → {new}",
+    "removed": "✅ {ticker} removed from watchlist.",
+    "removed_log": "[Removed] {reason}",
+    "reactivated": "✅ {ticker} tracking reactivated.",
+    "reactivated_log": "[Tracking Reactivated]",
+    "display_order_updated": "✅ Updated display order for {count} stocks.",
+    "thesis_updated": "✅ {ticker} thesis updated to version {version}.",
+    "added": "✅ Added {ticker} to {category} category.",
+    "import_missing_ticker": "Missing ticker field",
+    "import_invalid_category": "{ticker}: invalid category {category}",
+    "import_complete": "✅ Import complete: {created} added, {updated} updated, {errors} errors.",
+    "moat_not_applicable": "{category} not applicable for moat analysis"
+  },
+  "scan": {
+    "in_progress": "Scan in progress, please try again later.",
+    "started": "Scan started, results will be sent via Telegram.",
+    "alert_header": "🔔 <b>Folio Scan (Changes Detected)</b>\nMarket Sentiment: {market_status} | Fear & Greed: {fg_label}\n",
+    "resolved_section": "✅ <b>Resolved to Normal</b>\n{tickers}",
+    "price_alert_header": "⚡ <b>Price Alert Triggered</b>",
+    "price_alert_triggered": "🔔 {ticker} {metric}={value} {op_symbol} {threshold}",
+    "alert_created": "✅ Alert created: {ticker} {metric} {op} {threshold}",
+    "alert_not_found": "⚠️ Alert not found.",
+    "alert_deleted": "✅ Alert deleted.",
+    "moat_not_applicable": "{category} not applicable for moat analysis",
+    "thesis_broken_alert": "🔴 {ticker} moat deteriorating! {details}",
+    "contrarian_buy_alert": "🟢 {ticker} contrarian buy signal (RSI={rsi}, positive market)",
+    "overheated_alert": "🟠 {ticker} overheated (Bias={bias}%)",
+    "moat_stable_alert": "🟢 {ticker} {details}",
+    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+  },
+  "notification": {
+    "change_label": "changes",
+    "times_label": "times"
+  },
+  "formatter": {
+    "sell": "sell",
+    "shares": "shares",
+    "reason": "Reason",
+    "priority": "Priority"
+  },
+  "rebalance": {
+    "no_profile": "Investment profile not configured. Please set up your portfolio target first.",
+    "no_holdings": "No holdings entered, please add assets first.",
+    "no_holdings_data": "No holdings data available.",
+    "xray_header": "🔬 X-Ray Position Analysis",
+    "xray_warning": "⚠️ X-Ray Warning: {symbol} direct holding {direct_pct:.1f}%, plus indirect ETF exposure ({sources}), total exposure {total_pct:.1f}%, exceeding single stock risk threshold {threshold:.0f}%.",
+    "fx_risk_high": "🔴 Detected sharp FX volatility. Currency risk is HIGH. Recommend reviewing foreign currency positions immediately.",
+    "fx_risk_medium": "🟡 Detected recent FX volatility (5-day). Currency risk is MEDIUM. Continue monitoring FX trends.",
+    "fx_risk_low": "🟢 Recent FX changes stable. Currency risk is LOW.",
+    "non_home_pct": "📊 Non-home currency ({home}) assets: {pct:.1f}%.",
+    "foreign_cash_warning": "💵 {pct:.1f}% of your cash is in foreign currency. Largest foreign cash: {currency} (approx. {value:,.0f} {home}), directly impacted by FX movements.",
+    "cash_impact": "(including {currency} cash approx. {amount:,.0f} {home} directly affected)",
+    "fx_alert_up": "📈 {pair} {type_label}: {period}appreciated {change_pct:+.2f}%, current rate {rate:.4f}. {cash_note}",
+    "fx_alert_down": "📉 {pair} {type_label}: {period}depreciated {change_pct:+.2f}%, current rate {rate:.4f}. Consider hedging. {cash_note}",
+    "fx_exposure_title": "💱 Currency Exposure Monitor",
+    "withdrawal_insufficient": "⚠️ No holdings entered, cannot calculate withdrawal plan.",
+    "withdrawal_shortfall_total": "⚠️ Insufficient portfolio value, shortfall: {amount} {currency}.",
+    "withdrawal_no_sellable": "⚠️ No holdings available to sell.",
+    "withdrawal_success": "✅ Withdrawal plan generated with {count} sell recommendations."
+  },
+  "fx_watch": {
+    "alert_header": "💱 FX Timing Alert\n\n",
+    "current_rate": "💱 Current Rate: {rate}"
+  },
+  "stress_test": {
+    "no_holdings": "No holdings",
+    "panic_intro": "🔴 Portfolio will lose 30%+ in extreme crash, entering panic zone.",
+    "advice_header": "💡 Immediate action recommended:",
+    "advice_beta_high": "   • Portfolio Beta >= 1.5, highly aggressive. Consider adding low-volatility assets (bonds, cash) to reduce risk exposure.",
+    "advice_beta_moderate": "   • Portfolio Beta >= 1.2, moderately aggressive. Recommend partial profit-taking on high-Beta positions.",
+    "advice_beta_low": "   • Portfolio Beta < 1.2, but still monitor single-stock concentration risk.",
+    "advice_emergency_fund": "   • Ensure emergency fund is sufficient (at least 6 months living expenses).",
+    "advice_leverage": "   • If using leverage or margin, maintain safety buffer to avoid forced liquidation.",
+    "advice_thesis_broken": "   • Review holdings for Thesis Broken signals, prioritize reducing deteriorating positions.",
+    "advice_warning": "⚠️ Stress test is scenario modeling only, actual markets may be more extreme. Invest with caution.",
+    "pain_low": "Just a Scratch",
+    "pain_moderate": "Correction",
+    "pain_high": "Bear Market",
+    "pain_panic": "Panic Zone",
+    "disclaimer": "⚠️ This is a simplified linear CAPM model. In actual crashes, correlations approach 1 and liquidity dries up, potentially causing larger losses. This simulation is for reference only and does not constitute investment advice."
+  },
+  "withdrawal": {
+    "rebalance_reason": "{icon} {category} overweight {drift}%, selling locks in gains and rebalances to target.",
+    "tax_reason": "📉 Unrealized loss position, selling enables Tax-Loss Harvesting to offset capital gains tax.",
+    "liquidity_high_reason": "{icon} {category} high liquidity, prioritize for withdrawal to preserve compounding core assets.",
+    "liquidity_default_reason": "{icon} {category} liquidation to cover withdrawal shortfall.",
+    "no_profile": "No portfolio target allocation set. Please select an investor profile first.",
+    "no_holdings": "⚠️ No holdings found. Cannot calculate withdrawal plan.",
+    "shortfall": "⚠️ Portfolio value insufficient, shortfall {amount} {currency}. Below are maximum withdrawal suggestions.",
+    "no_sellable": "⚠️ No sellable holdings.",
+    "plan_generated": "✅ Smart withdrawal plan generated, {count} sell recommendations.",
+    "no_holdings_stress": "No holdings found. Please add assets first."
+  },
+  "telegram": {
+    "not_configured": "Telegram Chat ID not configured, please save settings first."
+  },
+  "market": {
+    "no_trend_stocks": "No trend setter stocks available for analysis",
+    "sentiment_caution": "Market Sentiment: CAUTION — {pct}% of trend setters below 60MA ({below}/{total})",
+    "sentiment_caution_detail": "Majority of trend setters weakening ({below}/{total} below 60MA)",
+    "sentiment_positive": "Market Sentiment: POSITIVE — {pct}% of trend setters below 60MA ({below}/{total})",
+    "sentiment_positive_detail": "Trend setters overall stable ({below}/{total} below 60MA)",
+    "sentiment_default": "Unable to determine, defaulting to positive",
+    "caution_details": "Most trend setters weakening ({below}/{total} below 60MA)",
+    "positive_details": "Trend setters overall healthy ({below}/{total} below 60MA)",
+    "fallback_optimistic": "Unable to determine, defaulting to optimistic",
+    "insufficient_history": "⚠️ {ticker} insufficient history data for technical indicators.",
+    "signals_fetch_error": "⚠️ Failed to fetch {ticker} technical signals: {error}"
+  },
+  "holding": {
+    "not_found": "Holding not found.",
+    "deleted": "Holding {ticker} deleted.",
+    "import_error": "Import error at row {index}",
+    "import_success": "Import complete: {count} successful.",
+    "xray_complete": "X-Ray analysis complete, {count} warnings sent.",
+    "fx_alert_complete": "FX exposure check complete, {count} alerts sent.",
+    "scenario_range_error": "scenario_drop_pct must be between -50 and 0",
+    "no_holdings_error": "No holdings entered, please add assets first."
+  },
+  "persona": {
+    "not_found": "Profile not found.",
+    "disabled": "Profile '{name}' has been disabled."
+  },
+  "api": {
+    "digest_in_progress": "Weekly digest is being generated. Please try again later.",
+    "digest_started": "Weekly digest started, results will be sent via Telegram.",
+    "holding_not_found": "Holding not found.",
+    "holding_deleted": "Holding {ticker} deleted.",
+    "import_item_failed": "Import item {index} failed",
+    "import_done": "Import complete: {count} successful.",
+    "xray_done": "X-Ray analysis complete, {count} warnings sent.",
+    "fx_alert_done": "FX exposure check complete, {count} alerts sent.",
+    "scenario_range_error": "scenario_drop_pct must be between -50 and 0",
+    "profile_not_found": "Profile not found.",
+    "profile_deactivated": "Profile '{name}' deactivated.",
+    "scan_in_progress": "Scan in progress. Please try again later.",
+    "scan_started": "Scan started. Results will be sent via Telegram.",
+    "telegram_not_configured": "Telegram Chat ID not configured. Please save settings first.",
+    "telegram_test_msg": "✅ <b>Folio Test Message</b>\n\nCongratulations! Your Telegram notification settings are working correctly.",
+    "telegram_test_sent": "✅ Test message sent. Please check Telegram.",
+    "tag_validation_error": "Each tag must be non-empty and no longer than 50 characters"
+  },
+  "constants": {
+    "removal_reason_unknown": "Unknown",
+    "default_webhook_thesis": "Added by AI agent.",
+    "generic_error": "Operation failed. Please try again later.",
+    "generic_validation_error": "Invalid input format.",
+    "generic_telegram_error": "Telegram notification setup failed.",
+    "generic_preferences_error": "Preference update failed.",
+    "generic_webhook_error": "An error occurred while processing the request.",
+    "notification_scan_alerts": "Scan signal alerts (THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY)",
+    "notification_price_alerts": "Custom price alert triggers",
+    "notification_weekly_digest": "Weekly investment digest",
+    "notification_xray_alerts": "X-Ray concentration warnings",
+    "notification_fx_alerts": "FX exposure alerts",
+    "notification_fx_watch_alerts": "FX exchange timing alerts",
+    "stress_pain_low": "Just a Scratch",
+    "stress_pain_moderate": "Noticeable Correction",
+    "stress_pain_high": "Significant Damage (Bear Market)",
+    "stress_pain_panic": "Sleepless Nights (Panic Zone)",
+    "stress_disclaimer": "⚠️ This is a simplified linear CAPM model. In actual crashes, correlations tend toward 1 and liquidity drought may cause larger declines. This simulation is for reference only and does not constitute investment advice."
+  }
+}

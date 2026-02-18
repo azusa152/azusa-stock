@@ -1,0 +1,192 @@
+{
+  "common": {
+    "generic_error": "操作失敗，請稍後再試。",
+    "validation_error": "輸入資料格式不正確。",
+    "telegram_error": "Telegram 通知設定失敗。",
+    "preferences_error": "偏好設定更新失敗。",
+    "webhook_error": "處理請求時發生錯誤。",
+    "unknown": "未知",
+    "sell": "賣出",
+    "reason": "理由",
+    "priority": "優先級"
+  },
+  "webhook": {
+    "missing_ticker": "請提供 ticker 參數。",
+    "alert_status": {
+      "active": "啟用",
+      "inactive": "停用"
+    },
+    "fear_greed_prefix": "恐懼貪婪指數",
+    "price_alerts_header": "{ticker} 價格警報：",
+    "signals_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%"
+  },
+  "stock": {
+    "not_found": "找不到股票 {ticker}。",
+    "already_exists": "股票 {ticker} 已存在追蹤清單中。",
+    "already_inactive": "股票 {ticker} 已經是停用狀態。",
+    "already_active": "股票 {ticker} 已經是啟用狀態。",
+    "category_unchanged": "股票 {ticker} 已經是 {category} 分類。",
+    "category_changed": "✅ {ticker} 分類已從「{old}」變更為「{new}」。",
+    "category_change_log": "[分類變更] {old} → {new}",
+    "removed": "✅ {ticker} 已從追蹤清單移除。",
+    "removed_log": "[已移除] {reason}",
+    "reactivated": "✅ {ticker} 已重新啟用追蹤。",
+    "reactivated_log": "[重新啟用追蹤]",
+    "display_order_updated": "✅ 已更新 {count} 檔股票的顯示順位。",
+    "thesis_updated": "✅ {ticker} 觀點已更新至第 {version} 版。",
+    "added": "✅ 已新增 {ticker} 到 {category} 分類。",
+    "import_missing_ticker": "缺少 ticker 欄位",
+    "import_invalid_category": "{ticker}: 無效分類 {category}",
+    "import_complete": "✅ 匯入完成：新增 {created}，更新 {updated}，錯誤 {errors}。",
+    "moat_not_applicable": "{category} 不適用護城河分析"
+  },
+  "scan": {
+    "in_progress": "掃描正在執行中，請稍後再試。",
+    "started": "掃描已啟動，結果將透過 Telegram 通知。",
+    "alert_header": "🔔 <b>Folio 掃描（差異通知）</b>\n市場情緒：{market_status} | 恐懼貪婪：{fg_label}\n",
+    "resolved_section": "✅ <b>已恢復正常</b>\n{tickers}",
+    "price_alert_header": "⚡ <b>自訂價格警報觸發</b>",
+    "price_alert_triggered": "🔔 {ticker} {metric}={value} {op_symbol} {threshold}",
+    "alert_created": "✅ 已建立警報：{ticker} {metric} {op} {threshold}",
+    "alert_not_found": "⚠️ 找不到此警報。",
+    "alert_deleted": "✅ 警報已刪除。",
+    "moat_not_applicable": "{category} 不適用護城河分析",
+    "thesis_broken_alert": "🔴 {ticker} 護城河鬆動！{details}",
+    "contrarian_buy_alert": "🟢 {ticker} 逆勢買入訊號（RSI={rsi}，市場正面）",
+    "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
+    "moat_stable_alert": "🟢 {ticker} {details}",
+    "moat_unavailable_alert": "⚠️ {ticker} {details}"
+  },
+  "notification": {
+    "change_label": "變化",
+    "times_label": "次"
+  },
+  "formatter": {
+    "sell": "賣出",
+    "shares": "股",
+    "reason": "理由",
+    "priority": "優先級"
+  },
+  "rebalance": {
+    "no_profile": "尚未設定投資組合目標配置，請先選擇投資人格。",
+    "no_holdings": "尚未輸入任何持倉，請先新增資產。",
+    "no_holdings_data": "尚無持倉資料。",
+    "xray_header": "🔬 穿透式持倉 X-Ray 分析",
+    "xray_warning": "⚠️ X-Ray 警告：{symbol} 直接持倉佔 {direct_pct:.1f}%，加上 ETF 間接曝險（{sources}），真實曝險已達 {total_pct:.1f}%，超過單一標的風險建議值 {threshold:.0f}%。",
+    "fx_risk_high": "🔴 偵測到單日劇烈匯率波動，匯率風險為高。建議立即檢視外幣部位，評估是否需要避險。",
+    "fx_risk_medium": "🟡 偵測到近期匯率明顯波動（5 日），匯率風險為中等。持續關注外幣匯率走勢。",
+    "fx_risk_low": "🟢 近期匯率變動穩定，匯率風險較低。",
+    "non_home_pct": "📊 非本幣（{home}）資產佔比 {pct:.1f}%。",
+    "foreign_cash_warning": "💵 您的現金部位中，{pct:.1f}% 為非本幣。最大外幣現金為 {currency}（約 {value:,.0f} {home}），受匯率波動直接影響。",
+    "cash_impact": "（其中 {currency} 現金約 {amount:,.0f} {home} 直接受影響）",
+    "fx_alert_up": "📈 {pair} {type_label}：{period}升值 {change_pct:+.2f}%，現價 {rate:.4f}。{cash_note}",
+    "fx_alert_down": "📉 {pair} {type_label}：{period}貶值 {change_pct:+.2f}%，現價 {rate:.4f}。建議留意避險。{cash_note}",
+    "fx_exposure_title": "💱 匯率曝險監控",
+    "withdrawal_insufficient": "⚠️ 尚未輸入任何持倉，無法計算提款建議。",
+    "withdrawal_shortfall_total": "⚠️ 投資組合市值不足，缺口：{amount} {currency}。",
+    "withdrawal_no_sellable": "⚠️ 無可賣出的持倉。",
+    "withdrawal_success": "✅ 聰明提款建議已產生，共 {count} 筆賣出建議。"
+  },
+  "fx_watch": {
+    "alert_header": "💱 外匯換匯時機警報\n\n",
+    "current_rate": "💱 現價：{rate}"
+  },
+  "stress_test": {
+    "no_holdings": "無持倉",
+    "panic_intro": "🔴 組合在極端崩盤下將蒸發 30% 以上，已進入「睡不著覺」區間。",
+    "advice_header": "💡 建議立即檢視以下事項：",
+    "advice_beta_high": "   • 組合 Beta >= 1.5，高度激進。考慮增持低波動資產（債券、現金）以降低風險暴露。",
+    "advice_beta_moderate": "   • 組合 Beta >= 1.2，偏激進。建議部分獲利了結高 Beta 標的，鎖定帳面利潤。",
+    "advice_beta_low": "   • 組合 Beta < 1.2，但仍需關注個股集中度風險。",
+    "advice_emergency_fund": "   • 確認緊急備用金充足（至少 6 個月生活費）。",
+    "advice_leverage": "   • 若使用槓桿或融資，務必預留安全邊際以防強制平倉。",
+    "advice_thesis_broken": "   • 檢視持倉中是否有「Thesis Broken」訊號，優先減碼基本面惡化的標的。",
+    "advice_warning": "⚠️ 壓力測試僅為情境推演，實際市場可能更極端。投資前請三思。",
+    "pain_low": "微風輕拂 (Just a Scratch)",
+    "pain_moderate": "有感修正 (Correction)",
+    "pain_high": "傷筋動骨 (Bear Market)",
+    "pain_panic": "睡不著覺 (Panic Zone)",
+    "disclaimer": "⚠️ 此為線性 CAPM 簡化模型，實際崩盤中相關性會趨近 1、流動性枯竭可能導致更大跌幅。本模擬僅供參考，不構成投資建議。"
+  },
+  "withdrawal": {
+    "rebalance_reason": "{icon} {category} 超配 {drift}%，賣出可鎖定獲利並回歸目標佔比。",
+    "tax_reason": "📉 帳面虧損持倉，賣出可進行 Tax-Loss Harvesting 抵銷資本利得稅。",
+    "liquidity_high_reason": "{icon} {category} 流動性高，優先用於提款，保留複利核心資產。",
+    "liquidity_default_reason": "{icon} {category} 資產變現以補足提款缺口。",
+    "no_profile": "尚未設定投資組合目標配置，請先選擇投資人格。",
+    "no_holdings": "⚠️ 尚未輸入任何持倉，無法計算提款建議。",
+    "shortfall": "⚠️ 投資組合市值不足，缺口 {amount} {currency}。以下為最大可提取建議。",
+    "no_sellable": "⚠️ 無可賣出的持倉。",
+    "plan_generated": "✅ 聰明提款建議已產生，共 {count} 筆賣出建議。",
+    "no_holdings_stress": "尚未輸入任何持倉，請先新增資產。"
+  },
+  "telegram": {
+    "not_configured": "尚未設定 Telegram Chat ID，請先儲存設定。"
+  },
+  "market": {
+    "no_trend_stocks": "無風向球股票可供分析",
+    "sentiment_caution": "市場情緒：CAUTION — {pct}% 的風向球跌破 60MA（{below}/{total}）",
+    "sentiment_caution_detail": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
+    "sentiment_positive": "市場情緒：POSITIVE — {pct}% 的風向球跌破 60MA（{below}/{total}）",
+    "sentiment_positive_detail": "風向球整體穩健（{below}/{total} 跌破 60MA）",
+    "sentiment_default": "無法判斷，預設樂觀",
+    "caution_details": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
+    "positive_details": "風向球整體穩健（{below}/{total} 跌破 60MA）",
+    "fallback_optimistic": "無法判斷，預設樂觀",
+    "insufficient_history": "⚠️ {ticker} 歷史資料不足，無法計算技術指標。",
+    "signals_fetch_error": "⚠️ 無法取得 {ticker} 技術訊號：{error}"
+  },
+  "holding": {
+    "not_found": "持倉不存在。",
+    "deleted": "持倉 {ticker} 已刪除。",
+    "import_error": "第 {index} 筆匯入失敗",
+    "import_success": "匯入完成：{count} 筆成功。",
+    "xray_complete": "X-Ray 分析完成，{count} 筆警告已發送。",
+    "fx_alert_complete": "匯率曝險檢查完成，{count} 筆警報已發送。",
+    "scenario_range_error": "scenario_drop_pct 必須在 -50 到 0 之間",
+    "no_holdings_error": "尚未輸入任何持倉，請先新增資產。"
+  },
+  "persona": {
+    "not_found": "配置不存在。",
+    "disabled": "配置 '{name}' 已停用。"
+  },
+  "api": {
+    "digest_in_progress": "每週摘要正在生成中，請稍後再試。",
+    "digest_started": "每週摘要已啟動，結果將透過 Telegram 通知。",
+    "holding_not_found": "持倉不存在。",
+    "holding_deleted": "持倉 {ticker} 已刪除。",
+    "import_item_failed": "第 {index} 筆匯入失敗",
+    "import_done": "匯入完成：{count} 筆成功。",
+    "xray_done": "X-Ray 分析完成，{count} 筆警告已發送。",
+    "fx_alert_done": "匯率曝險檢查完成，{count} 筆警報已發送。",
+    "scenario_range_error": "scenario_drop_pct 必須在 -50 到 0 之間",
+    "profile_not_found": "配置不存在。",
+    "profile_deactivated": "配置 '{name}' 已停用。",
+    "scan_in_progress": "掃描正在執行中，請稍後再試。",
+    "scan_started": "掃描已啟動，結果將透過 Telegram 通知。",
+    "telegram_not_configured": "尚未設定 Telegram Chat ID，請先儲存設定。",
+    "telegram_test_msg": "✅ <b>Folio 測試訊息</b>\n\n恭喜！你的 Telegram 通知設定正確運作。",
+    "telegram_test_sent": "✅ 測試訊息已發送，請檢查 Telegram。",
+    "tag_validation_error": "每個標籤必須非空且不超過 50 字元"
+  },
+  "constants": {
+    "removal_reason_unknown": "未知",
+    "default_webhook_thesis": "由 AI agent 新增。",
+    "generic_error": "操作失敗，請稍後再試。",
+    "generic_validation_error": "輸入資料格式不正確。",
+    "generic_telegram_error": "Telegram 通知設定失敗。",
+    "generic_preferences_error": "偏好設定更新失敗。",
+    "generic_webhook_error": "處理請求時發生錯誤。",
+    "notification_scan_alerts": "掃描訊號通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
+    "notification_price_alerts": "自訂價格警報觸發通知",
+    "notification_weekly_digest": "每週投資摘要",
+    "notification_xray_alerts": "X-Ray 集中度警告",
+    "notification_fx_alerts": "匯率曝險警報",
+    "notification_fx_watch_alerts": "外匯換匯時機警報",
+    "stress_pain_low": "微風輕拂 (Just a Scratch)",
+    "stress_pain_moderate": "有感修正 (Correction)",
+    "stress_pain_high": "傷筋動骨 (Bear Market)",
+    "stress_pain_panic": "睡不著覺 (Panic Zone)",
+    "stress_disclaimer": "⚠️ 此為線性 CAPM 簡化模型，實際崩盤中相關性會趨近 1、流動性枯竭可能導致更大跌幅。本模擬僅供參考，不構成投資建議。"
+  }
+}

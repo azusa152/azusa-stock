@@ -6,6 +6,8 @@ Frontend — 集中管理所有前端常數與設定。
 import json
 import os
 
+from i18n import t
+
 # ---------------------------------------------------------------------------
 # Backend Connection
 # ---------------------------------------------------------------------------
@@ -51,12 +53,18 @@ FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "
 # FX Chart Configuration
 # ---------------------------------------------------------------------------
 FX_CHART_HEIGHT = 280  # Matches price chart height for consistency
-FX_CHART_PERIODS = {
-    "1 個月": 30,
-    "2 個月": 60,
-    "3 個月": 90,
-}
-FX_CHART_DEFAULT_PERIOD = "3 個月"  # Show full available data by default
+
+
+def get_fx_chart_periods() -> dict[str, int]:
+    """Get localized FX chart period options."""
+    return {
+        t("config.fx_period.1month"): 30,
+        t("config.fx_period.2months"): 60,
+        t("config.fx_period.3months"): 90,
+    }
+
+
+FX_CHART_DEFAULT_PERIOD_KEY = "config.fx_period.3months"  # Key for default period
 
 # Cache TTL for FX history (align with backend L1 cache)
 CACHE_TTL_FX_HISTORY = 7200  # 2 hours
@@ -77,13 +85,16 @@ DEFAULT_ALERT_THRESHOLD = 30.0
 # Category Labels & Tags
 # ---------------------------------------------------------------------------
 CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond", "Cash"]
-CATEGORY_LABELS = {
-    "Trend_Setter": "🌊 風向球 (Trend Setter)",
-    "Moat": "🏰 護城河 (Moat)",
-    "Growth": "🚀 成長夢想 (Growth)",
-    "Bond": "🛡️ 債券 (Bond)",
-    "Cash": "💵 現金 (Cash)",
-}
+
+
+def get_category_label(category: str) -> str:
+    """Get localized category label for a single category key."""
+    return t(f"config.category.{category.lower()}")
+
+
+def get_category_labels() -> dict[str, str]:
+    """Get all localized category labels as a dict (evaluated at call time)."""
+    return {k: get_category_label(k) for k in CATEGORY_OPTIONS}
 # ---------------------------------------------------------------------------
 # Category Colors (for pie chart visual grouping)
 # ---------------------------------------------------------------------------
@@ -141,11 +152,16 @@ API_REBALANCE_TIMEOUT = 30
 API_WITHDRAW_TIMEOUT = 30
 DRIFT_CHART_HEIGHT = 300
 ALLOCATION_CHART_HEIGHT = 400
-WITHDRAW_PRIORITY_LABELS = {
-    1: "🔄 再平衡",
-    2: "📉 節稅",
-    3: "💧 流動性",
-}
+
+
+def get_withdraw_priority_label(priority: int) -> str:
+    """Get localized withdrawal priority label."""
+    labels = {
+        1: t("config.priority.rebalance"),
+        2: t("config.priority.tax"),
+        3: t("config.priority.liquidity"),
+    }
+    return labels.get(priority, str(priority))
 
 # ---------------------------------------------------------------------------
 # Stress Test (Portfolio Stress Testing)
@@ -176,32 +192,50 @@ RADAR_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond"]
 # ---------------------------------------------------------------------------
 # Stock Market Options (for multi-market support)
 # ---------------------------------------------------------------------------
-STOCK_MARKET_OPTIONS = {
-    "US": {"label": "🇺🇸 美股", "suffix": "", "currency": "USD"},
-    "TW": {"label": "🇹🇼 台股", "suffix": ".TW", "currency": "TWD"},
-    "JP": {"label": "🇯🇵 日股", "suffix": ".T", "currency": "JPY"},
-    "HK": {"label": "🇭🇰 港股", "suffix": ".HK", "currency": "HKD"},
-}
+def get_stock_market_options() -> dict:
+    """Get localized stock market options."""
+    return {
+        "US": {"label": t("config.market.us"), "suffix": "", "currency": "USD"},
+        "TW": {"label": t("config.market.tw"), "suffix": ".TW", "currency": "TWD"},
+        "JP": {"label": t("config.market.jp"), "suffix": ".T", "currency": "JPY"},
+        "HK": {"label": t("config.market.hk"), "suffix": ".HK", "currency": "HKD"},
+    }
+
+
 STOCK_MARKET_PLACEHOLDERS = {
     "US": "AAPL",
     "TW": "2330",
     "JP": "7203",
     "HK": "0700",
 }
-# Reverse-lookup: ticker suffix -> market label (for display on stock cards)
-TICKER_SUFFIX_TO_MARKET = {
-    ".TW": "🇹🇼 台股",
-    ".T": "🇯🇵 日股",
-    ".HK": "🇭🇰 港股",
-}
-TICKER_DEFAULT_MARKET = "🇺🇸 美股"
+
+
+def get_ticker_market_label(ticker: str) -> str:
+    """Get market label from ticker suffix."""
+    if ".TW" in ticker:
+        return t("config.market.tw")
+    elif ".T" in ticker:
+        return t("config.market.jp")
+    elif ".HK" in ticker:
+        return t("config.market.hk")
+    else:
+        return t("config.market.us")
 STOCK_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth"]
 
 # ---------------------------------------------------------------------------
 # Cash Form Options
 # ---------------------------------------------------------------------------
 CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
-CASH_ACCOUNT_TYPE_OPTIONS = ["活存", "定存", "貨幣市場基金", "其他"]
+
+
+def get_cash_account_type_options() -> list[str]:
+    """Get localized cash account type options."""
+    return [
+        t("config.account_type.savings"),
+        t("config.account_type.fixed_deposit"),
+        t("config.account_type.money_market"),
+        t("config.account_type.other"),
+    ]
 
 # ---------------------------------------------------------------------------
 # Display Currency Options (for rebalance analysis)
@@ -221,7 +255,11 @@ SCAN_SIGNAL_ICONS = {
 }
 REORDER_MIN_STOCKS = 2
 PRIVACY_MASK = "***"
-PRIVACY_TOGGLE_LABEL = "🙈 隱私模式"
+
+
+def get_privacy_toggle_label() -> str:
+    """Get localized privacy toggle label."""
+    return t("config.privacy_mode")
 
 # ---------------------------------------------------------------------------
 # Dashboard Page
@@ -231,22 +269,30 @@ CACHE_TTL_LAST_SCAN = 60  # 1 minute
 CACHE_TTL_PREFERENCES = 300  # 5 minutes
 HEALTH_SCORE_GOOD_THRESHOLD = 80
 HEALTH_SCORE_WARN_THRESHOLD = 50
-MARKET_SENTIMENT_LABELS = {
-    "POSITIVE": {"label": "☀️ 晴天", "color": "green"},
-    "CAUTION": {"label": "🌧️ 雨天", "color": "red"},
-}
-MARKET_SENTIMENT_DEFAULT_LABEL = "⏳ 尚未掃描"
+
+
+def get_market_sentiment_label(sentiment: str) -> dict:
+    """Get localized market sentiment label and color."""
+    labels = {
+        "POSITIVE": {"label": t("config.sentiment.positive"), "color": "green"},
+        "CAUTION": {"label": t("config.sentiment.caution"), "color": "red"},
+    }
+    return labels.get(sentiment, {"label": t("config.sentiment.not_scanned"), "color": "off"})
 
 # Fear & Greed Index
-FEAR_GREED_LABELS = {
-    "EXTREME_FEAR": {"label": "😱 極度恐懼", "color": "inverse"},
-    "FEAR": {"label": "😨 恐懼", "color": "off"},
-    "NEUTRAL": {"label": "😐 中性", "color": "normal"},
-    "GREED": {"label": "🤑 貪婪", "color": "normal"},
-    "EXTREME_GREED": {"label": "🤯 極度貪婪", "color": "off"},
-    "N/A": {"label": "⏳ 無資料", "color": "off"},
-}
-FEAR_GREED_DEFAULT_LABEL = "⏳ 無資料"
+def get_fear_greed_label(level: str) -> dict:
+    """Get localized fear & greed label and color."""
+    labels = {
+        "EXTREME_FEAR": {"label": t("config.fear_greed.extreme_fear"), "color": "inverse"},
+        "FEAR": {"label": t("config.fear_greed.fear"), "color": "off"},
+        "NEUTRAL": {"label": t("config.fear_greed.neutral"), "color": "normal"},
+        "GREED": {"label": t("config.fear_greed.greed"), "color": "normal"},
+        "EXTREME_GREED": {"label": t("config.fear_greed.extreme_greed"), "color": "off"},
+        "N/A": {"label": t("config.fear_greed.na"), "color": "off"},
+    }
+    return labels.get(level, {"label": t("config.fear_greed.na"), "color": "off"})
+
+
 CACHE_TTL_FEAR_GREED = 1800  # 30 minutes
 API_FEAR_GREED_TIMEOUT = 15
 
@@ -259,7 +305,12 @@ FEAR_GREED_GAUGE_BANDS: list[dict] = [
     {"range": [55, 75], "color": "#66bb6a"},  # 貪婪 — light green
     {"range": [75, 100], "color": "#2e7d32"},  # 極度貪婪 — dark green
 ]
-FEAR_GREED_CNN_UNAVAILABLE_MSG = "⚠️ CNN 資料不可用，僅使用 VIX"
+
+
+def get_cnn_unavailable_msg() -> str:
+    """Get localized CNN unavailable message."""
+    return t("config.cnn_unavailable")
+
 
 DASHBOARD_DRIFT_CHART_HEIGHT = 250
 DASHBOARD_ALLOCATION_CHART_HEIGHT = 300

@@ -21,6 +21,7 @@ from domain.constants import (
     GENERIC_TELEGRAM_ERROR,
 )
 from domain.entities import UserTelegramSettings
+from i18n import get_user_language, t
 from infrastructure.crypto import encrypt_token
 from infrastructure.database import get_session
 from infrastructure.notification import send_telegram_message_dual
@@ -135,21 +136,23 @@ def test_telegram_message(
             status_code=400,
             detail={
                 "error_code": ERROR_TELEGRAM_NOT_CONFIGURED,
-                "detail": "尚未設定 Telegram Chat ID，請先儲存設定。",
+                "detail": t(
+                    "api.telegram_not_configured", lang=get_user_language(session)
+                ),
             },
         )
 
-    test_text = "✅ <b>Folio 測試訊息</b>\n\n恭喜！你的 Telegram 通知設定正確運作。"
+    test_text = t("api.telegram_test_msg", lang=get_user_language(session))
     try:
         send_telegram_message_dual(test_text, session)
         logger.info("Telegram 測試訊息已發送。")
-        return {"message": "✅ 測試訊息已發送，請檢查 Telegram。"}
+        return {"message": t("api.telegram_test_sent", lang=get_user_language(session))}
     except Exception as e:
         logger.error("Telegram 測試訊息發送失敗：%s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "error_code": ERROR_TELEGRAM_SEND_FAILED,
-                "detail": GENERIC_TELEGRAM_ERROR,
+                "detail": t(GENERIC_TELEGRAM_ERROR, lang=get_user_language(session)),
             },
         ) from e

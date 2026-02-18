@@ -3,9 +3,12 @@ Folio — Streamlit Frontend Entry Point.
 Uses st.navigation to switch between Dashboard, Radar, and Asset Allocation pages.
 """
 
+import requests
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 
+from config import BACKEND_URL, FOLIO_API_KEY
+from i18n import t
 from utils import fetch_preferences
 
 # ---------------------------------------------------------------------------
@@ -13,20 +16,41 @@ from utils import fetch_preferences
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Folio — 智能資產配置",
+    page_title="Folio",
     page_icon="📡",
     layout="wide",
 )
+
+# ---------------------------------------------------------------------------
+# Load Persisted Preferences EARLY — language must be set before navigation
+# titles are rendered; privacy mode also loaded here to avoid a second fetch.
+# ---------------------------------------------------------------------------
+
+if "_prefs_loaded" not in st.session_state:
+    st.session_state["_prefs_loaded"] = True
+    st.session_state["_privacy_mode_value"] = False
+    st.session_state["language"] = "zh-TW"
+    try:
+        prefs = fetch_preferences()
+        if prefs:
+            if "privacy_mode" in prefs:
+                st.session_state["_privacy_mode_value"] = prefs["privacy_mode"]
+            if "language" in prefs:
+                st.session_state["language"] = prefs["language"]
+    except Exception:
+        pass
+
+st.session_state["privacy_mode"] = st.session_state["_privacy_mode_value"]
 
 # ---------------------------------------------------------------------------
 # Navigation — MUST be registered before any widgets that may trigger a rerun,
 # otherwise Streamlit falls back to legacy pages/ routing
 # ---------------------------------------------------------------------------
 
-dashboard_page = st.Page("views/dashboard.py", title="投資組合總覽", icon="📊", default=True, url_path="dashboard")
-radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", url_path="radar")
-allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼", url_path="allocation")
-fx_watch_page = st.Page("views/fx_watch.py", title="外匯監控", icon="💱", url_path="fx_watch")
+dashboard_page = st.Page("views/dashboard.py", title=t("nav.dashboard"), icon="📊", default=True, url_path="dashboard")
+radar_page = st.Page("views/radar.py", title=t("nav.radar"), icon="📡", url_path="radar")
+allocation_page = st.Page("views/allocation.py", title=t("nav.allocation"), icon="💼", url_path="allocation")
+fx_watch_page = st.Page("views/fx_watch.py", title=t("nav.fx_watch"), icon="💱", url_path="fx_watch")
 
 pg = st.navigation([dashboard_page, radar_page, allocation_page, fx_watch_page])
 
@@ -74,22 +98,52 @@ if "browser_tz" not in st.session_state:
     except Exception:
         pass  # Safari may block JS eval iframe; gracefully fall back to UTC
 
+
 # ---------------------------------------------------------------------------
-# Load Persisted Privacy Mode (once per session, then re-hydrate every rerun)
-# Safe after navigation setup
+# Language Selector (in sidebar, persists across pages)
 # ---------------------------------------------------------------------------
 
-if "_privacy_mode_value" not in st.session_state:
-    st.session_state["_privacy_mode_value"] = False
+_LANGUAGE_OPTIONS = {
+    "zh-TW": "🇹🇼 繁體中文",
+    "en": "🇺🇸 English",
+    "ja": "🇯🇵 日本語",
+    "zh-CN": "🇨🇳 简体中文",
+}
+
+
+def _on_language_change():
+    """Save language preference to backend when selector changes."""
+    new_lang = st.session_state.get("language_selector", "zh-TW")
+    st.session_state["language"] = new_lang
+    
+    # Save to backend
     try:
-        prefs = fetch_preferences()
-        if prefs and "privacy_mode" in prefs:
-            st.session_state["_privacy_mode_value"] = prefs["privacy_mode"]
+        response = requests.put(
+            f"{BACKEND_URL}/settings/preferences",
+            json={
+                "language": new_lang,
+                "privacy_mode": st.session_state["_privacy_mode_value"],
+            },
+            headers={"X-API-Key": FOLIO_API_KEY},
+            timeout=5,
+        )
+        if response.status_code == 200:
+            pass  # Success, silently update
     except Exception:
-        pass  # Backend unreachable — default to False
+        pass  # Fail silently, user will see next time they load
 
-# Re-hydrate widget key before page renders (survives page switches)
-st.session_state["privacy_mode"] = st.session_state["_privacy_mode_value"]
+
+with st.sidebar:
+    st.selectbox(
+        "🌐 Language",
+        options=list(_LANGUAGE_OPTIONS.keys()),
+        format_func=lambda x: _LANGUAGE_OPTIONS[x],
+        key="language_selector",
+        index=list(_LANGUAGE_OPTIONS.keys()).index(
+            st.session_state.get("language", "zh-TW")
+        ),
+        on_change=_on_language_change,
+    )
 
 # ---------------------------------------------------------------------------
 # Run the selected page

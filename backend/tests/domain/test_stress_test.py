@@ -184,7 +184,7 @@ class TestClassifyPainLevel:
 
 
 class TestGenerateAdvice:
-    """Tests for advice generation."""
+    """Tests for advice generation (returns i18n keys)."""
 
     def test_panic_with_high_beta_should_return_aggressive_advice(self):
         # Act
@@ -192,9 +192,8 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("睡不著覺" in line for line in result)
-        assert any("Beta >= 1.5" in line for line in result)
-        assert any("低波動資產" in line for line in result)
+        assert "stress_test.panic_intro" in result
+        assert "stress_test.advice_beta_high" in result
 
     def test_panic_with_moderate_beta_should_return_balanced_advice(self):
         # Act
@@ -202,8 +201,7 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("Beta >= 1.2" in line for line in result)
-        assert any("獲利了結" in line for line in result)
+        assert "stress_test.advice_beta_moderate" in result
 
     def test_panic_with_low_beta_should_return_concentration_advice(self):
         # Act
@@ -211,8 +209,7 @@ class TestGenerateAdvice:
 
         # Assert
         assert len(result) > 0
-        assert any("Beta < 1.2" in line for line in result)
-        assert any("集中度風險" in line for line in result)
+        assert "stress_test.advice_beta_low" in result
 
     def test_low_pain_should_return_empty_advice(self):
         # Act
@@ -240,21 +237,21 @@ class TestGenerateAdvice:
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("緊急備用金" in line for line in result)
+        assert "stress_test.advice_emergency_fund" in result
 
     def test_panic_advice_should_include_leverage_warning(self):
         # Act
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("槓桿" in line or "融資" in line for line in result)
+        assert "stress_test.advice_leverage" in result
 
     def test_panic_advice_should_include_thesis_broken_check(self):
         # Act
         result = generate_advice("panic", 1.0)
 
         # Assert
-        assert any("Thesis Broken" in line for line in result)
+        assert "stress_test.advice_thesis_broken" in result
 
 
 # ---------------------------------------------------------------------------

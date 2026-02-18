@@ -35,6 +35,7 @@ from domain.analysis import (
     determine_moat_status,
 )
 from domain.constants import (
+    DEFAULT_LANGUAGE,
     BETA_CACHE_MAXSIZE,
     BETA_CACHE_TTL,
     CNN_FG_API_URL,
@@ -103,6 +104,7 @@ from domain.constants import (
     YFINANCE_RETRY_WAIT_MIN,
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
+from i18n import t
 from logging_config import get_logger
 
 T = TypeVar("T")
@@ -357,7 +359,11 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
             logger.warning(
                 "%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist)
             )
-            return {"error": f"⚠️ {ticker} 歷史資料不足，無法計算技術指標。"}
+            return {
+                "error": t(
+                    "market.insufficient_history", lang=DEFAULT_LANGUAGE, ticker=ticker
+                )
+            }
 
         # Piggyback：將收盤價歷史寫入 price_history 快取，避免後續重複呼叫 yfinance
         _piggyback_price_history(ticker, hist)
@@ -449,7 +455,14 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
 
     except Exception as e:
         logger.error("無法取得 %s 技術訊號：%s", ticker, e, exc_info=True)
-        return {"error": f"⚠️ 無法取得 {ticker} 技術訊號：{e}"}
+        return {
+            "error": t(
+                "market.signals_fetch_error",
+                lang=DEFAULT_LANGUAGE,
+                ticker=ticker,
+                error=str(e),
+            )
+        }
 
 
 def get_technical_signals(ticker: str) -> Optional[dict]:
@@ -726,7 +739,7 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     if not ticker_list:
         return {
             "status": MarketSentiment.POSITIVE.value,
-            "details": "無風向球股票可供分析",
+            "details": t("market.no_trend_stocks", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }
 
@@ -755,7 +768,12 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
             )
             return {
                 "status": sentiment.value,
-                "details": f"多數風向球股價轉弱（{below_count}/{valid_count} 跌破 60MA）",
+                "details": t(
+                    "market.caution_details",
+                    lang=DEFAULT_LANGUAGE,
+                    below=below_count,
+                    total=valid_count,
+                ),
                 "below_60ma_pct": pct,
             }
 
@@ -767,7 +785,12 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
         )
         return {
             "status": sentiment.value,
-            "details": f"風向球整體穩健（{below_count}/{valid_count} 跌破 60MA）",
+            "details": t(
+                "market.positive_details",
+                lang=DEFAULT_LANGUAGE,
+                below=below_count,
+                total=valid_count,
+            ),
             "below_60ma_pct": pct,
         }
 
@@ -775,7 +798,7 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
         logger.error("市場情緒分析失敗：%s", e, exc_info=True)
         return {
             "status": MarketSentiment.POSITIVE.value,
-            "details": "無法判斷，預設樂觀",
+            "details": t("market.fallback_optimistic", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }
 

@@ -17,6 +17,7 @@ from api.schemas import (
 )
 from domain.constants import DEFAULT_USER_ID, ERROR_PROFILE_NOT_FOUND
 from domain.entities import SystemTemplate, UserInvestmentProfile
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -126,7 +127,10 @@ def update_profile(
     if not profile:
         raise HTTPException(
             status_code=404,
-            detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": "配置不存在。"},
+            detail={
+                "error_code": ERROR_PROFILE_NOT_FOUND,
+                "detail": t("api.profile_not_found", lang=get_user_language(session)),
+            },
         )
     if payload.name is not None:
         profile.name = payload.name
@@ -154,11 +158,20 @@ def delete_profile(
     if not profile:
         raise HTTPException(
             status_code=404,
-            detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": "配置不存在。"},
+            detail={
+                "error_code": ERROR_PROFILE_NOT_FOUND,
+                "detail": t("api.profile_not_found", lang=get_user_language(session)),
+            },
         )
     profile.is_active = False
     session.commit()
-    return {"message": f"配置 '{profile.name}' 已停用。"}
+    return {
+        "message": t(
+            "api.profile_deactivated",
+            lang=get_user_language(session),
+            name=profile.name,
+        )
+    }
 
 
 def _profile_to_response(profile: UserInvestmentProfile) -> ProfileResponse:
