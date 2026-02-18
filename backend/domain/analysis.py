@@ -131,7 +131,7 @@ def detect_rogue_wave(
     volume_ratio: Optional[float],
 ) -> bool:
     """
-    偵測滔天巨浪訊號：乖離率達歷史極端高位 AND 成交量明顯放大。
+    偵測瘋狗浪訊號：乖離率達歷史極端高位 AND 成交量明顯放大。
 
     條件：
         bias_percentile >= ROGUE_WAVE_BIAS_PERCENTILE (95)
