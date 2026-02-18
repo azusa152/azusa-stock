@@ -83,3 +83,13 @@ FX_ALERT_LABEL: dict[str, str] = {
     "short_term_swing": "短期波段變動",
     "long_term_trend": "長期趨勢變動",
 }
+
+
+class HoldingAction(str, Enum):
+    """大師持倉的變動類型"""
+
+    NEW_POSITION = "NEW_POSITION"  # 本季新建倉
+    SOLD_OUT = "SOLD_OUT"  # 本季清倉
+    INCREASED = "INCREASED"  # 加碼 (>= threshold)
+    DECREASED = "DECREASED"  # 減碼 (>= threshold)
+    UNCHANGED = "UNCHANGED"  # 持平 (< threshold)

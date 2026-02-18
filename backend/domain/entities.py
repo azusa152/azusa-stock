@@ -14,7 +14,7 @@ from domain.constants import (
     DEFAULT_NOTIFICATION_PREFERENCES,
     DEFAULT_USER_ID,
 )
-from domain.enums import ScanSignal, StockCategory
+from domain.enums import HoldingAction, ScanSignal, StockCategory
 
 
 class Stock(SQLModel, table=True):
@@ -187,6 +187,63 @@ class UserPreferences(SQLModel, table=True):
         """合併並序列化通知偏好。"""
         merged = {**DEFAULT_NOTIFICATION_PREFERENCES, **prefs}
         self.notification_preferences = _json.dumps(merged)
+
+
+# ---------------------------------------------------------------------------
+# Smart Money Tracker (大師足跡追蹤)
+# ---------------------------------------------------------------------------
+
+
+class Guru(SQLModel, table=True):
+    """追蹤的機構投資人（大師）。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(description="機構名稱 (e.g. Berkshire Hathaway)")
+    cik: str = Field(unique=True, description="SEC CIK 代碼 (10-digit zero-padded)")
+    display_name: str = Field(description="顯示名稱 (e.g. Warren Buffett)")
+    is_active: bool = Field(default=True, description="是否追蹤中")
+    is_default: bool = Field(default=False, description="是否為系統預設大師")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="建立時間",
+    )
+
+
+class GuruFiling(SQLModel, table=True):
+    """大師的 13F 季度申報記錄。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    guru_id: int = Field(foreign_key="guru.id", description="對應大師 ID")
+    accession_number: str = Field(unique=True, description="SEC 文件編號")
+    report_date: str = Field(description="持倉基準日 (e.g. 2024-12-31)")
+    filing_date: str = Field(description="SEC 公告日 (e.g. 2025-02-14)")
+    total_value: Optional[float] = Field(
+        default=None, description="總持倉市值 (千美元)"
+    )
+    holdings_count: int = Field(default=0, description="持倉數量")
+    filing_url: str = Field(default="", description="SEC EDGAR 原始文件連結")
+    synced_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="同步時間",
+    )
+
+
+class GuruHolding(SQLModel, table=True):
+    """大師某次申報中的個別持倉。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filing_id: int = Field(foreign_key="gurufiling.id", description="對應申報 ID")
+    guru_id: int = Field(foreign_key="guru.id", description="對應大師 ID")
+    cusip: str = Field(description="CUSIP 代碼")
+    ticker: Optional[str] = Field(default=None, description="對應的股票代號")
+    company_name: str = Field(description="13F 中的公司名稱")
+    value: float = Field(description="持倉市值 (千美元)")
+    shares: float = Field(description="持股數量")
+    action: str = Field(
+        default=HoldingAction.UNCHANGED.value, description="與前季比較的動作"
+    )
+    change_pct: Optional[float] = Field(default=None, description="持股數量變動百分比")
+    weight_pct: Optional[float] = Field(default=None, description="佔該大師總持倉比例")
 
 
 class FXWatchConfig(SQLModel, table=True):
