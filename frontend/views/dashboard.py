@@ -19,10 +19,12 @@ from config import (
     FEAR_GREED_GAUGE_HEIGHT,
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
+    HOLDING_ACTION_ICONS,
     PRIVACY_MASK,
     SCAN_SIGNAL_ICONS,
     get_cnn_unavailable_msg,
     get_fear_greed_label,
+    get_holding_action_label,
     get_market_sentiment_label,
     get_category_labels,
     get_privacy_toggle_label,
@@ -478,7 +480,6 @@ else:
 # ---------------------------------------------------------------------------
 st.divider()
 st.subheader(t("dashboard.resonance.title"))
-st.caption(t("dashboard.resonance.caption"))
 
 _great_minds = fetch_great_minds()
 
@@ -495,14 +496,42 @@ else:
             if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
                 st.switch_page("views/smart_money.py")
     else:
-        st.metric(t("dashboard.resonance.overlap_count"), _gm_total)
-        # Show top overlapping tickers as compact badges
-        _badge_parts = []
-        for item in _gm_stocks[:5]:
-            ticker = item.get("ticker", "—")
-            guru_count = item.get("guru_count", 0)
-            _badge_parts.append(f"**{ticker}** ×{guru_count}")
-        st.markdown("　".join(_badge_parts))
+        # Top metrics row
+        _gurus_with_overlap = len(
+            {g["guru_id"] for s in _gm_stocks for g in s.get("gurus", [])}
+        )
+        _strongest = (
+            f"{_gm_stocks[0]['ticker']} ×{_gm_stocks[0]['guru_count']}"
+            if _gm_stocks else "—"
+        )
+        _mc1, _mc2, _mc3 = st.columns(3)
+        _mc1.metric(t("dashboard.resonance.overlap_count"), _gm_total)
+        _mc2.metric(t("dashboard.resonance.gurus_with_overlap"), _gurus_with_overlap)
+        _mc3.metric(t("dashboard.resonance.strongest_signal"), _strongest)
+
+        # Per-stock detail cards (top 5)
+        for _stock in _gm_stocks[:5]:
+            _ticker = _stock.get("ticker", "—")
+            _gc = _stock.get("guru_count", 0)
+            _gurus_list = _stock.get("gurus", [])
+            _guru_lines = []
+            for _g in _gurus_list:
+                _name = _g.get("guru_display_name", "—")
+                _action = _g.get("action", "UNCHANGED")
+                _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
+                _label = get_holding_action_label(_action)
+                _weight = _g.get("weight_pct")
+                _weight_str = (
+                    f"  {_weight:.1f}%"
+                    if _weight is not None and _action != "SOLD_OUT"
+                    else ""
+                )
+                _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
+            with st.container(border=True):
+                _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
+                st.markdown(_card_md)
+
+        st.caption(t("dashboard.resonance.caption"))
         _sm_col2, _ = st.columns([1, 3])
         with _sm_col2:
             if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):

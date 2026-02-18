@@ -146,10 +146,12 @@
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
     "resonance": {
       "title": "🏆 大师足迹共鸣",
-      "caption": "你的关注清单／持仓与大师13F持股重叠的股票。⚠️ 基于季报快照，非即时资料。",
+      "caption": "⚠️ 基于季报快照，非即时资料。",
       "unavailable": "⏳ 共鸣资料暂时无法取得（大师13F尚未同步）。",
       "empty": "📭 目前无重叠股票。请先确认已设定观察名单或持仓，并同步大师13F资料。",
       "overlap_count": "重叠股票数",
+      "gurus_with_overlap": "持有大师数",
+      "strongest_signal": "最强共鸣",
       "goto_smart_money": "🏦 查看大师足迹"
     }
   },

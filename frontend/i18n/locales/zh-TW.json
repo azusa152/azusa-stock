@@ -146,10 +146,12 @@
     "no_holdings_data": "📭 尚無持倉資料。請先新增持倉以查看分析。",
     "resonance": {
       "title": "🏆 大師足跡共鳴",
-      "caption": "你的關注清單 / 持倉與大師 13F 持股重疊的股票。⚠️ 基於季報快照，非即時資料。",
+      "caption": "⚠️ 13F 季報快照，非即時資料。",
       "unavailable": "⏳ 共鳴資料暫時無法取得（大師 13F 尚未同步）。",
       "empty": "📭 目前無重疊股票。請先確認已設定觀察名單或持倉，並同步大師 13F 資料。",
       "overlap_count": "重疊股票數",
+      "gurus_with_overlap": "持有大師數",
+      "strongest_signal": "最強共鳴",
       "goto_smart_money": "🏦 查看大師足跡"
     }
   },

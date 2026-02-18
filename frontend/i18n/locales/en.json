@@ -146,10 +146,12 @@
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {
       "title": "🏆 Smart Money Resonance",
-      "caption": "Stocks in your watchlist / holdings also held by tracked gurus. ⚠️ Based on quarterly 13F snapshots, not real-time.",
+      "caption": "⚠️ Based on quarterly 13F snapshots, not real-time.",
       "unavailable": "⏳ Resonance data unavailable (no 13F data synced yet).",
       "empty": "📭 No overlapping stocks. Add a watchlist or holdings and sync a guru's 13F data.",
       "overlap_count": "Overlapping Stocks",
+      "gurus_with_overlap": "Gurus with Overlap",
+      "strongest_signal": "Strongest Signal",
       "goto_smart_money": "🏦 View Smart Money"
     }
   },
