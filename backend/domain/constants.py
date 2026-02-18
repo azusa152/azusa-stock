@@ -352,6 +352,14 @@ GENERIC_WEBHOOK_ERROR = "constants.generic_webhook_error"
 CURL_CFFI_IMPERSONATE = "chrome"
 
 # ---------------------------------------------------------------------------
+# Rogue Wave (瘋狗浪) — Historical Bias Percentile Alert
+# ---------------------------------------------------------------------------
+ROGUE_WAVE_HISTORY_PERIOD = "3y"
+ROGUE_WAVE_MIN_HISTORY_DAYS = 200
+ROGUE_WAVE_BIAS_PERCENTILE = 95  # 95th percentile = extreme overheating
+ROGUE_WAVE_VOLUME_RATIO_THRESHOLD = 1.5  # 50% above normal volume
+
+# ---------------------------------------------------------------------------
 # Retry Configuration (yfinance transient network failures)
 # ---------------------------------------------------------------------------
 YFINANCE_RETRY_ATTEMPTS = 3

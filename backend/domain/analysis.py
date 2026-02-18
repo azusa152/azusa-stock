@@ -4,6 +4,7 @@ Domain — 純粹的分析計算函式。
 可獨立測試。
 """
 
+import bisect
 from typing import Optional
 
 from domain.constants import (
@@ -14,6 +15,9 @@ from domain.constants import (
     CNN_FG_NEUTRAL_HIGH,
     MARKET_CAUTION_BELOW_60MA_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
+    ROGUE_WAVE_BIAS_PERCENTILE,
+    ROGUE_WAVE_MIN_HISTORY_DAYS,
+    ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
     RSI_PERIOD,
     VIX_EXTREME_FEAR,
@@ -94,6 +98,54 @@ def compute_moving_average(values: list[float], window: int) -> Optional[float]:
     if len(values) < window:
         return None
     return round(sum(values[-window:]) / window, 2)
+
+
+# ---------------------------------------------------------------------------
+# Rogue Wave (瘋狗浪) — 歷史乖離率百分位 + 極端情緒偵測
+# ---------------------------------------------------------------------------
+
+
+def compute_bias_percentile(
+    current_bias: float,
+    historical_biases: list[float],
+) -> Optional[float]:
+    """
+    計算當前乖離率在歷史分佈中的百分位數（0.0–100.0）。
+
+    Input:
+        current_bias       — 當前乖離率
+        historical_biases  — 已排序的歷史乖離率列表（升序）
+
+    若歷史資料不足 ROGUE_WAVE_MIN_HISTORY_DAYS 筆，回傳 None。
+    使用 bisect_left 達到 O(log n) 搜尋效率。
+    純函式，無副作用。
+    """
+    if len(historical_biases) < ROGUE_WAVE_MIN_HISTORY_DAYS:
+        return None
+    rank = bisect.bisect_left(historical_biases, current_bias)
+    return round(rank / len(historical_biases) * 100, 2)
+
+
+def detect_rogue_wave(
+    bias_percentile: Optional[float],
+    volume_ratio: Optional[float],
+) -> bool:
+    """
+    偵測滔天巨浪訊號：乖離率達歷史極端高位 AND 成交量明顯放大。
+
+    條件：
+        bias_percentile >= ROGUE_WAVE_BIAS_PERCENTILE (95)
+        volume_ratio    >= ROGUE_WAVE_VOLUME_RATIO_THRESHOLD (1.5)
+
+    任一輸入為 None 時回傳 False。
+    純函式，無副作用。
+    """
+    if bias_percentile is None or volume_ratio is None:
+        return False
+    return (
+        bias_percentile >= ROGUE_WAVE_BIAS_PERCENTILE
+        and volume_ratio >= ROGUE_WAVE_VOLUME_RATIO_THRESHOLD
+    )
 
 
 # ---------------------------------------------------------------------------
