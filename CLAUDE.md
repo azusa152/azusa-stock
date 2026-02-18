@@ -11,7 +11,7 @@
 - **Notifications:** Telegram Bot API
 
 ## Critical Rules
-- **Language:** All UI text and log messages MUST be in **Traditional Chinese (繁體中文)**
+- **Language:** UI text uses i18n (`t()` translation keys); default language is `zh-TW`. Supported: `en`, `ja`, `zh-CN`, `zh-TW`. Log messages remain in Traditional Chinese.
 - **Clean Architecture:** Backend follows strict layering (domain → application → infrastructure → api)
 - **AI Agent-First:** Every API endpoint must be machine-readable and self-documenting
 

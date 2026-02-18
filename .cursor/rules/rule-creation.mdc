@@ -84,8 +84,8 @@ description: "Security stuff"
 
 ### Language
 - Rule content: **English**
-- UI/log examples within rules: **Traditional Chinese (繁體中文)**
-- This maintains consistency with the project's "Language" general rule
+- UI examples within rules: Use `t("key")` calls for UI strings; show the `zh-TW` translation as a comment for readability
+- Log examples: **Traditional Chinese (繁體中文)** (logs are not translated via i18n)
 
 ### Code Examples
 Always provide concrete examples with ✅ GOOD and ❌ BAD patterns:

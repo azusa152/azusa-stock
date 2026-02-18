@@ -23,3 +23,4 @@ Your Goal: Build a Dockerized, API-first investment analysis system for discipli
 -   **Database:** SQLite (via SQLModel). Persistent storage for Watchlist and Thesis Logs.
 -   **Data Source:** `yfinance`.
 -   **Notification:** Telegram Bot API.
+-   **i18n:** JSON locale files with `t()` translator. Supports `en`, `ja`, `zh-CN`, `zh-TW` (default).

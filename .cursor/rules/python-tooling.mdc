@@ -23,5 +23,6 @@ alwaysApply: false
 ## Logging
 - Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.
 - Never use `print()` for diagnostic output; always use `logger.info()` / `logger.warning()` / `logger.error()`.
-- Log messages in Traditional Chinese, consistent with UI language.
+- Log messages in Traditional Chinese (developer-facing, intentionally not translated via i18n).
+- User-facing messages (API responses, Telegram notifications) MUST use `t()` for i18n.
 - Log levels: DEBUG for tracing, INFO for business events, WARNING for recoverable issues, ERROR for failures.

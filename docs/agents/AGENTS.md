@@ -25,6 +25,10 @@ curl -s http://localhost:8000/summary \
   -H "X-API-Key: $FOLIO_API_KEY"
 ```
 
+## Language (i18n)
+
+Folio supports 4 languages: `zh-TW` (default), `en`, `ja`, `zh-CN`. All API response messages and Telegram notifications are localized based on the user's preference stored via `PUT /settings/preferences` with `{"language": "en"}`. The `detail` field in error responses varies by language -- always branch on `error_code`, not the human-readable string.
+
 ## How to Interact
 
 Use the `exec` tool with `curl` to call the Folio API:
@@ -93,8 +97,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/settings/telegram` | Telegram notification settings |
 | `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
 | `POST` | `/settings/telegram/test` | Send a test Telegram message |
-| `GET` | `/settings/preferences` | User preferences (privacy mode, etc.) |
-| `PUT` | `/settings/preferences` | Update user preferences (upsert) |
+| `GET` | `/settings/preferences` | User preferences (language, privacy mode, etc.) |
+| `PUT` | `/settings/preferences` | Update user preferences (upsert) -- supports `language` field (`zh-TW`/`en`/`ja`/`zh-CN`) |
 | `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
 | `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
@@ -120,7 +124,7 @@ Direct API errors return structured JSON with a machine-readable `error_code`:
 {"detail": {"error_code": "STOCK_NOT_FOUND", "detail": "找不到股票 NVDA。"}}
 ```
 
-Branch on `error_code` (not the human-readable `detail` string). Common codes:
+Branch on `error_code` (not the human-readable `detail` string, which is localized based on user language preference). Common codes:
 - `STOCK_NOT_FOUND` / `STOCK_ALREADY_EXISTS` / `STOCK_ALREADY_INACTIVE` / `STOCK_ALREADY_ACTIVE`
 - `CATEGORY_UNCHANGED` / `HOLDING_NOT_FOUND` / `PROFILE_NOT_FOUND`
 - `SCAN_IN_PROGRESS` / `DIGEST_IN_PROGRESS`

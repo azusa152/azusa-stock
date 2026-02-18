@@ -26,7 +26,13 @@ alwaysApply: true
 ## General Rules
 - **Type Safety:** Use Pydantic models and Python type hints everywhere.
 - **Graceful Error Handling:** Never crash on external API failures (e.g., if yfinance fails, return None/Warning, don't break the app).
-- **Language:** User Interface and Logs must be in **Traditional Chinese (繁體中文)**.
+- **i18n (Internationalization):**
+  - All user-facing strings MUST use the `t()` translation function — never hardcode Chinese text.
+  - Backend: `from i18n import t`; resolve language with `lang=get_user_language(session)` at the API layer.
+  - Frontend: `from i18n import t`; reads language from `st.session_state["language"]`.
+  - Locale files: `backend/i18n/locales/{en,ja,zh-CN,zh-TW}.json` and `frontend/i18n/locales/{en,ja,zh-CN,zh-TW}.json`.
+  - Default language: `zh-TW`. Fallback chain: requested lang → `zh-TW` → raw key string.
+  - Log messages remain in Traditional Chinese (developer-facing, not translated via i18n).
 - **Documentation Sync:** Any feature addition, modification, or removal MUST include updates to the corresponding documentation:
   - `README.md` — Update feature list, API reference, architecture diagrams, examples, and project structure as needed.
   - Frontend SOP manual (the `st.expander("SOP")` block in `frontend/pages/radar.py`) — Update the in-app user guide to reflect the current system behavior.
