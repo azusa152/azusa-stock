@@ -103,7 +103,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "low"
-        assert "微風輕拂" in result["label"]
+        assert result["label"] == "constants.stress_pain_low"
         assert result["emoji"] == "green"
 
     def test_loss_10_to_20_should_be_moderate(self):
@@ -112,7 +112,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "moderate"
-        assert "有感修正" in result["label"]
+        assert result["label"] == "constants.stress_pain_moderate"
         assert result["emoji"] == "yellow"
 
     def test_loss_20_to_30_should_be_high(self):
@@ -121,7 +121,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "high"
-        assert "傷筋動骨" in result["label"]
+        assert result["label"] == "constants.stress_pain_high"
         assert result["emoji"] == "orange"
 
     def test_loss_above_30_should_be_panic(self):
@@ -130,7 +130,7 @@ class TestClassifyPainLevel:
 
         # Assert
         assert result["level"] == "panic"
-        assert "睡不著覺" in result["label"]
+        assert result["label"] == "constants.stress_pain_panic"
         assert result["emoji"] == "red"
 
     def test_boundary_10_should_be_moderate(self):
@@ -432,8 +432,7 @@ class TestCalculateStressTest:
 
         # Assert
         assert "disclaimer" in result
-        assert "CAPM" in result["disclaimer"]
-        assert "不構成投資建議" in result["disclaimer"]
+        assert result["disclaimer"] == "constants.stress_disclaimer"
 
     def test_should_round_all_monetary_values(self):
         # Arrange

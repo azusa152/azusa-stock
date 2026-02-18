@@ -81,6 +81,7 @@
     "fear_greed_neutral": "😐 中立（{score}）",
     "fear_greed_greed": "🤑 強欲（{score}）",
     "fear_greed_extreme_greed": "🤯 極度の強欲（{score}）",
+    "fear_greed_n/a": "⏳ データなし（{score}）",
     "withdrawal_header": "💰 出金提案（目標金額：{amount} {currency}）",
     "withdrawal_no_holdings": "⚠️ 保有資産が入力されていないため、出金提案を計算できません。",
     "withdrawal_recommendations": "📋 売却推奨リスト：",

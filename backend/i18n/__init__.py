@@ -30,16 +30,16 @@ for locale_file in _LOCALES_DIR.glob("*.json"):
 def get_user_language(session: Session) -> str:
     """
     Get user's preferred language from database.
-    
+
     Args:
         session: SQLModel database session
-        
+
     Returns:
         Language code (e.g., "zh-TW", "en", "ja", "zh-CN")
     """
     from domain.constants import DEFAULT_LANGUAGE, DEFAULT_USER_ID
     from domain.entities import UserPreferences
-    
+
     prefs = session.get(UserPreferences, DEFAULT_USER_ID)
     return prefs.language if prefs else DEFAULT_LANGUAGE
 

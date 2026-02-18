@@ -82,7 +82,7 @@ def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanRespo
 @router.get(
     "/market/fear-greed", response_model=FearGreedResponse, summary="Fear & Greed Index"
 )
-def get_fear_greed() -> FearGreedResponse:
+def get_fear_greed(session: Session = Depends(get_session)) -> FearGreedResponse:
     """取得恐懼與貪婪指數（VIX + CNN Fear & Greed 綜合分析）。"""
     fg = get_fear_greed_index()
     composite_level = fg.get("composite_level", "N/A")
@@ -91,10 +91,14 @@ def get_fear_greed() -> FearGreedResponse:
     vix_raw = fg.get("vix")
     cnn_raw = fg.get("cnn")
 
+    lang = get_user_language(session)
+
     return FearGreedResponse(
         composite_score=composite_score,
         composite_level=composite_level,
-        composite_label=format_fear_greed_label(composite_level, composite_score),
+        composite_label=format_fear_greed_label(
+            composite_level, composite_score, lang=lang
+        ),
         vix=VIXData(**vix_raw) if vix_raw else None,
         cnn=CNNFearGreedData(**cnn_raw) if cnn_raw else None,
         fetched_at=fg.get("fetched_at", ""),

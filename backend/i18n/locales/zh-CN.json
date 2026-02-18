@@ -81,6 +81,7 @@
     "fear_greed_neutral": "😐 中性（{score}）",
     "fear_greed_greed": "🤑 贪婪（{score}）",
     "fear_greed_extreme_greed": "🤯 极度贪婪（{score}）",
+    "fear_greed_n/a": "⏳ 无资料（{score}）",
     "withdrawal_header": "💰 智能提款建议（目标金额：{amount} {currency}）",
     "withdrawal_no_holdings": "⚠️ 尚未输入任何持仓，无法计算提款建议。",
     "withdrawal_recommendations": "📋 建议卖出清单：",

@@ -42,17 +42,27 @@ def build_signal_status(signals: dict, lang: str = "zh-TW") -> list[str]:
 
     if ma200 is not None:
         if price is not None and price < ma200:
-            status_parts.append(t("formatter.price_below_ma200", lang=lang, price=price, ma200=ma200))
+            status_parts.append(
+                t("formatter.price_below_ma200", lang=lang, price=price, ma200=ma200)
+            )
         else:
-            status_parts.append(t("formatter.price_above_ma200", lang=lang, price=price, ma200=ma200))
+            status_parts.append(
+                t("formatter.price_above_ma200", lang=lang, price=price, ma200=ma200)
+            )
     else:
-        status_parts.append(t("formatter.insufficient_data_ma200", lang=lang, days=MA200_WINDOW))
+        status_parts.append(
+            t("formatter.insufficient_data_ma200", lang=lang, days=MA200_WINDOW)
+        )
 
     if ma60 is not None:
         if price is not None and price < ma60:
-            status_parts.append(t("formatter.price_below_ma60", lang=lang, price=price, ma60=ma60))
+            status_parts.append(
+                t("formatter.price_below_ma60", lang=lang, price=price, ma60=ma60)
+            )
         else:
-            status_parts.append(t("formatter.price_above_ma60", lang=lang, price=price, ma60=ma60))
+            status_parts.append(
+                t("formatter.price_above_ma60", lang=lang, price=price, ma60=ma60)
+            )
 
     if bias is not None:
         if bias > BIAS_OVERHEATED_THRESHOLD:
@@ -110,12 +120,11 @@ _FEAR_GREED_ICON: dict[str, str] = {
 def format_fear_greed_label(level: str, score: int, lang: str = "zh-TW") -> str:
     """
     格式化恐懼與貪婪等級為標籤（含 icon 與分數）。
-    例如：「😱 極度恐懼 (15)」
+    例如：「😱 極度恐慌（15）」
     """
-    icon = _FEAR_GREED_ICON.get(level, "⏳")
     label_key = f"formatter.fear_greed_{level.lower()}"
-    label = t(label_key, lang=lang)
-    return f"{icon} {label} ({score})"
+    label = t(label_key, score=score, lang=lang)
+    return label
 
 
 def format_fear_greed_short(level: str, lang: str = "zh-TW") -> str:
@@ -151,7 +160,12 @@ def format_withdrawal_telegram(
     from domain.constants import CATEGORY_ICON
 
     parts: list[str] = [
-        t("formatter.withdrawal_header", lang=lang, amount=f"{plan.target_amount:,.2f}", currency=display_currency),
+        t(
+            "formatter.withdrawal_header",
+            lang=lang,
+            amount=f"{plan.target_amount:,.2f}",
+            currency=display_currency,
+        ),
     ]
 
     if not plan.recommendations:
@@ -171,7 +185,10 @@ def format_withdrawal_telegram(
                 amount=f"{rec.unrealized_pl:,.2f}",
                 currency=display_currency,
             )
-        priority_label = t(f"formatter.priority_{['rebalance', 'tax', 'liquidity'][rec.priority - 1]}", lang=lang)
+        priority_label = t(
+            f"formatter.priority_{['rebalance', 'tax', 'liquidity'][rec.priority - 1]}",
+            lang=lang,
+        )
         parts.append(
             f"\n{i}. {icon} <b>{rec.ticker}</b> ({rec.category})"
             f" — {t('formatter.sell', lang=lang)} {rec.quantity_to_sell:,.4g} "
@@ -182,9 +199,23 @@ def format_withdrawal_telegram(
             f"{pl_text}"
         )
 
-    parts.append(t("formatter.withdrawal_total", lang=lang, amount=f"{plan.total_sell_value:,.2f}", currency=display_currency))
+    parts.append(
+        t(
+            "formatter.withdrawal_total",
+            lang=lang,
+            amount=f"{plan.total_sell_value:,.2f}",
+            currency=display_currency,
+        )
+    )
 
     if plan.shortfall > 0:
-        parts.append(t("formatter.withdrawal_shortfall", lang=lang, amount=f"{plan.shortfall:,.2f}", currency=display_currency))
+        parts.append(
+            t(
+                "formatter.withdrawal_shortfall",
+                lang=lang,
+                amount=f"{plan.shortfall:,.2f}",
+                currency=display_currency,
+            )
+        )
 
     return "\n".join(parts)

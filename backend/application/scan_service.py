@@ -99,7 +99,9 @@ def run_scan(session: Session) -> dict:
         alerts: list[str] = []
 
         if stock.category.value in SKIP_MOAT_CATEGORIES:
-            moat_not_applicable = t("scan.moat_not_applicable", lang=lang, category=stock.category.value)
+            moat_not_applicable = t(
+                "scan.moat_not_applicable", lang=lang, category=stock.category.value
+            )
             moat_result = {
                 "ticker": ticker,
                 "moat": MoatStatus.NOT_AVAILABLE.value,
@@ -131,16 +133,41 @@ def run_scan(session: Session) -> dict:
         signal = determine_scan_signal(moat_value, mkt_status, rsi, bias)
 
         if signal == ScanSignal.THESIS_BROKEN:
-            alerts.append(t("scan.thesis_broken_alert", lang=lang, ticker=ticker, details=moat_details))
+            alerts.append(
+                t(
+                    "scan.thesis_broken_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    details=moat_details,
+                )
+            )
         elif signal == ScanSignal.CONTRARIAN_BUY:
-            alerts.append(t("scan.contrarian_buy_alert", lang=lang, ticker=ticker, rsi=rsi))
+            alerts.append(
+                t("scan.contrarian_buy_alert", lang=lang, ticker=ticker, rsi=rsi)
+            )
         elif signal == ScanSignal.OVERHEATED:
-            alerts.append(t("scan.overheated_alert", lang=lang, ticker=ticker, bias=bias))
+            alerts.append(
+                t("scan.overheated_alert", lang=lang, ticker=ticker, bias=bias)
+            )
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
-            alerts.append(t("scan.moat_stable_alert", lang=lang, ticker=ticker, details=moat_details))
+            alerts.append(
+                t(
+                    "scan.moat_stable_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    details=moat_details,
+                )
+            )
         if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
-            alerts.append(t("scan.moat_unavailable_alert", lang=lang, ticker=ticker, details=moat_details))
+            alerts.append(
+                t(
+                    "scan.moat_unavailable_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    details=moat_details,
+                )
+            )
 
         logger.info(
             "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
@@ -229,7 +256,12 @@ def run_scan(session: Session) -> dict:
             len(new_or_changed),
             len(resolved),
         )
-        header = t("scan.alert_header", lang=lang, market_status=market_status_value, fg_label=fg_label)
+        header = t(
+            "scan.alert_header",
+            lang=lang,
+            market_status=market_status_value,
+            fg_label=fg_label,
+        )
 
         # 新增/惡化的股票依類別分組
         body_parts: list[str] = []
@@ -251,7 +283,9 @@ def run_scan(session: Session) -> dict:
         # 恢復正常的股票
         if resolved:
             resolved_tickers = ", ".join(r["ticker"] for r in resolved)
-            resolved_section = t("scan.resolved_section", lang=lang, tickers=resolved_tickers)
+            resolved_section = t(
+                "scan.resolved_section", lang=lang, tickers=resolved_tickers
+            )
             body_parts.append(f"\n{resolved_section}")
 
         if is_notification_enabled(session, "scan_alerts"):
@@ -324,7 +358,11 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
     if triggered_msgs:
         session.commit()
         if is_notification_enabled(session, "price_alerts"):
-            msg = t("scan.price_alert_header", lang=lang) + "\n\n" + "\n".join(triggered_msgs)
+            msg = (
+                t("scan.price_alert_header", lang=lang)
+                + "\n\n"
+                + "\n".join(triggered_msgs)
+            )
             send_telegram_message_dual(msg, session)
             logger.warning("觸發 %d 個自訂價格警報。", len(triggered_msgs))
         else:
@@ -396,7 +434,14 @@ def create_price_alert(
     saved = repo.create_price_alert(session, alert)
     op_label = "<" if operator == "lt" else ">"
     return {
-        "message": t("scan.alert_created", lang=lang, ticker=ticker_upper, metric=metric, op=op_label, threshold=threshold),
+        "message": t(
+            "scan.alert_created",
+            lang=lang,
+            ticker=ticker_upper,
+            metric=metric,
+            op=op_label,
+            threshold=threshold,
+        ),
         "id": saved.id,
     }
 

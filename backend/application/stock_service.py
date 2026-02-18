@@ -130,7 +130,9 @@ def create_stock(
 
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
-        raise StockAlreadyExistsError(t("stock.already_exists", lang=lang, ticker=ticker_upper))
+        raise StockAlreadyExistsError(
+            t("stock.already_exists", lang=lang, ticker=ticker_upper)
+        )
 
     if is_etf is None:
         is_etf = detect_is_etf(ticker_upper)
@@ -194,21 +196,36 @@ def update_stock_category(
     old_category = stock.category
     if old_category == new_category:
         old_label = CATEGORY_LABEL.get(old_category.value, old_category.value)
-        raise CategoryUnchangedError(t("stock.category_unchanged", lang=lang, ticker=ticker_upper, category=old_label))
+        raise CategoryUnchangedError(
+            t(
+                "stock.category_unchanged",
+                lang=lang,
+                ticker=ticker_upper,
+                category=old_label,
+            )
+        )
 
     stock.category = new_category
     repo.update_stock(session, stock)
 
     old_label = CATEGORY_LABEL.get(old_category.value, old_category.value)
     new_label = CATEGORY_LABEL.get(new_category.value, new_category.value)
-    change_log = t("stock.category_change_log", lang="zh-TW", old=old_label, new=new_label)
+    change_log = t(
+        "stock.category_change_log", lang="zh-TW", old=old_label, new=new_label
+    )
     _append_thesis_log(session, ticker_upper, change_log)
 
     session.commit()
     logger.info("股票 %s 分類已從 %s 變更為 %s。", ticker_upper, old_label, new_label)
 
     return {
-        "message": t("stock.category_changed", lang=lang, ticker=ticker_upper, old=old_label, new=new_label),
+        "message": t(
+            "stock.category_changed",
+            lang=lang,
+            ticker=ticker_upper,
+            old=old_label,
+            new=new_label,
+        ),
         "old_category": old_category.value,
         "new_category": new_category.value,
     }
@@ -224,7 +241,9 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     logger.info("移除追蹤：%s", ticker_upper)
 
     if not stock.is_active:
-        raise StockAlreadyInactiveError(t("stock.already_inactive", lang=lang, ticker=ticker_upper))
+        raise StockAlreadyInactiveError(
+            t("stock.already_inactive", lang=lang, ticker=ticker_upper)
+        )
 
     stock.is_active = False
     repo.update_stock(session, stock)
@@ -238,7 +257,10 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     session.commit()
     logger.info("股票 %s 已移除追蹤（原因：%s）。", ticker_upper, reason)
 
-    return {"message": t("stock.removed", lang=lang, ticker=ticker_upper), "reason": reason}
+    return {
+        "message": t("stock.removed", lang=lang, ticker=ticker_upper),
+        "reason": reason,
+    }
 
 
 def reactivate_stock(
@@ -256,7 +278,9 @@ def reactivate_stock(
     logger.info("重新啟用追蹤：%s", ticker_upper)
 
     if stock.is_active:
-        raise StockAlreadyActiveError(t("stock.already_active", lang=lang, ticker=ticker_upper))
+        raise StockAlreadyActiveError(
+            t("stock.already_active", lang=lang, ticker=ticker_upper)
+        )
 
     stock.is_active = True
     stock.last_scan_signal = ScanSignal.NORMAL.value
@@ -299,7 +323,11 @@ def update_display_order(session: Session, ordered_tickers: list[str]) -> dict:
     logger.info("更新顯示順位，共 %d 檔股票。", len(ordered_tickers))
     upper_tickers = [tk.upper() for tk in ordered_tickers]
     repo.bulk_update_display_order(session, upper_tickers)
-    return {"message": t("stock.display_order_updated", lang=lang, count=len(ordered_tickers))}
+    return {
+        "message": t(
+            "stock.display_order_updated", lang=lang, count=len(ordered_tickers)
+        )
+    }
 
 
 def list_removed_stocks(session: Session) -> list[dict]:
@@ -377,7 +405,9 @@ def add_thesis(
     logger.info("股票 %s 觀點已更新至第 %d 版。", ticker_upper, new_version)
 
     return {
-        "message": t("stock.thesis_updated", lang=lang, ticker=ticker_upper, version=new_version),
+        "message": t(
+            "stock.thesis_updated", lang=lang, ticker=ticker_upper, version=new_version
+        ),
         "version": new_version,
         "content": content,
         "tags": tags,
@@ -428,7 +458,14 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
         try:
             category = StockCategory(category_str)
         except ValueError:
-            errors.append(t("stock.import_invalid_category", lang=lang, ticker=ticker, category=category_str))
+            errors.append(
+                t(
+                    "stock.import_invalid_category",
+                    lang=lang,
+                    ticker=ticker,
+                    category=category_str,
+                )
+            )
             continue
 
         existing = repo.find_stock_by_ticker(session, ticker)
@@ -475,7 +512,13 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
     logger.info("匯入完成：新增 %d，更新 %d，錯誤 %d。", created, updated, len(errors))
 
     return {
-        "message": t("stock.import_complete", lang=lang, created=created, updated=updated, errors=len(errors)),
+        "message": t(
+            "stock.import_complete",
+            lang=lang,
+            created=created,
+            updated=updated,
+            errors=len(errors),
+        ),
         "created": created,
         "updated": updated,
         "errors": errors,
@@ -496,7 +539,9 @@ def get_moat_for_ticker(session: Session, ticker: str) -> dict:
         return {
             "ticker": upper_ticker,
             "moat": "N/A",
-            "details": t("stock.moat_not_applicable", lang=lang, category=stock.category.value),
+            "details": t(
+                "stock.moat_not_applicable", lang=lang, category=stock.category.value
+            ),
         }
     return analyze_moat_trend(upper_ticker)
 

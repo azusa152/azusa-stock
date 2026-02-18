@@ -4,7 +4,11 @@ Domain — 壓力測試純計算函式。
 所有函式均為純函式（無副作用），便於單元測試與複用。
 """
 
-from domain.constants import STRESS_DISCLAIMER, STRESS_EMPTY_PAIN_LABEL, STRESS_PAIN_LEVELS
+from domain.constants import (
+    STRESS_DISCLAIMER,
+    STRESS_EMPTY_PAIN_LABEL,
+    STRESS_PAIN_LEVELS,
+)
 
 
 def calculate_portfolio_beta(holdings_with_beta: list[dict]) -> float:

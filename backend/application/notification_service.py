@@ -43,8 +43,9 @@ def send_weekly_digest(session: Session) -> dict:
     total = len(all_stocks)
     if total == 0:
         send_telegram_message_dual(
-            t("notification.weekly_digest_title", lang=lang) + t("notification.no_stocks", lang=lang),
-            session
+            t("notification.weekly_digest_title", lang=lang)
+            + t("notification.no_stocks", lang=lang),
+            session,
         )
         return {"message": t("notification.no_stocks", lang=lang)}
 
@@ -82,7 +83,13 @@ def send_weekly_digest(session: Session) -> dict:
     # 組合訊息
     parts: list[str] = [
         t("notification.weekly_digest_title", lang=lang),
-        t("notification.health_score", lang=lang, score=health_score, normal=normal_count, total=total),
+        t(
+            "notification.health_score",
+            lang=lang,
+            score=health_score,
+            normal=normal_count,
+            total=total,
+        ),
         t("notification.fear_greed", lang=lang, label=fg_label, vix=vix_text) + "\n",
     ]
 
@@ -109,7 +116,10 @@ def send_weekly_digest(session: Session) -> dict:
     else:
         logger.info("每週摘要通知已被使用者停用，跳過發送。")
 
-    return {"message": t("notification.summary_sent", lang=lang), "health_score": health_score}
+    return {
+        "message": t("notification.summary_sent", lang=lang),
+        "health_score": health_score,
+    }
 
 
 # ===========================================================================
@@ -133,7 +143,15 @@ def get_portfolio_summary(session: Session) -> str:
     fg = get_fear_greed_index()
     fg_short = format_fear_greed_short(fg.get("composite_level", "N/A"), lang=lang)
 
-    lines: list[str] = [t("notification.portfolio_summary_health", lang=lang, health=health, fg=fg_short), ""]
+    lines: list[str] = [
+        t(
+            "notification.portfolio_summary_health",
+            lang=lang,
+            health=health,
+            fg=fg_short,
+        ),
+        "",
+    ]
 
     for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]

@@ -81,6 +81,7 @@
     "fear_greed_neutral": "😐 Neutral ({score})",
     "fear_greed_greed": "🤑 Greed ({score})",
     "fear_greed_extreme_greed": "🤯 Extreme Greed ({score})",
+    "fear_greed_n/a": "⏳ No Data ({score})",
     "withdrawal_header": "💰 Withdrawal Recommendation (Target: {amount} {currency})",
     "withdrawal_no_holdings": "⚠️ No holdings available for withdrawal calculation.",
     "withdrawal_recommendations": "📋 Recommended Sells:",
