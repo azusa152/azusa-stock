@@ -1420,7 +1420,11 @@ def _render_price_chart(ticker: str) -> None:
         st.caption(t("utils.price_chart.insufficient_data"))
 
 
-def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
+def render_stock_card(
+    stock: dict,
+    enrichment: dict | None = None,
+    resonance: list | None = None,
+) -> None:
     """Render a single stock card with technical indicators and thesis editing.
 
     Args:
@@ -1428,6 +1432,8 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
         enrichment: Optional pre-fetched enrichment data from /stocks/enriched.
             When provided, avoids individual API calls for signals, earnings,
             and dividends (lazy-loading optimisation).
+        resonance: Optional list of guru resonance dicts for this ticker.
+            When provided, shows a 🏆 badge in the card header.
     """
     ticker = stock["ticker"]
     cat = stock.get("category", "")
@@ -1456,7 +1462,8 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
         change_str = ""
 
     market_label = infer_market_label(ticker)
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}"
+    resonance_badge = f" | 🏆×{len(resonance)}" if resonance else ""
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])
@@ -1472,6 +1479,15 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                 st.markdown(f"🏷️ {tag_badges}")
 
             _render_signal_metrics(signals)
+
+            # -- Smart Money Resonance badge --
+            if resonance:
+                guru_names = ", ".join(
+                    g.get("guru_display_name", "?") for g in resonance
+                )
+                st.caption(
+                    t("utils.stock_card.resonance_badge", count=len(resonance), gurus=guru_names)
+                )
 
             # -- Earnings & Dividend (prefer enrichment data) --
             info_cols = st.columns(2)
@@ -1757,6 +1773,38 @@ def add_guru(name: str, cik: str, display_name: str) -> dict | None:
     return api_post("/gurus", {"name": name, "cik": cik, "display_name": display_name})
 
 
+@st.cache_data(ttl=CACHE_TTL_RESONANCE, show_spinner=False)
+def fetch_resonance_overview() -> dict[str, list] | None:
+    """Fetch portfolio resonance overview as a ticker→gurus map (1 API call).
+
+    Calls GET /resonance which returns all guru overlaps in a single response,
+    then inverts the guru-centric structure into a ticker-keyed dict suitable
+    for O(1) lookup when rendering each stock card.
+
+    Returns:
+        {ticker: [{guru_display_name, action, weight_pct, ...}, ...], ...}
+        or None on backend error.
+    """
+    try:
+        resp = _session.get(f"{BACKEND_URL}/resonance", timeout=API_GURU_GET_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException:
+        return None
+
+    # Invert: guru-centric → ticker-centric map
+    ticker_map: dict[str, list] = {}
+    for entry in data.get("results", []):
+        guru_name = entry.get("guru_display_name", "?")
+        for holding in entry.get("holdings", []):
+            ticker = holding.get("ticker")
+            if not ticker:
+                continue
+            guru_info = {**holding, "guru_display_name": guru_name}
+            ticker_map.setdefault(ticker, []).append(guru_info)
+    return ticker_map
+
+
 def invalidate_guru_caches() -> None:
     """Clear all Smart Money caches after sync or add."""
     fetch_gurus.clear()
@@ -1764,3 +1812,4 @@ def invalidate_guru_caches() -> None:
     fetch_guru_top_holdings.clear()
     fetch_guru_holding_changes.clear()
     fetch_great_minds.clear()
+    fetch_resonance_overview.clear()

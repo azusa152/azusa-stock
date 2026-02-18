@@ -143,7 +143,15 @@
       "daily_change": "日次変動"
     },
     "no_holdings": "保有銘柄データがありません。",
-    "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。"
+    "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。",
+    "resonance": {
+      "title": "🏆 スマートマネー共鳴",
+      "caption": "あなたのウォッチリスト／保有銘柄と著名投資家13F保有が重複する銘柄。⚠️ 四半期スナップショットに基づく、リアルタイムではありません。",
+      "unavailable": "⏳ 共鳴データ取得不可（13Fデータが未同期）。",
+      "empty": "📭 重複銘柄なし。ウォッチリストまたは保有銘柄を追加し、グルーの13Fデータを同期してください。",
+      "overlap_count": "重複銘柄数",
+      "goto_smart_money": "🏦 スマートマネーを見る"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -547,6 +555,7 @@
         "alerts": "🔔 価格アラート"
       },
       "whalewisdom_button": "🐳 WhaleWisdomで機関投資家動向を確認",
+      "resonance_badge": "🏆 {count}名のグルーも保有：{gurus}",
       "whalewisdom_hint": "💡 投資の心得：ボタンで機関投資家保有を確認。バークシャー、ブリッジウォーター等の「New Buy/Add」（買い増し）か「Sold Out」（売却）かを重点的に観察。フォローするなら「新規」を、在庫ではなく。",
       "top_holders_title": "**📊 上位5機関投資家：**",
       "no_holders": "⚠️ 機関投資家データを取得できません。上のボタンからWhaleWisdomで13Fレポートを確認してください。",

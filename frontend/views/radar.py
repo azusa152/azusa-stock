@@ -27,6 +27,7 @@ from utils import (
     fetch_enriched_stocks,
     fetch_last_scan,
     fetch_removed_stocks,
+    fetch_resonance_overview,
     fetch_stocks,
     fetch_thesis_history,
     format_utc_timestamp,
@@ -290,6 +291,10 @@ removed_list = removed_data or []
 _enriched_list = fetch_enriched_stocks() or []
 _enriched_map: dict[str, dict] = {e["ticker"]: e for e in _enriched_list if "ticker" in e}
 
+# Fetch resonance data for all tickers in a single GET /resonance call
+# (cached 24 h). Falls back to empty dict so cards still render on error.
+_resonance_map: dict[str, list] = fetch_resonance_overview() or {}
+
 # Build tab labels
 tab_labels = [
     t("radar.tab.trend_setter", count=len(category_map['Trend_Setter'])),
@@ -309,7 +314,11 @@ for _cat, _tab in zip(RADAR_CATEGORY_OPTIONS, _category_tabs):
         if _stocks:
             render_reorder_section(_cat, _stocks)
             for stock in _stocks:
-                render_stock_card(stock, enrichment=_enriched_map.get(stock["ticker"]))
+                render_stock_card(
+                    stock,
+                    enrichment=_enriched_map.get(stock["ticker"]),
+                    resonance=_resonance_map.get(stock["ticker"]),
+                )
         else:
             st.info(
                 t("radar.empty_category", category=get_category_labels()[_cat])

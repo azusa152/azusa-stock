@@ -143,7 +143,15 @@
       "daily_change": "Daily Change"
     },
     "no_holdings": "No holdings data.",
-    "no_holdings_data": "📭 No holdings data. Please add holdings first."
+    "no_holdings_data": "📭 No holdings data. Please add holdings first.",
+    "resonance": {
+      "title": "🏆 Smart Money Resonance",
+      "caption": "Stocks in your watchlist / holdings also held by tracked gurus. ⚠️ Based on quarterly 13F snapshots, not real-time.",
+      "unavailable": "⏳ Resonance data unavailable (no 13F data synced yet).",
+      "empty": "📭 No overlapping stocks. Add a watchlist or holdings and sync a guru's 13F data.",
+      "overlap_count": "Overlapping Stocks",
+      "goto_smart_money": "🏦 View Smart Money"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -547,6 +555,7 @@
         "alerts": "🔔 Price Alerts"
       },
       "whalewisdom_button": "🐳 View WhaleWisdom for institutional holdings",
+      "resonance_badge": "🏆 {count} guru(s) also hold this: {gurus}",
       "whalewisdom_hint": "💡 Follow new money, not existing holdings. Watch Berkshire, Bridgewater for New/Add vs Sold Out.",
       "top_holders_title": "**📊 Top 5 Institutional Holders:**",
       "no_holders": "⚠️ Institutional data unavailable. Click above for full 13F report.",

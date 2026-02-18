@@ -30,6 +30,7 @@ from config import (
 from i18n import t
 from utils import (
     fetch_fear_greed,
+    fetch_great_minds,
     fetch_holdings,
     fetch_last_scan,
     fetch_profile,
@@ -470,3 +471,39 @@ else:
     with _hold_a:
         if st.button(t("dashboard.button_add_holdings"), use_container_width=True):
             st.switch_page("views/allocation.py")
+
+
+# ---------------------------------------------------------------------------
+# Section 5: Smart Money Resonance Summary
+# ---------------------------------------------------------------------------
+st.divider()
+st.subheader(t("dashboard.resonance.title"))
+st.caption(t("dashboard.resonance.caption"))
+
+_great_minds = fetch_great_minds()
+
+if _great_minds is None:
+    st.caption(t("dashboard.resonance.unavailable"))
+else:
+    _gm_stocks = _great_minds.get("stocks", [])
+    _gm_total = _great_minds.get("total_count", 0)
+
+    if _gm_total == 0:
+        st.info(t("dashboard.resonance.empty"))
+        _sm_col, _ = st.columns([1, 3])
+        with _sm_col:
+            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
+                st.switch_page("views/smart_money.py")
+    else:
+        st.metric(t("dashboard.resonance.overlap_count"), _gm_total)
+        # Show top overlapping tickers as compact badges
+        _badge_parts = []
+        for item in _gm_stocks[:5]:
+            ticker = item.get("ticker", "—")
+            guru_count = item.get("guru_count", 0)
+            _badge_parts.append(f"**{ticker}** ×{guru_count}")
+        st.markdown("　".join(_badge_parts))
+        _sm_col2, _ = st.columns([1, 3])
+        with _sm_col2:
+            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
+                st.switch_page("views/smart_money.py")

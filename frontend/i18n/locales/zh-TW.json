@@ -143,7 +143,15 @@
       "daily_change": "日漲跌"
     },
     "no_holdings": "無持倉資料。",
-    "no_holdings_data": "📭 尚無持倉資料。請先新增持倉以查看分析。"
+    "no_holdings_data": "📭 尚無持倉資料。請先新增持倉以查看分析。",
+    "resonance": {
+      "title": "🏆 大師足跡共鳴",
+      "caption": "你的關注清單 / 持倉與大師 13F 持股重疊的股票。⚠️ 基於季報快照，非即時資料。",
+      "unavailable": "⏳ 共鳴資料暫時無法取得（大師 13F 尚未同步）。",
+      "empty": "📭 目前無重疊股票。請先確認已設定觀察名單或持倉，並同步大師 13F 資料。",
+      "overlap_count": "重疊股票數",
+      "goto_smart_money": "🏦 查看大師足跡"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -546,6 +554,7 @@
         "scan_history": "📈 掃描歷史",
         "alerts": "🔔 價格警報"
       },
+      "resonance_badge": "🏆 {count} 位大師同樣持有：{gurus}",
       "whalewisdom_button": "🐳 前往 WhaleWisdom 查看大戶動向",
       "whalewisdom_hint": "💡 投資心法：點擊按鈕查看機構持倉。重點觀察波克夏 (Berkshire)、橋水 (Bridgewater) 等大基金是 'New Buy/Add' (佈局) 還是 'Sold Out' (離場)。跟單要跟「新增」而非庫存。",
       "top_holders_title": "**📊 前五大機構持有者：**",

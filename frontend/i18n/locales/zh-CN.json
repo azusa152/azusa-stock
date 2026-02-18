@@ -143,7 +143,15 @@
       "daily_change": "日涨跌"
     },
     "no_holdings": "无持仓资料。",
-    "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。"
+    "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
+    "resonance": {
+      "title": "🏆 大师足迹共鸣",
+      "caption": "你的关注清单／持仓与大师13F持股重叠的股票。⚠️ 基于季报快照，非即时资料。",
+      "unavailable": "⏳ 共鸣资料暂时无法取得（大师13F尚未同步）。",
+      "empty": "📭 目前无重叠股票。请先确认已设定观察名单或持仓，并同步大师13F资料。",
+      "overlap_count": "重叠股票数",
+      "goto_smart_money": "🏦 查看大师足迹"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -547,6 +555,7 @@
         "alerts": "🔔 价格警报"
       },
       "whalewisdom_button": "🐳 前往 WhaleWisdom 查看大户动向",
+      "resonance_badge": "🏆 {count}位大师同样持有：{gurus}",
       "whalewisdom_hint": "💡 投资心法：点击按钮查看机构持仓。重点观察波克夏 (Berkshire)、桥水 (Bridgewater) 等大基金是 'New Buy/Add' (布局) 还是 'Sold Out' (离场)。跟单要跟「新增」而非库存。",
       "top_holders_title": "**📊 前五大机构持有者：**",
       "no_holders": "⚠️ 机构持仓资料暂时无法取得，请点击上方按钮前往 WhaleWisdom 查看完整 13F 报告。",
