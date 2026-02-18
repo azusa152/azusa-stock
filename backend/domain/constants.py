@@ -483,6 +483,9 @@ DEFAULT_GURUS = [
 # Notification
 NOTIFICATION_TYPE_GURU_ALERTS = "guru_alerts"
 
+GURU_BACKFILL_YEARS = 5  # 回填歷史 13F 資料的年數
+GURU_BACKFILL_FILING_COUNT = 20  # 每位大師最多取回 20 筆申報（約 5 年）
+
 # Cache
 GURU_FILING_CACHE_MAXSIZE = 50
 GURU_FILING_CACHE_TTL = 86400  # 24h (13F data is quarterly)

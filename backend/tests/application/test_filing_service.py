@@ -3,6 +3,7 @@ Tests for filing_service and guru_service (Phase 3 application layer).
 All EDGAR network calls are mocked — no I/O in this test suite.
 """
 
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -863,3 +864,185 @@ class TestGetFilingSummaryAndChanges:
         )
         changes = get_holding_changes(db_session, guru.id)
         assert changes == []
+
+
+# ===========================================================================
+# filing_service — backfill_guru_filings tests
+# ===========================================================================
+
+# Fixed reference date used for all backfill window tests.
+# All three sample report_dates (2024-06-30, 2024-09-30, 2024-12-31) fall within
+# a 5-year window anchored to this date, so tests won't silently break as the
+# real wall clock advances past 2029.
+_BACKFILL_TODAY = date(2026, 2, 18)
+
+# Multiple EDGAR filings spanning different quarters (sorted newest-first as EDGAR returns)
+_BACKFILL_EDGAR_FILINGS = [
+    {
+        "accession_number": "0001067983-25-000006",
+        "accession_path": "000106798325000006",
+        "filing_date": "2025-02-14",
+        "report_date": "2024-12-31",
+        "primary_doc": "0001067983-25-000006-index.htm",
+        "filing_url": "https://www.sec.gov/Archives/edgar/data/1067983/000106798325000006/0001067983-25-000006-index.htm",
+    },
+    {
+        "accession_number": "0001067983-24-000099",
+        "accession_path": "000106798324000099",
+        "filing_date": "2024-11-14",
+        "report_date": "2024-09-30",
+        "primary_doc": "0001067983-24-000099-index.htm",
+        "filing_url": "https://www.sec.gov/Archives/edgar/data/1067983/000106798324000099/0001067983-24-000099-index.htm",
+    },
+    {
+        "accession_number": "0001067983-24-000006",
+        "accession_path": "000106798324000006",
+        "filing_date": "2024-08-14",
+        "report_date": "2024-06-30",
+        "primary_doc": "0001067983-24-000006-index.htm",
+        "filing_url": "https://www.sec.gov/Archives/edgar/data/1067983/000106798324000006/0001067983-24-000006-index.htm",
+    },
+]
+
+
+class TestBackfillGuruFilings:
+    """Tests for backfill_guru_filings()."""
+
+    @patch(
+        f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=_SAMPLE_RAW_HOLDINGS
+    )
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings",
+        return_value=_BACKFILL_EDGAR_FILINGS,
+    )
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    def test_backfill_should_sync_all_in_window_filings(
+        self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        guru = _make_guru(db_session, cik="0004000001")
+        result = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+
+        assert result["total_filings"] == len(_BACKFILL_EDGAR_FILINGS)
+        assert result["synced"] == len(_BACKFILL_EDGAR_FILINGS)
+        assert result["skipped"] == 0
+        assert result["errors"] == 0
+        assert result["guru_id"] == guru.id
+        assert result["guru_display_name"] == "Warren Buffett"
+
+    @patch(
+        f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=_SAMPLE_RAW_HOLDINGS
+    )
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings",
+        return_value=_BACKFILL_EDGAR_FILINGS,
+    )
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    def test_backfill_should_be_idempotent(
+        self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        guru = _make_guru(db_session, cik="0004000002")
+        result1 = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+        result2 = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+
+        assert result1["synced"] == len(_BACKFILL_EDGAR_FILINGS)
+        assert result2["synced"] == 0
+        assert result2["skipped"] == len(_BACKFILL_EDGAR_FILINGS)
+
+    @patch(
+        f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=_SAMPLE_RAW_HOLDINGS
+    )
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings",
+        return_value=_BACKFILL_EDGAR_FILINGS,
+    )
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    def test_backfill_should_persist_all_filings_to_db(
+        self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        guru = _make_guru(db_session, cik="0004000003")
+        backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+
+        for edgar in _BACKFILL_EDGAR_FILINGS:
+            filing = find_filing_by_accession(db_session, edgar["accession_number"])
+            assert filing is not None, (
+                f"Filing {edgar['accession_number']} not found in DB"
+            )
+
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings",
+        return_value=_BACKFILL_EDGAR_FILINGS,
+    )
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    def test_backfill_should_filter_out_filings_outside_window(
+        self, _mock_cusip, _mock_get, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        # years=0 → cutoff == _BACKFILL_TODAY; all sample report_dates are before that
+        guru = _make_guru(db_session, cik="0004000004")
+        result = backfill_guru_filings(db_session, guru.id, years=0, _today=_BACKFILL_TODAY)
+
+        assert result["total_filings"] == 0
+        assert result["synced"] == 0
+
+    @patch(f"{FILING_MODULE}.get_latest_13f_filings", return_value=[])
+    def test_backfill_should_return_zeros_when_no_edgar_filings(
+        self, _mock_get, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        guru = _make_guru(db_session, cik="0004000005")
+        result = backfill_guru_filings(db_session, guru.id)
+
+        assert result["total_filings"] == 0
+        assert result["synced"] == 0
+        assert result["skipped"] == 0
+        assert result["errors"] == 0
+
+    def test_backfill_should_return_error_when_guru_not_found(
+        self, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        result = backfill_guru_filings(db_session, 9999)
+
+        assert result["status"] == "error"
+        assert "guru not found" in result["error"]
+
+    @patch(
+        f"{FILING_MODULE}.fetch_13f_filing_detail", return_value=_SAMPLE_RAW_HOLDINGS
+    )
+    @patch(
+        f"{FILING_MODULE}.get_latest_13f_filings",
+        return_value=_BACKFILL_EDGAR_FILINGS,
+    )
+    @patch(f"{FILING_MODULE}.map_cusip_to_ticker", side_effect=lambda c, n: None)
+    def test_backfill_should_continue_after_single_filing_error(
+        self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
+    ):
+        from application.filing_service import backfill_guru_filings
+
+        call_count = 0
+
+        def detail_side_effect(accession, cik):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                return []  # Simulate parse failure for the 2nd filing
+            return _SAMPLE_RAW_HOLDINGS
+
+        _mock_detail.side_effect = detail_side_effect
+
+        guru = _make_guru(db_session, cik="0004000006")
+        result = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+
+        # 3 filings: 1st synced, 2nd error (empty holdings = error), 3rd synced
+        assert result["synced"] == 2
+        assert result["errors"] == 1
+        assert result["total_filings"] == 3

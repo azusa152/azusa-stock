@@ -12,9 +12,15 @@ Application — Filing Service：13F 季報同步與持倉差異分析。
 8. 回傳摘要 dict
 """
 
+from datetime import date, timedelta
+
 from sqlmodel import Session
 
-from domain.constants import GURU_TOP_HOLDINGS_COUNT
+from domain.constants import (
+    GURU_BACKFILL_FILING_COUNT,
+    GURU_BACKFILL_YEARS,
+    GURU_TOP_HOLDINGS_COUNT,
+)
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
 from domain.smart_money import (
@@ -48,13 +54,7 @@ def sync_guru_filing(session: Session, guru_id: int) -> dict:
     流程：
     1. 取得大師資料與 EDGAR 最新兩筆申報
     2. 若最新申報已存在資料庫則跳過（冪等）
-    3. 下載並解析 13F XML
-    4. 載入前季持倉快照（在 save_filing 之前，確保取得的是舊季資料）
-    5. 與前季持倉比較，標記動作與變化幅度
-    6. 對前季有但本季完全消失的 CUSIP 建立 SOLD_OUT 記錄
-    7. 計算各持倉佔總倉位比例
-    8. 批次儲存申報 + 持倉
-    9. 回傳摘要
+    3. 委派給 _sync_single_filing() 執行實際同步
 
     Args:
         session: Database session
@@ -82,72 +82,103 @@ def sync_guru_filing(session: Session, guru_id: int) -> dict:
             "error": "no 13F filings found on EDGAR",
         }
 
-    latest_edgar = edgar_filings[0]
-    accession_number = latest_edgar["accession_number"]
+    return _sync_single_filing(session, guru, edgar_filings[0])
 
-    # 冪等檢查
-    if find_filing_by_accession(session, accession_number) is not None:
-        logger.info(
-            "13F 申報已存在，跳過同步：%s %s", guru.display_name, accession_number
-        )
+
+def backfill_guru_filings(
+    session: Session,
+    guru_id: int,
+    years: int = GURU_BACKFILL_YEARS,
+    _today: date | None = None,
+) -> dict:
+    """
+    回填指定大師最近 N 年的 13F 歷史申報。
+
+    流程：
+    1. 從 EDGAR 取回最多 GURU_BACKFILL_FILING_COUNT 筆申報
+    2. 過濾出在 years 年窗口內的申報
+    3. 依 report_date 升冪排序（舊→新），確保 diff 鏈正確
+    4. 逐筆呼叫 _sync_single_filing()（冪等：已同步者自動跳過）
+    5. 回傳摘要 dict
+
+    Args:
+        session: Database session
+        guru_id: Guru.id
+        years: 回填年數（預設 GURU_BACKFILL_YEARS）
+        _today: 參考日期（測試注入用；正常呼叫留 None 使用 date.today()）
+
+    Returns:
+        dict with keys: guru_id, guru_display_name, total_filings, synced, skipped, errors
+    """
+    guru = find_guru_by_id(session, guru_id)
+    if guru is None:
+        logger.warning("backfill_guru_filings 找不到大師：ID=%d", guru_id)
         return {
             "guru_id": guru_id,
-            "guru_display_name": guru.display_name,
-            "status": "skipped",
-            "accession_number": accession_number,
-            "report_date": latest_edgar["report_date"],
-            "filing_date": latest_edgar["filing_date"],
-        }
-
-    # 下載並解析持倉明細
-    raw_holdings = fetch_13f_filing_detail(accession_number, guru.cik)
-    if not raw_holdings:
-        logger.warning(
-            "13F 持倉明細解析失敗：%s %s", guru.display_name, accession_number
-        )
-        return {
-            "guru_id": guru_id,
-            "guru_display_name": guru.display_name,
             "status": "error",
-            "error": "failed to fetch or parse infotable XML",
+            "error": "guru not found",
+            "total_filings": 0,
+            "synced": 0,
+            "skipped": 0,
+            "errors": 0,
         }
 
-    # 載入前季持倉快照（必須在 save_filing 之前呼叫，此時 DB 中最新申報即為前季）
-    prev_holdings_map = _snapshot_prev_holdings(session, guru_id)
+    edgar_filings = get_latest_13f_filings(guru.cik, count=GURU_BACKFILL_FILING_COUNT)
+    if not edgar_filings:
+        logger.info("EDGAR 無 13F 申報可回填：%s (%s)", guru.display_name, guru.cik)
+        return {
+            "guru_id": guru_id,
+            "guru_display_name": guru.display_name,
+            "total_filings": 0,
+            "synced": 0,
+            "skipped": 0,
+            "errors": 0,
+        }
 
-    # 計算總持倉市值（用於 weight_pct）
-    total_value = sum(h["value"] for h in raw_holdings)
+    cutoff = (_today or date.today()) - timedelta(days=years * 365)
+    in_window = [
+        f
+        for f in edgar_filings
+        if date.fromisoformat(f["report_date"]) >= cutoff
+    ]
+    # 升冪排序，讓舊季先同步，diff 鏈方向正確
+    in_window.sort(key=lambda f: f["report_date"])
 
-    # 組裝 GuruFiling
-    filing = save_filing(
-        session,
-        GuruFiling(
-            guru_id=guru_id,
-            accession_number=accession_number,
-            report_date=latest_edgar["report_date"],
-            filing_date=latest_edgar["filing_date"],
-            total_value=total_value,
-            holdings_count=len(raw_holdings),
-            filing_url=latest_edgar.get("filing_url", ""),
-        ),
-    )
+    synced = skipped = errors = 0
+    for edgar_filing in in_window:
+        try:
+            result = _sync_single_filing(session, guru, edgar_filing)
+            if result["status"] == "synced":
+                synced += 1
+            elif result["status"] == "skipped":
+                skipped += 1
+            else:
+                errors += 1
+        except Exception as exc:
+            logger.warning(
+                "回填申報失敗：%s %s, error=%s",
+                guru.display_name,
+                edgar_filing.get("accession_number"),
+                exc,
+            )
+            errors += 1
 
-    # 組裝並分類 GuruHolding 列表（含前季完全消失的 SOLD_OUT）
-    holdings = _build_holdings(
-        raw_holdings, filing, guru, prev_holdings_map, total_value
-    )
-    save_holdings_batch(session, holdings)
-
-    summary = _build_summary(guru, filing, holdings)
     logger.info(
-        "13F 同步完成：%s %s，持倉 %d 筆，新建倉 %d，清倉 %d",
+        "13F 回填完成：%s，窗口內 %d 筆，已同步 %d，跳過 %d，錯誤 %d",
         guru.display_name,
-        accession_number,
-        len(holdings),
-        summary["new_positions"],
-        summary["sold_out"],
+        len(in_window),
+        synced,
+        skipped,
+        errors,
     )
-    return summary
+    return {
+        "guru_id": guru_id,
+        "guru_display_name": guru.display_name,
+        "total_filings": len(in_window),
+        "synced": synced,
+        "skipped": skipped,
+        "errors": errors,
+    }
 
 
 def sync_all_gurus(session: Session) -> list[dict]:
@@ -234,6 +265,94 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+
+def _sync_single_filing(
+    session: Session, guru: Guru, edgar_filing_dict: dict
+) -> dict:
+    """
+    同步單筆 EDGAR 申報至資料庫（由 sync_guru_filing 與 backfill_guru_filings 共用）。
+
+    流程：
+    1. 冪等檢查（accession_number 已存在則回傳 skipped）
+    2. 下載並解析 13F XML
+    3. 載入前季持倉快照（在 save_filing 之前呼叫，確保取得舊季資料）
+    4. 組裝 GuruFiling + GuruHolding，儲存至 DB
+    5. 回傳摘要 dict
+
+    Args:
+        session: Database session
+        guru: Guru entity
+        edgar_filing_dict: 單筆 EDGAR 申報 dict（含 accession_number, report_date 等）
+
+    Returns:
+        dict with status "synced" | "skipped" | "error"
+    """
+    accession_number = edgar_filing_dict["accession_number"]
+
+    # 冪等檢查
+    if find_filing_by_accession(session, accession_number) is not None:
+        logger.info(
+            "13F 申報已存在，跳過同步：%s %s", guru.display_name, accession_number
+        )
+        return {
+            "guru_id": guru.id,
+            "guru_display_name": guru.display_name,
+            "status": "skipped",
+            "accession_number": accession_number,
+            "report_date": edgar_filing_dict["report_date"],
+            "filing_date": edgar_filing_dict["filing_date"],
+        }
+
+    # 下載並解析持倉明細
+    raw_holdings = fetch_13f_filing_detail(accession_number, guru.cik)
+    if not raw_holdings:
+        logger.warning(
+            "13F 持倉明細解析失敗：%s %s", guru.display_name, accession_number
+        )
+        return {
+            "guru_id": guru.id,
+            "guru_display_name": guru.display_name,
+            "status": "error",
+            "error": "failed to fetch or parse infotable XML",
+        }
+
+    # 載入前季持倉快照（必須在 save_filing 之前呼叫，此時 DB 中最新申報即為前季）
+    prev_holdings_map = _snapshot_prev_holdings(session, guru.id)
+
+    # 計算總持倉市值（用於 weight_pct）
+    total_value = sum(h["value"] for h in raw_holdings)
+
+    # 組裝 GuruFiling
+    filing = save_filing(
+        session,
+        GuruFiling(
+            guru_id=guru.id,
+            accession_number=accession_number,
+            report_date=edgar_filing_dict["report_date"],
+            filing_date=edgar_filing_dict["filing_date"],
+            total_value=total_value,
+            holdings_count=len(raw_holdings),
+            filing_url=edgar_filing_dict.get("filing_url", ""),
+        ),
+    )
+
+    # 組裝並分類 GuruHolding 列表（含前季完全消失的 SOLD_OUT）
+    holdings = _build_holdings(
+        raw_holdings, filing, guru, prev_holdings_map, total_value
+    )
+    save_holdings_batch(session, holdings)
+
+    summary = _build_summary(guru, filing, holdings)
+    logger.info(
+        "13F 同步完成：%s %s，持倉 %d 筆，新建倉 %d，清倉 %d",
+        guru.display_name,
+        accession_number,
+        len(holdings),
+        summary["new_positions"],
+        summary["sold_out"],
+    )
+    return summary
 
 
 def _snapshot_prev_holdings(session: Session, guru_id: int) -> dict[str, float]:
