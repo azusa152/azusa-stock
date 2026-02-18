@@ -449,6 +449,12 @@
       "title": "**📊 Analysis Reason**",
       "waiting": "⏳ Waiting for analysis..."
     },
+    "chart": {
+      "insufficient_data": "📉 Insufficient FX history (need at least 5 trading days).",
+      "period_label": "Trend Period",
+      "hover_template": "%{x}<br>Rate: %{y}",
+      "high_annotation": "{days}-day high: {high:.4f}"
+    },
     "settings": {
       "title": "**⚙️ Monitor Settings**",
       "recent_high": "• Recent high: {days} days",

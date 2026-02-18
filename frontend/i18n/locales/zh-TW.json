@@ -449,6 +449,12 @@
       "title": "**📊 分析原因**",
       "waiting": "⏳ 等待分析..."
     },
+    "chart": {
+      "insufficient_data": "📉 匯率歷史資料不足（需至少 5 個交易日）。",
+      "period_label": "趨勢區間",
+      "hover_template": "%{x}<br>匯率: %{y}",
+      "high_annotation": "{days}日高點: {high:.4f}"
+    },
     "settings": {
       "title": "**⚙️ 監控設定**",
       "recent_high": "• 近期高點: {days} 日",
