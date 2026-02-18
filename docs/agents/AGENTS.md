@@ -110,6 +110,16 @@ curl -s -X POST http://localhost:8000/webhook \
 | `POST` | `/fx-watch/check` | Check all FX watches (analysis only, no Telegram) |
 | `POST` | `/fx-watch/alert` | Check FX watches & send Telegram alerts (with per-watch cooldown) |
 | `POST` | `/withdraw` | Smart withdrawal plan (Liquidity Waterfall) |
+| `GET` | `/gurus` | List all tracked gurus (id, name, display_name, cik) |
+| `POST` | `/gurus` | Add custom guru — body: `{"name": "Berkshire Hathaway Inc", "cik": "0001067983", "display_name": "Warren Buffett"}` |
+| `DELETE` | `/gurus/{guru_id}` | Deactivate guru (history preserved) |
+| `POST` | `/gurus/sync` | Batch-sync all gurus' 13F filings from SEC EDGAR (mutex-protected, safe to call from cron) |
+| `POST` | `/gurus/{guru_id}/sync` | Sync one guru's 13F — returns `{"status": "synced"\|"skipped", "message": "..."}` |
+| `GET` | `/gurus/{guru_id}/filing` | Latest 13F filing summary: report_date, filing_date, total_value, holdings_count, new_positions, sold_out, increased, decreased |
+| `GET` | `/gurus/{guru_id}/holdings` | All holdings with action labels (NEW_POSITION/SOLD_OUT/INCREASED/DECREASED/UNCHANGED), ticker, value, shares, change_pct, weight_pct |
+| `GET` | `/gurus/{guru_id}/top` | Top N holdings by weight — supports `?n=10` |
+| `GET` | `/resonance` | Portfolio resonance overview — all guru overlaps with your watchlist/holdings. Returns `{results: [{guru_display_name, overlapping_tickers, overlap_count, holdings: [{ticker, action, weight_pct}]}], total_gurus, gurus_with_overlap}` |
+| `GET` | `/resonance/{ticker}` | Which gurus hold a specific ticker and their current action |
 
 ### Docs
 
@@ -175,6 +185,8 @@ When code changes have been pushed to the repository, follow this workflow to ap
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`
+- When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance` to get the full overlap matrix
+- When asked to sync the latest 13F data, call `POST /gurus/sync` (all gurus) or `POST /gurus/{id}/sync` (one guru); status `"synced"` = new data, `"skipped"` = already current
 - Present data in a structured, readable format
 - Use the stock categories to contextualize advice:
   - **Trend_Setter (風向球)**: Market direction indicators

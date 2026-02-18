@@ -30,6 +30,7 @@ from domain.constants import (
     GURU_FILING_CACHE_MAXSIZE,
     GURU_FILING_CACHE_TTL,
     SEC_EDGAR_BASE_URL,
+    SEC_EDGAR_ARCHIVES_BASE_URL,
     SEC_EDGAR_RATE_LIMIT_CPS,
     SEC_EDGAR_REQUEST_TIMEOUT,
     SEC_EDGAR_USER_AGENT,
@@ -139,6 +140,52 @@ def _http_get_text(url: str) -> str:
         return resp.text
 
 
+def _discover_infotable_filename(accession_path: str, cik: str) -> Optional[str]:
+    """
+    從 EDGAR filing index.json 動態探索 information table XML 檔名。
+
+    EDGAR 13F filings 的 information table XML 檔名不固定，可能是：
+    - infotable.xml
+    - 50240.xml (Berkshire 使用的實際檔名)
+    - 13f_infotable.xml
+    - 其他數字檔名
+
+    策略：取得 index.json，找出所有 .xml 檔案，排除 primary_doc.xml，
+    回傳第一個符合的檔名。
+
+    Args:
+        accession_path: Accession number without hyphens (e.g. "000119312526054580").
+        cik: 10-digit zero-padded CIK (or stripped CIK will be handled).
+
+    Returns:
+        Discovered XML filename (without path), or None on any error.
+    """
+    index_url = (
+        f"{SEC_EDGAR_ARCHIVES_BASE_URL}/Archives/edgar/data/"
+        f"{cik.lstrip('0')}/{accession_path}/index.json"
+    )
+
+    try:
+        index_data = _http_get_json(index_url)
+        items = index_data.get("directory", {}).get("item", [])
+
+        # Find all .xml files that are NOT primary_doc.xml
+        for item in items:
+            name = item.get("name", "")
+            if name.endswith(".xml") and name != "primary_doc.xml":
+                logger.debug(
+                    "EDGAR infotable 檔名探索成功：%s → %s", accession_path, name
+                )
+                return name
+
+        logger.debug("EDGAR index 中找不到 infotable XML：%s", accession_path)
+        return None
+
+    except Exception as exc:
+        logger.debug("EDGAR infotable 檔名探索失敗：%s, error=%s", accession_path, exc)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -208,9 +255,8 @@ def get_latest_13f_filings(cik: str, count: int = 2) -> list[dict]:
             if form == "13F-HR":
                 accession = accessions[i]
                 accession_path = accession.replace("-", "")
-                # Direct link to the specific filing's primary document on EDGAR
                 filing_url = (
-                    f"https://www.sec.gov/Archives/edgar/data/"
+                    f"{SEC_EDGAR_ARCHIVES_BASE_URL}/Archives/edgar/data/"
                     f"{cik.lstrip('0')}/{accession_path}/{primary_docs[i]}"
                 )
                 results.append(
@@ -247,16 +293,24 @@ def fetch_13f_filing_detail(accession_number: str, cik: str) -> list[dict]:
         Empty list on parse failure or network error.
     """
     accession_path = accession_number.replace("-", "")
-    # TODO(Phase 3): The info-table filename varies across filings (infotable.xml,
-    # primary_doc.xml, 13f_infotable.xml, etc.). A more robust approach is to
-    # fetch the filing index page ({base}/{accession_path}-index.htm) first and
-    # discover the actual XML filename before downloading.
-    base = (
-        f"{SEC_EDGAR_BASE_URL}/Archives/edgar/data/{cik.lstrip('0')}/{accession_path}"
-    )
-    xml_url = f"{base}/infotable.xml"
 
-    cache_key = f"{DISK_KEY_GURU_FILING}:infotable:{accession_number}"
+    # Discover the actual XML filename from the filing index
+    xml_filename = _discover_infotable_filename(accession_path, cik)
+    if xml_filename is None:
+        # Fallback to the common default filename
+        xml_filename = "infotable.xml"
+        logger.debug(
+            "EDGAR infotable 檔名探索失敗，使用預設檔名：%s → %s",
+            accession_number,
+            xml_filename,
+        )
+
+    # Filing documents are served by www.sec.gov, not data.sec.gov
+    base = f"{SEC_EDGAR_ARCHIVES_BASE_URL}/Archives/edgar/data/{cik.lstrip('0')}/{accession_path}"
+    xml_url = f"{base}/{xml_filename}"
+
+    # Include filename in cache key to prevent stale cache when filename changes
+    cache_key = f"{DISK_KEY_GURU_FILING}:infotable:{accession_number}:{xml_filename}"
     disk_cached = _disk_get(cache_key)
     if disk_cached is not None:
         logger.debug("EDGAR infotable L2 命中：%s", accession_number)
@@ -267,7 +321,10 @@ def fetch_13f_filing_detail(accession_number: str, cik: str) -> list[dict]:
         holdings = _parse_13f_xml(xml_text)
         _disk_set(cache_key, holdings, DISK_GURU_FILING_TTL)
         logger.info(
-            "EDGAR infotable 解析完成：%s, %d 筆持倉", accession_number, len(holdings)
+            "EDGAR infotable 解析完成：%s (%s), %d 筆持倉",
+            accession_number,
+            xml_filename,
+            len(holdings),
         )
         return holdings
     except Exception as exc:

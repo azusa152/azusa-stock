@@ -439,6 +439,7 @@ GURU_HOLDING_CHANGE_THRESHOLD_PCT = 20.0  # +/-20% = significant change
 GURU_TOP_HOLDINGS_COUNT = 10
 GURU_FILING_DEADLINES = ["02-14", "05-15", "08-14", "11-14"]
 SEC_EDGAR_BASE_URL = "https://data.sec.gov"
+SEC_EDGAR_ARCHIVES_BASE_URL = "https://www.sec.gov"
 # TODO(Phase 2): override with env var SEC_EDGAR_USER_AGENT in sec_edgar.py;
 # SEC policy requires a real contact email in the User-Agent header.
 SEC_EDGAR_USER_AGENT = "Folio/1.0 (folio@example.com)"

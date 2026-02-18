@@ -78,6 +78,9 @@ with _refresh_col:
         invalidate_guru_caches()
         refresh_ui()
 
+with st.expander(t("smart_money.sop.title"), expanded=False):
+    st.markdown(t("smart_money.sop.content"))
+
 # ---------------------------------------------------------------------------
 # Data: Guru List
 # ---------------------------------------------------------------------------

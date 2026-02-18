@@ -25,6 +25,7 @@ from infrastructure.repositories import (
     update_guru,
 )
 from infrastructure.sec_edgar import (
+    _discover_infotable_filename,
     _parse_13f_xml,
     fetch_13f_filing_detail,
     fetch_company_filings,
@@ -280,6 +281,90 @@ class TestGetLatest13fFilings:
 
 
 # ---------------------------------------------------------------------------
+# _discover_infotable_filename (mocked HTTP)
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoverInfotableFilename:
+    """Tests for _discover_infotable_filename()."""
+
+    def test_discover_infotable_filename_should_return_non_primary_xml(self):
+        mock_index_json = {
+            "directory": {
+                "item": [
+                    {"name": "0001193125-26-054580.txt", "size": "62306"},
+                    {"name": "primary_doc.xml", "size": "5556"},
+                    {"name": "50240.xml", "size": "55376"},
+                ]
+            }
+        }
+
+        with patch(
+            "infrastructure.sec_edgar._http_get_json",
+            return_value=mock_index_json,
+        ):
+            result = _discover_infotable_filename("000119312526054580", "0001067983")
+
+        assert result == "50240.xml"
+
+    def test_discover_infotable_filename_should_skip_primary_doc_xml(self):
+        mock_index_json = {
+            "directory": {
+                "item": [
+                    {"name": "primary_doc.xml", "size": "5556"},
+                    {"name": "infotable.xml", "size": "12345"},
+                ]
+            }
+        }
+
+        with patch(
+            "infrastructure.sec_edgar._http_get_json",
+            return_value=mock_index_json,
+        ):
+            result = _discover_infotable_filename("000000000000000000", "0000000000")
+
+        assert result == "infotable.xml"
+
+    def test_discover_infotable_filename_should_return_none_on_http_error(self):
+        with patch(
+            "infrastructure.sec_edgar._http_get_json",
+            side_effect=Exception("network error"),
+        ):
+            result = _discover_infotable_filename("000000000000000000", "0000000000")
+
+        assert result is None
+
+    def test_discover_infotable_filename_should_return_none_when_no_xml_found(self):
+        mock_index_json = {
+            "directory": {
+                "item": [
+                    {"name": "0001193125-26-054580.txt", "size": "62306"},
+                    {"name": "primary_doc.xml", "size": "5556"},
+                ]
+            }
+        }
+
+        with patch(
+            "infrastructure.sec_edgar._http_get_json",
+            return_value=mock_index_json,
+        ):
+            result = _discover_infotable_filename("000000000000000000", "0000000000")
+
+        assert result is None
+
+    def test_discover_infotable_filename_should_return_none_on_malformed_json(self):
+        mock_index_json = {"some_unexpected_key": "value"}
+
+        with patch(
+            "infrastructure.sec_edgar._http_get_json",
+            return_value=mock_index_json,
+        ):
+            result = _discover_infotable_filename("000000000000000000", "0000000000")
+
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
 # fetch_13f_filing_detail (mocked HTTP)
 # ---------------------------------------------------------------------------
 
@@ -293,9 +378,15 @@ class TestFetch13fFilingDetail:
         # Clear disk cache to force HTTP call
         _disk_cache.clear()
 
-        with patch(
-            "infrastructure.sec_edgar._http_get_text",
-            return_value=_SAMPLE_13F_XML,
+        with (
+            patch(
+                "infrastructure.sec_edgar._discover_infotable_filename",
+                return_value="50240.xml",
+            ),
+            patch(
+                "infrastructure.sec_edgar._http_get_text",
+                return_value=_SAMPLE_13F_XML,
+            ),
         ):
             result = fetch_13f_filing_detail("0001067983-25-000006", "0001067983")
 
@@ -307,13 +398,42 @@ class TestFetch13fFilingDetail:
 
         _disk_cache.clear()
 
-        with patch(
-            "infrastructure.sec_edgar._http_get_text",
-            side_effect=Exception("network error"),
+        with (
+            patch(
+                "infrastructure.sec_edgar._discover_infotable_filename",
+                return_value="infotable.xml",
+            ),
+            patch(
+                "infrastructure.sec_edgar._http_get_text",
+                side_effect=Exception("network error"),
+            ),
         ):
             result = fetch_13f_filing_detail("0000000000-00-000000", "0000000000")
 
         assert result == []
+
+    def test_fetch_13f_filing_detail_should_fallback_when_discovery_fails(self):
+        from infrastructure.sec_edgar import _disk_cache
+
+        _disk_cache.clear()
+
+        with (
+            patch(
+                "infrastructure.sec_edgar._discover_infotable_filename",
+                return_value=None,  # Discovery failed
+            ),
+            patch(
+                "infrastructure.sec_edgar._http_get_text",
+                return_value=_SAMPLE_13F_XML,
+            ) as mock_get_text,
+        ):
+            result = fetch_13f_filing_detail("0001067983-25-000006", "0001067983")
+
+        # Should fallback to "infotable.xml" when discovery returns None
+        assert len(result) == 2
+        # Verify the URL used contains the fallback filename
+        called_url = mock_get_text.call_args[0][0]
+        assert "infotable.xml" in called_url
 
 
 # ---------------------------------------------------------------------------
