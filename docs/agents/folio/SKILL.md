@@ -200,6 +200,8 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/ticker/{ticker}/scan-history` | 掃描歷史 |
 | `GET` | `/ticker/{ticker}/alerts` | 價格警報清單 |
 | `POST` | `/ticker/{ticker}/alerts` | 建立價格警報 |
+| `PATCH` | `/alerts/{alert_id}/toggle` | 切換警報啟用狀態（active ↔ paused） |
+| `DELETE` | `/alerts/{alert_id}` | 刪除價格警報 |
 | `GET` | `/ticker/{ticker}/earnings` | 財報日曆 |
 | `GET` | `/ticker/{ticker}/dividend` | 股息資訊 |
 | `GET` | `/personas/templates` | 投資人格範本列表 |
@@ -303,6 +305,7 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order
 - When `is_rogue_wave` is `true` in a `signals` response, warn the user: bias is at a historically extreme level (≥ 95th percentile) with volume surge — the party is likely peaking; avoid leveraged chasing and consider reducing exposure
 - Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
+- Use `PATCH /alerts/{alert_id}/toggle` to pause or resume an individual price alert without deleting it — useful for silencing an alert during earnings season or a known volatile period
 - Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
 - When users report errors after an upgrade, check `docker compose logs backend --tail 50` first
 - Use `GET /resonance` to check which gurus hold the same stocks as the user — response is guru-centric; invert on client side to get per-ticker guru list

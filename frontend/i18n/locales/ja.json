@@ -558,7 +558,9 @@
       "op_gt": ">（超過）",
       "threshold_label": "閾値",
       "add_button": "アラートを追加",
-      "current_value": "現在の {metric}：{value}"
+      "current_value": "現在の {metric}：{value}",
+      "proximity_close": "⚠️ トリガーに近い",
+      "proximity_triggered": "🔔 今すぐ発動"
     },
     "price_chart": {
       "insufficient_data": "📉 価格推移データ不足。"

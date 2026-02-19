@@ -558,7 +558,9 @@
       "op_gt": "> (greater than)",
       "threshold_label": "Threshold",
       "add_button": "Add Alert",
-      "current_value": "Current {metric}: {value}"
+      "current_value": "Current {metric}: {value}",
+      "proximity_close": "⚠️ Close to trigger",
+      "proximity_triggered": "🔔 Would trigger now"
     },
     "price_chart": {
       "insufficient_data": "📉 Insufficient price history data."

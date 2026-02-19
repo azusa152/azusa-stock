@@ -1320,6 +1320,28 @@ def _render_price_alerts_section(ticker: str, signals: dict) -> None:
                 if triggered
                 else ""
             )
+            # Proximity indicator: how close is current value to threshold?
+            proximity_label = ""
+            current_sig = signals.get(a["metric"])
+            if current_sig is not None:
+                threshold = float(a["threshold"])
+                current = float(current_sig)
+                if a["operator"] == "lt":
+                    delta = current - threshold  # positive = not triggered
+                    if delta <= 0:
+                        proximity_label = t("utils.alerts.proximity_triggered")
+                    else:
+                        pct = delta / abs(threshold) if threshold != 0 else delta
+                        if pct < 0.10:
+                            proximity_label = t("utils.alerts.proximity_close")
+                else:  # gt
+                    delta = threshold - current  # positive = not triggered
+                    if delta <= 0:
+                        proximity_label = t("utils.alerts.proximity_triggered")
+                    else:
+                        pct = delta / abs(threshold) if threshold != 0 else delta
+                        if pct < 0.10:
+                            proximity_label = t("utils.alerts.proximity_close")
             col_toggle, col_info, col_delete = st.columns([1, 4, 1])
             with col_toggle:
                 toggle_icon = "⏸️" if a["is_active"] else "▶️"
@@ -1332,6 +1354,7 @@ def _render_price_alerts_section(ticker: str, signals: dict) -> None:
                 st.caption(
                     f"{active_badge} {a['metric']} {op_str} "
                     f"{a['threshold']}{trigger_info}"
+                    + (f"  {proximity_label}" if proximity_label else "")
                 )
             with col_delete:
                 if st.button(

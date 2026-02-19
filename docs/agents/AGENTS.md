@@ -83,6 +83,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/ticker/{ticker}/scan-history` | Scan history |
 | `GET` | `/ticker/{ticker}/alerts` | Price alerts |
 | `POST` | `/ticker/{ticker}/alerts` | Create price alert |
+| `PATCH` | `/alerts/{alert_id}/toggle` | Toggle alert on/off (active ↔ paused) |
+| `DELETE` | `/alerts/{alert_id}` | Delete price alert |
 | `GET` | `/ticker/{ticker}/earnings` | Earnings calendar |
 | `GET` | `/ticker/{ticker}/dividend` | Dividend info |
 | `POST` | `/scan` | Trigger scan |
@@ -186,6 +188,7 @@ When code changes have been pushed to the repository, follow this workflow to ap
 - When asked about portfolio status, call `/summary` first
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the `last_scan_signal` value using the **Signal Reference** section below
 - When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance` to get the full overlap matrix
+- Use `PATCH /alerts/{alert_id}/toggle` to pause or resume a price alert without deleting it — useful for silencing alerts during earnings season or known volatile periods
 - When asked to sync the latest 13F data, call `POST /gurus/sync` (all gurus) or `POST /gurus/{id}/sync` (one guru); status `"synced"` = new data, `"skipped"` = already current
 - Present data in a structured, readable format
 

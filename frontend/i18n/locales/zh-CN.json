@@ -558,7 +558,9 @@
       "op_gt": ">（大于）",
       "threshold_label": "门槛",
       "add_button": "新增警报",
-      "current_value": "目前 {metric}：{value}"
+      "current_value": "目前 {metric}：{value}",
+      "proximity_close": "⚠️ 接近触发",
+      "proximity_triggered": "🔔 现在即会触发"
     },
     "price_chart": {
       "insufficient_data": "📉 价格趋势资料不足。"
