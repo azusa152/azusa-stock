@@ -65,6 +65,7 @@ from config import (
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
     CATEGORY_OPTIONS,
+    ALERT_DEFAULTS,
     DEFAULT_ALERT_THRESHOLD,
     DEFAULT_TAG_OPTIONS,
     EARNINGS_BADGE_DAYS_THRESHOLD,
@@ -1305,7 +1306,7 @@ def _render_scan_history_section(ticker: str) -> None:
         st.caption(t("utils.scan_history.no_history"))
 
 
-def _render_price_alerts_section(ticker: str) -> None:
+def _render_price_alerts_section(ticker: str, signals: dict) -> None:
     """Render price alerts tab content (list + create form)."""
     alerts = fetch_alerts(ticker)
     if alerts:
@@ -1343,6 +1344,9 @@ def _render_price_alerts_section(ticker: str) -> None:
             key=f"alert_metric_{ticker}",
             label_visibility="collapsed",
         )
+        current_val = signals.get(alert_metric)
+        if current_val is not None:
+            st.caption(t("utils.alerts.current_value", metric=alert_metric.upper(), value=f"{current_val:.2f}"))
     with alert_cols[1]:
         alert_op = st.selectbox(
             t("utils.alerts.condition_label"),
@@ -1354,11 +1358,17 @@ def _render_price_alerts_section(ticker: str) -> None:
             label_visibility="collapsed",
         )
     with alert_cols[2]:
+        metric_defaults = ALERT_DEFAULTS.get(alert_metric, {})
+        if alert_metric == "price":
+            raw_price = signals.get("price")
+            default_val = float(raw_price) if raw_price is not None else DEFAULT_ALERT_THRESHOLD
+        else:
+            default_val = metric_defaults.get(alert_op, DEFAULT_ALERT_THRESHOLD)
         alert_threshold = st.number_input(
             t("utils.alerts.threshold_label"),
-            value=DEFAULT_ALERT_THRESHOLD,
+            value=default_val,
             step=1.0,
-            key=f"alert_threshold_{ticker}",
+            key=f"alert_threshold_{ticker}_{alert_metric}_{alert_op}",
             label_visibility="collapsed",
         )
 
@@ -1669,7 +1679,7 @@ def render_stock_card(
 
         # -- Alerts tab --
         with _tabs[_tab_idx]:
-            _render_price_alerts_section(ticker)
+            _render_price_alerts_section(ticker, signals)
         _tab_idx += 1
 
         # -- Thesis Versioning tab --

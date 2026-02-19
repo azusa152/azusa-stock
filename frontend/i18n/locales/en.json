@@ -555,7 +555,8 @@
       "op_lt": "< (less than)",
       "op_gt": "> (greater than)",
       "threshold_label": "Threshold",
-      "add_button": "Add Alert"
+      "add_button": "Add Alert",
+      "current_value": "Current {metric}: {value}"
     },
     "price_chart": {
       "insufficient_data": "📉 Insufficient price history data."

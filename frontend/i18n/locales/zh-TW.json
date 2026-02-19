@@ -555,7 +555,8 @@
       "op_lt": "<（小於）",
       "op_gt": ">（大於）",
       "threshold_label": "門檻",
-      "add_button": "新增警報"
+      "add_button": "新增警報",
+      "current_value": "目前 {metric}：{value}"
     },
     "price_chart": {
       "insufficient_data": "📉 價格趨勢資料不足。"

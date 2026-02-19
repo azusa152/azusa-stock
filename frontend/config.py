@@ -86,6 +86,11 @@ MARGIN_BAD_CHANGE_THRESHOLD = -2
 EARNINGS_BADGE_DAYS_THRESHOLD = 14
 SCAN_HISTORY_CARD_LIMIT = 10
 DEFAULT_ALERT_THRESHOLD = 30.0
+ALERT_DEFAULTS: dict[str, dict[str, float]] = {
+    "rsi":   {"lt": 30.0,  "gt": 70.0},
+    "bias":  {"lt": -20.0, "gt": 20.0},
+    "price": {"lt": 0.0,   "gt": 0.0},  # filled dynamically from current price
+}
 
 # ---------------------------------------------------------------------------
 # Category Labels & Tags

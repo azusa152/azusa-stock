@@ -555,7 +555,8 @@
       "op_lt": "<（未満）",
       "op_gt": ">（超過）",
       "threshold_label": "閾値",
-      "add_button": "アラートを追加"
+      "add_button": "アラートを追加",
+      "current_value": "現在の {metric}：{value}"
     },
     "price_chart": {
       "insufficient_data": "📉 価格推移データ不足。"

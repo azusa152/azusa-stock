@@ -555,7 +555,8 @@
       "op_lt": "<（小于）",
       "op_gt": ">（大于）",
       "threshold_label": "门槛",
-      "add_button": "新增警报"
+      "add_button": "新增警报",
+      "current_value": "目前 {metric}：{value}"
     },
     "price_chart": {
       "insufficient_data": "📉 价格趋势资料不足。"
