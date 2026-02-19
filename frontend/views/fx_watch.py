@@ -16,6 +16,7 @@ from utils import (
     delete_fx_watch,
     fetch_fx_watch_analysis,
     fetch_fx_watches,
+    invalidate_all_caches,
     invalidate_fx_watch_caches,
     is_privacy as _is_privacy,
     on_privacy_change as _on_privacy_change,
@@ -144,14 +145,19 @@ def _render_fx_chart(base: str, quote: str, recent_high_days: int, watch_id: int
 # Page Content
 # ---------------------------------------------------------------------------
 
-# Title row with privacy toggle
-_title_cols = st.columns([4, 1])
+# Title row with privacy toggle and refresh
+_title_cols = st.columns([4, 1, 1])
 with _title_cols[0]:
     st.title(t("fx_watch.title"))
     st.caption(t("fx_watch.caption"))
 
 with _title_cols[1]:
     st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
+
+with _title_cols[2]:
+    if st.button(t("common.refresh"), use_container_width=True):
+        invalidate_all_caches()
+        _refresh_ui()
 
 # Usage manual (collapsible)
 with st.expander(t("fx_watch.sop_title")):

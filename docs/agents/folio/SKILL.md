@@ -227,6 +227,16 @@ For advanced use, you can call individual endpoints directly:
 | `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert），支援 `language` 欄位 (`zh-TW`/`en`/`ja`/`zh-CN`) |
 | `GET` | `/docs` | Swagger UI (互動式 API 文件) |
 | `GET` | `/openapi.json` | OpenAPI 規範 |
+| `GET` | `/gurus` | 取得所有追蹤大師清單（id, name, display_name, cik, active） |
+| `POST` | `/gurus` | 新增自訂大師，body: `{"name": "Berkshire Hathaway Inc", "cik": "0001067983", "display_name": "Warren Buffett"}` |
+| `DELETE` | `/gurus/{guru_id}` | 停用大師追蹤（不刪除歷史持倉資料） |
+| `POST` | `/gurus/sync` | 觸發所有大師 13F 批次同步（SEC EDGAR，帶 mutex 防重複；申報季自動呼叫） |
+| `POST` | `/gurus/{guru_id}/sync` | 觸發單一大師 13F 同步，回傳 `{"status": "synced"\|"skipped", "message": "..."}` |
+| `GET` | `/gurus/{guru_id}/filing` | 最新 13F 申報摘要：report_date, filing_date, total_value, holdings_count, new_positions, sold_out, increased, decreased |
+| `GET` | `/gurus/{guru_id}/holdings` | 所有持倉（含 action: NEW_POSITION/SOLD_OUT/INCREASED/DECREASED/UNCHANGED，ticker, value, shares, change_pct, weight_pct） |
+| `GET` | `/gurus/{guru_id}/top` | 前 N 大持倉（按 weight_pct 排序），支援 `?n=10` |
+| `GET` | `/resonance` | 投資組合共鳴總覽 — 所有大師 vs 觀察清單/持倉的重疊，回傳 `{results: [{guru_display_name, overlapping_tickers, overlap_count, holdings: [{ticker, action, weight_pct, ...}]}], total_gurus, gurus_with_overlap}` |
+| `GET` | `/resonance/{ticker}` | 特定股票的大師持有情況 — 哪些大師持有此股票及其動作 |
 
 ## Categories
 
@@ -295,6 +305,9 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `GET /stress-test?scenario_drop_pct=-20&display_currency=USD` to simulate portfolio stress under market crash scenarios (-50% to 0%). Response includes portfolio Beta, expected loss amount/percentage, pain level classification, per-holding breakdown with Beta values, and advice for high-risk portfolios. Supports multi-currency display (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
 - Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
 - When users report errors after an upgrade, check `docker compose logs backend --tail 50` first
+- Use `GET /resonance` to check which gurus hold the same stocks as the user — response is guru-centric; invert on client side to get per-ticker guru list
+- Use `POST /gurus/{guru_id}/sync` to fetch the latest 13F data from SEC EDGAR for a specific guru — status `"synced"` means new data was fetched, `"skipped"` means already up to date
+- During 13F filing seasons (February, May, August, November), the cron service automatically calls `POST /gurus/sync` daily; off-season it runs weekly
 
 ## Service Operations
 

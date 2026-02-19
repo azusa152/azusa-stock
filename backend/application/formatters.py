@@ -219,3 +219,100 @@ def format_withdrawal_telegram(
         )
 
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Smart Money (大師足跡) 格式化
+# ---------------------------------------------------------------------------
+
+
+_HOLDING_ACTION_ICON: dict[str, str] = {
+    "NEW_POSITION": "🟢",
+    "SOLD_OUT": "🔴",
+    "INCREASED": "📈",
+    "DECREASED": "📉",
+    "UNCHANGED": "⚪",
+}
+
+
+def format_guru_filing_digest(summaries: list[dict], lang: str = "zh-TW") -> str:
+    """
+    將多位大師的 13F 季報摘要格式化為 Telegram HTML 訊息。
+
+    Args:
+        summaries: list of filing summary dicts（來自 filing_service，需包含
+                   guru_display_name, report_date, new_positions, sold_out,
+                   increased, decreased, top_holdings）
+        lang: 語言代碼
+
+    Returns:
+        Telegram HTML 格式字串
+    """
+    if not summaries:
+        return t("guru.digest_no_updates", lang=lang)
+
+    report_date = summaries[0].get("report_date", "")
+    parts: list[str] = [
+        t("guru.filing_digest_title", lang=lang, report_date=report_date),
+        "",
+    ]
+
+    for summary in summaries:
+        name = summary.get("guru_display_name", "")
+        new_pos = summary.get("new_positions", 0)
+        sold = summary.get("sold_out", 0)
+        increased = summary.get("increased", 0)
+        decreased = summary.get("decreased", 0)
+
+        parts.append(f"<b>{name}</b>")
+        if new_pos or sold or increased or decreased:
+            parts.append(
+                t(
+                    "guru.digest_changes",
+                    lang=lang,
+                    new=new_pos,
+                    sold=sold,
+                    inc=increased,
+                    dec=decreased,
+                )
+            )
+        else:
+            parts.append(t("guru.digest_no_changes", lang=lang))
+
+        # Top 3 holdings for brevity
+        for h in summary.get("top_holdings", [])[:3]:
+            icon = _HOLDING_ACTION_ICON.get(h.get("action", ""), "⚪")
+            ticker = h.get("ticker") or h.get("cusip", "")
+            weight = h.get("weight_pct") or 0.0
+            parts.append(f"  {icon} {ticker} ({weight:.1f}%)")
+        parts.append("")
+
+    parts.append(t("guru.lagging_disclaimer_short", lang=lang))
+    return "\n".join(parts)
+
+
+def format_resonance_alert(
+    ticker: str, guru_name: str, action: str, lang: str = "zh-TW"
+) -> str:
+    """
+    格式化單一共鳴警報：大師對使用者關注清單中的股票進行了操作。
+
+    Args:
+        ticker: 股票代號
+        guru_name: 大師顯示名稱
+        action: HoldingAction value（e.g. "NEW_POSITION"）
+        lang: 語言代碼
+
+    Returns:
+        Telegram HTML 格式字串
+    """
+    icon = _HOLDING_ACTION_ICON.get(action, "⚪")
+    action_label = t(f"guru.action_{action.lower()}", lang=lang)
+    return t(
+        "guru.resonance_alert",
+        lang=lang,
+        icon=icon,
+        guru_name=guru_name,
+        action=action_label,
+        ticker=ticker,
+    )

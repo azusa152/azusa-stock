@@ -27,6 +27,7 @@ from utils import (
     fetch_enriched_stocks,
     fetch_last_scan,
     fetch_removed_stocks,
+    fetch_resonance_overview,
     fetch_stocks,
     fetch_thesis_history,
     format_utc_timestamp,
@@ -40,11 +41,26 @@ from utils import (
 
 
 # ---------------------------------------------------------------------------
+# Session State Flag Handling (must run before any rendering)
+# ---------------------------------------------------------------------------
+
+if st.session_state.pop("stock_added", False):
+    invalidate_stock_caches()
+    refresh_ui()
+
+
+# ---------------------------------------------------------------------------
 # Page Header
 # ---------------------------------------------------------------------------
 
-st.title(t("radar.title"))
-st.caption(t("radar.caption"))
+_title_col, _refresh_col = st.columns([6, 1])
+with _title_col:
+    st.title(t("radar.title"))
+    st.caption(t("radar.caption"))
+with _refresh_col:
+    if st.button(t("common.refresh"), use_container_width=True):
+        invalidate_all_caches()
+        refresh_ui()
 
 with st.expander(t("radar.sop.title"), expanded=False):
     st.markdown(t("radar.sop.content"))
@@ -130,8 +146,7 @@ with st.sidebar:
                     )
                     if result:
                         st.success(t("radar.form.success_added", ticker=full_ticker))
-                        invalidate_stock_caches()
-                        refresh_ui()
+                        st.session_state["stock_added"] = True
 
     else:  # Bond mode
         with st.form("add_bond_form", clear_on_submit=True):
@@ -172,8 +187,7 @@ with st.sidebar:
                         st.success(
                             t("radar.form.success_added", ticker=bond_ticker.strip().upper())
                         )
-                        invalidate_stock_caches()
-                        refresh_ui()
+                        st.session_state["stock_added"] = True
 
     st.divider()
 
@@ -240,13 +254,6 @@ with st.sidebar:
         use_container_width=True,
     )
 
-    st.divider()
-
-    # -- Refresh --
-    if st.button(t("radar.refresh_button"), use_container_width=True):
-        invalidate_all_caches()
-        refresh_ui()
-
 
 # ---------------------------------------------------------------------------
 # Main Dashboard: Stock Tabs
@@ -290,6 +297,10 @@ removed_list = removed_data or []
 _enriched_list = fetch_enriched_stocks() or []
 _enriched_map: dict[str, dict] = {e["ticker"]: e for e in _enriched_list if "ticker" in e}
 
+# Fetch resonance data for all tickers in a single GET /resonance call
+# (cached 24 h). Falls back to empty dict so cards still render on error.
+_resonance_map: dict[str, list] = fetch_resonance_overview() or {}
+
 # Build tab labels
 tab_labels = [
     t("radar.tab.trend_setter", count=len(category_map['Trend_Setter'])),
@@ -309,7 +320,11 @@ for _cat, _tab in zip(RADAR_CATEGORY_OPTIONS, _category_tabs):
         if _stocks:
             render_reorder_section(_cat, _stocks)
             for stock in _stocks:
-                render_stock_card(stock, enrichment=_enriched_map.get(stock["ticker"]))
+                render_stock_card(
+                    stock,
+                    enrichment=_enriched_map.get(stock["ticker"]),
+                    resonance=_resonance_map.get(stock["ticker"]),
+                )
         else:
             st.info(
                 t("radar.empty_category", category=get_category_labels()[_cat])

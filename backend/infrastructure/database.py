@@ -61,6 +61,8 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN is_etf BOOLEAN DEFAULT 0;",
         # 回填已知 ETF
         "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
+        # GuruHolding: 新增 sector 欄位（GICS 行業板塊）
+        "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
     ]
 
     with engine.connect() as conn:
@@ -163,6 +165,27 @@ def _encrypt_plaintext_tokens() -> None:
         logger.error("Token 加密遷移失敗：%s", e, exc_info=True)
 
 
+def _run_smart_money_migrations() -> None:
+    """Smart Money Tracker 索引遷移（補充查詢效能所需的 index）。"""
+    from sqlalchemy import text
+
+    migrations = [
+        "CREATE INDEX IF NOT EXISTS ix_gurufiling_guru_id ON gurufiling (guru_id);",
+        "CREATE INDEX IF NOT EXISTS ix_guruholding_guru_id ON guruholding (guru_id);",
+        "CREATE INDEX IF NOT EXISTS ix_guruholding_ticker ON guruholding (ticker);",
+        "CREATE INDEX IF NOT EXISTS ix_guruholding_filing_id ON guruholding (filing_id);",
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info("Smart Money 索引遷移成功：%s", sql.strip())
+            except Exception:
+                conn.rollback()
+
+
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移與資料載入。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
@@ -175,6 +198,10 @@ def create_db_and_tables() -> None:
     logger.info("執行資料庫遷移...")
     _run_migrations()
     logger.info("遷移完成。")
+
+    logger.info("執行 Smart Money 索引遷移...")
+    _run_smart_money_migrations()
+    logger.info("Smart Money 索引遷移完成。")
 
     logger.info("載入系統人格範本...")
     _load_system_personas()

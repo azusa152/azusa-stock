@@ -7,7 +7,8 @@
     "dashboard": "Portfolio Dashboard",
     "radar": "Investment Radar",
     "allocation": "Asset Allocation",
-    "fx_watch": "FX Watch"
+    "fx_watch": "FX Watch",
+    "smart_money": "Smart Money"
   },
   "common": {
     "refresh": "🔄 Refresh",
@@ -142,7 +143,17 @@
       "daily_change": "Daily Change"
     },
     "no_holdings": "No holdings data.",
-    "no_holdings_data": "📭 No holdings data. Please add holdings first."
+    "no_holdings_data": "📭 No holdings data. Please add holdings first.",
+    "resonance": {
+      "title": "🏆 Smart Money Resonance",
+      "caption": "⚠️ Based on quarterly 13F snapshots, not real-time.",
+      "unavailable": "⏳ Resonance data unavailable (no 13F data synced yet).",
+      "empty": "📭 No overlapping stocks. Add a watchlist or holdings and sync a guru's 13F data.",
+      "overlap_count": "Overlapping Stocks",
+      "gurus_with_overlap": "Gurus with Overlap",
+      "strongest_signal": "Strongest Signal",
+      "goto_smart_money": "🏦 View Smart Money"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -546,6 +557,7 @@
         "alerts": "🔔 Price Alerts"
       },
       "whalewisdom_button": "🐳 View WhaleWisdom for institutional holdings",
+      "resonance_badge": "🏆 {count} guru(s) also hold this: {gurus}",
       "whalewisdom_hint": "💡 Follow new money, not existing holdings. Watch Berkshire, Bridgewater for New/Add vs Sold Out.",
       "top_holders_title": "**📊 Top 5 Institutional Holders:**",
       "no_holders": "⚠️ Institutional data unavailable. Click above for full 13F report.",
@@ -803,5 +815,117 @@
     "gross_margin_hover": "Gross Margin: {value}%",
     "close_price": "Close Price",
     "trend_period": "Trend Period"
+  },
+  "smart_money": {
+    "title": "🏦 Smart Money Tracker",
+    "caption": "Track top institutional investors' 13F holdings and find resonance with your portfolio",
+    "sop": {
+      "title": "📖 Smart Money: How to Use",
+      "content": "### What is Smart Money Tracker?\n\n**Smart Money** tracks SEC **13F quarterly filings** from top institutional investors — Berkshire Hathaway (Warren Buffett), Bridgewater (Ray Dalio), Renaissance Technologies, and more. It surfaces stocks where guru portfolios overlap with your own watchlist or holdings.\n\n> ⚠️ **Important**: 13F filings are quarterly snapshots with a 45-day filing deadline. Holdings may lag reality by **45–90 days** and do not reflect current positions. Do not use as real-time trading signals.\n\n---\n\n### Workflow\n\n#### 1. Add a Guru\n\nExpand **\"➕ Add Custom Guru\"** in the sidebar and fill in:\n- **Institution Full Name**: Exact name as listed on SEC EDGAR (e.g. `Berkshire Hathaway Inc`)\n- **SEC CIK Code**: 10-digit identifier — look it up at SEC EDGAR\n- **Display Name**: Your friendly label (e.g. `Warren Buffett`)\n\nSeveral well-known gurus are pre-loaded and ready to use.\n\n#### 2. Sync Latest 13F\n\nSelect a guru, then click **\"🔄 Sync Latest 13F\"** to fetch the latest filing from SEC EDGAR.\n\n- ✅ **Sync complete**: New data was fetched and saved\n- ℹ️ **Already up to date**: No new data since last sync\n\n> 💡 During filing seasons (February, May, August, November), the cron service syncs automatically every day; off-season it runs weekly — no manual action needed.\n\n#### 3. Holding Changes (Tab 1)\n\n| Action | Meaning |\n|--------|---------|\n| 🟢 **New Position** | Opened this quarter |\n| 🔴 **Sold Out** | Fully exited this quarter |\n| 📈 **Increased** | Added shares this quarter |\n| 📉 **Decreased** | Reduced shares this quarter |\n\n> 💡 Focus on **New Positions** — a fresh allocation is usually a stronger conviction signal than adding to an existing position.\n\n#### 4. Top 10 Holdings (Tab 2)\n\nHorizontal bar chart shows portfolio weight with action-colored bars. The detail table below shows rank, action badge, value, and share count.\n\n#### 5. Great Minds Think Alike (Tab 3)\n\nAutomatically compares **all tracked gurus** against your watchlist / holdings to find overlapping stocks. The resonance badge (🏆×N) also appears on stock cards in the **Investment Radar** page so you can spot guru alignment at a glance."
+    },
+    "no_gurus_hint": "📭 No gurus tracked yet. Add a guru CIK in the sidebar.",
+    "no_filing": "📭 No 13F filing data for {guru}. Click 'Sync Latest 13F'.",
+    "lagging_banner": "⚠️ Holdings snapshot as of: {report_date}  ·  Filed: {filing_date}  ·  13F data is quarterly, not real-time.",
+    "edgar_link": "📄 View SEC EDGAR Filing",
+    "edgar_link_help": "Open the original 13F filing on SEC EDGAR",
+    "metric": {
+      "report_date": "Snapshot Date",
+      "filing_date": "Filed Date",
+      "total_value": "Total Value",
+      "holdings_count": "# Holdings"
+    },
+    "tab": {
+      "changes": "📊 Holding Changes",
+      "top": "🏆 Top 10 Holdings",
+      "great_minds": "🤝 Great Minds Think Alike"
+    },
+    "action": {
+      "new_position": "New Position",
+      "sold_out": "Sold Out",
+      "increased": "Increased",
+      "decreased": "Decreased",
+      "unchanged": "Unchanged"
+    },
+    "col": {
+      "value": "Value",
+      "shares": "Shares"
+    },
+    "changes": {
+      "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",
+      "top_20_note": "📌 Showing top {shown} significant changes out of {total} total, sorted by change magnitude and portfolio weight."
+    },
+    "top": {
+      "no_data": "📭 No holdings data available.",
+      "weight_axis": "Portfolio Weight (%)",
+      "table_title": "📋 Top 10 Holdings Detail"
+    },
+    "great_minds": {
+      "caption": "Great Minds Think Alike: stocks overlapping between your watchlist/holdings and guru portfolios. ⚠️ Based on 13F quarterly snapshots, not real-time.",
+      "empty": "📭 No overlapping stocks. Make sure you have a watchlist or holdings, and sync guru 13F data.",
+      "overlap_count": "Overlapping Stocks",
+      "guru_count_label": "Gurus"
+    },
+    "sidebar": {
+      "header": "🏦 Smart Money",
+      "no_gurus": "📭 No gurus tracked yet. Add one below.",
+      "guru_selector": "Select Guru",
+      "sync_button": "🔄 Sync Latest 13F",
+      "sync_help": "Fetch the latest 13F filing from SEC EDGAR (may take a moment)",
+      "syncing": "Syncing...",
+      "sync_success": "✅ Sync complete",
+      "sync_skipped": "ℹ️ Already up to date",
+      "sync_error": "❌ Sync failed: {msg}",
+      "add_guru_title": "➕ Add Custom Guru",
+      "add_name": "Institution Full Name",
+      "add_name_placeholder": "e.g. Berkshire Hathaway Inc",
+      "add_cik": "SEC CIK Code",
+      "add_display_name": "Display Name",
+      "add_display_placeholder": "e.g. Warren Buffett",
+      "add_button": "Add Guru",
+      "add_required": "⚠️ Please fill in all fields.",
+      "add_success": "✅ Added {display_name}"
+    },
+    "overview": {
+      "tab": "📊 Overview",
+      "add_guru_tab": "➕ Add Guru",
+      "guru_cards_header": "Guru Status",
+      "highlights_header": "Season Highlights",
+      "highlights_new_count": "New Positions",
+      "highlights_sold_count": "Sold Outs",
+      "highlights_total_value": "Total New Value",
+      "highlights_show_all": "Show all +{count}",
+      "new_positions_header": "New Positions",
+      "sold_outs_header": "Sold Outs",
+      "highlights_empty": "📭 No new positions or sold outs this season.",
+      "consensus_header": "🤝 Consensus Holdings",
+      "consensus_empty": "📭 No stocks held by multiple gurus yet.",
+      "consensus_gurus": "Gurus holding",
+      "sector_header": "🏭 Sector Allocation",
+      "sector_empty": "📭 Insufficient sector data (sync guru 13F filings first).",
+      "no_data": "📭 No guru data yet. Historical filings are loading in the background — check back shortly.",
+      "stale_label": "⚠️ Stale",
+      "recent_label": "✅ Recent",
+      "total_value_label": "Total Value",
+      "holdings_count_label": "Holdings",
+      "filing_count_label": "Filings",
+      "report_date_label": "Latest Report",
+      "sync_button": "🔄 Sync",
+      "filing_history_expander": "📅 Filing History ({count})",
+      "filing_history_row": "📄 {report_date}  ·  Filed: {filing_date}  ·  {total_value}  ·  {holdings_count} holdings",
+      "sector_weight_axis": "Weight (%)"
+    },
+    "add_guru": {
+      "title": "➕ Add Custom Guru",
+      "description": "Enter the institution's SEC EDGAR details to start tracking their 13F holdings.",
+      "name_label": "Institution Full Name",
+      "name_placeholder": "e.g. Berkshire Hathaway Inc",
+      "cik_label": "SEC CIK Code",
+      "cik_placeholder": "0001067983",
+      "display_label": "Display Name",
+      "display_placeholder": "e.g. Warren Buffett",
+      "submit_button": "Add Guru",
+      "required_warning": "⚠️ Please fill in all fields.",
+      "success": "✅ Added {display_name}. Switch to the Overview tab to see it."
+    }
   }
 }

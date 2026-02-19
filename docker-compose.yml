@@ -106,8 +106,33 @@ services:
         CURLSCRIPT
         chmod +x /usr/local/bin/folio-curl.sh
 
-        # Cron: smart scan every 30 min + weekly digest on Sunday + FX alert every 6 hours
-        (echo "*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest > /dev/null 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1") | crontab -
+        # 13F sync script: daily in filing season (Feb/May/Aug/Nov), weekly on Mondays off-season
+        cat > /usr/local/bin/sync-13f.sh << 'SYNCSCRIPT'
+        #!/bin/sh
+        BACKEND="http://backend:8000"
+        MONTH=$$(date +%m)
+        DOW=$$(date +%u)
+
+        case "$$MONTH" in
+          02|05|08|11)
+            echo "$$(date) Filing season (month $$MONTH) — triggering 13F sync for all gurus..."
+            /usr/local/bin/folio-curl.sh -X POST "$$BACKEND/gurus/sync" > /dev/null 2>&1
+            ;;
+          *)
+            if [ "$$DOW" = "1" ]; then
+              echo "$$(date) Off-season Monday — triggering weekly 13F sync for amended filings..."
+              /usr/local/bin/folio-curl.sh -X POST "$$BACKEND/gurus/sync" > /dev/null 2>&1
+            else
+              echo "$$(date) Off-season (month $$MONTH, day $$DOW) — skipping 13F sync."
+            fi
+            ;;
+        esac
+        SYNCSCRIPT
+        chmod +x /usr/local/bin/sync-13f.sh
+
+        # Cron: smart scan every 30 min + weekly digest Sunday 18:00 UTC + FX alert every 6 hours
+        #       + 13F sync daily 02:00 UTC (sync-13f.sh handles filing-season vs off-season logic)
+        (echo "*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest > /dev/null 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"; echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1") | crontab -
         crond -f -l 2
     restart: unless-stopped
 

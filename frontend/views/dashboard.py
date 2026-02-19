@@ -19,10 +19,12 @@ from config import (
     FEAR_GREED_GAUGE_HEIGHT,
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
+    HOLDING_ACTION_ICONS,
     PRIVACY_MASK,
     SCAN_SIGNAL_ICONS,
     get_cnn_unavailable_msg,
     get_fear_greed_label,
+    get_holding_action_label,
     get_market_sentiment_label,
     get_category_labels,
     get_privacy_toggle_label,
@@ -30,6 +32,7 @@ from config import (
 from i18n import t
 from utils import (
     fetch_fear_greed,
+    fetch_great_minds,
     fetch_holdings,
     fetch_last_scan,
     fetch_profile,
@@ -470,3 +473,66 @@ else:
     with _hold_a:
         if st.button(t("dashboard.button_add_holdings"), use_container_width=True):
             st.switch_page("views/allocation.py")
+
+
+# ---------------------------------------------------------------------------
+# Section 5: Smart Money Resonance Summary
+# ---------------------------------------------------------------------------
+st.divider()
+st.subheader(t("dashboard.resonance.title"))
+
+_great_minds = fetch_great_minds()
+
+if _great_minds is None:
+    st.caption(t("dashboard.resonance.unavailable"))
+else:
+    _gm_stocks = _great_minds.get("stocks", [])
+    _gm_total = _great_minds.get("total_count", 0)
+
+    if _gm_total == 0:
+        st.info(t("dashboard.resonance.empty"))
+        _sm_col, _ = st.columns([1, 3])
+        with _sm_col:
+            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
+                st.switch_page("views/smart_money.py")
+    else:
+        # Top metrics row
+        _gurus_with_overlap = len(
+            {g["guru_id"] for s in _gm_stocks for g in s.get("gurus", [])}
+        )
+        _strongest = (
+            f"{_gm_stocks[0]['ticker']} ×{_gm_stocks[0]['guru_count']}"
+            if _gm_stocks else "—"
+        )
+        _mc1, _mc2, _mc3 = st.columns(3)
+        _mc1.metric(t("dashboard.resonance.overlap_count"), _gm_total)
+        _mc2.metric(t("dashboard.resonance.gurus_with_overlap"), _gurus_with_overlap)
+        _mc3.metric(t("dashboard.resonance.strongest_signal"), _strongest)
+
+        # Per-stock detail cards (top 5)
+        for _stock in _gm_stocks[:5]:
+            _ticker = _stock.get("ticker", "—")
+            _gc = _stock.get("guru_count", 0)
+            _gurus_list = _stock.get("gurus", [])
+            _guru_lines = []
+            for _g in _gurus_list:
+                _name = _g.get("guru_display_name", "—")
+                _action = _g.get("action", "UNCHANGED")
+                _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
+                _label = get_holding_action_label(_action)
+                _weight = _g.get("weight_pct")
+                _weight_str = (
+                    f"  {_weight:.1f}%"
+                    if _weight is not None and _action != "SOLD_OUT"
+                    else ""
+                )
+                _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
+            with st.container(border=True):
+                _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
+                st.markdown(_card_md)
+
+        st.caption(t("dashboard.resonance.caption"))
+        _sm_col2, _ = st.columns([1, 3])
+        with _sm_col2:
+            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
+                st.switch_page("views/smart_money.py")

@@ -8,9 +8,14 @@ import time
 
 from sqlmodel import Session, select
 
-from domain.constants import SKIP_MOAT_CATEGORIES, SKIP_SIGNALS_CATEGORIES
+from domain.constants import (
+    GURU_BACKFILL_YEARS,
+    SKIP_MOAT_CATEGORIES,
+    SKIP_SIGNALS_CATEGORIES,
+)
 from domain.entities import Holding, Stock
 from infrastructure.database import engine
+from infrastructure.repositories import find_all_active_gurus
 from infrastructure.market_data import (
     get_fear_greed_index,
     prewarm_beta_batch,
@@ -81,6 +86,9 @@ def prewarm_all_caches() -> None:
     if tickers["beta"]:
         _prewarm_phase("beta", lambda: prewarm_beta_batch(tickers["beta"]))
 
+    # Phase 6: Smart Money 歷史 13F 回填（非阻塞、冪等）
+    _prewarm_phase("guru_backfill", _backfill_all_gurus)
+
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
 
@@ -150,6 +158,45 @@ def _collect_tickers() -> dict[str, list[str]]:
         "etf": sorted(etf_tickers),
         "beta": sorted(beta_tickers),
     }
+
+
+def _backfill_all_gurus() -> None:
+    """對所有啟用中大師執行 5 年 13F 歷史回填。
+
+    冪等：已同步的申報自動跳過，重複啟動安全。
+    """
+    # Late import to avoid circular dependency (prewarm → filing_service → repositories)
+    from application.filing_service import backfill_guru_filings  # noqa: PLC0415
+
+    with Session(engine) as session:
+        gurus = find_all_active_gurus(session)
+
+    if not gurus:
+        logger.info("快取預熱 [guru_backfill] 無啟用中大師，跳過回填。")
+        return
+
+    logger.info("快取預熱 [guru_backfill] 開始回填 %d 位大師...", len(gurus))
+    for guru in gurus:
+        try:
+            with Session(engine) as session:
+                result = backfill_guru_filings(
+                    session, guru.id, years=GURU_BACKFILL_YEARS
+                )
+            logger.info(
+                "回填完成：%s，窗口內 %d 筆，已同步 %d，跳過 %d，錯誤 %d",
+                guru.display_name,
+                result["total_filings"],
+                result["synced"],
+                result["skipped"],
+                result["errors"],
+            )
+        except Exception as exc:
+            logger.warning(
+                "快取預熱 [guru_backfill] 大師回填失敗：%s (ID=%d), error=%s",
+                guru.display_name,
+                guru.id,
+                exc,
+            )
 
 
 def _prewarm_phase(name: str, fn) -> None:

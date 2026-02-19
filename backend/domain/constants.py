@@ -303,6 +303,14 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Check FX watch configs & send Telegram alerts (with cooldown)",
         "requires_ticker": False,
     },
+    "guru_sync": {
+        "description": "Trigger 13F filing sync for all tracked gurus (EDGAR fetch)",
+        "requires_ticker": False,
+    },
+    "guru_summary": {
+        "description": "Send latest guru holding changes digest via Telegram",
+        "requires_ticker": False,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -315,6 +323,7 @@ NOTIFICATION_TYPES = {
     "xray_alerts": "constants.notification_xray_alerts",
     "fx_alerts": "constants.notification_fx_alerts",
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
+    "guru_alerts": "constants.notification_guru_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
     k: True for k in NOTIFICATION_TYPES
@@ -422,3 +431,66 @@ STRESS_PAIN_LEVELS = [
 
 STRESS_DISCLAIMER = "constants.stress_disclaimer"  # i18n key
 STRESS_EMPTY_PAIN_LABEL = "stress_test.no_holdings"  # i18n key (when no holdings)
+
+# ---------------------------------------------------------------------------
+# Smart Money Tracker (大師足跡追蹤)
+# ---------------------------------------------------------------------------
+GURU_HOLDING_CHANGE_THRESHOLD_PCT = 20.0  # +/-20% = significant change
+GURU_TOP_HOLDINGS_COUNT = 10
+GURU_HOLDING_CHANGES_DISPLAY_LIMIT = 20  # default limit for per-guru holding changes
+GURU_FILING_DEADLINES = ["02-14", "05-15", "08-14", "11-14"]
+SEC_EDGAR_BASE_URL = "https://data.sec.gov"
+SEC_EDGAR_ARCHIVES_BASE_URL = "https://www.sec.gov"
+# TODO(Phase 2): override with env var SEC_EDGAR_USER_AGENT in sec_edgar.py;
+# SEC policy requires a real contact email in the User-Agent header.
+SEC_EDGAR_USER_AGENT = "Folio/1.0 (folio@example.com)"
+SEC_EDGAR_RATE_LIMIT_CPS = 10.0  # SEC allows 10 req/sec
+SEC_EDGAR_REQUEST_TIMEOUT = 15
+
+# Default Gurus (CIK codes)
+DEFAULT_GURUS = [
+    {
+        "name": "Berkshire Hathaway Inc",
+        "cik": "0001067983",
+        "display_name": "Warren Buffett",
+    },
+    {
+        "name": "Bridgewater Associates, LP",
+        "cik": "0001350694",
+        "display_name": "Ray Dalio",
+    },
+    {
+        "name": "Oaktree Capital Management, L.P.",
+        "cik": "0001535581",
+        "display_name": "Howard Marks",
+    },
+    {
+        "name": "ARK Investment Management LLC",
+        "cik": "0001603466",
+        "display_name": "Cathie Wood",
+    },
+    {
+        "name": "Pershing Square Capital Management",
+        "cik": "0001336528",
+        "display_name": "Bill Ackman",
+    },
+    {
+        "name": "Scion Asset Management, LLC",
+        "cik": "0001649339",
+        "display_name": "Michael Burry",
+    },
+]
+
+# Notification
+NOTIFICATION_TYPE_GURU_ALERTS = "guru_alerts"
+
+GURU_BACKFILL_YEARS = 5  # 回填歷史 13F 資料的年數
+GURU_BACKFILL_FILING_COUNT = 20  # 每位大師最多取回 20 筆申報（約 5 年）
+
+# Cache
+GURU_FILING_CACHE_MAXSIZE = 50
+GURU_FILING_CACHE_TTL = 86400  # 24h (13F data is quarterly)
+DISK_GURU_FILING_TTL = 604800  # 7 days
+DISK_KEY_GURU_FILING = "guru_filing"
+DISK_SECTOR_TTL = 2592000  # 30 days (sectors change very rarely)
+DISK_KEY_SECTOR = "sector"

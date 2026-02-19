@@ -62,6 +62,16 @@ from views.components.withdrawal import render_withdrawal
 
 
 # ---------------------------------------------------------------------------
+# Session State Flag Handling (must run before any rendering)
+# ---------------------------------------------------------------------------
+
+if st.session_state.pop("holding_added", False):
+    invalidate_holding_caches()
+    invalidate_stock_caches()
+    refresh_ui()
+
+
+# ---------------------------------------------------------------------------
 # Helpers (sidebar-only)
 # ---------------------------------------------------------------------------
 
@@ -77,12 +87,16 @@ def _market_label(key: str) -> str:
 # Page Header
 # ---------------------------------------------------------------------------
 
-_title_cols = st.columns([5, 1])
+_title_cols = st.columns([5, 1, 1])
 with _title_cols[0]:
     st.title(t("allocation.title"))
     st.caption(t("allocation.caption"))
 with _title_cols[1]:
     st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
+with _title_cols[2]:
+    if st.button(t("common.refresh"), use_container_width=True):
+        invalidate_all_caches()
+        refresh_ui()
 
 
 # ---------------------------------------------------------------------------
@@ -222,8 +236,7 @@ with st.sidebar:
                             if radar_result:
                                 st.info(t("allocation.sidebar.auto_radar"))
                                 invalidate_stock_caches()
-                        invalidate_holding_caches()
-                        refresh_ui()
+                        st.session_state["holding_added"] = True
 
     # ---- Bond holding form ----
     elif asset_type == t("allocation.sidebar.asset_bond"):
@@ -318,8 +331,7 @@ with st.sidebar:
                             if radar_result:
                                 st.info(t("allocation.sidebar.auto_radar"))
                                 invalidate_stock_caches()
-                        invalidate_holding_caches()
-                        refresh_ui()
+                        st.session_state["holding_added"] = True
 
     # ---- Cash holding form ----
     else:
@@ -371,8 +383,7 @@ with st.sidebar:
                         st.success(
                             t("allocation.sidebar.cash_added", label=' - '.join(label_parts), amount=f"{cash_amount:,.0f}")
                         )
-                        invalidate_holding_caches()
-                        refresh_ui()
+                        st.session_state["holding_added"] = True
 
     st.divider()
 
@@ -426,13 +437,6 @@ with st.sidebar:
         mime="application/json",
         use_container_width=True,
     )
-
-    st.divider()
-
-    # -- Refresh --
-    if st.button(t("allocation.sidebar.refresh"), use_container_width=True):
-        invalidate_all_caches()
-        refresh_ui()
 
 
 # ---------------------------------------------------------------------------

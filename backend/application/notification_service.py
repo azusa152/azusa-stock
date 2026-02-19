@@ -6,12 +6,18 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session
 
-from application.formatters import format_fear_greed_label, format_fear_greed_short
+from application.formatters import (
+    format_fear_greed_label,
+    format_fear_greed_short,
+    format_guru_filing_digest,
+    format_resonance_alert,
+)
 from domain.constants import (
     CATEGORY_DISPLAY_ORDER,
+    NOTIFICATION_TYPE_GURU_ALERTS,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
 )
-from domain.enums import CATEGORY_LABEL, ScanSignal
+from domain.enums import CATEGORY_LABEL, HoldingAction, ScanSignal
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
 from infrastructure.market_data import get_fear_greed_index
@@ -22,6 +28,11 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Actions that warrant a resonance alert notification
+_ALERT_ACTIONS: frozenset[str] = frozenset(
+    {HoldingAction.NEW_POSITION.value, HoldingAction.SOLD_OUT.value}
+)
 
 
 # ===========================================================================
@@ -167,3 +178,109 @@ def get_portfolio_summary(session: Session) -> str:
         lines += ["", t("notification.portfolio_summary_normal", lang=lang)]
 
     return "\n".join(lines)
+
+
+# ===========================================================================
+# Smart Money — Guru 通知服務
+# ===========================================================================
+
+
+def send_filing_season_digest(session: Session) -> dict:
+    """
+    發送本季所有大師的 13F 季報摘要 Telegram 通知。
+
+    功能：
+    - 取得所有啟用中大師的最新申報摘要
+    - 格式化為多大師彙整訊息
+    - 依 guru_alerts 通知偏好決定是否發送
+
+    Args:
+        session: Database session
+
+    Returns:
+        dict with keys: status ("sent" | "skipped" | "no_data"),
+                        message (str), guru_count (int)
+    """
+    from application.filing_service import get_filing_summary
+
+    lang = get_user_language(session)
+
+    if not is_notification_enabled(session, NOTIFICATION_TYPE_GURU_ALERTS):
+        logger.info("guru_alerts 通知已停用，跳過季報摘要發送。")
+        return {"status": "skipped", "message": "guru_alerts disabled", "guru_count": 0}
+
+    gurus = repo.find_all_active_gurus(session)
+    summaries = []
+    for guru in gurus:
+        summary = get_filing_summary(session, guru.id)
+        if summary is not None:
+            summaries.append(summary)
+
+    if not summaries:
+        logger.info("無可用的大師申報資料，跳過季報摘要發送。")
+        return {"status": "no_data", "message": "no filings available", "guru_count": 0}
+
+    message = format_guru_filing_digest(summaries, lang=lang)
+    send_telegram_message_dual(message, session)
+    logger.info("13F 季報摘要已發送，共 %d 位大師。", len(summaries))
+    return {
+        "status": "sent",
+        "message": t("guru.digest_sent", lang=lang, count=len(summaries)),
+        "guru_count": len(summaries),
+    }
+
+
+def send_resonance_alerts(session: Session) -> dict:
+    """
+    當大師最新動作（NEW_POSITION / SOLD_OUT）與使用者關注清單重疊時，
+    發送一則彙整的共鳴警報通知。
+
+    功能：
+    - 計算所有大師與使用者投資組合的共鳴結果
+    - 篩選出有顯著動作（新建倉或清倉）的重疊股票
+    - 將所有警報行彙整為單一 Telegram 訊息（含標題）後一次送出
+
+    Args:
+        session: Database session
+
+    Returns:
+        dict with keys: status, alert_count, alerts (list of dicts)
+    """
+    from application.resonance_service import compute_portfolio_resonance
+
+    lang = get_user_language(session)
+
+    if not is_notification_enabled(session, NOTIFICATION_TYPE_GURU_ALERTS):
+        logger.info("guru_alerts 通知已停用，跳過共鳴警報發送。")
+        return {"status": "skipped", "alert_count": 0, "alerts": []}
+
+    resonance = compute_portfolio_resonance(session)
+
+    alert_lines: list[str] = []
+    sent_alerts: list[dict] = []
+
+    for entry in resonance:
+        guru_name = entry["guru_display_name"]
+        for holding in entry["holdings"]:
+            if holding["action"] not in _ALERT_ACTIONS:
+                continue
+            ticker = holding["ticker"]
+            action = holding["action"]
+            alert_lines.append(
+                format_resonance_alert(ticker, guru_name, action, lang=lang)
+            )
+            sent_alerts.append(
+                {"ticker": ticker, "guru_name": guru_name, "action": action}
+            )
+
+    if alert_lines:
+        parts = [t("guru.resonance_alerts_title", lang=lang), ""] + alert_lines
+        parts.append(t("guru.lagging_disclaimer_short", lang=lang))
+        send_telegram_message_dual("\n".join(parts), session)
+
+    logger.info("共鳴警報發送完成，共 %d 則。", len(sent_alerts))
+    return {
+        "status": "sent",
+        "alert_count": len(sent_alerts),
+        "alerts": sent_alerts,
+    }

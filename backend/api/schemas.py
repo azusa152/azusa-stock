@@ -749,6 +749,205 @@ class FXWatchAlertResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Smart Money Schemas (大師足跡追踪)
+# ---------------------------------------------------------------------------
+
+
+class GuruCreate(BaseModel):
+    """POST /gurus 請求 Body。"""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    cik: str = Field(..., min_length=1, max_length=20, description="SEC CIK 代碼")
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+class GuruResponse(BaseModel):
+    """GET /gurus 回傳的單一大師資料。"""
+
+    id: int
+    name: str
+    cik: str
+    display_name: str
+    is_active: bool
+    is_default: bool
+
+
+class GuruFilingResponse(BaseModel):
+    """GET /gurus/{guru_id}/filing 回傳的最新申報摘要。"""
+
+    guru_id: int
+    guru_display_name: str
+    report_date: Optional[str] = None
+    filing_date: Optional[str] = None
+    total_value: Optional[float] = None
+    holdings_count: int = 0
+    filing_url: str = ""
+    new_positions: int = 0
+    sold_out: int = 0
+    increased: int = 0
+    decreased: int = 0
+    top_holdings: list[dict] = []
+
+
+class GuruHoldingResponse(BaseModel):
+    """GET /gurus/{guru_id}/holdings 回傳的單一持倉記錄。"""
+
+    guru_id: int
+    cusip: str
+    ticker: Optional[str] = None
+    company_name: str
+    value: float
+    shares: float
+    action: str
+    change_pct: Optional[float] = None
+    weight_pct: Optional[float] = None
+    report_date: Optional[str] = None
+    filing_date: Optional[str] = None
+
+
+class SyncResponse(BaseModel):
+    """POST /gurus/{guru_id}/sync 回傳的同步結果。"""
+
+    status: str
+    guru_id: Optional[int] = None
+    message: str = ""
+    new_positions: int = 0
+    sold_out: int = 0
+    increased: int = 0
+    decreased: int = 0
+
+
+class SyncAllResponse(BaseModel):
+    """POST /gurus/sync 回傳的全大師同步結果。"""
+
+    synced: int
+    skipped: int
+    errors: int
+    results: list[SyncResponse] = []
+
+
+class ResonanceEntryResponse(BaseModel):
+    """GET /resonance 回傳的單一大師共鳴記錄。"""
+
+    guru_id: int
+    guru_display_name: str
+    overlapping_tickers: list[str] = []
+    overlap_count: int
+    holdings: list[dict] = []
+
+
+class ResonanceResponse(BaseModel):
+    """GET /resonance 完整回應。"""
+
+    results: list[ResonanceEntryResponse]
+    total_gurus: int
+    gurus_with_overlap: int
+
+
+class ResonanceTickerResponse(BaseModel):
+    """GET /resonance/{ticker} 回傳的大師共鳴資料。"""
+
+    ticker: str
+    gurus: list[dict] = []
+    guru_count: int = 0
+
+
+class GreatMindsEntryResponse(BaseModel):
+    """英雄所見略同清單單筆資料。"""
+
+    ticker: str
+    guru_count: int
+    gurus: list[dict] = []
+
+
+class GreatMindsResponse(BaseModel):
+    """GET /resonance/great-minds 完整回應。"""
+
+    stocks: list[GreatMindsEntryResponse]
+    total_count: int
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Schemas (大師儀表板聚合)
+# ---------------------------------------------------------------------------
+
+
+class GuruSummaryItem(BaseModel):
+    """GET /gurus/dashboard 中單一大師的摘要卡片。"""
+
+    id: int
+    display_name: str
+    latest_report_date: Optional[str] = None
+    latest_filing_date: Optional[str] = None
+    total_value: Optional[float] = None
+    holdings_count: int = 0
+    filing_count: int = 0
+
+
+class SeasonHighlightItem(BaseModel):
+    """本季重點變動（新建倉或清倉）的單筆記錄。"""
+
+    ticker: Optional[str] = None
+    company_name: str = ""
+    guru_id: int
+    guru_display_name: str
+    value: float = 0.0
+    weight_pct: Optional[float] = None
+    change_pct: Optional[float] = None
+
+
+class SeasonHighlights(BaseModel):
+    """本季新建倉與清倉彙總。"""
+
+    new_positions: list[SeasonHighlightItem] = []
+    sold_outs: list[SeasonHighlightItem] = []
+
+
+class ConsensusStockItem(BaseModel):
+    """被多位大師同時持有的共識股票。"""
+
+    ticker: str
+    guru_count: int
+    gurus: list[str] = []
+    total_value: float = 0.0
+
+
+class SectorBreakdownItem(BaseModel):
+    """依行業板塊彙總的持倉分佈單筆。"""
+
+    sector: str
+    total_value: float
+    holding_count: int
+    weight_pct: float
+
+
+class DashboardResponse(BaseModel):
+    """GET /gurus/dashboard 完整回應。"""
+
+    gurus: list[GuruSummaryItem] = []
+    season_highlights: SeasonHighlights = SeasonHighlights()
+    consensus: list[ConsensusStockItem] = []
+    sector_breakdown: list[SectorBreakdownItem] = []
+
+
+class FilingHistoryItem(BaseModel):
+    """GET /gurus/{guru_id}/filings 中的單筆申報摘要。"""
+
+    id: int
+    report_date: str
+    filing_date: str
+    total_value: Optional[float] = None
+    holdings_count: int = 0
+    filing_url: str = ""
+
+
+class FilingHistoryResponse(BaseModel):
+    """GET /gurus/{guru_id}/filings 完整回應。"""
+
+    filings: list[FilingHistoryItem] = []
+
+
+# ---------------------------------------------------------------------------
 # Stress Test Schemas
 # ---------------------------------------------------------------------------
 

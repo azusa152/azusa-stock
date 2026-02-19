@@ -7,7 +7,8 @@
     "dashboard": "ポートフォリオ概要",
     "radar": "投資レーダー",
     "allocation": "個人資産配分",
-    "fx_watch": "為替監視"
+    "fx_watch": "為替監視",
+    "smart_money": "師匠の足跡"
   },
   "common": {
     "refresh": "🔄 更新",
@@ -142,7 +143,17 @@
       "daily_change": "日次変動"
     },
     "no_holdings": "保有銘柄データがありません。",
-    "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。"
+    "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。",
+    "resonance": {
+      "title": "🏆 スマートマネー共鳴",
+      "caption": "⚠️ 四半期スナップショットに基づく、リアルタイムではありません。",
+      "unavailable": "⏳ 共鳴データ取得不可（13Fデータが未同期）。",
+      "empty": "📭 重複銘柄なし。ウォッチリストまたは保有銘柄を追加し、グルーの13Fデータを同期してください。",
+      "overlap_count": "重複銘柄数",
+      "gurus_with_overlap": "重複投資家数",
+      "strongest_signal": "最強シグナル",
+      "goto_smart_money": "🏦 スマートマネーを見る"
+    }
   },
   "radar": {
     "title": "📡 Folio",
@@ -546,6 +557,7 @@
         "alerts": "🔔 価格アラート"
       },
       "whalewisdom_button": "🐳 WhaleWisdomで機関投資家動向を確認",
+      "resonance_badge": "🏆 {count}名のグルーも保有：{gurus}",
       "whalewisdom_hint": "💡 投資の心得：ボタンで機関投資家保有を確認。バークシャー、ブリッジウォーター等の「New Buy/Add」（買い増し）か「Sold Out」（売却）かを重点的に観察。フォローするなら「新規」を、在庫ではなく。",
       "top_holders_title": "**📊 上位5機関投資家：**",
       "no_holders": "⚠️ 機関投資家データを取得できません。上のボタンからWhaleWisdomで13Fレポートを確認してください。",
@@ -803,5 +815,117 @@
     "gross_margin_hover": "粗利率: {value}%",
     "close_price": "終値",
     "trend_period": "トレンド期間"
+  },
+  "smart_money": {
+    "title": "🏦 スマートマネー追跡",
+    "caption": "機関投資家の13F四半期報告を追跡し、ポートフォリオとの共鳴を発見する",
+    "sop": {
+      "title": "📖 スマートマネー：使用マニュアル",
+      "content": "### スマートマネー追跡とは？\n\n**スマートマネー**は、バークシャー・ハサウェイ（Warren Buffett）、ブリッジウォーター（Ray Dalio）、ルネサンス・テクノロジーズなどトップ機関投資家が SEC に提出する **13F四半期報告**を追跡します。あなたのウォッチリスト・保有銘柄とグルーのポートフォリオの**重複銘柄**を自動で発見します。\n\n> ⚠️ **重要**：13Fは四半期スナップショットで、申告締切は四半期末後45日です。保有情報は現実より**45–90日**遅れる場合があります。リアルタイムの売買シグナルとしては使用しないでください。\n\n---\n\n### 使用フロー\n\n#### 1. グルーを追加\n\nサイドバーの「**➕ カスタムグルーを追加**」を展開し、以下を入力：\n- **機関正式名称**：SEC EDGARに登録された正式名（例：`Berkshire Hathaway Inc`）\n- **SEC CIKコード**：10桁の識別番号（SEC EDGARで検索可）\n- **表示名**：任意の表示名（例：`Warren Buffett`）\n\n主要なグルーは初期登録済みで、すぐに使用できます。\n\n#### 2. 最新13Fを同期\n\nグルーを選択し、「**🔄 最新13Fを同期**」をクリックしてSEC EDGARから最新申告を取得します。\n\n- ✅ **同期完了**：新データを取得・保存しました\n- ℹ️ **最新状態**：前回の同期から変更なし\n\n> 💡 申告シーズン（2月・5月・8月・11月）は自動的に毎日同期。オフシーズンは週1回 — 手動操作不要。\n\n#### 3. 保有変動（タブ1）\n\n| アクション | 意味 |\n|------------|------|\n| 🟢 **新規ポジション** | 今四半期に新規取得 |\n| 🔴 **全売却** | 今四半期に完全清算 |\n| 📈 **買い増し** | 今四半期に株数増加 |\n| 📉 **売り減らし** | 今四半期に株数減少 |\n\n> 💡 **新規ポジション**に注目 — 既存在庫の積み増しより、新規参入の方がより強いコンビクションシグナルです。\n\n#### 4. トップ10保有（タブ2）\n\n水平棒グラフでポートフォリオウェイトを表示。下部の明細テーブルにはランク・アクションバッジ・市場価値・株数が含まれます。\n\n#### 5. 英雄見略同（タブ3）\n\n**追跡中の全グルー**とあなたのウォッチリスト・保有を自動比較し、重複銘柄を発見。共鳴バッジ（🏆×N）は**投資レーダー**ページの銘柄カードタイトルにも表示され、日常のスキャン中にグルーの動向を瞬時に把握できます。"
+    },
+    "no_gurus_hint": "📭 追跡中のグルーはいません。サイドバーからCIKを追加してください。",
+    "no_filing": "📭 {guru} の13F申告データがありません。「最新13F同期」をクリックしてください。",
+    "lagging_banner": "⚠️ 保有スナップショット基準日：{report_date}　申告日：{filing_date}　13Fデータは四半期報告であり、リアルタイムではありません。",
+    "edgar_link": "📄 SEC EDGAR原文を見る",
+    "edgar_link_help": "SEC EDGARの元の13F申告を開く",
+    "metric": {
+      "report_date": "基準日",
+      "filing_date": "申告日",
+      "total_value": "総保有額",
+      "holdings_count": "保有銘柄数"
+    },
+    "tab": {
+      "changes": "📊 保有変動",
+      "top": "🏆 上位10保有",
+      "great_minds": "🤝 英雄所見略同"
+    },
+    "action": {
+      "new_position": "新規建玉",
+      "sold_out": "全売却",
+      "increased": "買い増し",
+      "decreased": "減らした",
+      "unchanged": "変動なし"
+    },
+    "col": {
+      "value": "評価額",
+      "shares": "株数"
+    },
+    "changes": {
+      "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。",
+      "top_20_note": "📌 上位 {shown} 件の重要な変動を表示（全 {total} 件）、変動幅とポートフォリオ比重でソート。"
+    },
+    "top": {
+      "no_data": "📭 保有データがありません。",
+      "weight_axis": "ポートフォリオ比重 (%)",
+      "table_title": "📋 上位10保有詳細"
+    },
+    "great_minds": {
+      "caption": "英雄所見略同：ウォッチリスト/保有とグルーポートフォリオの重複銘柄。⚠️ 13F四半期スナップショット基準、リアルタイムではありません。",
+      "empty": "📭 重複銘柄なし。ウォッチリストまたは保有を設定し、グルーの13Fを同期してください。",
+      "overlap_count": "重複銘柄数",
+      "guru_count_label": "グルー数"
+    },
+    "sidebar": {
+      "header": "🏦 スマートマネー",
+      "no_gurus": "📭 追跡中のグルーはいません。下から追加してください。",
+      "guru_selector": "グルーを選択",
+      "sync_button": "🔄 最新13F同期",
+      "sync_help": "SEC EDGARから最新の13F申告を取得します（少し時間がかかる場合があります）",
+      "syncing": "同期中...",
+      "sync_success": "✅ 同期完了",
+      "sync_skipped": "ℹ️ 最新の状態です",
+      "sync_error": "❌ 同期失敗：{msg}",
+      "add_guru_title": "➕ カスタムグルーを追加",
+      "add_name": "機関名（フル）",
+      "add_name_placeholder": "例: Berkshire Hathaway Inc",
+      "add_cik": "SEC CIKコード",
+      "add_display_name": "表示名",
+      "add_display_placeholder": "例: Warren Buffett",
+      "add_button": "グルーを追加",
+      "add_required": "⚠️ すべての欄を入力してください。",
+      "add_success": "✅ {display_name} を追加しました"
+    },
+    "overview": {
+      "tab": "📊 概要",
+      "add_guru_tab": "➕ グルー追加",
+      "guru_cards_header": "グルー状態",
+      "highlights_header": "今季ハイライト",
+      "highlights_new_count": "新規ポジション数",
+      "highlights_sold_count": "全売却数",
+      "highlights_total_value": "新規総額",
+      "highlights_show_all": "すべて表示 +{count}",
+      "new_positions_header": "新規ポジション",
+      "sold_outs_header": "全売却",
+      "highlights_empty": "📭 今季の新規ポジション・全売却はありません。",
+      "consensus_header": "🤝 コンセンサス銘柄",
+      "consensus_empty": "📭 複数のグルーが同時保有する銘柄はまだありません。",
+      "consensus_gurus": "保有グルー",
+      "sector_header": "🏭 セクター配分",
+      "sector_empty": "📭 セクターデータ不足（グルーの13Fを同期してください）。",
+      "no_data": "📭 グルーデータがまだありません。バックグラウンドで履歴申告を読み込み中です。しばらくお待ちください。",
+      "stale_label": "⚠️ 古いデータ",
+      "recent_label": "✅ 最新",
+      "total_value_label": "総保有額",
+      "holdings_count_label": "保有銘柄数",
+      "filing_count_label": "申告件数",
+      "report_date_label": "最新基準日",
+      "sync_button": "🔄 同期",
+      "filing_history_expander": "📅 申告履歴 ({count} 件)",
+      "filing_history_row": "📄 {report_date}  ·  申告日：{filing_date}  ·  {total_value}  ·  {holdings_count} 件",
+      "sector_weight_axis": "配分比重 (%)"
+    },
+    "add_guru": {
+      "title": "➕ カスタムグルーを追加",
+      "description": "機関の SEC EDGAR 情報を入力して13F保有の追跡を開始します。",
+      "name_label": "機関名（フル）",
+      "name_placeholder": "例: Berkshire Hathaway Inc",
+      "cik_label": "SEC CIKコード",
+      "cik_placeholder": "0001067983",
+      "display_label": "表示名",
+      "display_placeholder": "例: Warren Buffett",
+      "submit_button": "グルーを追加",
+      "required_warning": "⚠️ すべての欄を入力してください。",
+      "success": "✅ {display_name} を追加しました。概要タブに切り替えて確認してください。"
+    }
   }
 }

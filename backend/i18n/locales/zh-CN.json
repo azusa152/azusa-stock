@@ -18,7 +18,11 @@
     },
     "fear_greed_prefix": "恐惧贪婪指数",
     "price_alerts_header": "{ticker} 价格警报：",
-    "signals_line": "{ticker} — 现价 ${price}, RSI={rsi}, Bias={bias}%"
+    "signals_line": "{ticker} — 现价 ${price}, RSI={rsi}, Bias={bias}%",
+    "guru_sync_complete": "✅ 13F 同步完成：共 {total} 位大师，已同步 {synced}，跳过 {skipped}，失败 {errors}。",
+    "guru_sync_failed": "❌ 13F 同步失败：{error}",
+    "guru_summary_complete": "✅ 13F 摘要通知已处理（{status}），共 {count} 位大师。",
+    "guru_summary_failed": "❌ 13F 摘要通知失败：{error}"
   },
   "stock": {
     "not_found": "找不到股票 {ticker}。",
@@ -205,10 +209,30 @@
     "notification_xray_alerts": "X-Ray 集中度警告",
     "notification_fx_alerts": "汇率曝险警报",
     "notification_fx_watch_alerts": "外汇换汇时机警报",
+    "notification_guru_alerts": "大师 13F 季报与共鸣警报",
     "stress_pain_low": "微风轻拂 (Just a Scratch)",
     "stress_pain_moderate": "有感修正 (Correction)",
     "stress_pain_high": "伤筋动骨 (Bear Market)",
     "stress_pain_panic": "睡不着觉 (Panic Zone)",
     "stress_disclaimer": "⚠️ 此为线性 CAPM 简化模型，实际崩盘中相关性会趋近 1、流动性枯竭可能导致更大跌幅。本模拟仅供参考，不构成投资建议。"
+  },
+  "guru": {
+    "filing_digest_title": "📋 <b>13F 季报摘要（{report_date}）</b>",
+    "digest_no_updates": "📋 目前无大师申报更新。",
+    "digest_changes": "  🟢 新建仓 {new}　🔴 清仓 {sold}　📈 加仓 {inc}　📉 减仓 {dec}",
+    "digest_no_changes": "  本季无重大持仓变动。",
+    "digest_sent": "✅ 13F 季报摘要已发送，共 {count} 位大师。",
+    "lagging_disclaimer_short": "⚠️ 以上为 13F 申报持仓快照，非实时数据，请注意时间滞后。",
+    "resonance_alerts_title": "🔔 <b>大师持仓共鸣警报</b>",
+    "resonance_alert": "{icon} <b>{guru_name}</b> 本季{action} <b>{ticker}</b>，该标的在您的关注列表中。",
+    "action_new_position": "新建仓",
+    "action_sold_out": "清仓",
+    "action_increased": "加仓",
+    "action_decreased": "减仓",
+    "action_unchanged": "持平",
+    "sync_complete": "✅ 已同步 {guru_name} 本季 13F 报告（基准日 {report_date}）",
+    "lagging_disclaimer": "⚠️ 此数据为 {days_ago} 天前的持仓快照，非实时数据",
+    "report_date_label": "持仓基准日",
+    "filing_date_label": "公告日"
   }
 }

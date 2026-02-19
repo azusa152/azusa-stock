@@ -18,7 +18,11 @@
     },
     "fear_greed_prefix": "恐怖貪欲指数",
     "price_alerts_header": "{ticker} 価格アラート：",
-    "signals_line": "{ticker} — 現在値 ${price}, RSI={rsi}, Bias={bias}%"
+    "signals_line": "{ticker} — 現在値 ${price}, RSI={rsi}, Bias={bias}%",
+    "guru_sync_complete": "✅ 13F 同期完了：guru {total} 人、同期済み {synced}、スキップ {skipped}、エラー {errors}。",
+    "guru_sync_failed": "❌ 13F 同期失敗：{error}",
+    "guru_summary_complete": "✅ 13F ダイジェスト通知処理済み（{status}）、{count} 人の guru。",
+    "guru_summary_failed": "❌ 13F ダイジェスト通知失敗：{error}"
   },
   "stock": {
     "not_found": "銘柄 {ticker} が見つかりません。",
@@ -205,10 +209,30 @@
     "notification_xray_alerts": "X-Ray集中度警告",
     "notification_fx_alerts": "為替エクスポージャーアラート",
     "notification_fx_watch_alerts": "外為換金タイミングアラート",
+    "notification_guru_alerts": "guru 13F 四半期レポート・共鳴アラート",
     "stress_pain_low": "そよ風 (Just a Scratch)",
     "stress_pain_moderate": "実感できる調整 (Correction)",
     "stress_pain_high": "かなりのダメージ (Bear Market)",
     "stress_pain_panic": "眠れない夜 (Panic Zone)",
     "stress_disclaimer": "⚠️ これは線形CAPMの簡易モデルです。実際の暴落では相関が1に近づき、流動性枯渇によりさらに大きな下落が発生する可能性があります。本シミュレーションは参考用であり、投資助言ではありません。"
+  },
+  "guru": {
+    "filing_digest_title": "📋 <b>13F 四半期レポートまとめ（{report_date}）</b>",
+    "digest_no_updates": "📋 現在、guruレポートの更新はありません。",
+    "digest_changes": "  🟢 新規 {new}　🔴 売却 {sold}　📈 買増 {inc}　📉 売減 {dec}",
+    "digest_no_changes": "  今四半期は重大なポジション変更はありません。",
+    "digest_sent": "✅ 13F レポートまとめを {count} 人の guru に送信しました。",
+    "lagging_disclaimer_short": "⚠️ このデータは 13F 申告の保有スナップショットであり、リアルタイムではありません。",
+    "resonance_alerts_title": "🔔 <b>guru 共鳴アラート</b>",
+    "resonance_alert": "{icon} <b>{guru_name}</b> が <b>{ticker}</b> を{action}しました（ウォッチリストに登録済み）。",
+    "action_new_position": "新規取得",
+    "action_sold_out": "全売却",
+    "action_increased": "買い増し",
+    "action_decreased": "一部売却",
+    "action_unchanged": "変化なし",
+    "sync_complete": "✅ {guru_name} の今四半期 13F レポートを同期しました（基準日：{report_date}）",
+    "lagging_disclaimer": "⚠️ このデータは {days_ago} 日前の保有スナップショットです。リアルタイムではありません",
+    "report_date_label": "保有基準日",
+    "filing_date_label": "申告日"
   }
 }

@@ -22,6 +22,9 @@ from config import (
     API_FEAR_GREED_TIMEOUT,
     API_FX_HISTORY_TIMEOUT,
     API_GET_TIMEOUT,
+    API_GURU_DASHBOARD_TIMEOUT,
+    API_GURU_GET_TIMEOUT,
+    API_GURU_SYNC_TIMEOUT,
     API_PATCH_TIMEOUT,
     API_POST_TIMEOUT,
     API_PRICE_HISTORY_TIMEOUT,
@@ -36,6 +39,9 @@ from config import (
     CACHE_TTL_ALERTS,
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
+    CACHE_TTL_GURU_DASHBOARD,
+    CACHE_TTL_GURU_FILING,
+    CACHE_TTL_GURU_LIST,
     CACHE_TTL_HOLDINGS,
     CACHE_TTL_LAST_SCAN,
     CACHE_TTL_MOAT,
@@ -44,6 +50,7 @@ from config import (
     CACHE_TTL_PROFILE,
     CACHE_TTL_REMOVED,
     CACHE_TTL_REBALANCE,
+    CACHE_TTL_RESONANCE,
     CACHE_TTL_SCAN_HISTORY,
     CACHE_TTL_SIGNALS,
     CACHE_TTL_STRESS_TEST,
@@ -1415,7 +1422,11 @@ def _render_price_chart(ticker: str) -> None:
         st.caption(t("utils.price_chart.insufficient_data"))
 
 
-def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
+def render_stock_card(
+    stock: dict,
+    enrichment: dict | None = None,
+    resonance: list | None = None,
+) -> None:
     """Render a single stock card with technical indicators and thesis editing.
 
     Args:
@@ -1423,6 +1434,8 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
         enrichment: Optional pre-fetched enrichment data from /stocks/enriched.
             When provided, avoids individual API calls for signals, earnings,
             and dividends (lazy-loading optimisation).
+        resonance: Optional list of guru resonance dicts for this ticker.
+            When provided, shows a 🏆 badge in the card header.
     """
     ticker = stock["ticker"]
     cat = stock.get("category", "")
@@ -1451,7 +1464,8 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
         change_str = ""
 
     market_label = infer_market_label(ticker)
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}"
+    resonance_badge = f" | 🏆×{len(resonance)}" if resonance else ""
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])
@@ -1467,6 +1481,15 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
                 st.markdown(f"🏷️ {tag_badges}")
 
             _render_signal_metrics(signals)
+
+            # -- Smart Money Resonance badge --
+            if resonance:
+                guru_names = ", ".join(
+                    g.get("guru_display_name", "?") for g in resonance
+                )
+                st.caption(
+                    t("utils.stock_card.resonance_badge", count=len(resonance), gurus=guru_names)
+                )
 
             # -- Earnings & Dividend (prefer enrichment data) --
             info_cols = st.columns(2)
@@ -1658,3 +1681,179 @@ def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None
                     refresh_ui()
         else:
             st.caption(t("utils.reorder.hint"))
+
+
+# ===========================================================================
+# Smart Money (大師足跡) — Cached Fetchers
+# ===========================================================================
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_LIST, show_spinner=False)
+def fetch_gurus() -> list | None:
+    """Fetch all active gurus."""
+    try:
+        resp = _session.get(f"{BACKEND_URL}/gurus", timeout=API_GURU_GET_TIMEOUT)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_filing(guru_id: int) -> dict | None:
+    """Fetch latest 13F filing summary for one guru."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/filing", timeout=API_GURU_GET_TIMEOUT
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_top_holdings(guru_id: int, n: int = 10) -> list | None:
+    """Fetch top N holdings by weight for one guru."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/top",
+            params={"n": n},
+            timeout=API_GURU_GET_TIMEOUT,
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_holding_changes(guru_id: int, limit: int = 20) -> list | None:
+    """
+    Fetch holdings with action != UNCHANGED for one guru.
+    
+    Args:
+        guru_id: The guru ID
+        limit: Max number of changes to return (default 20)
+    
+    Returns:
+        List of holding changes sorted by significance, or None on error
+    """
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/holdings",
+            params={"limit": limit},
+            timeout=API_GURU_GET_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_RESONANCE, show_spinner=False)
+def fetch_great_minds() -> dict | None:
+    """Fetch Great Minds Think Alike resonance list."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/resonance/great-minds", timeout=API_GURU_GET_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_DASHBOARD, show_spinner=False)
+def fetch_guru_dashboard() -> dict | None:
+    """Fetch aggregated dashboard summary across all gurus (GET /gurus/dashboard)."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/dashboard", timeout=API_GURU_DASHBOARD_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
+def fetch_guru_filings(guru_id: int) -> list | None:
+    """Fetch all synced filing history for one guru (GET /gurus/{id}/filings)."""
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/gurus/{guru_id}/filings", timeout=API_GURU_GET_TIMEOUT
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("filings", [])
+    except requests.RequestException:
+        return None
+
+
+def sync_guru(guru_id: int) -> dict | None:
+    """Trigger 13F sync for a single guru (not cached — mutating)."""
+    try:
+        resp = _session.post(
+            f"{BACKEND_URL}/gurus/{guru_id}/sync", timeout=API_GURU_SYNC_TIMEOUT
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as exc:
+        logger.error("guru sync 失敗 (id=%s): %s", guru_id, exc)
+        return None
+
+
+def add_guru(name: str, cik: str, display_name: str) -> dict | None:
+    """Add a custom guru by CIK."""
+    return api_post("/gurus", {"name": name, "cik": cik, "display_name": display_name})
+
+
+@st.cache_data(ttl=CACHE_TTL_RESONANCE, show_spinner=False)
+def fetch_resonance_overview() -> dict[str, list] | None:
+    """Fetch portfolio resonance overview as a ticker→gurus map (1 API call).
+
+    Calls GET /resonance which returns all guru overlaps in a single response,
+    then inverts the guru-centric structure into a ticker-keyed dict suitable
+    for O(1) lookup when rendering each stock card.
+
+    Returns:
+        {ticker: [{guru_display_name, action, weight_pct, ...}, ...], ...}
+        or None on backend error.
+    """
+    try:
+        resp = _session.get(f"{BACKEND_URL}/resonance", timeout=API_GURU_GET_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException:
+        return None
+
+    # Invert: guru-centric → ticker-centric map
+    ticker_map: dict[str, list] = {}
+    for entry in data.get("results", []):
+        guru_name = entry.get("guru_display_name", "?")
+        for holding in entry.get("holdings", []):
+            ticker = holding.get("ticker")
+            if not ticker:
+                continue
+            guru_info = {**holding, "guru_display_name": guru_name}
+            ticker_map.setdefault(ticker, []).append(guru_info)
+    return ticker_map
+
+
+def invalidate_guru_caches() -> None:
+    """Clear all Smart Money caches after sync or add."""
+    fetch_gurus.clear()
+    fetch_guru_filing.clear()
+    fetch_guru_top_holdings.clear()
+    fetch_guru_holding_changes.clear()
+    fetch_guru_dashboard.clear()
+    fetch_guru_filings.clear()
+    fetch_great_minds.clear()
+    fetch_resonance_overview.clear()

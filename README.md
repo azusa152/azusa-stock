@@ -58,9 +58,18 @@
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 
+### 大師足跡追蹤 (Smart Money)
+
+- **SEC 13F 季報追蹤** — 匯入任意機構投資人 SEC CIK，一鍵同步最新 13F 持倉快照（波克夏、橋水、文藝復興等）
+- **持倉異動儀表板** — 按動作分組（新建倉 / 清倉 / 加碼 / 減碼），含市值、股數、變動幅度與持倉權重
+- **前 10 大持倉圖表** — 互動式水平長條圖 + 明細表，以顏色標示持倉動作
+- **英雄所見略同 (Great Minds Think Alike)** — 自動比對追蹤清單 / 持倉與所有大師 13F 持股，找出共鳴個股
+- **共鳴徽章** — 投資雷達頁面股票卡片自動標記 🏆×N 徽章，揭示大師持有重疊
+- **儀表板共鳴摘要** — 首頁一眼看出哪些持倉與大師觀點重疊
+
 ### 介面與操作
 
-- **四頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控
+- **五頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控、大師足跡
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
@@ -128,7 +137,7 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit 四頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控）
+- **Frontend** — Streamlit 五頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
 - **Database** — SQLite，透過 Docker Volume 持久化
 - **資料來源** — yfinance，含多層快取、速率限制與自動重試機制
 - **啟動快取預熱** — 後端啟動時非阻塞式背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），前端首次載入即命中暖快取
@@ -240,7 +249,7 @@ docker compose up --build
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:8501
-- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）
+- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
 
 > **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
 
@@ -501,6 +510,16 @@ docker compose up --build -d
 | `POST` | `/admin/cache/clear` | 清除所有後端快取（L1 記憶體 + L2 磁碟） |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
+| `GET` | `/gurus` | 取得所有追蹤大師清單 |
+| `POST` | `/gurus` | 新增自訂大師（name / cik / display_name） |
+| `DELETE` | `/gurus/{guru_id}` | 停用大師追蹤 |
+| `POST` | `/gurus/sync` | 觸發所有大師 13F 同步（SEC EDGAR，帶 mutex 防重複） |
+| `POST` | `/gurus/{guru_id}/sync` | 觸發單一大師 13F 同步 |
+| `GET` | `/gurus/{guru_id}/filing` | 取得大師最新 13F 申報摘要（基準日 / 公告日 / 總市值 / 持倉數） |
+| `GET` | `/gurus/{guru_id}/holdings` | 取得大師所有持倉（含動作標籤：NEW/SOLD/INCREASED/DECREASED/UNCHANGED） |
+| `GET` | `/gurus/{guru_id}/top` | 取得大師前 N 大持倉（按權重排序，預設 N=10） |
+| `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
+| `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
 
 </details>
 
@@ -815,7 +834,8 @@ azusa-stock/
 │       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
 │       ├── holding_routes.py         #   持倉管理 + 再平衡 + 壓力測試路由
 │       ├── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
-│       └── preferences_routes.py    #   使用者偏好設定路由（隱私模式等）
+│       ├── preferences_routes.py    #   使用者偏好設定路由（隱私模式等）
+│       └── guru_routes.py           #   大師足跡路由（/gurus + /resonance，13F 同步 mutex）
 │   │
 │   └── tests/                        # 測試套件（domain / application / api / infrastructure）
 │       ├── conftest.py               #   共用 fixtures（TestClient, in-memory DB, mock 外部服務）
@@ -847,9 +867,10 @@ azusa-stock/
 │       │   ├── currency_exposure.py  # Step 4：匯率曝險（甜甜圈圖 + 警報 + 建議）
 │       │   ├── withdrawal.py         # Step 5：聰明提款（Waterfall 演算 + 賣出建議）
 │       │   └── stress_test.py        # Step 6：壓力測試（滑桿 + 痛苦等級 + 持倉明細）
-│       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）
-│       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
-│       └── allocation.py             # 個人資產配置頁（War Room 編排器 + Telegram 設定）
+│       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報 + 共鳴摘要）
+│       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存 + 共鳴徽章）
+│       ├── allocation.py             # 個人資產配置頁（War Room 編排器 + Telegram 設定）
+│       └── smart_money.py            # 大師足跡頁（13F 持倉異動 + 前 10 大持倉 + 英雄所見略同）
 │
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）

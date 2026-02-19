@@ -351,6 +351,44 @@ XRAY_WARN_THRESHOLD_PCT = 15.0
 XRAY_TOP_N_DISPLAY = 15
 
 # ---------------------------------------------------------------------------
+# Smart Money (大師足跡)
+# ---------------------------------------------------------------------------
+CACHE_TTL_GURU_LIST = 300           # 5 minutes (guru list rarely changes)
+CACHE_TTL_GURU_FILING = 86400       # 24 hours (13F data is quarterly)
+CACHE_TTL_GURU_DASHBOARD = 3600     # 1 hour (aggregated dashboard data)
+CACHE_TTL_RESONANCE = 86400         # 24 hours (derived from 13F data)
+API_GURU_SYNC_TIMEOUT = 120         # EDGAR fetch can be slow
+API_GURU_GET_TIMEOUT = 20
+API_GURU_DASHBOARD_TIMEOUT = 30     # dashboard aggregation can be slow on first call
+
+SMART_MONEY_TOP_N = 20  # increased from 10 to show more meaningful holdings
+SMART_MONEY_STALE_DAYS = 120  # report date older than this shown as stale on guru cards
+SEASON_HIGHLIGHTS_DISPLAY_LIMIT = 10  # limit season highlights to top N per category
+
+# Action color coding (PRD section 4.2: green=buy/new, red=sell/out, gray=hold)
+HOLDING_ACTION_COLORS: dict[str, str] = {
+    "NEW_POSITION": "#22C55E",   # green
+    "INCREASED": "#86EFAC",      # light green
+    "DECREASED": "#FCA5A5",      # light red
+    "SOLD_OUT": "#EF4444",       # red
+    "UNCHANGED": "#9CA3AF",      # gray
+}
+
+HOLDING_ACTION_ICONS: dict[str, str] = {
+    "NEW_POSITION": "🟢",
+    "INCREASED": "📈",
+    "DECREASED": "📉",
+    "SOLD_OUT": "🔴",
+    "UNCHANGED": "⚪",
+}
+
+
+def get_holding_action_label(action: str) -> str:
+    """Get localized holding action label."""
+    return t(f"smart_money.action.{action.lower()}")
+
+
+# ---------------------------------------------------------------------------
 # File Names
 # ---------------------------------------------------------------------------
 EXPORT_FILENAME = "folio_watchlist.json"

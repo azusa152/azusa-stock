@@ -62,10 +62,12 @@ from domain.constants import (
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_ROGUE_WAVE,
+    DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
     DISK_ROGUE_WAVE_TTL,
+    DISK_SECTOR_TTL,
     DISK_SIGNALS_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
@@ -1535,3 +1537,49 @@ def get_bias_distribution(ticker: str) -> dict:
         _fetch_bias_distribution_from_yf,
         is_error=_is_rogue_wave_error,
     )
+
+
+# ===========================================================================
+# 行業板塊（Sector）
+# ===========================================================================
+
+_SECTOR_NOT_FOUND: str = "__none__"  # 哨兵值：無法取得 sector 時的快取標記
+
+
+def _fetch_sector_from_yf(ticker: str) -> str:
+    """
+    從 yfinance info 取得行業板塊。
+    回傳行業板塊字串，或 _SECTOR_NOT_FOUND 哨兵值（確保可快取 None 狀態）。
+    """
+    try:
+        _rate_limiter.wait()
+        info = _yf_info(ticker)
+        sector = info.get("sector")
+        if sector:
+            logger.info("%s 行業板塊 = %s", ticker, sector)
+            return str(sector)
+        logger.debug("%s yfinance 未提供 sector，使用哨兵值。", ticker)
+        return _SECTOR_NOT_FOUND
+    except Exception as e:
+        logger.debug("無法取得 %s sector：%s，使用哨兵值。", ticker, e)
+        return _SECTOR_NOT_FOUND
+
+
+def get_ticker_sector(ticker: str) -> str | None:
+    """
+    取得股票行業板塊（GICS sector）。
+    行業板塊極少變動，透過 L2 磁碟快取（30 天 TTL）。
+
+    回傳板塊名稱字串（如 "Technology"）或 None（無資料 / 非股票）。
+    """
+    if not ticker:
+        return None
+
+    disk_key = f"{DISK_KEY_SECTOR}:{ticker}"
+    cached = _disk_get(disk_key)
+    if cached is not None:
+        return None if cached == _SECTOR_NOT_FOUND else cached
+
+    result = _fetch_sector_from_yf(ticker)
+    _disk_set(disk_key, result, DISK_SECTOR_TTL)
+    return None if result == _SECTOR_NOT_FOUND else result
