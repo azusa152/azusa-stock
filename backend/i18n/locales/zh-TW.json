@@ -72,7 +72,19 @@
   },
   "notification": {
     "change_label": "變化",
-    "times_label": "次"
+    "times_label": "次",
+    "weekly_digest_title": "📋 Folio 每週摘要",
+    "health_score": "🏥 健康分數：{score}%（{normal}/{total} 正常）",
+    "fear_greed": "📊 恐懼貪婪：{label} | {vix}",
+    "abnormal_stocks": "⚠️ 異常訊號：",
+    "signal_changes": "📈 訊號變化（7天）：",
+    "all_normal": "✅ 所有持倉正常，無異常訊號。",
+    "no_stocks": "關注清單中尚無股票。",
+    "summary_sent": "每週摘要已發送。",
+    "portfolio_summary_health": "📊 投資組合健康：{health}% | 恐懼貪婪：{fg}",
+    "portfolio_summary_no_stocks": "關注清單中尚無股票。",
+    "portfolio_summary_abnormal": "⚠️ 異常訊號：",
+    "portfolio_summary_normal": "✅ 所有持倉正常。"
   },
   "formatter": {
     "sell": "賣出",

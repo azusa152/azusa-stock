@@ -72,7 +72,19 @@
   },
   "notification": {
     "change_label": "変化",
-    "times_label": "回"
+    "times_label": "回",
+    "weekly_digest_title": "📋 Folio 週次レポート",
+    "health_score": "🏥 ヘルス：{score}%（{normal}/{total} 正常）",
+    "fear_greed": "📊 恐怖・貪欲：{label} | {vix}",
+    "abnormal_stocks": "⚠️ 異常シグナル：",
+    "signal_changes": "📈 シグナル変化（7日間）：",
+    "all_normal": "✅ 全ポジション正常、異常シグナルなし。",
+    "no_stocks": "ウォッチリストに銘柄がありません。",
+    "summary_sent": "週次レポートを送信しました。",
+    "portfolio_summary_health": "📊 ポートフォリオ健全性：{health}% | 恐怖・貪欲：{fg}",
+    "portfolio_summary_no_stocks": "ウォッチリストに銘柄がありません。",
+    "portfolio_summary_abnormal": "⚠️ 異常シグナル：",
+    "portfolio_summary_normal": "✅ 全ポジション正常。"
   },
   "formatter": {
     "sell": "売却",

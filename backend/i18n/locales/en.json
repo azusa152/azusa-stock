@@ -72,7 +72,19 @@
   },
   "notification": {
     "change_label": "changes",
-    "times_label": "times"
+    "times_label": "times",
+    "weekly_digest_title": "📋 Folio Weekly Digest",
+    "health_score": "🏥 Health: {score}% ({normal}/{total} normal)",
+    "fear_greed": "📊 Fear & Greed: {label} | {vix}",
+    "abnormal_stocks": "⚠️ Active Signals:",
+    "signal_changes": "📈 Signal Changes (7d):",
+    "all_normal": "✅ All positions normal — no active signals.",
+    "no_stocks": "No stocks in watchlist.",
+    "summary_sent": "Weekly digest sent.",
+    "portfolio_summary_health": "📊 Portfolio Health: {health}% | Fear & Greed: {fg}",
+    "portfolio_summary_no_stocks": "No stocks in watchlist.",
+    "portfolio_summary_abnormal": "⚠️ Active Signals:",
+    "portfolio_summary_normal": "✅ All positions normal."
   },
   "formatter": {
     "sell": "sell",

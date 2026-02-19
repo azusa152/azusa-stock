@@ -101,7 +101,8 @@ def send_weekly_digest(session: Session) -> dict:
             normal=normal_count,
             total=total,
         ),
-        t("notification.fear_greed", lang=lang, label=fg_label, vix=vix_text) + "\n",
+        t("notification.fear_greed", lang=lang, label=fg_label, vix=vix_text),
+        "",
     ]
 
     if non_normal:

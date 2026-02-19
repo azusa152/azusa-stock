@@ -72,7 +72,19 @@
   },
   "notification": {
     "change_label": "变化",
-    "times_label": "次"
+    "times_label": "次",
+    "weekly_digest_title": "📋 Folio 每周摘要",
+    "health_score": "🏥 健康分数：{score}%（{normal}/{total} 正常）",
+    "fear_greed": "📊 恐惧贪婪：{label} | {vix}",
+    "abnormal_stocks": "⚠️ 异常信号：",
+    "signal_changes": "📈 信号变化（7天）：",
+    "all_normal": "✅ 所有持仓正常，无异常信号。",
+    "no_stocks": "关注列表中暂无股票。",
+    "summary_sent": "每周摘要已发送。",
+    "portfolio_summary_health": "📊 投资组合健康：{health}% | 恐惧贪婪：{fg}",
+    "portfolio_summary_no_stocks": "关注列表中暂无股票。",
+    "portfolio_summary_abnormal": "⚠️ 异常信号：",
+    "portfolio_summary_normal": "✅ 所有持仓正常。"
   },
   "formatter": {
     "sell": "卖出",
