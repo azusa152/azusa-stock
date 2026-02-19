@@ -143,9 +143,7 @@ def backfill_guru_filings(
 
     cutoff = (_today or date.today()) - timedelta(days=years * 365)
     in_window = [
-        f
-        for f in edgar_filings
-        if date.fromisoformat(f["report_date"]) >= cutoff
+        f for f in edgar_filings if date.fromisoformat(f["report_date"]) >= cutoff
     ]
     # 升冪排序，讓舊季先同步，diff 鏈方向正確
     in_window.sort(key=lambda f: f["report_date"])
@@ -251,7 +249,7 @@ def get_holding_changes(
 ) -> list[dict]:
     """
     取得指定大師最新申報中有動作的持倉（action != UNCHANGED）。
-    
+
     結果依以下規則排序並限制筆數：
     1. 優先依 abs(change_pct) 降序（變動最大者）
     2. 次要依 weight_pct 降序（持倉權重最大者）
@@ -272,7 +270,7 @@ def get_holding_changes(
 
     holdings = find_holdings_by_filing(session, filing.id)
     changes = [h for h in holdings if h.action != HoldingAction.UNCHANGED.value]
-    
+
     # Sort by significance: abs(change_pct) DESC, then weight_pct DESC
     changes_sorted = sorted(
         changes,
@@ -282,7 +280,7 @@ def get_holding_changes(
         ),
         reverse=True,
     )
-    
+
     # Apply limit if specified
     if limit is not None and limit > 0:
         changes_sorted = changes_sorted[:limit]
@@ -340,9 +338,7 @@ def get_guru_filing_history(session: Session, guru_id: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _sync_single_filing(
-    session: Session, guru: Guru, edgar_filing_dict: dict
-) -> dict:
+def _sync_single_filing(session: Session, guru: Guru, edgar_filing_dict: dict) -> dict:
     """
     同步單筆 EDGAR 申報至資料庫（由 sync_guru_filing 與 backfill_guru_filings 共用）。
 

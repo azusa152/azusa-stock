@@ -276,7 +276,7 @@ def get_holdings(
 ) -> list[GuruHoldingResponse]:
     """
     取得指定大師最新申報中有動作的持倉（排除 UNCHANGED）。
-    
+
     結果依變動幅度 abs(change_pct) 降序排列，再依 weight_pct 降序，最多回傳 limit 筆。
     """
     changes = get_holding_changes(session, guru_id, limit=limit)
@@ -371,7 +371,9 @@ def get_dashboard(
 
     highlights_raw = data["season_highlights"]
     season_highlights = SeasonHighlights(
-        new_positions=[SeasonHighlightItem(**h) for h in highlights_raw["new_positions"]],
+        new_positions=[
+            SeasonHighlightItem(**h) for h in highlights_raw["new_positions"]
+        ],
         sold_outs=[SeasonHighlightItem(**h) for h in highlights_raw["sold_outs"]],
     )
 

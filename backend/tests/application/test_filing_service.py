@@ -922,7 +922,9 @@ class TestBackfillGuruFilings:
         from application.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000001")
-        result = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+        result = backfill_guru_filings(
+            db_session, guru.id, years=5, _today=_BACKFILL_TODAY
+        )
 
         assert result["total_filings"] == len(_BACKFILL_EDGAR_FILINGS)
         assert result["synced"] == len(_BACKFILL_EDGAR_FILINGS)
@@ -945,8 +947,12 @@ class TestBackfillGuruFilings:
         from application.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000002")
-        result1 = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
-        result2 = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+        result1 = backfill_guru_filings(
+            db_session, guru.id, years=5, _today=_BACKFILL_TODAY
+        )
+        result2 = backfill_guru_filings(
+            db_session, guru.id, years=5, _today=_BACKFILL_TODAY
+        )
 
         assert result1["synced"] == len(_BACKFILL_EDGAR_FILINGS)
         assert result2["synced"] == 0
@@ -970,9 +976,9 @@ class TestBackfillGuruFilings:
 
         for edgar in _BACKFILL_EDGAR_FILINGS:
             filing = find_filing_by_accession(db_session, edgar["accession_number"])
-            assert filing is not None, (
-                f"Filing {edgar['accession_number']} not found in DB"
-            )
+            assert (
+                filing is not None
+            ), f"Filing {edgar['accession_number']} not found in DB"
 
     @patch(
         f"{FILING_MODULE}.get_latest_13f_filings",
@@ -986,7 +992,9 @@ class TestBackfillGuruFilings:
 
         # years=0 → cutoff == _BACKFILL_TODAY; all sample report_dates are before that
         guru = _make_guru(db_session, cik="0004000004")
-        result = backfill_guru_filings(db_session, guru.id, years=0, _today=_BACKFILL_TODAY)
+        result = backfill_guru_filings(
+            db_session, guru.id, years=0, _today=_BACKFILL_TODAY
+        )
 
         assert result["total_filings"] == 0
         assert result["synced"] == 0
@@ -1040,7 +1048,9 @@ class TestBackfillGuruFilings:
         _mock_detail.side_effect = detail_side_effect
 
         guru = _make_guru(db_session, cik="0004000006")
-        result = backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
+        result = backfill_guru_filings(
+            db_session, guru.id, years=5, _today=_BACKFILL_TODAY
+        )
 
         # 3 filings: 1st synced, 2nd error (empty holdings = error), 3rd synced
         assert result["synced"] == 2

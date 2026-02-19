@@ -25,9 +25,7 @@ def test_session() -> Session:
         yield session
 
 
-def _make_guru(
-    session: Session, cik: str, display_name: str
-) -> Guru:
+def _make_guru(session: Session, cik: str, display_name: str) -> Guru:
     """Helper: Create and save a guru."""
     return save_guru(
         session,
@@ -95,7 +93,9 @@ class TestSeasonHighlightsColdStartExclusion:
         even if holdings have NEW_POSITION action (cold-start artifact).
         """
         # Arrange: 1 guru, 1 filing, 1 NEW_POSITION holding
-        guru = _make_guru(test_session, cik="0000000001", display_name="Single Filing Guru")
+        guru = _make_guru(
+            test_session, cik="0000000001", display_name="Single Filing Guru"
+        )
         filing = _make_filing(
             test_session,
             guru.id,
@@ -126,7 +126,9 @@ class TestSeasonHighlightsColdStartExclusion:
         with correct NEW_POSITION/SOLD_OUT entries from latest filing.
         """
         # Arrange: 1 guru, 2 filings
-        guru = _make_guru(test_session, cik="0000000002", display_name="Multi Filing Guru")
+        guru = _make_guru(
+            test_session, cik="0000000002", display_name="Multi Filing Guru"
+        )
         filing1 = _make_filing(
             test_session,
             guru.id,
@@ -245,7 +247,9 @@ class TestSeasonHighlightsColdStartExclusion:
         Guru with 3+ filings should be included (sanity check for >= 2 logic).
         """
         # Arrange: 1 guru, 3 filings
-        guru = _make_guru(test_session, cik="0000000005", display_name="Three Filing Guru")
+        guru = _make_guru(
+            test_session, cik="0000000005", display_name="Three Filing Guru"
+        )
         _filing1 = _make_filing(
             test_session,
             guru.id,

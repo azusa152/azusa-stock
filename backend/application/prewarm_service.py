@@ -179,7 +179,9 @@ def _backfill_all_gurus() -> None:
     for guru in gurus:
         try:
             with Session(engine) as session:
-                result = backfill_guru_filings(session, guru.id, years=GURU_BACKFILL_YEARS)
+                result = backfill_guru_filings(
+                    session, guru.id, years=GURU_BACKFILL_YEARS
+                )
             logger.info(
                 "回填完成：%s，窗口內 %d 筆，已同步 %d，跳過 %d，錯誤 %d",
                 guru.display_name,
