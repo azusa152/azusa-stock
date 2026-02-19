@@ -549,6 +549,8 @@
       "current_title": "**現在のアラート：**",
       "last_triggered": "（前回発動：{date}）",
       "delete_help": "このアラートを削除",
+      "pause_help": "このアラートを一時停止",
+      "resume_help": "このアラートを再開",
       "add_title": "**➕ アラートを追加：**",
       "metric_label": "指標",
       "condition_label": "条件",

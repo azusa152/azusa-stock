@@ -549,6 +549,8 @@
       "current_title": "**Current Alerts:**",
       "last_triggered": "(Last triggered: {date})",
       "delete_help": "Delete this alert",
+      "pause_help": "Pause this alert",
+      "resume_help": "Resume this alert",
       "add_title": "**➕ Add Alert:**",
       "metric_label": "Metric",
       "condition_label": "Condition",

@@ -549,6 +549,8 @@
       "current_title": "**目前警报：**",
       "last_triggered": "（上次触发：{date}）",
       "delete_help": "删除此警报",
+      "pause_help": "暂停此警报",
+      "resume_help": "恢复此警报",
       "add_title": "**➕ 新增警报：**",
       "metric_label": "指标",
       "condition_label": "条件",

@@ -54,6 +54,8 @@
     "alert_created": "✅ アラート作成: {ticker} {metric} {op} {threshold}",
     "alert_not_found": "⚠️ アラートが見つかりません。",
     "alert_deleted": "✅ アラートを削除しました。",
+    "alert_paused": "⏸️ アラートを一時停止しました。",
+    "alert_resumed": "▶️ アラートを再開しました。",
     "moat_not_applicable": "{category} はモート分析対象外です",
     "thesis_broken_alert": "🔴 {ticker} モートが弱体化！{details}",
     "contrarian_buy_alert": "🟢 {ticker} 逆張り買いシグナル（RSI={rsi}）",

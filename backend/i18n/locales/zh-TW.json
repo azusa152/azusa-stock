@@ -54,6 +54,8 @@
     "alert_created": "✅ 已建立警報：{ticker} {metric} {op} {threshold}",
     "alert_not_found": "⚠️ 找不到此警報。",
     "alert_deleted": "✅ 警報已刪除。",
+    "alert_paused": "⏸️ 警報已暫停。",
+    "alert_resumed": "▶️ 警報已恢復。",
     "moat_not_applicable": "{category} 不適用護城河分析",
     "thesis_broken_alert": "🔴 {ticker} 護城河鬆動！{details}",
     "contrarian_buy_alert": "🟢 {ticker} 逆勢買入訊號（RSI={rsi}）",

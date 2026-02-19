@@ -54,6 +54,8 @@
     "alert_created": "✅ Alert created: {ticker} {metric} {op} {threshold}",
     "alert_not_found": "⚠️ Alert not found.",
     "alert_deleted": "✅ Alert deleted.",
+    "alert_paused": "⏸️ Alert paused.",
+    "alert_resumed": "▶️ Alert resumed.",
     "moat_not_applicable": "{category} not applicable for moat analysis",
     "thesis_broken_alert": "🔴 {ticker} moat deteriorating! {details}",
     "contrarian_buy_alert": "🟢 {ticker} contrarian buy signal (RSI={rsi})",

@@ -572,3 +572,16 @@ def delete_price_alert(session: Session, alert_id: int) -> dict:
         return {"message": t("scan.alert_not_found", lang=lang)}
     repo.delete_price_alert(session, alert)
     return {"message": t("scan.alert_deleted", lang=lang)}
+
+
+def toggle_price_alert(session: Session, alert_id: int) -> dict:
+    """切換價格警報啟用狀態（active ↔ inactive）。"""
+    lang = get_user_language(session)
+    alert = repo.find_price_alert_by_id(session, alert_id)
+    if not alert:
+        return {"message": t("scan.alert_not_found", lang=lang)}
+    alert.is_active = not alert.is_active
+    session.add(alert)
+    session.commit()
+    key = "scan.alert_resumed" if alert.is_active else "scan.alert_paused"
+    return {"message": t(key, lang=lang), "is_active": alert.is_active}

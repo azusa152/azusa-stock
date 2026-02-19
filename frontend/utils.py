@@ -1320,13 +1320,20 @@ def _render_price_alerts_section(ticker: str, signals: dict) -> None:
                 if triggered
                 else ""
             )
-            col_a, col_b = st.columns([3, 1])
-            with col_a:
+            col_toggle, col_info, col_delete = st.columns([1, 4, 1])
+            with col_toggle:
+                toggle_icon = "⏸️" if a["is_active"] else "▶️"
+                toggle_help = t("utils.alerts.pause_help") if a["is_active"] else t("utils.alerts.resume_help")
+                if st.button(toggle_icon, key=f"toggle_alert_{a['id']}", help=toggle_help):
+                    api_patch(f"/alerts/{a['id']}/toggle", {})
+                    fetch_alerts.clear()
+                    refresh_ui()
+            with col_info:
                 st.caption(
                     f"{active_badge} {a['metric']} {op_str} "
                     f"{a['threshold']}{trigger_info}"
                 )
-            with col_b:
+            with col_delete:
                 if st.button(
                     "🗑️", key=f"del_alert_{a['id']}", help=t("utils.alerts.delete_help")
                 ):
