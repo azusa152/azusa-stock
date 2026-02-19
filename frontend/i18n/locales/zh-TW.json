@@ -161,7 +161,17 @@
       "goto_smart_money": "🏦 查看大師足跡",
       "details_expander": "📋 前 5 名共鳴明細"
     },
-    "fear_greed_title": "恐懼與貪婪"
+    "fear_greed_title": "恐懼與貪婪",
+    "performance_title": "📈 投資組合績效",
+    "performance_no_data": "📭 尚無快照歷史。每日 23:00 UTC 自動建立快照。",
+    "performance_benchmark_label": "S&P 500",
+    "performance_period_1w": "1W",
+    "performance_period_1m": "1M",
+    "performance_period_3m": "3M",
+    "performance_period_6m": "6M",
+    "performance_period_ytd": "今年",
+    "performance_period_1y": "1Y",
+    "performance_period_all": "全部"
   },
   "radar": {
     "title": "📡 Folio",

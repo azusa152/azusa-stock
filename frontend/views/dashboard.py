@@ -3,6 +3,8 @@ Folio — Summary Dashboard Page (投資組合總覽).
 At-a-glance view of market sentiment, portfolio KPIs, allocation, signals, and top holdings.
 """
 
+from datetime import date
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
@@ -21,9 +23,12 @@ from config import (
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
     HOLDING_ACTION_ICONS,
+    PERFORMANCE_CHART_HEIGHT,
+    PERFORMANCE_PERIOD_OPTIONS,
     PRIVACY_MASK,
     RISK_WARNING_SIGNALS,
     SCAN_SIGNAL_ICONS,
+    SPARKLINE_HEIGHT,
     get_cnn_unavailable_msg,
     get_fear_greed_label,
     get_holding_action_label,
@@ -39,6 +44,7 @@ from utils import (
     fetch_last_scan,
     fetch_profile,
     fetch_rebalance,
+    fetch_snapshots,
     fetch_stocks,
     format_utc_timestamp,
     invalidate_all_caches,
@@ -71,6 +77,150 @@ def _health_color(score: float) -> str:
     if score >= HEALTH_SCORE_WARN_THRESHOLD:
         return "off"
     return "inverse"
+
+
+@st.fragment
+def _render_performance_chart(snapshots: list[dict]) -> None:
+    """Render the portfolio performance line chart with period selector.
+
+    Both the portfolio and S&P 500 benchmark are normalised to % return from
+    the start of the selected period so they share a meaningful Y-axis.
+    """
+    from datetime import timedelta
+
+    period_keys = list(PERFORMANCE_PERIOD_OPTIONS.keys())
+    period_labels = [t(f"dashboard.performance_period_{k.lower()}") for k in period_keys]
+    default_idx = period_keys.index("1M")
+
+    selected_label = st.radio(
+        t("dashboard.performance_title"),
+        period_labels,
+        index=default_idx,
+        horizontal=True,
+        key="perf_period",
+        label_visibility="collapsed",
+    )
+    selected_key = period_keys[period_labels.index(selected_label)]
+    requested_days = PERFORMANCE_PERIOD_OPTIONS[selected_key]
+
+    # Filter client-side using date cutoffs so gaps (weekends/holidays) don't
+    # cause a slice-index to reach further back than intended.
+    if selected_key == "YTD":
+        cutoff = date(date.today().year, 1, 1).isoformat()
+    elif requested_days == 0:
+        cutoff = ""  # ALL: no cutoff
+    else:
+        cutoff = (date.today() - timedelta(days=requested_days)).isoformat()
+
+    filtered = [s for s in snapshots if s["snapshot_date"] >= cutoff] if cutoff else snapshots
+
+    if not filtered:
+        st.caption(t("dashboard.performance_no_data"))
+        return
+
+    dates = [s["snapshot_date"] for s in filtered]
+    values = [s["total_value"] for s in filtered]
+    benchmarks = [s.get("benchmark_value") for s in filtered]
+
+    # Normalise to % return from the first point in the period
+    base_val = values[0] or 1
+    pct_returns = [(v / base_val - 1) * 100 for v in values]
+
+    is_up = pct_returns[-1] >= 0
+    line_color = "#00C805" if is_up else "#FF5252"
+    fill_color = "rgba(0,200,5,0.07)" if is_up else "rgba(255,82,82,0.07)"
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=dates,
+            y=pct_returns,
+            mode="lines",
+            line=dict(color=line_color, width=2),
+            fill="tozeroy",
+            fillcolor=fill_color,
+            customdata=values,
+            hovertemplate="%{x}<br>%{y:+.2f}%  ($%{customdata:,.0f})<extra></extra>",
+            name=t("dashboard.total_market_value"),
+        )
+    )
+
+    # Benchmark: normalise S&P 500 to the same period start for a fair % comparison
+    bench_clean = [(d, b) for d, b in zip(dates, benchmarks) if b is not None]
+    if bench_clean:
+        b_dates, b_vals = zip(*bench_clean)
+        base_b = b_vals[0] or 1
+        b_pct = [(b / base_b - 1) * 100 for b in b_vals]
+        fig.add_trace(
+            go.Scatter(
+                x=list(b_dates),
+                y=b_pct,
+                mode="lines",
+                line=dict(color="#888", width=1, dash="dot"),
+                name=t("dashboard.performance_benchmark_label"),
+                hovertemplate="%{x}<br>S&P500 %{y:+.2f}%<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        height=PERFORMANCE_CHART_HEIGHT,
+        margin=dict(l=0, r=0, t=0, b=0),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(128,128,128,0.15)",
+            ticksuffix="%",
+            zeroline=True,
+            zerolinecolor="rgba(128,128,128,0.3)",
+        ),
+        xaxis=dict(showgrid=False),
+        showlegend=bool(bench_clean),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hovermode="x unified",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
+def _render_sparkline(snapshots: list[dict]) -> None:
+    """Render a mini 30-day sparkline zoomed into the variation range."""
+    from datetime import timedelta
+
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    recent = [s for s in snapshots if s["snapshot_date"] >= cutoff]
+    if len(recent) < 2:
+        return
+    dates = [s["snapshot_date"] for s in recent]
+    values = [s["total_value"] for s in recent]
+    is_up = values[-1] >= values[0]
+    color = "#00C805" if is_up else "#FF5252"
+    fill = "rgba(0,200,5,0.15)" if is_up else "rgba(255,82,82,0.15)"
+
+    v_min, v_max = min(values), max(values)
+    v_range = v_max - v_min
+    pad = v_range * 0.1 if v_range > 0 else v_max * 0.01
+
+    fig = go.Figure(
+        go.Scatter(
+            x=dates,
+            y=values,
+            mode="lines",
+            line=dict(color=color, width=1.5),
+            fill="tozeroy",
+            fillcolor=fill,
+            hoverinfo="skip",
+        )
+    )
+    fig.update_layout(
+        height=SPARKLINE_HEIGHT,
+        margin=dict(l=0, r=0, t=0, b=0),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False, range=[v_min - pad, v_max + pad]),
+        showlegend=False,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +297,7 @@ if not stocks_data and not rebalance_data:
 # Zone B: Portfolio Pulse — 3-column hero section (above the fold)
 # ---------------------------------------------------------------------------
 fear_greed_data = fetch_fear_greed()
+snapshots_data = fetch_snapshots(days=730)
 
 # Pre-compute values used inside the hero columns
 _privacy = _is_privacy()
@@ -186,6 +337,9 @@ with st.container(border=True):
                     f'<p class="hero-delta" style="color:{color_css}">{delta_str}</p>',
                     unsafe_allow_html=True,
                 )
+            # Mini sparkline — 30-day portfolio trend
+            if snapshots_data and not _privacy:
+                _render_sparkline(snapshots_data)
         else:
             st.metric(t("dashboard.total_market_value"), "N/A")
 
@@ -259,6 +413,18 @@ with st.container(border=True):
             t("dashboard.kpi.tracking_holdings"),
             t("dashboard.kpi.tracking_holdings_value", stocks=stock_count, holdings=holding_count),
         )
+
+
+# ---------------------------------------------------------------------------
+# Section 1.5: Portfolio Performance Chart
+# ---------------------------------------------------------------------------
+st.subheader(t("dashboard.performance_title"))
+
+with st.container(border=True):
+    if snapshots_data:
+        _render_performance_chart(snapshots_data)
+    else:
+        st.caption(t("dashboard.performance_no_data"))
 
 
 # ---------------------------------------------------------------------------

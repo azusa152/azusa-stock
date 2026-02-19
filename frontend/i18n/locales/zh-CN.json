@@ -161,7 +161,17 @@
       "goto_smart_money": "🏦 查看大师足迹",
       "details_expander": "📋 前 5 名共鸣明细"
     },
-    "fear_greed_title": "恐惧与贪婪"
+    "fear_greed_title": "恐惧与贪婪",
+    "performance_title": "📈 投资组合绩效",
+    "performance_no_data": "📭 暂无快照历史。每日 23:00 UTC 自动创建快照。",
+    "performance_benchmark_label": "S&P 500",
+    "performance_period_1w": "1W",
+    "performance_period_1m": "1M",
+    "performance_period_3m": "3M",
+    "performance_period_6m": "6M",
+    "performance_period_ytd": "今年",
+    "performance_period_1y": "1Y",
+    "performance_period_all": "全部"
   },
   "radar": {
     "title": "📡 Folio",

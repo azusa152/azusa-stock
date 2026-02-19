@@ -161,7 +161,17 @@
       "goto_smart_money": "🏦 スマートマネーを見る",
       "details_expander": "📋 上位5件の共鳴詳細"
     },
-    "fear_greed_title": "恐怖と強欲"
+    "fear_greed_title": "恐怖と強欲",
+    "performance_title": "📈 ポートフォリオパフォーマンス",
+    "performance_no_data": "📭 スナップショット履歴がありません。毎日 23:00 UTC に自動記録されます。",
+    "performance_benchmark_label": "S&P 500",
+    "performance_period_1w": "1W",
+    "performance_period_1m": "1M",
+    "performance_period_3m": "3M",
+    "performance_period_6m": "6M",
+    "performance_period_ytd": "今年",
+    "performance_period_1y": "1Y",
+    "performance_period_all": "全期間"
   },
   "radar": {
     "title": "📡 Folio",

@@ -54,7 +54,7 @@ def _run_snapshot_background() -> None:
     summary="Get historical portfolio snapshots",
 )
 def list_snapshots(
-    days: int = Query(default=30, ge=1, le=365, description="回溯天數（1–365）"),
+    days: int = Query(default=30, ge=1, le=730, description="回溯天數（1–730）"),
     start: date | None = Query(default=None, description="起始日期（YYYY-MM-DD，與 days 互斥）"),
     end: date | None = Query(default=None, description="結束日期（YYYY-MM-DD，與 days 互斥）"),
     session: Session = Depends(get_session),
@@ -62,7 +62,7 @@ def list_snapshots(
     """
     取得歷史投資組合快照。
 
-    - 預設回傳最近 30 天，可透過 `days` 調整（最多 365 天）。
+    - 預設回傳最近 30 天，可透過 `days` 調整（最多 730 天）。
     - 若提供 `start` / `end`，則改用日期區間查詢（優先）。
     - 結果依日期升冪排列（最舊在前）。
     """

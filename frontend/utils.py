@@ -31,6 +31,7 @@ from config import (
     API_PUT_TIMEOUT,
     API_REBALANCE_TIMEOUT,
     API_SIGNALS_TIMEOUT,
+    API_SNAPSHOTS_TIMEOUT,
     API_STRESS_TEST_TIMEOUT,
     API_WITHDRAW_TIMEOUT,
     BACKEND_URL,
@@ -61,6 +62,7 @@ from config import (
     CACHE_TTL_FEAR_GREED,
     CACHE_TTL_FX_HISTORY,
     CACHE_TTL_FX_WATCH,
+    CACHE_TTL_SNAPSHOTS,
     CACHE_TTL_STOCKS,
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
@@ -905,6 +907,29 @@ def fetch_fear_greed() -> dict | None:
         resp = _session.get(
             f"{BACKEND_URL}/market/fear-greed",
             timeout=API_FEAR_GREED_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_SNAPSHOTS, show_spinner=False)
+def fetch_snapshots(days: int = 365) -> list[dict] | None:
+    """Fetch historical portfolio snapshots.
+
+    Args:
+        days: Number of days to look back (max 730).
+
+    Returns:
+        List of snapshot dicts ordered oldest-first, or None on failure.
+    """
+    try:
+        resp = _session.get(
+            f"{BACKEND_URL}/snapshots",
+            params={"days": days},
+            timeout=API_SNAPSHOTS_TIMEOUT,
         )
         if resp.status_code == 200:
             return resp.json()
