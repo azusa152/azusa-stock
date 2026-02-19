@@ -948,6 +948,21 @@ class FilingHistoryResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Portfolio Snapshot Schemas
+# ---------------------------------------------------------------------------
+
+
+class SnapshotResponse(BaseModel):
+    """GET /snapshots 回傳的單日投資組合快照。"""
+
+    snapshot_date: str  # ISO date string, e.g. "2025-02-19"
+    total_value: float
+    category_values: dict  # parsed from JSON storage
+    display_currency: str = "USD"
+    benchmark_value: Optional[float] = None
+
+
+# ---------------------------------------------------------------------------
 # Stress Test Schemas
 # ---------------------------------------------------------------------------
 
