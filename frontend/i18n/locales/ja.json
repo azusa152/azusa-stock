@@ -521,7 +521,14 @@
       "deep_value": "🔵 深度バリュー",
       "oversold": "🟣 売られすぎ",
       "caution_high": "🟡 警戒高",
-      "weakening": "🟤 軟化"
+      "weakening": "🟤 軟化",
+      "summary_rsi": "{color} RSI {value}",
+      "summary_rsi_na": "⚪ RSI N/A",
+      "summary_bias": "{color} 乖離 {value}%",
+      "summary_bias_pct": "{color} 乖離 {value}% {pct_color}P{percentile}",
+      "summary_bias_na": "⚪ 乖離 N/A",
+      "summary_vol": "{color} 出来高比 {value}x",
+      "summary_vol_na": "⚪ 出来高比 N/A"
     },
     "moat": {
       "metric_label": "最新粗利率 (Gross Margin)",

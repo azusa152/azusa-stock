@@ -521,7 +521,14 @@
       "deep_value": "🔵 深度价值",
       "oversold": "🟣 超卖",
       "caution_high": "🟡 偏高警示",
-      "weakening": "🟤 转弱"
+      "weakening": "🟤 转弱",
+      "summary_rsi": "{color} RSI {value}",
+      "summary_rsi_na": "⚪ RSI N/A",
+      "summary_bias": "{color} 乖离 {value}%",
+      "summary_bias_pct": "{color} 乖离 {value}% {pct_color}P{percentile}",
+      "summary_bias_na": "⚪ 乖离 N/A",
+      "summary_vol": "{color} 量比 {value}x",
+      "summary_vol_na": "⚪ 量比 N/A"
     },
     "moat": {
       "metric_label": "最新毛利率 (Gross Margin)",

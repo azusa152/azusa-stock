@@ -36,6 +36,10 @@ from config import (
     BACKEND_URL,
     BIAS_OVERHEATED_UI,
     BIAS_OVERSOLD_UI,
+    RSI_OVERBOUGHT_UI,
+    RSI_OVERSOLD_UI,
+    VOL_SURGE_HIGH_UI,
+    VOL_SURGE_UI,
     CACHE_TTL_ALERTS,
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
@@ -75,6 +79,7 @@ from config import (
     ROGUE_WAVE_WARNING_PERCENTILE_UI,
     SCAN_HISTORY_CARD_LIMIT,
     SCAN_SIGNAL_ICONS,
+    SCAN_SIGNAL_LABELS,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
     PRIVACY_MASK,
@@ -1039,7 +1044,71 @@ def render_thesis_history(history: list[dict]) -> None:
 
 
 def _render_signal_metrics(signals: dict) -> None:
-    """Render technical indicator metrics (price, RSI, MA, bias, volume ratio)."""
+    """Compact single-line summary of the 3 most actionable indicators: RSI, Bias, Volume Ratio."""
+    if "error" in signals:
+        st.warning(signals["error"])
+        return
+
+    rsi = signals.get("rsi")
+    bias = signals.get("bias")
+    volume_ratio = signals.get("volume_ratio")
+    bias_percentile = signals.get("bias_percentile")
+    is_rogue_wave = signals.get("is_rogue_wave", False)
+
+    # RSI chip
+    if rsi is not None:
+        rsi_color = "🔴" if rsi > RSI_OVERBOUGHT_UI else ("🟢" if rsi < RSI_OVERSOLD_UI else "⚪")
+        rsi_part = t("utils.signals.summary_rsi", color=rsi_color, value=rsi)
+    else:
+        rsi_part = t("utils.signals.summary_rsi_na")
+
+    # Bias chip
+    if bias is not None:
+        bias_color = (
+            "🔴"
+            if bias > BIAS_OVERHEATED_UI
+            else ("🟢" if bias < BIAS_OVERSOLD_UI else "⚪")
+        )
+        if bias_percentile is not None:
+            pct_int = int(round(bias_percentile))
+            pct_color = (
+                "🔴"
+                if bias_percentile >= ROGUE_WAVE_PERCENTILE_UI
+                else (
+                    "🟠"
+                    if bias_percentile >= ROGUE_WAVE_WARNING_PERCENTILE_UI
+                    else ""
+                )
+            )
+            bias_part = t(
+                "utils.signals.summary_bias_pct",
+                color=bias_color,
+                value=bias,
+                pct_color=pct_color,
+                percentile=pct_int,
+            )
+        else:
+            bias_part = t("utils.signals.summary_bias", color=bias_color, value=bias)
+    else:
+        bias_part = t("utils.signals.summary_bias_na")
+
+    # Volume ratio chip
+    if volume_ratio is not None:
+        vol_color = "🔴" if volume_ratio >= VOL_SURGE_HIGH_UI else ("🟡" if volume_ratio >= VOL_SURGE_UI else "⚪")
+        vol_part = t(
+            "utils.signals.summary_vol", color=vol_color, value=volume_ratio
+        )
+    else:
+        vol_part = t("utils.signals.summary_vol_na")
+
+    st.markdown(f"{rsi_part} · {bias_part} · {vol_part}")
+
+    if is_rogue_wave:
+        st.warning(t("utils.signals.rogue_wave_warning"))
+
+
+def _render_full_metrics(signals: dict) -> None:
+    """Full metrics grid: price, RSI, MA200, MA60, bias, volume ratio, fetched_at."""
     if "error" in signals:
         st.warning(signals["error"])
         return
@@ -1468,7 +1537,9 @@ def render_stock_card(
 
     market_label = infer_market_label(ticker)
     resonance_badge = f" | 🏆×{len(resonance)}" if resonance else ""
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}"
+    signal_label = SCAN_SIGNAL_LABELS.get(last_signal, "")
+    signal_label_str = f" | {signal_label}" if signal_label else ""
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}{signal_label_str}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])

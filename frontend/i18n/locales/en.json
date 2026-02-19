@@ -521,7 +521,14 @@
       "deep_value": "🔵 Deep Value",
       "oversold": "🟣 Oversold",
       "caution_high": "🟡 Caution High",
-      "weakening": "🟤 Weakening"
+      "weakening": "🟤 Weakening",
+      "summary_rsi": "{color} RSI {value}",
+      "summary_rsi_na": "⚪ RSI N/A",
+      "summary_bias": "{color} Bias {value}%",
+      "summary_bias_pct": "{color} Bias {value}% {pct_color}P{percentile}",
+      "summary_bias_na": "⚪ Bias N/A",
+      "summary_vol": "{color} Vol {value}x",
+      "summary_vol_na": "⚪ Vol N/A"
     },
     "moat": {
       "metric_label": "Latest Gross Margin",
