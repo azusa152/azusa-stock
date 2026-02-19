@@ -25,6 +25,8 @@ from domain.constants import (
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
+    VOLUME_SURGE_THRESHOLD,
+    VOLUME_THIN_THRESHOLD,
 )
 from domain.entities import PriceAlert, ScanLog, Stock
 from domain.enums import (
@@ -172,16 +174,69 @@ def run_scan(session: Session) -> dict:
                     details=moat_details,
                 )
             )
+        elif signal == ScanSignal.DEEP_VALUE:
+            alerts.append(
+                t(
+                    "scan.deep_value_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    bias=round(bias, 1),
+                    rsi=round(rsi, 1),
+                )
+            )
+        elif signal == ScanSignal.OVERSOLD:
+            alerts.append(
+                t(
+                    "scan.oversold_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    bias=round(bias, 1),
+                )
+            )
         elif signal == ScanSignal.CONTRARIAN_BUY:
             alerts.append(
-                t("scan.contrarian_buy_alert", lang=lang, ticker=ticker, rsi=rsi)
+                t(
+                    "scan.contrarian_buy_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    rsi=round(rsi, 1),
+                )
             )
         elif signal == ScanSignal.OVERHEATED:
             alerts.append(
-                t("scan.overheated_alert", lang=lang, ticker=ticker, bias=bias)
+                t("scan.overheated_alert", lang=lang, ticker=ticker, bias=round(bias, 1))
             )
-        # TODO(Phase 3): add alert branches for DEEP_VALUE, OVERSOLD, CAUTION_HIGH, WEAKENING
-        # and volume confidence qualifiers (vol_ratio >= 1.5 → surge, <= 0.5 → thin)
+        elif signal == ScanSignal.CAUTION_HIGH:
+            alerts.append(
+                t(
+                    "scan.caution_high_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    bias=round(bias, 1) if bias is not None else "N/A",
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
+                )
+            )
+        elif signal == ScanSignal.WEAKENING:
+            alerts.append(
+                t(
+                    "scan.weakening_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    bias=round(bias, 1),
+                    rsi=round(rsi, 1),
+                )
+            )
+
+        # Volume confidence qualifier: append to the last signal alert (if any).
+        # Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal, volume irrelevant).
+        if alerts and volume_ratio is not None and signal not in (
+            ScanSignal.NORMAL,
+            ScanSignal.THESIS_BROKEN,
+        ):
+            if volume_ratio >= VOLUME_SURGE_THRESHOLD:
+                alerts[-1] += " " + t("scan.volume_surge", lang=lang)
+            elif volume_ratio <= VOLUME_THIN_THRESHOLD:
+                alerts[-1] += " " + t("scan.volume_thin", lang=lang)
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
             alerts.append(
