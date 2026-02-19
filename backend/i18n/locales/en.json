@@ -91,7 +91,8 @@
     "drift_title": "⚖️ Allocation Drift",
     "drift_item_over": "  • {cat}: +{pct}% over target",
     "drift_item_under": "  • {cat}: -{pct}% under target",
-    "smart_money_title": "🧠 Smart Money"
+    "smart_money_title": "🧠 Smart Money",
+    "portfolio_summary_value": "💰 Portfolio: {currency} {value} ({sign}{pct}% today)"
   },
   "formatter": {
     "sell": "sell",

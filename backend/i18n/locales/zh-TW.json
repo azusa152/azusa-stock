@@ -91,7 +91,8 @@
     "drift_title": "⚖️ 配置偏移",
     "drift_item_over": "  • {cat}：超目標 +{pct}%",
     "drift_item_under": "  • {cat}：低目標 -{pct}%",
-    "smart_money_title": "🧠 大師動態"
+    "smart_money_title": "🧠 大師動態",
+    "portfolio_summary_value": "💰 投資組合：{currency} {value}（今日 {sign}{pct}%）"
   },
   "formatter": {
     "sell": "賣出",

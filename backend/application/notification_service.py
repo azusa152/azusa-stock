@@ -311,6 +311,15 @@ def send_weekly_digest(session: Session) -> dict:
 def get_portfolio_summary(session: Session) -> str:
     """
     產生純文字投資組合摘要，專為 chat / AI agent 設計。
+
+    包含：
+    - 健康分數 + 恐懼貪婪指數
+    - 投資組合總值 + 日漲跌幅
+    - 類別持倉清單
+    - 目前非 NORMAL 股票
+    - 漲跌幅前三名
+    - 配置偏移警告
+    - Smart Money 大師動態
     """
     lang = get_user_language(session)
     stocks = repo.find_active_stocks(session)
@@ -334,18 +343,113 @@ def get_portfolio_summary(session: Session) -> str:
         "",
     ]
 
+    # --- 投資組合總值 + 日漲跌幅 ---
+    holdings_detail: list[dict] = []
+    categories: dict = {}
+    display_currency = "USD"
+    try:
+        from application.rebalance_service import calculate_rebalance
+
+        rebalance = calculate_rebalance(session)
+        current_total = rebalance.get("total_value")
+        display_currency = rebalance.get("display_currency", "USD")
+        holdings_detail = rebalance.get("holdings_detail", [])
+        categories = rebalance.get("categories", {})
+        if current_total is not None:
+            daily_pct = rebalance.get("total_value_change_pct")
+            if daily_pct is not None:
+                sign = "+" if daily_pct >= 0 else "-"
+                lines.append(
+                    t(
+                        "notification.portfolio_summary_value",
+                        lang=lang,
+                        currency=display_currency,
+                        value=f"{current_total:,.0f}",
+                        sign=sign,
+                        pct=f"{abs(daily_pct):.1f}",
+                    )
+                )
+            else:
+                lines.append(f"💰 {display_currency} {current_total:,.0f}")
+            lines.append("")
+    except Exception as exc:
+        logger.warning("portfolio_summary: 無法取得再平衡資料：%s", exc)
+
+    # --- 類別持倉清單 ---
     for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
             lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
 
+    # --- 目前非 NORMAL 股票 ---
     if non_normal:
         lines += ["", t("notification.portfolio_summary_abnormal", lang=lang)]
         for s in non_normal:
             lines.append(f"  {s.ticker} -> {s.last_scan_signal}")
     else:
         lines += ["", t("notification.portfolio_summary_normal", lang=lang)]
+
+    # --- 漲跌幅前三名 ---
+    if holdings_detail:
+        valid = [h for h in holdings_detail if h.get("change_pct") is not None]
+        gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
+        losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
+        gainer_parts = [
+            f"▲ {h['ticker']} {h['change_pct']:+.1f}%"
+            for h in gainers
+            if h["change_pct"] > 0
+        ]
+        loser_parts = [
+            f"▼ {h['ticker']} {h['change_pct']:+.1f}%"
+            for h in losers
+            if h["change_pct"] < 0
+        ]
+        if gainer_parts or loser_parts:
+            lines += ["", t("notification.top_movers_title", lang=lang)]
+            if gainer_parts:
+                lines.append("  " + "  ".join(gainer_parts))
+            if loser_parts:
+                lines.append("  " + "  ".join(loser_parts))
+
+    # --- 配置偏移警告 ---
+    drift_lines: list[str] = []
+    for cat, data in categories.items():
+        drift = data.get("drift_pct", 0.0)
+        if abs(drift) >= DRIFT_THRESHOLD_PCT:
+            cat_label = CATEGORY_LABEL.get(cat, cat)
+            key = (
+                "notification.drift_item_over"
+                if drift > 0
+                else "notification.drift_item_under"
+            )
+            drift_lines.append(
+                t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}")
+            )
+    if drift_lines:
+        lines += ["", t("notification.drift_title", lang=lang)]
+        lines.extend(drift_lines)
+
+    # --- Smart Money 大師動態 ---
+    try:
+        from application.resonance_service import compute_portfolio_resonance
+
+        resonance = compute_portfolio_resonance(session)
+        smart_lines: list[str] = []
+        for entry in resonance:
+            guru_name = entry["guru_display_name"]
+            for holding in entry["holdings"]:
+                if holding["action"] in _ALERT_ACTIONS:
+                    smart_lines.append(
+                        format_resonance_alert(
+                            holding["ticker"], guru_name, holding["action"], lang=lang
+                        )
+                    )
+        if smart_lines:
+            lines += ["", t("notification.smart_money_title", lang=lang)]
+            lines.extend(smart_lines)
+    except Exception as exc:
+        logger.warning("portfolio_summary: 無法取得 Smart Money 資料：%s", exc)
 
     return "\n".join(lines)
 

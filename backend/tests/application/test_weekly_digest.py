@@ -64,6 +64,7 @@ _WOW_SAVE_PATCH = f"{NOTIFICATION_MODULE}._save_wow_state"
 
 MOCK_REBALANCE = {
     "total_value": 100_000.0,
+    "total_value_change_pct": 1.4,
     "holdings_detail": [
         {"ticker": "NVDA", "change_pct": 5.2, "category": "Growth"},
         {"ticker": "MSFT", "change_pct": 2.1, "category": "Moat"},
@@ -537,3 +538,162 @@ class TestGetPortfolioSummary:
         # (it will appear in the category group, but not after the abnormal header)
         abnormal_section = summary.split("BABA")[1] if "BABA" in summary else ""
         assert "AAPL" not in abnormal_section
+
+    def test_should_include_portfolio_value_with_daily_change(
+        self, db_session: Session
+    ):
+        """Portfolio value line with total value and daily change % must appear."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_RESONANCE_PATCH, return_value=[]),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        # Total value must be present
+        assert "100,000" in summary
+        # Daily change % from total_value_change_pct=1.4 must appear
+        assert "1.4" in summary
+        # Raw key must not appear
+        assert "notification.portfolio_summary_value" not in summary
+
+    def test_should_include_top_movers(self, db_session: Session):
+        """Top movers (gainers + losers) must appear when rebalance holdings have change_pct."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_RESONANCE_PATCH, return_value=[]),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        # Both a gainer and a loser from MOCK_REBALANCE must appear
+        assert "NVDA" in summary
+        assert "BABA" in summary
+        # Top movers section header must not be a raw key
+        assert "notification.top_movers_title" not in summary
+        # Section header emoji must be present
+        assert "🏆" in summary
+
+    def test_should_include_drift_warnings_when_over_threshold(
+        self, db_session: Session
+    ):
+        """Drift section must appear when a category exceeds DRIFT_THRESHOLD_PCT."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+
+        # MOCK_REBALANCE has Growth drift = +7.5% (above threshold of 5%)
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_RESONANCE_PATCH, return_value=[]),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        assert "notification.drift_title" not in summary
+        assert "⚖️" in summary
+        assert "7.5" in summary
+
+    def test_should_omit_drift_when_under_threshold(self, db_session: Session):
+        """Drift section must NOT appear when all categories are within threshold."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+
+        rebalance_no_drift = {
+            **MOCK_REBALANCE,
+            "categories": {
+                "Growth": {
+                    "target_pct": 40.0,
+                    "current_pct": 42.0,
+                    "drift_pct": 2.0,
+                    "market_value": 42_000.0,
+                },
+            },
+        }
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=rebalance_no_drift),
+            patch(_RESONANCE_PATCH, return_value=[]),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        assert "⚖️" not in summary
+
+    def test_should_include_smart_money_alert(self, db_session: Session):
+        """Smart Money section must appear when guru has a NEW_POSITION action."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_RESONANCE_PATCH, return_value=MOCK_RESONANCE),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        assert "AAPL" in summary
+        assert "Buffett" in summary
+        assert "notification.smart_money_title" not in summary
+        assert "🧠" in summary
+
+    def test_should_omit_smart_money_when_no_alert_actions(self, db_session: Session):
+        """Smart Money section must be absent when no NEW_POSITION/SOLD_OUT actions."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+
+        resonance_unchanged = [
+            {
+                "guru_id": 1,
+                "guru_display_name": "Warren Buffett",
+                "overlapping_tickers": ["AAPL"],
+                "overlap_count": 1,
+                "holdings": [
+                    {
+                        "ticker": "AAPL",
+                        "action": "UNCHANGED",
+                        "weight_pct": 2.5,
+                        "change_pct": 0.0,
+                    }
+                ],
+            }
+        ]
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_RESONANCE_PATCH, return_value=resonance_unchanged),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        assert "🧠" not in summary
+
+    def test_should_handle_rebalance_failure_gracefully(self, db_session: Session):
+        """When rebalance raises, summary must still return without value/movers/drift sections."""
+        from application.notification_service import get_portfolio_summary
+
+        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_REBALANCE_PATCH, side_effect=RuntimeError("yfinance error")),
+            patch(_RESONANCE_PATCH, return_value=[]),
+        ):
+            summary = get_portfolio_summary(db_session)
+
+        # Must still return a non-empty summary
+        assert len(summary) > 0
+        assert "AAPL" in summary
+        # Value section must not appear
+        assert "💰" not in summary
