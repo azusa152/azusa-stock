@@ -851,7 +851,8 @@
       "shares": "股数"
     },
     "changes": {
-      "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。"
+      "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。",
+      "top_20_note": "📌 显示前 {shown} 项重大变动（共 {total} 项），依变动幅度与持仓权重排序。"
     },
     "top": {
       "no_data": "📭 暂无持仓数据。",
@@ -889,8 +890,12 @@
       "add_guru_tab": "➕ 添加大师",
       "guru_cards_header": "大师状态",
       "highlights_header": "本季亮点",
-      "new_positions_header": "🟢 新建仓",
-      "sold_outs_header": "🔴 清仓",
+      "highlights_new_count": "新建仓档数",
+      "highlights_sold_count": "清仓档数",
+      "highlights_total_value": "新建仓总值",
+      "highlights_show_all": "显示全部 +{count}",
+      "new_positions_header": "新建仓",
+      "sold_outs_header": "清仓",
       "highlights_empty": "📭 本季尚无新建仓或清仓记录。",
       "consensus_header": "🤝 共识持股",
       "consensus_empty": "📭 目前无多位大师同时持有的股票。",

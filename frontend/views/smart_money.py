@@ -19,6 +19,7 @@ import streamlit as st
 from config import (
     HOLDING_ACTION_COLORS,
     HOLDING_ACTION_ICONS,
+    SEASON_HIGHLIGHTS_DISPLAY_LIMIT,
     SMART_MONEY_STALE_DAYS,
     SMART_MONEY_TOP_N,
     get_holding_action_label,
@@ -221,32 +222,126 @@ with _overview_tab:
         if not new_pos and not sold_outs:
             st.info(t("smart_money.overview.highlights_empty"))
         else:
+            # Sort by value descending for both categories
+            new_pos_sorted = sorted(new_pos, key=lambda x: x.get("value", 0.0), reverse=True)
+            sold_outs_sorted = sorted(sold_outs, key=lambda x: x.get("value", 0.0), reverse=True)
+            
+            # Calculate summary metrics
+            total_new_value = sum(item.get("value", 0.0) for item in new_pos)
+            
+            # Summary metrics row
+            sum_col1, sum_col2, sum_col3 = st.columns(3)
+            with sum_col1:
+                st.metric(
+                    t("smart_money.overview.highlights_new_count"),
+                    len(new_pos),
+                )
+            with sum_col2:
+                st.metric(
+                    t("smart_money.overview.highlights_sold_count"),
+                    len(sold_outs),
+                )
+            with sum_col3:
+                st.metric(
+                    t("smart_money.overview.highlights_total_value"),
+                    _fmt_value(total_new_value),
+                )
+            
+            st.divider()
+            
+            # Two-column layout for new positions and sold-outs
             h_col1, h_col2 = st.columns(2)
+            
             with h_col1:
                 st.markdown(
-                    f"<span style='color:#22c55e;font-weight:600'>"
-                    f"{t('smart_money.overview.new_positions_header')} ({len(new_pos)})"
+                    f"<span style='color:#22c55e;font-weight:600;font-size:1.1rem'>"
+                    f"🟢 {t('smart_money.overview.new_positions_header')} ({len(new_pos)})"
                     f"</span>",
                     unsafe_allow_html=True,
                 )
-                for item in new_pos:
+                
+                # Display top N items
+                display_items = new_pos_sorted[:SEASON_HIGHLIGHTS_DISPLAY_LIMIT]
+                for item in display_items:
                     ticker = item.get("ticker") or "—"
+                    company = item.get("company_name", "")
                     guru_name = item.get("guru_display_name", "")
                     value = _fmt_value(item.get("value"))
                     weight = item.get("weight_pct")
-                    weight_str = f" · {weight:.1f}%" if weight else ""
-                    st.markdown(f"**{ticker}** — {guru_name} · {value}{weight_str}")
+                    
+                    with st.container(border=True):
+                        t_col, v_col = st.columns([3, 1])
+                        with t_col:
+                            st.markdown(f"**{ticker}**")
+                            st.caption(company if company else guru_name)
+                        with v_col:
+                            st.metric("", value)
+                            if weight:
+                                st.caption(f"{weight:.1f}%")
+                        st.caption(f"👤 {guru_name}")
+                
+                # Show remaining items in expander if there are more
+                if len(new_pos_sorted) > SEASON_HIGHLIGHTS_DISPLAY_LIMIT:
+                    with st.expander(
+                        t("smart_money.overview.highlights_show_all", 
+                          count=len(new_pos_sorted) - SEASON_HIGHLIGHTS_DISPLAY_LIMIT),
+                        expanded=False
+                    ):
+                        for item in new_pos_sorted[SEASON_HIGHLIGHTS_DISPLAY_LIMIT:]:
+                            ticker = item.get("ticker") or "—"
+                            company = item.get("company_name", "")
+                            guru_name = item.get("guru_display_name", "")
+                            value = _fmt_value(item.get("value"))
+                            weight = item.get("weight_pct")
+                            weight_str = f" · {weight:.1f}%" if weight else ""
+                            st.markdown(
+                                f"**{ticker}** — {guru_name} · {value}{weight_str}"
+                            )
+                            if company:
+                                st.caption(company)
+            
             with h_col2:
                 st.markdown(
-                    f"<span style='color:#ef4444;font-weight:600'>"
-                    f"{t('smart_money.overview.sold_outs_header')} ({len(sold_outs)})"
+                    f"<span style='color:#ef4444;font-weight:600;font-size:1.1rem'>"
+                    f"🔴 {t('smart_money.overview.sold_outs_header')} ({len(sold_outs)})"
                     f"</span>",
                     unsafe_allow_html=True,
                 )
-                for item in sold_outs:
+                
+                # Display top N items
+                display_items = sold_outs_sorted[:SEASON_HIGHLIGHTS_DISPLAY_LIMIT]
+                for item in display_items:
                     ticker = item.get("ticker") or "—"
+                    company = item.get("company_name", "")
                     guru_name = item.get("guru_display_name", "")
-                    st.markdown(f"**{ticker}** — {guru_name}")
+                    value = _fmt_value(item.get("value"))
+                    
+                    with st.container(border=True):
+                        t_col, v_col = st.columns([3, 1])
+                        with t_col:
+                            st.markdown(f"**{ticker}**")
+                            st.caption(company if company else guru_name)
+                        with v_col:
+                            st.metric("", value)
+                        st.caption(f"👤 {guru_name}")
+                
+                # Show remaining items in expander if there are more
+                if len(sold_outs_sorted) > SEASON_HIGHLIGHTS_DISPLAY_LIMIT:
+                    with st.expander(
+                        t("smart_money.overview.highlights_show_all",
+                          count=len(sold_outs_sorted) - SEASON_HIGHLIGHTS_DISPLAY_LIMIT),
+                        expanded=False
+                    ):
+                        for item in sold_outs_sorted[SEASON_HIGHLIGHTS_DISPLAY_LIMIT:]:
+                            ticker = item.get("ticker") or "—"
+                            company = item.get("company_name", "")
+                            guru_name = item.get("guru_display_name", "")
+                            value = _fmt_value(item.get("value"))
+                            st.markdown(
+                                f"**{ticker}** — {guru_name} · {value}"
+                            )
+                            if company:
+                                st.caption(company)
 
         st.divider()
 
@@ -398,26 +493,21 @@ for tab_widget, guru in zip(_guru_tabs, gurus):
 
         st.divider()
 
-        # --- Sub-tabs ---
-        tab_changes, tab_top, tab_great_minds = st.tabs(
-            [
-                t("smart_money.tab.changes"),
-                t("smart_money.tab.top"),
-                t("smart_money.tab.great_minds"),
-            ]
-        )
+        # --- Sections (expanders instead of nested tabs to avoid Streamlit setIn bug) ---
 
         # ===================================================================
-        # Sub-tab: Holding Changes
+        # Section: Holding Changes
         # ===================================================================
 
-        with tab_changes:
-            changed = fetch_guru_holding_changes(guru_id) or []
-
+        with st.expander(t("smart_money.tab.changes"), expanded=True):
+            changed = fetch_guru_holding_changes(guru_id, limit=20) or []
+            
+            # Total change counts from filing summary
             new_count = filing.get("new_positions", 0)
             sold_count = filing.get("sold_out", 0)
             inc_count = filing.get("increased", 0)
             dec_count = filing.get("decreased", 0)
+            total_changes = new_count + sold_count + inc_count + dec_count
 
             _c1, _c2, _c3, _c4 = st.columns(4)
             with _c1:
@@ -439,6 +529,13 @@ for tab_widget, guru in zip(_guru_tabs, gurus):
                 st.metric(
                     f"{HOLDING_ACTION_ICONS['DECREASED']} {t('smart_money.action.decreased')}",
                     dec_count,
+                )
+            
+            # Show note about top 20 focus if there are more changes
+            if total_changes > 20:
+                st.info(
+                    t("smart_money.changes.top_20_note", 
+                      shown=len(changed), total=total_changes)
                 )
 
             st.divider()
@@ -500,10 +597,10 @@ for tab_widget, guru in zip(_guru_tabs, gurus):
                     st.markdown("---")
 
         # ===================================================================
-        # Sub-tab: Top Holdings
+        # Section: Top Holdings
         # ===================================================================
 
-        with tab_top:
+        with st.expander(t("smart_money.tab.top"), expanded=True):
             top_n = fetch_guru_top_holdings(guru_id, n=SMART_MONEY_TOP_N)
 
             if not top_n:
@@ -573,10 +670,10 @@ for tab_widget, guru in zip(_guru_tabs, gurus):
                         st.caption(shares)
 
         # ===================================================================
-        # Sub-tab: Great Minds
+        # Section: Great Minds
         # ===================================================================
 
-        with tab_great_minds:
+        with st.expander(t("smart_money.tab.great_minds"), expanded=False):
             st.caption(t("smart_money.great_minds.caption"))
 
             great_minds_data = fetch_great_minds()

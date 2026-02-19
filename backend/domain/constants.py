@@ -437,6 +437,7 @@ STRESS_EMPTY_PAIN_LABEL = "stress_test.no_holdings"  # i18n key (when no holding
 # ---------------------------------------------------------------------------
 GURU_HOLDING_CHANGE_THRESHOLD_PCT = 20.0  # +/-20% = significant change
 GURU_TOP_HOLDINGS_COUNT = 10
+GURU_HOLDING_CHANGES_DISPLAY_LIMIT = 20  # default limit for per-guru holding changes
 GURU_FILING_DEADLINES = ["02-14", "05-15", "08-14", "11-14"]
 SEC_EDGAR_BASE_URL = "https://data.sec.gov"
 SEC_EDGAR_ARCHIVES_BASE_URL = "https://www.sec.gov"

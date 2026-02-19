@@ -851,7 +851,8 @@
       "shares": "Shares"
     },
     "changes": {
-      "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10)."
+      "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",
+      "top_20_note": "📌 Showing top {shown} significant changes out of {total} total, sorted by change magnitude and portfolio weight."
     },
     "top": {
       "no_data": "📭 No holdings data available.",
@@ -889,8 +890,12 @@
       "add_guru_tab": "➕ Add Guru",
       "guru_cards_header": "Guru Status",
       "highlights_header": "Season Highlights",
-      "new_positions_header": "🟢 New Positions",
-      "sold_outs_header": "🔴 Sold Outs",
+      "highlights_new_count": "New Positions",
+      "highlights_sold_count": "Sold Outs",
+      "highlights_total_value": "Total New Value",
+      "highlights_show_all": "Show all +{count}",
+      "new_positions_header": "New Positions",
+      "sold_outs_header": "Sold Outs",
       "highlights_empty": "📭 No new positions or sold outs this season.",
       "consensus_header": "🤝 Consensus Holdings",
       "consensus_empty": "📭 No stocks held by multiple gurus yet.",

@@ -591,12 +591,22 @@ def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
     """
     查詢所有大師最新申報中的新建倉（NEW_POSITION）和清倉（SOLD_OUT）。
 
+    僅包含擁有 >= 2 筆申報的大師（第一筆申報無法計算真實 diff，
+    所有持倉皆為 NEW_POSITION 的冷啟動假陽性）。
+
     回傳 dict with keys "new_positions" and "sold_outs"，每筆含：
         ticker, company_name, guru_id, guru_display_name, value, weight_pct, change_pct
     """
     from domain.enums import HoldingAction
 
     latest_filing_ids_subq = _latest_filing_ids_subquery()
+
+    # 只包含擁有 >= 2 筆申報的大師（排除冷啟動假陽性）
+    multi_filing_gurus = (
+        select(GuruFiling.guru_id)
+        .group_by(GuruFiling.guru_id)
+        .having(func.count(GuruFiling.id) >= 2)
+    ).subquery()
 
     notable_stmt = (
         select(GuruHolding, Guru.display_name)
@@ -605,6 +615,10 @@ def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
             GuruHolding.filing_id == latest_filing_ids_subq.c.filing_id,
         )
         .join(Guru, GuruHolding.guru_id == Guru.id)
+        .join(
+            multi_filing_gurus,
+            GuruHolding.guru_id == multi_filing_gurus.c.guru_id,
+        )
         .where(
             GuruHolding.action.in_(  # type: ignore[union-attr]
                 [HoldingAction.NEW_POSITION.value, HoldingAction.SOLD_OUT.value]

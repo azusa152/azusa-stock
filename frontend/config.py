@@ -361,8 +361,9 @@ API_GURU_SYNC_TIMEOUT = 120         # EDGAR fetch can be slow
 API_GURU_GET_TIMEOUT = 20
 API_GURU_DASHBOARD_TIMEOUT = 30     # dashboard aggregation can be slow on first call
 
-SMART_MONEY_TOP_N = 10
+SMART_MONEY_TOP_N = 20  # increased from 10 to show more meaningful holdings
 SMART_MONEY_STALE_DAYS = 120  # report date older than this shown as stale on guru cards
+SEASON_HIGHLIGHTS_DISPLAY_LIMIT = 10  # limit season highlights to top N per category
 
 # Action color coding (PRD section 4.2: green=buy/new, red=sell/out, gray=hold)
 HOLDING_ACTION_COLORS: dict[str, str] = {

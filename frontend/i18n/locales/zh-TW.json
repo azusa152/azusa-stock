@@ -851,7 +851,8 @@
       "shares": "股數"
     },
     "changes": {
-      "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。"
+      "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。",
+      "top_20_note": "📌 顯示前 {shown} 項重大變動（共 {total} 項），依變動幅度與持倉權重排序。"
     },
     "top": {
       "no_data": "📭 尚無持倉資料。",
@@ -889,8 +890,12 @@
       "add_guru_tab": "➕ 新增大師",
       "guru_cards_header": "大師狀態",
       "highlights_header": "本季亮點",
-      "new_positions_header": "🟢 新建倉",
-      "sold_outs_header": "🔴 清倉",
+      "highlights_new_count": "新建倉檔數",
+      "highlights_sold_count": "清倉檔數",
+      "highlights_total_value": "新建倉總值",
+      "highlights_show_all": "顯示全部 +{count}",
+      "new_positions_header": "新建倉",
+      "sold_outs_header": "清倉",
       "highlights_empty": "📭 本季尚無新建倉或清倉記錄。",
       "consensus_header": "🤝 共識持股",
       "consensus_empty": "📭 目前無多位大師同時持有的股票。",

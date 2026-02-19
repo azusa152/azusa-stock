@@ -59,7 +59,7 @@ from application.resonance_service import (
     get_great_minds_list,
     get_resonance_for_ticker,
 )
-from domain.constants import GURU_TOP_HOLDINGS_COUNT
+from domain.constants import GURU_HOLDING_CHANGES_DISPLAY_LIMIT, GURU_TOP_HOLDINGS_COUNT
 from infrastructure.database import get_session
 from infrastructure.repositories import (
     find_holdings_by_filing,
@@ -262,14 +262,24 @@ def get_filing(
 @router.get(
     "/{guru_id}/holdings",
     response_model=list[GuruHoldingResponse],
-    summary="All holding changes for a guru (action != UNCHANGED)",
+    summary="Holding changes for a guru (action != UNCHANGED), sorted by significance",
 )
 def get_holdings(
     guru_id: int,
+    limit: int = Query(
+        default=GURU_HOLDING_CHANGES_DISPLAY_LIMIT,
+        ge=1,
+        le=200,
+        description="Max number of changes to return (sorted by abs(change_pct) then weight_pct)",
+    ),
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
-    """取得指定大師最新申報中所有有動作的持倉（排除 UNCHANGED）。"""
-    changes = get_holding_changes(session, guru_id)
+    """
+    取得指定大師最新申報中有動作的持倉（排除 UNCHANGED）。
+    
+    結果依變動幅度 abs(change_pct) 降序排列，再依 weight_pct 降序，最多回傳 limit 筆。
+    """
+    changes = get_holding_changes(session, guru_id, limit=limit)
     return [
         GuruHoldingResponse(
             guru_id=guru_id,

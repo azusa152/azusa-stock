@@ -1732,11 +1732,22 @@ def fetch_guru_top_holdings(guru_id: int, n: int = 10) -> list | None:
 
 
 @st.cache_data(ttl=CACHE_TTL_GURU_FILING, show_spinner=False)
-def fetch_guru_holding_changes(guru_id: int) -> list | None:
-    """Fetch all holdings with action != UNCHANGED for one guru."""
+def fetch_guru_holding_changes(guru_id: int, limit: int = 20) -> list | None:
+    """
+    Fetch holdings with action != UNCHANGED for one guru.
+    
+    Args:
+        guru_id: The guru ID
+        limit: Max number of changes to return (default 20)
+    
+    Returns:
+        List of holding changes sorted by significance, or None on error
+    """
     try:
         resp = _session.get(
-            f"{BACKEND_URL}/gurus/{guru_id}/holdings", timeout=API_GURU_GET_TIMEOUT
+            f"{BACKEND_URL}/gurus/{guru_id}/holdings",
+            params={"limit": limit},
+            timeout=API_GURU_GET_TIMEOUT,
         )
         resp.raise_for_status()
         return resp.json()

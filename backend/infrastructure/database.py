@@ -61,6 +61,8 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN is_etf BOOLEAN DEFAULT 0;",
         # 回填已知 ETF
         "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
+        # GuruHolding: 新增 sector 欄位（GICS 行業板塊）
+        "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
     ]
 
     with engine.connect() as conn:

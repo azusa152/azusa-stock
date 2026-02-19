@@ -246,13 +246,21 @@ def get_filing_summary(session: Session, guru_id: int) -> dict | None:
     return _build_summary(guru, filing, holdings)
 
 
-def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
+def get_holding_changes(
+    session: Session, guru_id: int, limit: int | None = None
+) -> list[dict]:
     """
     取得指定大師最新申報中有動作的持倉（action != UNCHANGED）。
+    
+    結果依以下規則排序並限制筆數：
+    1. 優先依 abs(change_pct) 降序（變動最大者）
+    2. 次要依 weight_pct 降序（持倉權重最大者）
+    3. 若指定 limit，僅回傳前 N 筆
 
     Args:
         session: Database session
         guru_id: Guru.id
+        limit: 最多回傳筆數（None 表示不限制）
 
     Returns:
         持倉變動列表，每筆含 report_date, filing_date, ticker, company_name,
@@ -264,8 +272,22 @@ def get_holding_changes(session: Session, guru_id: int) -> list[dict]:
 
     holdings = find_holdings_by_filing(session, filing.id)
     changes = [h for h in holdings if h.action != HoldingAction.UNCHANGED.value]
+    
+    # Sort by significance: abs(change_pct) DESC, then weight_pct DESC
+    changes_sorted = sorted(
+        changes,
+        key=lambda h: (
+            abs(h.change_pct) if h.change_pct is not None else 0.0,
+            h.weight_pct if h.weight_pct is not None else 0.0,
+        ),
+        reverse=True,
+    )
+    
+    # Apply limit if specified
+    if limit is not None and limit > 0:
+        changes_sorted = changes_sorted[:limit]
 
-    return [_holding_to_dict(h, filing) for h in changes]
+    return [_holding_to_dict(h, filing) for h in changes_sorted]
 
 
 def get_dashboard_summary(session: Session) -> dict:
