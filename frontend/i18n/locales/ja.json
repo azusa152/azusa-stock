@@ -156,7 +156,8 @@
       "overlap_count": "重複銘柄数",
       "gurus_with_overlap": "重複投資家数",
       "strongest_signal": "最強シグナル",
-      "goto_smart_money": "🏦 スマートマネーを見る"
+      "goto_smart_money": "🏦 スマートマネーを見る",
+      "details_expander": "📋 上位5件の共鳴詳細"
     },
     "fear_greed_title": "恐怖と強欲"
   },

@@ -77,8 +77,8 @@ footer {visibility: hidden;}
 /* Expander rounded */
 div[data-testid="stExpander"] details {border-radius: 8px;}
 
-/* Card container rounded */
-div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
+/* Card container rounded + spacing */
+div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px; margin-bottom: 12px;}
 
 /* Hero section — Portfolio Pulse */
 .hero-label {font-size: 0.75rem; opacity: 0.75; margin: 0 0 2px 0;}

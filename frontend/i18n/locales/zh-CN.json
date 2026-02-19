@@ -156,7 +156,8 @@
       "overlap_count": "重叠股票数",
       "gurus_with_overlap": "持有大师数",
       "strongest_signal": "最强共鸣",
-      "goto_smart_money": "🏦 查看大师足迹"
+      "goto_smart_money": "🏦 查看大师足迹",
+      "details_expander": "📋 前 5 名共鸣明细"
     },
     "fear_greed_title": "恐惧与贪婪"
   },

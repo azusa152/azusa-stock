@@ -130,7 +130,6 @@ else:
 # ---------------------------------------------------------------------------
 # Page paths must match the strings in app.py st.Page(...) registration.
 if not stocks_data and not rebalance_data:
-    st.divider()
     st.info(t("dashboard.welcome"))
     _onb_a, _onb_b, _ = st.columns([1, 1, 2])
     with _onb_a:
@@ -263,7 +262,6 @@ with st.container(border=True):
 # ---------------------------------------------------------------------------
 # Section 2: Signal Alerts (Action Required — before Allocation)
 # ---------------------------------------------------------------------------
-st.divider()
 st.subheader(t("dashboard.signal_alerts_title"))
 
 with st.container(border=True):
@@ -307,8 +305,6 @@ with st.container(border=True):
 # ---------------------------------------------------------------------------
 # Section 3: Allocation at a Glance
 # ---------------------------------------------------------------------------
-st.divider()
-
 if rebalance_data and profile_data and rebalance_data.get("categories"):
     breakdown = rebalance_data["categories"]
     st.subheader(t("dashboard.allocation_title"))
@@ -422,7 +418,6 @@ else:
 # ---------------------------------------------------------------------------
 # Section 4: Top Holdings
 # ---------------------------------------------------------------------------
-st.divider()
 st.subheader(t("dashboard.top_holdings_title", limit=DASHBOARD_TOP_HOLDINGS_LIMIT))
 
 if rebalance_data and rebalance_data.get("holdings_detail"):
@@ -432,29 +427,57 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
     top_holdings = sorted_holdings[:DASHBOARD_TOP_HOLDINGS_LIMIT]
 
     privacy = _is_privacy()
-    rows = []
-    for h in top_holdings:
-        cat = h.get("category", "")
-        icon = CATEGORY_ICON_SHORT.get(cat, "")
 
-        # Format daily change with arrow
-        change_pct = h.get("change_pct")
-        if change_pct is not None:
-            arrow = "▲" if change_pct >= 0 else "▼"
-            change_str = f"{arrow}{abs(change_pct):.2f}%"
-        else:
-            change_str = "N/A"
+    if top_holdings:
+        col_ticker = t("dashboard.holdings_table.ticker")
+        col_cat = t("dashboard.holdings_table.category")
+        col_weight = t("dashboard.holdings_table.weight")
+        col_value = t("dashboard.holdings_table.market_value")
+        col_change = t("dashboard.holdings_table.daily_change")
 
-        rows.append({
-            t("dashboard.holdings_table.ticker"): h.get("ticker", ""),
-            t("dashboard.holdings_table.category"): f"{icon} {cat}",
-            t("dashboard.holdings_table.weight"): f"{h.get('weight_pct', 0):.1f}%",
-            t("dashboard.holdings_table.market_value"): PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}",
-            t("dashboard.holdings_table.daily_change"): change_str,
-        })
+        header_row = (
+            f"<tr>"
+            f"<th style='text-align:left;padding:4px 8px'>{col_ticker}</th>"
+            f"<th style='text-align:left;padding:4px 8px'>{col_cat}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_weight}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_value}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_change}</th>"
+            f"</tr>"
+        )
+        data_rows = []
+        for h in top_holdings:
+            cat = h.get("category", "")
+            icon = CATEGORY_ICON_SHORT.get(cat, "")
+            change_pct = h.get("change_pct")
+            if change_pct is not None:
+                arrow = "▲" if change_pct >= 0 else "▼"
+                color = "#22c55e" if change_pct >= 0 else "#ef4444"
+                change_cell = (
+                    f"<td style='text-align:right;padding:4px 8px;"
+                    f"color:{color};font-weight:500'>{arrow}{abs(change_pct):.2f}%</td>"
+                )
+            else:
+                change_cell = "<td style='text-align:right;padding:4px 8px'>N/A</td>"
 
-    if rows:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+            value_str = PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}"
+            data_rows.append(
+                f"<tr style='border-top:1px solid rgba(128,128,128,0.15)'>"
+                f"<td style='padding:4px 8px'><b>{h.get('ticker', '')}</b></td>"
+                f"<td style='padding:4px 8px'>{icon} {cat}</td>"
+                f"<td style='text-align:right;padding:4px 8px'>{h.get('weight_pct', 0):.1f}%</td>"
+                f"<td style='text-align:right;padding:4px 8px'>{value_str}</td>"
+                f"{change_cell}"
+                f"</tr>"
+            )
+
+        table_html = (
+            "<table style='width:100%;border-collapse:collapse;font-size:0.88rem'>"
+            f"<thead style='opacity:0.6'>{header_row}</thead>"
+            f"<tbody>{''.join(data_rows)}</tbody>"
+            "</table>"
+        )
+        with st.container(border=True):
+            st.markdown(table_html, unsafe_allow_html=True)
     else:
         st.caption(t("dashboard.no_holdings"))
 else:
@@ -468,8 +491,12 @@ else:
 # ---------------------------------------------------------------------------
 # Section 5: Smart Money Resonance Summary
 # ---------------------------------------------------------------------------
-st.divider()
-st.subheader(t("dashboard.resonance.title"))
+_sm_hdr, _sm_btn_col = st.columns([3, 1])
+with _sm_hdr:
+    st.subheader(t("dashboard.resonance.title"))
+with _sm_btn_col:
+    if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True, key="sm_btn_top"):
+        st.switch_page("views/smart_money.py")
 
 _great_minds = fetch_great_minds()
 
@@ -481,12 +508,8 @@ else:
 
     if _gm_total == 0:
         st.info(t("dashboard.resonance.empty"))
-        _sm_col, _ = st.columns([1, 3])
-        with _sm_col:
-            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
-                st.switch_page("views/smart_money.py")
     else:
-        # Top metrics row
+        # Always-visible KPI metrics
         _gurus_with_overlap = len(
             {g["guru_id"] for s in _gm_stocks for g in s.get("gurus", [])}
         )
@@ -499,30 +522,27 @@ else:
         _mc2.metric(t("dashboard.resonance.gurus_with_overlap"), _gurus_with_overlap)
         _mc3.metric(t("dashboard.resonance.strongest_signal"), _strongest)
 
-        # Per-stock detail cards (top 5)
-        for _stock in _gm_stocks[:5]:
-            _ticker = _stock.get("ticker", "—")
-            _gc = _stock.get("guru_count", 0)
-            _gurus_list = _stock.get("gurus", [])
-            _guru_lines = []
-            for _g in _gurus_list:
-                _name = _g.get("guru_display_name", "—")
-                _action = _g.get("action", "UNCHANGED")
-                _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
-                _label = get_holding_action_label(_action)
-                _weight = _g.get("weight_pct")
-                _weight_str = (
-                    f"  {_weight:.1f}%"
-                    if _weight is not None and _action != "SOLD_OUT"
-                    else ""
-                )
-                _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
-            with st.container(border=True):
-                _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
-                st.markdown(_card_md)
+        # Per-stock detail cards — collapsed by default
+        with st.expander(t("dashboard.resonance.details_expander"), expanded=False):
+            for _stock in _gm_stocks[:5]:
+                _ticker = _stock.get("ticker", "—")
+                _gc = _stock.get("guru_count", 0)
+                _gurus_list = _stock.get("gurus", [])
+                _guru_lines = []
+                for _g in _gurus_list:
+                    _name = _g.get("guru_display_name", "—")
+                    _action = _g.get("action", "UNCHANGED")
+                    _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
+                    _label = get_holding_action_label(_action)
+                    _weight = _g.get("weight_pct")
+                    _weight_str = (
+                        f"  {_weight:.1f}%"
+                        if _weight is not None and _action != "SOLD_OUT"
+                        else ""
+                    )
+                    _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
+                with st.container(border=True):
+                    _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
+                    st.markdown(_card_md)
 
-        st.caption(t("dashboard.resonance.caption"))
-        _sm_col2, _ = st.columns([1, 3])
-        with _sm_col2:
-            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
-                st.switch_page("views/smart_money.py")
+            st.caption(t("dashboard.resonance.caption"))
