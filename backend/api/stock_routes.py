@@ -375,6 +375,21 @@ def delete_price_alert_route(
     return delete_price_alert(session, alert_id)
 
 
+@router.patch(
+    "/alerts/{alert_id}/toggle",
+    response_model=MessageResponse,
+    summary="Toggle a price alert on/off",
+)
+def toggle_price_alert_route(
+    alert_id: int,
+    session: Session = Depends(get_session),
+) -> dict:
+    """切換價格警報啟用狀態。"""
+    from application.scan_service import toggle_price_alert
+
+    return toggle_price_alert(session, alert_id)
+
+
 @router.post(
     "/stocks/import",
     response_model=ImportResponse,

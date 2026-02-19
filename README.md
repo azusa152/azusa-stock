@@ -30,7 +30,7 @@
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號
 - **恐懼與貪婪指數** — 結合 VIX 與 CNN Fear & Greed 的綜合市場情緒指標（五級）
 - **護城河健檢** — 毛利率 5 季走勢圖 + YoY 五級診斷
-- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🟢🟠🔴⚪）
+- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🔴🔵🟣🟢🟠🟡🟤⚪），移除市場情緒硬關卡，支援量能信心修正
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
 - **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
 
@@ -96,19 +96,25 @@
 ```mermaid
 flowchart TD
     L1["Layer 1: 市場情緒"] -->|"風向球跌破 60MA 比例"| Decision{">50%?"}
-    Decision -->|"是"| CAUTION["CAUTION 雨天"]
-    Decision -->|"否"| POSITIVE["POSITIVE 晴天"]
+    Decision -->|"是"| CAUTION["CAUTION 雨天（顯示用，不影響訊號）"]
+    Decision -->|"否"| POSITIVE["POSITIVE 晴天（顯示用，不影響訊號）"]
 
     L2["Layer 2: 護城河趨勢"] -->|"毛利率 YoY"| MoatCheck{"衰退 >2pp?"}
-    MoatCheck -->|"是"| BROKEN["THESIS_BROKEN"]
+    MoatCheck -->|"是"| BROKEN["🔴 THESIS_BROKEN（P1）"]
     MoatCheck -->|"否"| L3
 
-    L3["Layer 3: 技術面"] -->|"RSI, Bias, Volume Ratio"| TechCheck
-    TechCheck -->|"RSI<35 + 市場正面"| BUY["CONTRARIAN_BUY"]
-    TechCheck -->|"Bias>20%"| HOT["OVERHEATED"]
-    TechCheck -->|"其他"| NORMAL["NORMAL"]
+    L3["Layer 3: 技術面 8 級決策引擎"] -->|"RSI, Bias"| TechCheck
+    TechCheck -->|"Bias<-20% AND RSI<35"| DV["🔵 DEEP_VALUE（P2）"]
+    TechCheck -->|"Bias<-20%"| OS["🟣 OVERSOLD（P3）"]
+    TechCheck -->|"RSI<35 AND Bias<20%"| BUY["🟢 CONTRARIAN_BUY（P4）"]
+    TechCheck -->|"Bias>20% AND RSI>70"| HOT["🟠 OVERHEATED（P5）"]
+    TechCheck -->|"Bias>20% OR RSI>70"| CH["🟡 CAUTION_HIGH（P6）"]
+    TechCheck -->|"Bias<-15% AND RSI<38"| WK["🟤 WEAKENING（P7）"]
+    TechCheck -->|"其他"| NORMAL["⚪ NORMAL（P8）"]
 
     L3 -->|"Bias ≥ P95 + 量比 ≥ 1.5x"| ROGUE["🌊 ROGUE WAVE（疊加警示）"]
+    L3 -->|"量比 ≥ 1.5x"| VS["📈 量能放大（通知修正）"]
+    L3 -->|"量比 ≤ 0.5x"| VT["📉 量能萎縮（通知修正）"]
 ```
 
 ## 技術架構
@@ -441,7 +447,7 @@ docker compose up --build -d
 |--------|------|------|
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
 | `GET` | `/stocks` | 取得所有追蹤股票 |
-| `POST` | `/scan` | V2 三層漏斗掃描，僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號），僅推播差異通知 |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
@@ -472,7 +478,7 @@ docker compose up --build -d
 | `POST` | `/ticker/{ticker}/alerts` | 建立自訂價格警報（metric / operator / threshold） |
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
-| `POST` | `/scan` | V2 三層漏斗掃描（非同步），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號，非同步），僅推播差異通知 |
 | `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |

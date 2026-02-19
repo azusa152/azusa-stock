@@ -77,11 +77,20 @@ BIAS_OVERHEATED_UI = 20
 BIAS_OVERSOLD_UI = -20
 ROGUE_WAVE_PERCENTILE_UI = 95
 ROGUE_WAVE_WARNING_PERCENTILE_UI = 90
+RSI_OVERBOUGHT_UI = 70
+RSI_OVERSOLD_UI = 30
+VOL_SURGE_UI = 1.5   # matches backend VOLUME_SURGE_THRESHOLD
+VOL_SURGE_HIGH_UI = 2.0  # "high" tier: extreme volume surge
 PRICE_WEAK_BIAS_THRESHOLD = -5
 MARGIN_BAD_CHANGE_THRESHOLD = -2
 EARNINGS_BADGE_DAYS_THRESHOLD = 14
 SCAN_HISTORY_CARD_LIMIT = 10
 DEFAULT_ALERT_THRESHOLD = 30.0
+ALERT_DEFAULTS: dict[str, dict[str, float]] = {
+    "rsi":   {"lt": 30.0,  "gt": 70.0},
+    "bias":  {"lt": -20.0, "gt": 20.0},
+    "price": {"lt": 0.0,   "gt": 0.0},  # filled dynamically from current price
+}
 
 # ---------------------------------------------------------------------------
 # Category Labels & Tags
@@ -268,10 +277,27 @@ ALERT_METRIC_OPTIONS = ["rsi", "price", "bias"]
 ALERT_OPERATOR_OPTIONS = ["lt", "gt"]
 SCAN_SIGNAL_ICONS = {
     "THESIS_BROKEN": "🔴",
+    "DEEP_VALUE": "🔵",
+    "OVERSOLD": "🟣",
     "CONTRARIAN_BUY": "🟢",
     "OVERHEATED": "🟠",
+    "CAUTION_HIGH": "🟡",
+    "WEAKENING": "🟤",
     "NORMAL": "⚪",
 }
+SCAN_SIGNAL_LABELS = {
+    "THESIS_BROKEN": "Thesis Broken",
+    "DEEP_VALUE": "Deep Value",
+    "OVERSOLD": "Oversold",
+    "CONTRARIAN_BUY": "Contrarian Buy",
+    "OVERHEATED": "Overheated",
+    "CAUTION_HIGH": "Caution",
+    "WEAKENING": "Weakening",
+    "NORMAL": "",
+}
+# Signal grouping by action intent (derived from determine_scan_signal() priority table)
+BUY_OPPORTUNITY_SIGNALS: frozenset[str] = frozenset({"DEEP_VALUE", "OVERSOLD", "CONTRARIAN_BUY"})
+RISK_WARNING_SIGNALS: frozenset[str] = frozenset({"THESIS_BROKEN", "OVERHEATED", "CAUTION_HIGH", "WEAKENING"})
 REORDER_MIN_STOCKS = 2
 PRIVACY_MASK = "***"
 
@@ -326,7 +352,7 @@ CACHE_TTL_FEAR_GREED = 1800  # 30 minutes
 API_FEAR_GREED_TIMEOUT = 15
 
 # Fear & Greed Gauge Chart (CNN-style semicircle)
-FEAR_GREED_GAUGE_HEIGHT = 200
+FEAR_GREED_GAUGE_HEIGHT = 130
 FEAR_GREED_GAUGE_BANDS: list[dict] = [
     {"range": [0, 25], "color": "#d32f2f"},  # 極度恐懼 — dark red
     {"range": [25, 45], "color": "#ff9800"},  # 恐懼 — orange
@@ -341,8 +367,8 @@ def get_cnn_unavailable_msg() -> str:
     return t("config.cnn_unavailable")
 
 
-DASHBOARD_DRIFT_CHART_HEIGHT = 250
-DASHBOARD_ALLOCATION_CHART_HEIGHT = 300
+DASHBOARD_DRIFT_CHART_HEIGHT = 260
+DASHBOARD_ALLOCATION_CHART_HEIGHT = 260
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)

@@ -83,6 +83,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/ticker/{ticker}/scan-history` | Scan history |
 | `GET` | `/ticker/{ticker}/alerts` | Price alerts |
 | `POST` | `/ticker/{ticker}/alerts` | Create price alert |
+| `PATCH` | `/alerts/{alert_id}/toggle` | Toggle alert on/off (active ↔ paused) |
+| `DELETE` | `/alerts/{alert_id}` | Delete price alert |
 | `GET` | `/ticker/{ticker}/earnings` | Earnings calendar |
 | `GET` | `/ticker/{ticker}/dividend` | Dividend info |
 | `POST` | `/scan` | Trigger scan |
@@ -184,10 +186,31 @@ When code changes have been pushed to the repository, follow this workflow to ap
 - When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first
-- When asked about a specific stock, call `/webhook` with `signals` or `moat`
+- When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the `last_scan_signal` value using the **Signal Reference** section below
 - When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance` to get the full overlap matrix
+- Use `PATCH /alerts/{alert_id}/toggle` to pause or resume a price alert without deleting it — useful for silencing alerts during earnings season or known volatile periods
 - When asked to sync the latest 13F data, call `POST /gurus/sync` (all gurus) or `POST /gurus/{id}/sync` (one guru); status `"synced"` = new data, `"skipped"` = already current
 - Present data in a structured, readable format
+
+## Signal Reference
+
+Folio's scan produces one of 8 signal states per stock. The `last_scan_signal` field in `/stocks` and `/summary` responses uses these values:
+
+| Signal | Icon | Condition | What to tell the user |
+|--------|------|-----------|----------------------|
+| `THESIS_BROKEN` | 🔴 | Gross margin YoY deteriorated >2pp | Fundamental thesis broken — recommend re-evaluating the holding |
+| `DEEP_VALUE` | 🔵 | Bias < −20% AND RSI < 35 | Both price and momentum confirm deep discount — high-conviction entry zone |
+| `OVERSOLD` | 🟣 | Bias < −20% (RSI ≥ 35) | Price at extreme low; RSI not yet confirming — watch for further confirmation |
+| `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold, price not overheated — potential contrarian entry |
+| `OVERHEATED` | 🟠 | Bias > 20% AND RSI > 70 | Both indicators overheated — sell warning, avoid chasing |
+| `CAUTION_HIGH` | 🟡 | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions |
+| `WEAKENING` | 🟤 | Bias < −15% AND RSI < 38 | Early weakness, not yet extreme — monitor closely |
+| `NORMAL` | ⚪ | Everything else | No notable signal |
+
+Telegram notifications may append volume context: **📈 volume surge** (`volume_ratio ≥ 1.5`) strengthens conviction; **📉 thin volume** (`volume_ratio ≤ 0.5`) weakens it. These qualifiers do not change the signal enum.
+
+## Categories
+
 - Use the stock categories to contextualize advice:
   - **Trend_Setter (風向球)**: Market direction indicators
   - **Moat (護城河)**: Companies with competitive advantages

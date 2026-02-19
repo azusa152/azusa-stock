@@ -36,6 +36,10 @@ from config import (
     BACKEND_URL,
     BIAS_OVERHEATED_UI,
     BIAS_OVERSOLD_UI,
+    RSI_OVERBOUGHT_UI,
+    RSI_OVERSOLD_UI,
+    VOL_SURGE_HIGH_UI,
+    VOL_SURGE_UI,
     CACHE_TTL_ALERTS,
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
@@ -61,6 +65,7 @@ from config import (
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
     CATEGORY_OPTIONS,
+    ALERT_DEFAULTS,
     DEFAULT_ALERT_THRESHOLD,
     DEFAULT_TAG_OPTIONS,
     EARNINGS_BADGE_DAYS_THRESHOLD,
@@ -75,6 +80,7 @@ from config import (
     ROGUE_WAVE_WARNING_PERCENTILE_UI,
     SCAN_HISTORY_CARD_LIMIT,
     SCAN_SIGNAL_ICONS,
+    SCAN_SIGNAL_LABELS,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
     PRIVACY_MASK,
@@ -1039,7 +1045,71 @@ def render_thesis_history(history: list[dict]) -> None:
 
 
 def _render_signal_metrics(signals: dict) -> None:
-    """Render technical indicator metrics (price, RSI, MA, bias, volume ratio)."""
+    """Compact single-line summary of the 3 most actionable indicators: RSI, Bias, Volume Ratio."""
+    if "error" in signals:
+        st.warning(signals["error"])
+        return
+
+    rsi = signals.get("rsi")
+    bias = signals.get("bias")
+    volume_ratio = signals.get("volume_ratio")
+    bias_percentile = signals.get("bias_percentile")
+    is_rogue_wave = signals.get("is_rogue_wave", False)
+
+    # RSI chip
+    if rsi is not None:
+        rsi_color = "🔴" if rsi > RSI_OVERBOUGHT_UI else ("🟢" if rsi < RSI_OVERSOLD_UI else "⚪")
+        rsi_part = t("utils.signals.summary_rsi", color=rsi_color, value=rsi)
+    else:
+        rsi_part = t("utils.signals.summary_rsi_na")
+
+    # Bias chip
+    if bias is not None:
+        bias_color = (
+            "🔴"
+            if bias > BIAS_OVERHEATED_UI
+            else ("🟢" if bias < BIAS_OVERSOLD_UI else "⚪")
+        )
+        if bias_percentile is not None:
+            pct_int = int(round(bias_percentile))
+            pct_color = (
+                "🔴"
+                if bias_percentile >= ROGUE_WAVE_PERCENTILE_UI
+                else (
+                    "🟠"
+                    if bias_percentile >= ROGUE_WAVE_WARNING_PERCENTILE_UI
+                    else ""
+                )
+            )
+            bias_part = t(
+                "utils.signals.summary_bias_pct",
+                color=bias_color,
+                value=bias,
+                pct_color=pct_color,
+                percentile=pct_int,
+            )
+        else:
+            bias_part = t("utils.signals.summary_bias", color=bias_color, value=bias)
+    else:
+        bias_part = t("utils.signals.summary_bias_na")
+
+    # Volume ratio chip
+    if volume_ratio is not None:
+        vol_color = "🔴" if volume_ratio >= VOL_SURGE_HIGH_UI else ("🟡" if volume_ratio >= VOL_SURGE_UI else "⚪")
+        vol_part = t(
+            "utils.signals.summary_vol", color=vol_color, value=volume_ratio
+        )
+    else:
+        vol_part = t("utils.signals.summary_vol_na")
+
+    st.markdown(f"{rsi_part} · {bias_part} · {vol_part}")
+
+    if is_rogue_wave:
+        st.warning(t("utils.signals.rogue_wave_warning"))
+
+
+def _render_full_metrics(signals: dict) -> None:
+    """Full metrics grid: price, RSI, MA200, MA60, bias, volume ratio, fetched_at."""
     if "error" in signals:
         st.warning(signals["error"])
         return
@@ -1236,7 +1306,7 @@ def _render_scan_history_section(ticker: str) -> None:
         st.caption(t("utils.scan_history.no_history"))
 
 
-def _render_price_alerts_section(ticker: str) -> None:
+def _render_price_alerts_section(ticker: str, signals: dict) -> None:
     """Render price alerts tab content (list + create form)."""
     alerts = fetch_alerts(ticker)
     if alerts:
@@ -1250,13 +1320,43 @@ def _render_price_alerts_section(ticker: str) -> None:
                 if triggered
                 else ""
             )
-            col_a, col_b = st.columns([3, 1])
-            with col_a:
+            # Proximity indicator: how close is current value to threshold?
+            proximity_label = ""
+            current_sig = signals.get(a["metric"])
+            if current_sig is not None:
+                threshold = float(a["threshold"])
+                current = float(current_sig)
+                if a["operator"] == "lt":
+                    delta = current - threshold  # positive = not triggered
+                    if delta <= 0:
+                        proximity_label = t("utils.alerts.proximity_triggered")
+                    else:
+                        pct = delta / abs(threshold) if threshold != 0 else delta
+                        if pct < 0.10:
+                            proximity_label = t("utils.alerts.proximity_close")
+                else:  # gt
+                    delta = threshold - current  # positive = not triggered
+                    if delta <= 0:
+                        proximity_label = t("utils.alerts.proximity_triggered")
+                    else:
+                        pct = delta / abs(threshold) if threshold != 0 else delta
+                        if pct < 0.10:
+                            proximity_label = t("utils.alerts.proximity_close")
+            col_toggle, col_info, col_delete = st.columns([1, 4, 1])
+            with col_toggle:
+                toggle_icon = "⏸️" if a["is_active"] else "▶️"
+                toggle_help = t("utils.alerts.pause_help") if a["is_active"] else t("utils.alerts.resume_help")
+                if st.button(toggle_icon, key=f"toggle_alert_{a['id']}", help=toggle_help):
+                    api_patch(f"/alerts/{a['id']}/toggle", {})
+                    fetch_alerts.clear()
+                    refresh_ui()
+            with col_info:
                 st.caption(
                     f"{active_badge} {a['metric']} {op_str} "
                     f"{a['threshold']}{trigger_info}"
+                    + (f"  {proximity_label}" if proximity_label else "")
                 )
-            with col_b:
+            with col_delete:
                 if st.button(
                     "🗑️", key=f"del_alert_{a['id']}", help=t("utils.alerts.delete_help")
                 ):
@@ -1274,6 +1374,9 @@ def _render_price_alerts_section(ticker: str) -> None:
             key=f"alert_metric_{ticker}",
             label_visibility="collapsed",
         )
+        current_val = signals.get(alert_metric)
+        if current_val is not None:
+            st.caption(t("utils.alerts.current_value", metric=alert_metric.upper(), value=f"{current_val:.2f}"))
     with alert_cols[1]:
         alert_op = st.selectbox(
             t("utils.alerts.condition_label"),
@@ -1285,11 +1388,17 @@ def _render_price_alerts_section(ticker: str) -> None:
             label_visibility="collapsed",
         )
     with alert_cols[2]:
+        metric_defaults = ALERT_DEFAULTS.get(alert_metric, {})
+        if alert_metric == "price":
+            raw_price = signals.get("price")
+            default_val = float(raw_price) if raw_price is not None else DEFAULT_ALERT_THRESHOLD
+        else:
+            default_val = metric_defaults.get(alert_op, DEFAULT_ALERT_THRESHOLD)
         alert_threshold = st.number_input(
             t("utils.alerts.threshold_label"),
-            value=DEFAULT_ALERT_THRESHOLD,
+            value=default_val,
             step=1.0,
-            key=f"alert_threshold_{ticker}",
+            key=f"alert_threshold_{ticker}_{alert_metric}_{alert_op}",
             label_visibility="collapsed",
         )
 
@@ -1449,7 +1558,10 @@ def render_stock_card(
         signals = fetch_signals(ticker) or {}
 
     # Build expander header with signal icon, ticker, category, price, daily change, and market
-    last_signal = stock.get("last_scan_signal", "NORMAL")
+    if enrichment and enrichment.get("computed_signal"):
+        last_signal = enrichment["computed_signal"]
+    else:
+        last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
     cat_label_short = get_category_labels().get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")
@@ -1465,33 +1577,45 @@ def render_stock_card(
 
     market_label = infer_market_label(ticker)
     resonance_badge = f" | 🏆×{len(resonance)}" if resonance else ""
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}"
+    signal_label = SCAN_SIGNAL_LABELS.get(last_signal, "")
+    signal_label_str = f" | {signal_label}" if signal_label else ""
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}{resonance_badge}{signal_label_str}"
 
     with st.expander(header, expanded=False):
-        col1, col2 = st.columns([1, 2])
+        # ── Tier 1: At-a-Glance ────────────────────────────────────────────
+        _render_signal_metrics(signals)
 
-        with col1:
-            cat_label = get_category_labels().get(cat, cat)
-            st.caption(t("utils.stock_card.category", category=cat_label))
+        st.markdown(t("utils.stock_card.current_thesis_title"))
+        st.info(stock.get("current_thesis", t("utils.stock_card.no_thesis")))
 
-            # Dynamic tags
-            current_tags = stock.get("current_tags", [])
-            if current_tags:
-                tag_badges = " ".join(f"`{tag}`" for tag in current_tags)
-                st.markdown(f"🏷️ {tag_badges}")
+        _render_price_chart(ticker)
 
-            _render_signal_metrics(signals)
+        current_tags = stock.get("current_tags", [])
+        if current_tags:
+            tag_badges = " ".join(f"`{tag}`" for tag in current_tags)
+            st.markdown(f"🏷️ {tag_badges}")
 
-            # -- Smart Money Resonance badge --
-            if resonance:
-                guru_names = ", ".join(
-                    g.get("guru_display_name", "?") for g in resonance
-                )
-                st.caption(
-                    t("utils.stock_card.resonance_badge", count=len(resonance), gurus=guru_names)
-                )
+        # ── Tier 2: Detail Tabs ────────────────────────────────────────────
+        _show_moat = stock.get("category") not in SKIP_MOAT_CATEGORIES
+        _tab_labels = [t("utils.stock_card.tab.metrics")]
+        if _show_moat:
+            _tab_labels.append(t("utils.stock_card.tab.moat"))
+        _tab_labels += [
+            t("utils.stock_card.tab.scan_history"),
+            t("utils.stock_card.tab.chips"),
+            t("utils.stock_card.tab.alerts"),
+            t("utils.stock_card.mgmt.thesis"),
+            t("utils.stock_card.mgmt.category"),
+            t("utils.stock_card.mgmt.remove"),
+        ]
+        _tabs = st.tabs(_tab_labels)
+        _tab_idx = 0
 
-            # -- Earnings & Dividend (prefer enrichment data) --
+        # -- Metrics tab --
+        with _tabs[_tab_idx]:
+            _render_full_metrics(signals)
+
+            # Earnings & Dividend
             info_cols = st.columns(2)
             if enrichment:
                 earnings_data = enrichment.get("earnings")
@@ -1543,120 +1667,115 @@ def render_stock_card(
                     else:
                         st.caption(t("utils.dividend.na"))
 
-            # -- Sub-sections via tabs --
-            _tab_labels = [
-                t("utils.stock_card.tab.chips"),
-                t("utils.stock_card.tab.scan_history"),
-                t("utils.stock_card.tab.alerts"),
-            ]
-            _show_moat = stock.get("category") not in SKIP_MOAT_CATEGORIES
-            if _show_moat:
-                _tab_labels.insert(1, t("utils.stock_card.tab.moat"))
-            _tabs = st.tabs(_tab_labels)
-            _tab_idx = 0
-
-            # -- 13F Institutional Holdings --
-            with _tabs[_tab_idx]:
-                st.link_button(
-                    t("utils.stock_card.whalewisdom_button"),
-                    WHALEWISDOM_STOCK_URL.format(ticker=ticker.lower()),
-                    use_container_width=True,
+            if resonance:
+                guru_names = ", ".join(
+                    g.get("guru_display_name", "?") for g in resonance
                 )
-                st.caption(t("utils.stock_card.whalewisdom_hint"))
-                holders = signals.get("institutional_holders")
-                if holders and isinstance(holders, list) and len(holders) > 0:
-                    st.markdown(t("utils.stock_card.top_holders_title"))
-                    st.dataframe(holders, use_container_width=True, hide_index=True)
-                else:
-                    st.info(t("utils.stock_card.no_holders"))
-            _tab_idx += 1
-
-            if _show_moat:
-                with _tabs[_tab_idx]:
-                    _render_moat_section(ticker, signals)
-                _tab_idx += 1
-
-            with _tabs[_tab_idx]:
-                _render_scan_history_section(ticker)
-            _tab_idx += 1
-
-            with _tabs[_tab_idx]:
-                _render_price_alerts_section(ticker)
-
-        with col2:
-            st.markdown(t("utils.stock_card.current_thesis_title"))
-            st.info(stock.get("current_thesis", t("utils.stock_card.no_thesis")))
-
-            _render_price_chart(ticker)
-
-            # -- Management tabs --
-            _mgmt_tab_thesis, _mgmt_tab_cat, _mgmt_tab_remove = st.tabs(
-                [
-                    t("utils.stock_card.mgmt.thesis"),
-                    t("utils.stock_card.mgmt.category"),
-                    t("utils.stock_card.mgmt.remove"),
-                ]
-            )
-
-            with _mgmt_tab_thesis:
-                _render_thesis_editor(ticker, stock)
-
-            with _mgmt_tab_cat:
-                current_cat = stock.get("category", "Growth")
-                other_categories = [c for c in CATEGORY_OPTIONS if c != current_cat]
-                current_label = get_category_labels().get(current_cat, current_cat)
                 st.caption(
-                    t("utils.stock_card.current_category", category=current_label)
+                    t(
+                        "utils.stock_card.resonance_badge",
+                        count=len(resonance),
+                        gurus=guru_names,
+                    )
                 )
-                new_cat = st.selectbox(
-                    t("utils.stock_card.new_category"),
-                    options=other_categories,
-                    format_func=lambda x: get_category_labels().get(x, x),
-                    key=f"cat_select_{ticker}",
-                    label_visibility="collapsed",
+        _tab_idx += 1
+
+        # -- Moat tab (conditional) --
+        if _show_moat:
+            with _tabs[_tab_idx]:
+                _render_moat_section(ticker, signals)
+            _tab_idx += 1
+
+        # -- Scan History tab --
+        with _tabs[_tab_idx]:
+            _render_scan_history_section(ticker)
+        _tab_idx += 1
+
+        # -- Chips (13F) tab --
+        with _tabs[_tab_idx]:
+            st.link_button(
+                t("utils.stock_card.whalewisdom_button"),
+                WHALEWISDOM_STOCK_URL.format(ticker=ticker.lower()),
+                use_container_width=True,
+            )
+            st.caption(t("utils.stock_card.whalewisdom_hint"))
+            holders = signals.get("institutional_holders")
+            if holders and isinstance(holders, list) and len(holders) > 0:
+                st.markdown(t("utils.stock_card.top_holders_title"))
+                st.dataframe(holders, use_container_width=True, hide_index=True)
+            else:
+                st.info(t("utils.stock_card.no_holders"))
+        _tab_idx += 1
+
+        # -- Alerts tab --
+        with _tabs[_tab_idx]:
+            _render_price_alerts_section(ticker, signals)
+        _tab_idx += 1
+
+        # -- Thesis Versioning tab --
+        with _tabs[_tab_idx]:
+            _render_thesis_editor(ticker, stock)
+        _tab_idx += 1
+
+        # -- Change Category tab --
+        with _tabs[_tab_idx]:
+            current_cat = stock.get("category", "Growth")
+            other_categories = [c for c in CATEGORY_OPTIONS if c != current_cat]
+            current_label = get_category_labels().get(current_cat, current_cat)
+            st.caption(
+                t("utils.stock_card.current_category", category=current_label)
+            )
+            new_cat = st.selectbox(
+                t("utils.stock_card.new_category"),
+                options=other_categories,
+                format_func=lambda x: get_category_labels().get(x, x),
+                key=f"cat_select_{ticker}",
+                label_visibility="collapsed",
+            )
+            if st.button(
+                t("utils.stock_card.confirm_switch"), key=f"cat_btn_{ticker}"
+            ):
+                result = api_patch(
+                    f"/ticker/{ticker}/category",
+                    {"category": new_cat},
                 )
-                if st.button(
-                    t("utils.stock_card.confirm_switch"), key=f"cat_btn_{ticker}"
-                ):
-                    result = api_patch(
-                        f"/ticker/{ticker}/category",
-                        {"category": new_cat},
+                if result:
+                    st.success(
+                        result.get(
+                            "message", t("utils.stock_card.category_changed")
+                        )
+                    )
+                    invalidate_stock_caches()
+                    refresh_ui()
+        _tab_idx += 1
+
+        # -- Remove tab --
+        with _tabs[_tab_idx]:
+            st.warning(t("utils.stock_card.remove_warning"))
+            removal_reason = st.text_area(
+                t("utils.stock_card.removal_reason_label"),
+                key=f"removal_input_{ticker}",
+                placeholder=t("utils.stock_card.removal_placeholder"),
+                label_visibility="collapsed",
+            )
+            if st.button(
+                t("utils.stock_card.confirm_remove"),
+                key=f"removal_btn_{ticker}",
+                type="primary",
+            ):
+                if removal_reason.strip():
+                    result = api_post(
+                        f"/ticker/{ticker}/deactivate",
+                        {"reason": removal_reason.strip()},
                     )
                     if result:
                         st.success(
-                            result.get(
-                                "message", t("utils.stock_card.category_changed")
-                            )
+                            result.get("message", t("utils.stock_card.removed"))
                         )
                         invalidate_stock_caches()
                         refresh_ui()
-
-            with _mgmt_tab_remove:
-                st.warning(t("utils.stock_card.remove_warning"))
-                removal_reason = st.text_area(
-                    t("utils.stock_card.removal_reason_label"),
-                    key=f"removal_input_{ticker}",
-                    placeholder=t("utils.stock_card.removal_placeholder"),
-                    label_visibility="collapsed",
-                )
-                if st.button(
-                    t("utils.stock_card.confirm_remove"),
-                    key=f"removal_btn_{ticker}",
-                    type="primary",
-                ):
-                    if removal_reason.strip():
-                        result = api_post(
-                            f"/ticker/{ticker}/deactivate",
-                            {"reason": removal_reason.strip()},
-                        )
-                        if result:
-                            st.success(
-                                result.get("message", t("utils.stock_card.removed"))
-                            )
-                            invalidate_stock_caches()
-                            refresh_ui()
-                    else:
-                        st.warning(t("utils.stock_card.remove_reason_required"))
+                else:
+                    st.warning(t("utils.stock_card.remove_reason_required"))
 
 
 def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None:

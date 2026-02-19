@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 from config import (
+    BUY_OPPORTUNITY_SIGNALS,
     CATEGORY_COLOR_FALLBACK,
     CATEGORY_COLOR_MAP,
     CATEGORY_ICON_SHORT,
@@ -21,6 +22,7 @@ from config import (
     HEALTH_SCORE_WARN_THRESHOLD,
     HOLDING_ACTION_ICONS,
     PRIVACY_MASK,
+    RISK_WARNING_SIGNALS,
     SCAN_SIGNAL_ICONS,
     get_cnn_unavailable_msg,
     get_fear_greed_label,
@@ -75,39 +77,30 @@ def _health_color(score: float) -> str:
 # Page Layout
 # ---------------------------------------------------------------------------
 
-# -- Title row with privacy toggle and refresh button --
-_title_cols = st.columns([5, 1, 1])
-with _title_cols[0]:
-    st.title(t("dashboard.title"))
-with _title_cols[1]:
-    st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
-with _title_cols[2]:
-    if st.button(t("common.refresh"), use_container_width=True):
-        invalidate_all_caches()
-        refresh_ui()
-
-
-# ---------------------------------------------------------------------------
-# SOP Manual
-# ---------------------------------------------------------------------------
-
-with st.expander(t("dashboard.sop.title"), expanded=False):
-    st.markdown(t("dashboard.sop.content"))
-
-
 # -- Fetch data --
 last_scan_data = fetch_last_scan()
 stocks_data = fetch_stocks()
 holdings_data = fetch_holdings()
 
-# Currency selector (in sidebar-like position, below title)
-display_currency = st.selectbox(
-    t("dashboard.currency_selector"),
-    options=DISPLAY_CURRENCY_OPTIONS,
-    index=0,
-    key="dashboard_currency",
-    label_visibility="collapsed",
-)
+# -- Title row: title | currency selector | privacy toggle | refresh --
+_title_cols = st.columns([4, 1, 1, 1])
+with _title_cols[0]:
+    st.title(t("dashboard.title"))
+with _title_cols[1]:
+    display_currency = st.selectbox(
+        t("dashboard.currency_selector"),
+        options=DISPLAY_CURRENCY_OPTIONS,
+        index=0,
+        key="dashboard_currency",
+        label_visibility="collapsed",
+    )
+with _title_cols[2]:
+    st.toggle(get_privacy_toggle_label(), key="privacy_mode", on_change=_on_privacy_change)
+with _title_cols[3]:
+    if st.button(t("common.refresh"), use_container_width=True):
+        invalidate_all_caches()
+        refresh_ui()
+
 rebalance_data = fetch_rebalance(display_currency)
 profile_data = fetch_profile()
 
@@ -139,7 +132,6 @@ else:
 # ---------------------------------------------------------------------------
 # Page paths must match the strings in app.py st.Page(...) registration.
 if not stocks_data and not rebalance_data:
-    st.divider()
     st.info(t("dashboard.welcome"))
     _onb_a, _onb_b, _ = st.columns([1, 1, 2])
     with _onb_a:
@@ -152,138 +144,189 @@ if not stocks_data and not rebalance_data:
 
 
 # ---------------------------------------------------------------------------
-# Section 0: Fear & Greed Gauge Chart
+# Zone B: Portfolio Pulse — 3-column hero section (above the fold)
 # ---------------------------------------------------------------------------
 fear_greed_data = fetch_fear_greed()
 
-if fear_greed_data:
-    fg_level = fear_greed_data.get("composite_level", "N/A")
-    fg_score = fear_greed_data.get("composite_score", 50)
-    fg_info = get_fear_greed_label(fg_level)
-    vix_data = fear_greed_data.get("vix") or {}
-    vix_val = vix_data.get("value")
-    vix_change = vix_data.get("change_1d")
-    cnn_data = fear_greed_data.get("cnn")
-    cnn_score = cnn_data.get("score") if cnn_data else None
+# Pre-compute values used inside the hero columns
+_privacy = _is_privacy()
+health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
+market_status = (last_scan_data or {}).get("market_status")
+sentiment_info = get_market_sentiment_label(market_status or "")
+stock_count = len(stocks_data) if stocks_data else 0
+holding_count = len(holdings_data) if holdings_data else 0
 
-    # Gauge title: level label without emoji (e.g., "恐懼")
-    gauge_title = fg_info["label"].split(" ", 1)[-1] if " " in fg_info["label"] else fg_info["label"]
+with st.container(border=True):
+    _hero_left, _hero_mid, _hero_right = st.columns([2, 1, 1])
 
-    fig_gauge = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=fg_score,
-            title={"text": gauge_title, "font": {"size": 18}},
-            number={"suffix": "/100", "font": {"size": 28}},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1},
-                "bar": {"color": "#333333"},
-                "steps": [
-                    {"range": band["range"], "color": band["color"]}
-                    for band in FEAR_GREED_GAUGE_BANDS
-                ],
-            },
-        )
-    )
-    fig_gauge.update_layout(
-        height=FEAR_GREED_GAUGE_HEIGHT,
-        margin=dict(l=30, r=30, t=40, b=10),
-    )
-    st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
+    # -- Left: Total Portfolio Value + Daily P&L --
+    with _hero_left:
+        if rebalance_data and rebalance_data.get("total_value") is not None:
+            total_val = rebalance_data["total_value"]
+            change_pct = rebalance_data.get("total_value_change_pct")
+            change_amt = rebalance_data.get("total_value_change")
 
-    # Caption: VIX info + CNN availability
-    caption_parts: list[str] = []
-    if vix_val is not None:
-        vix_str = f"VIX={vix_val:.1f}"
-        if vix_change is not None:
-            arrow = "▲" if vix_change > 0 else "▼"
-            vix_str += f" ({arrow}{abs(vix_change):.1f})"
-        caption_parts.append(vix_str)
-    if cnn_score is not None:
-        caption_parts.append(f"CNN={cnn_score}")
-    else:
-        caption_parts.append(get_cnn_unavailable_msg())
-
-    st.caption(" ｜ ".join(caption_parts))
-else:
-    st.caption(get_fear_greed_label("N/A")["label"])
-
-
-# ---------------------------------------------------------------------------
-# Section 1: KPI Metrics Row
-# ---------------------------------------------------------------------------
-kpi_cols = st.columns(4)
-
-# -- 1a. Market Sentiment --
-with kpi_cols[0]:
-    market_status = (last_scan_data or {}).get("market_status")
-    sentiment_info = get_market_sentiment_label(market_status or "")
-    st.metric(t("dashboard.market_sentiment"), sentiment_info["label"])
-    if market_status:
-        details = (last_scan_data or {}).get("market_status_details", "")
-        if details:
-            st.caption(details)
-
-# -- 1b. Total Portfolio Value --
-with kpi_cols[1]:
-    if rebalance_data and rebalance_data.get("total_value") is not None:
-        total_val = rebalance_data["total_value"]
-        privacy = _is_privacy()
-
-        # Extract daily change data
-        change_pct = rebalance_data.get("total_value_change_pct")
-        change_amt = rebalance_data.get("total_value_change")
-
-        # Format delta string (show percentage always, amount only if not private)
-        if change_pct is not None and change_amt is not None:
-            arrow = "▲" if change_pct >= 0 else "▼"
-            if privacy:
-                delta_str = f"{arrow}{abs(change_pct):.2f}%"
+            if change_pct is not None and change_amt is not None:
+                arrow = "▲" if change_pct >= 0 else "▼"
+                if _privacy:
+                    delta_str = f"{arrow}{abs(change_pct):.2f}%"
+                else:
+                    delta_str = f"{arrow}{abs(change_pct):.2f}% (${abs(change_amt):,.2f})"
             else:
-                delta_str = f"{arrow}{abs(change_pct):.2f}% (${abs(change_amt):,.2f})"
-            delta_color = "normal"
+                delta_str = None
+
+            st.markdown(
+                f'<p class="hero-label">{t("dashboard.total_market_value")}</p>'
+                f'<p class="hero-value">{_mask_money(total_val)}</p>',
+                unsafe_allow_html=True,
+            )
+            if delta_str:
+                color_css = "#22c55e" if (change_pct or 0) >= 0 else "#ef4444"
+                st.markdown(
+                    f'<p class="hero-delta" style="color:{color_css}">{delta_str}</p>',
+                    unsafe_allow_html=True,
+                )
         else:
-            delta_str = None
-            delta_color = "off"
+            st.metric(t("dashboard.total_market_value"), "N/A")
+
+    # -- Center: Fear & Greed compact gauge --
+    with _hero_mid:
+        if fear_greed_data:
+            fg_level = fear_greed_data.get("composite_level", "N/A")
+            fg_score = fear_greed_data.get("composite_score", 50)
+            fg_info = get_fear_greed_label(fg_level)
+            vix_data = fear_greed_data.get("vix") or {}
+            vix_val = vix_data.get("value")
+            vix_change = vix_data.get("change_1d")
+            cnn_data = fear_greed_data.get("cnn")
+            cnn_score = cnn_data.get("score") if cnn_data else None
+
+            gauge_title = fg_info["label"].split(" ", 1)[-1] if " " in fg_info["label"] else fg_info["label"]
+
+            fig_gauge = go.Figure(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=fg_score,
+                    title={"text": gauge_title, "font": {"size": 14}},
+                    number={"suffix": "/100", "font": {"size": 22}},
+                    gauge={
+                        "axis": {"range": [0, 100], "tickwidth": 1},
+                        "bar": {"color": "#333333"},
+                        "steps": [
+                            {"range": band["range"], "color": band["color"]}
+                            for band in FEAR_GREED_GAUGE_BANDS
+                        ],
+                    },
+                )
+            )
+            fig_gauge.update_layout(
+                height=FEAR_GREED_GAUGE_HEIGHT,
+                margin=dict(l=10, r=10, t=30, b=5),
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
+
+            caption_parts: list[str] = []
+            if vix_val is not None:
+                vix_str = f"VIX={vix_val:.1f}"
+                if vix_change is not None:
+                    arrow = "▲" if vix_change > 0 else "▼"
+                    vix_str += f" ({arrow}{abs(vix_change):.1f})"
+                caption_parts.append(vix_str)
+            if cnn_score is not None:
+                caption_parts.append(f"CNN={cnn_score}")
+            else:
+                caption_parts.append(get_cnn_unavailable_msg())
+            st.caption(" ｜ ".join(caption_parts))
+        else:
+            na_info = get_fear_greed_label("N/A")
+            st.metric(t("dashboard.fear_greed_title"), na_info["label"])
+
+    # -- Right: Market Sentiment + Health Score + Tracking/Holdings --
+    with _hero_right:
+        st.metric(t("dashboard.market_sentiment"), sentiment_info["label"])
+
+        if total_cnt > 0:
+            st.metric(
+                t("dashboard.health_score"),
+                f"{health_pct:.0f}%",
+                delta=t("dashboard.health_delta", normal=normal_cnt, total=total_cnt),
+                delta_color=_health_color(health_pct),
+            )
+        else:
+            st.metric(t("dashboard.health_score"), "N/A")
 
         st.metric(
-            t("dashboard.total_market_value"),
-            _mask_money(total_val),
-            delta=delta_str,
-            delta_color=delta_color,
+            t("dashboard.kpi.tracking_holdings"),
+            t("dashboard.kpi.tracking_holdings_value", stocks=stock_count, holdings=holding_count),
         )
-    else:
-        st.metric(t("dashboard.total_market_value"), "N/A")
-
-# -- 1c. Health Score --
-with kpi_cols[2]:
-    health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
-    if total_cnt > 0:
-        st.metric(
-            t("dashboard.health_score"),
-            f"{health_pct:.0f}%",
-            delta=t("dashboard.health_delta", normal=normal_cnt, total=total_cnt),
-            delta_color=_health_color(health_pct),
-        )
-    else:
-        st.metric(t("dashboard.health_score"), "N/A")
-
-# -- 1d. Tracking & Holdings Count --
-with kpi_cols[3]:
-    stock_count = len(stocks_data) if stocks_data else 0
-    holding_count = len(holdings_data) if holdings_data else 0
-    st.metric(t("dashboard.kpi.tracking_holdings"), t("dashboard.kpi.tracking_holdings_value", stocks=stock_count, holdings=holding_count))
 
 
 # ---------------------------------------------------------------------------
-# Section 2: Allocation at a Glance
+# Section 2: Signal Alerts (Action Required — before Allocation)
 # ---------------------------------------------------------------------------
-st.divider()
+st.subheader(t("dashboard.signal_alerts_title"))
 
+with st.container(border=True):
+    if stocks_data:
+        _active_stocks = [s for s in stocks_data if s.get("is_active", True)]
+        buy_stocks = [
+            s for s in _active_stocks
+            if s.get("last_scan_signal", "NORMAL") in BUY_OPPORTUNITY_SIGNALS
+        ]
+        risk_stocks = [
+            s for s in _active_stocks
+            if s.get("last_scan_signal", "NORMAL") in RISK_WARNING_SIGNALS
+        ]
+
+        def _render_signal_rows(stock_list: list) -> None:
+            cat_labels_map = get_category_labels()
+            for s in stock_list:
+                signal = s.get("last_scan_signal", "NORMAL")
+                icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
+                cat_short = cat_labels_map.get(s.get("category", ""), s.get("category", "")).split("(")[0].strip()
+                _a_icon, _a_ticker, _a_cat, _a_signal = st.columns([0.5, 2, 2, 2])
+                with _a_icon:
+                    st.markdown(icon)
+                with _a_ticker:
+                    st.markdown(f"**{s['ticker']}**")
+                with _a_cat:
+                    st.markdown(cat_short)
+                with _a_signal:
+                    st.markdown(f"`{signal}`")
+
+        if buy_stocks or risk_stocks:
+            if buy_stocks:
+                st.caption(t("dashboard.signal_buy_title"))
+                _render_signal_rows(buy_stocks)
+
+            if risk_stocks:
+                if buy_stocks:
+                    st.divider()
+                st.caption(t("dashboard.signal_risk_title"))
+                _render_signal_rows(risk_stocks)
+
+                # Rebalance advice inline — only shown alongside risk warnings
+                advice = rebalance_data.get("advice", []) if rebalance_data else []
+                if advice:
+                    st.divider()
+                    st.caption(t("dashboard.rebalance_advice_title"))
+                    for item in advice[:5]:
+                        st.caption(f"• {item}")
+        else:
+            st.success(t("dashboard.all_signals_normal"))
+    else:
+        st.info(t("dashboard.no_tracking_stocks"))
+        _sig_a, _ = st.columns([1, 3])
+        with _sig_a:
+            if st.button(t("dashboard.button_goto_radar"), use_container_width=True):
+                st.switch_page("views/radar.py")
+
+
+# ---------------------------------------------------------------------------
+# Section 3: Allocation at a Glance
+# ---------------------------------------------------------------------------
 if rebalance_data and profile_data and rebalance_data.get("categories"):
     breakdown = rebalance_data["categories"]
-
-    # -- 2a. Dual Donut Chart: Target vs Actual (side by side) --
     st.subheader(t("dashboard.allocation_title"))
 
     target_alloc = profile_data.get("config", {})
@@ -301,62 +344,9 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
         actual_vals.append(cat_info.get("current_pct", 0))
         colors.append(CATEGORY_COLOR_MAP.get(cat_key, CATEGORY_COLOR_FALLBACK))
 
-    fig_alloc = make_subplots(
-        rows=1,
-        cols=2,
-        specs=[[{"type": "pie"}, {"type": "pie"}]],
-        subplot_titles=[t("dashboard.chart.target"), t("dashboard.chart.actual")],
-    )
-
-    # Left donut — Target allocation
-    fig_alloc.add_trace(
-        go.Pie(
-            labels=cat_labels,
-            values=target_vals,
-            hole=0.4,
-            marker=dict(colors=colors),
-            textinfo="label+percent",
-            textposition="auto",
-            hovertemplate=(
-                f"<b>%{{label}}</b><br>"
-                f"{t('dashboard.chart.target_pct')}：%{{percent}}<extra></extra>"
-            ),
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Right donut — Actual allocation
-    fig_alloc.add_trace(
-        go.Pie(
-            labels=cat_labels,
-            values=actual_vals,
-            hole=0.4,
-            marker=dict(colors=colors),
-            textinfo="label+percent",
-            textposition="auto",
-            hovertemplate=(
-                f"<b>%{{label}}</b><br>"
-                f"{t('dashboard.chart.actual_pct')}：%{{percent}}<extra></extra>"
-            ),
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig_alloc.update_layout(
-        height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
-        margin=dict(l=20, r=20, t=40, b=20),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
-
-    # -- 2b. Drift Bar Chart --
-    st.subheader(t("dashboard.drift_title"))
     drift_labels = []
     drift_vals = []
     drift_colors = []
-
     for cat_key in target_alloc:
         cat_info = breakdown.get(cat_key, {})
         drift = cat_info.get("drift_pct", 0)
@@ -365,31 +355,75 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
         drift_vals.append(drift)
         drift_colors.append("red" if abs(drift) > 5 else "gray")
 
-    fig_drift = go.Figure(
-        go.Bar(
-            x=drift_labels,
-            y=drift_vals,
-            marker_color=drift_colors,
-            text=[f"{d:+.1f}%" for d in drift_vals],
-            textposition="outside",
-        )
-    )
-    fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="+5%")
-    fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="-5%")
-    fig_drift.update_layout(
-        height=DASHBOARD_DRIFT_CHART_HEIGHT,
-        margin=dict(l=20, r=20, t=30, b=20),
-        yaxis_title=t("dashboard.chart.drift_yaxis"),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
+    with st.container(border=True):
+        _alloc_col, _drift_col = st.columns([1, 1])
 
-    # Rebalance advice summary
-    advice = rebalance_data.get("advice", [])
-    if advice:
-        with st.expander(t("dashboard.rebalance_advice_title"), expanded=False):
-            for item in advice[:5]:
-                st.write(item)
+        with _alloc_col:
+            # -- Dual Donut: Target vs Actual --
+            fig_alloc = make_subplots(
+                rows=1,
+                cols=2,
+                specs=[[{"type": "pie"}, {"type": "pie"}]],
+                subplot_titles=[t("dashboard.chart.target"), t("dashboard.chart.actual")],
+            )
+            fig_alloc.add_trace(
+                go.Pie(
+                    labels=cat_labels,
+                    values=target_vals,
+                    hole=0.4,
+                    marker=dict(colors=colors),
+                    textinfo="percent",
+                    hovertemplate=(
+                        f"<b>%{{label}}</b><br>"
+                        f"{t('dashboard.chart.target_pct')}：%{{percent}}<extra></extra>"
+                    ),
+                ),
+                row=1,
+                col=1,
+            )
+            fig_alloc.add_trace(
+                go.Pie(
+                    labels=cat_labels,
+                    values=actual_vals,
+                    hole=0.4,
+                    marker=dict(colors=colors),
+                    textinfo="percent",
+                    hovertemplate=(
+                        f"<b>%{{label}}</b><br>"
+                        f"{t('dashboard.chart.actual_pct')}：%{{percent}}<extra></extra>"
+                    ),
+                ),
+                row=1,
+                col=2,
+            )
+            fig_alloc.update_layout(
+                height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
+                margin=dict(l=20, r=20, t=40, b=20),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
+
+        with _drift_col:
+            # -- Drift Bar Chart --
+            fig_drift = go.Figure(
+                go.Bar(
+                    x=drift_labels,
+                    y=drift_vals,
+                    marker_color=drift_colors,
+                    text=[f"{d:+.1f}%" for d in drift_vals],
+                    textposition="outside",
+                )
+            )
+            fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="+5%")
+            fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="-5%")
+            fig_drift.update_layout(
+                title={"text": t("dashboard.drift_title"), "font": {"size": 14}, "x": 0.5, "xanchor": "center"},
+                height=DASHBOARD_DRIFT_CHART_HEIGHT,
+                margin=dict(l=20, r=20, t=40, b=20),
+                yaxis_title=t("dashboard.chart.drift_yaxis"),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
 else:
     st.info(t("dashboard.no_allocation_data"))
     col_a, col_b, _ = st.columns([1, 1, 2])
@@ -402,37 +436,8 @@ else:
 
 
 # ---------------------------------------------------------------------------
-# Section 3: Signal Alerts
-# ---------------------------------------------------------------------------
-st.divider()
-st.subheader(t("dashboard.signal_alerts_title"))
-
-if stocks_data:
-    alert_stocks = [
-        s for s in stocks_data
-        if s.get("is_active", True) and s.get("last_scan_signal", "NORMAL") != "NORMAL"
-    ]
-    if alert_stocks:
-        for s in alert_stocks:
-            signal = s.get("last_scan_signal", "NORMAL")
-            icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
-            cat_label = get_category_labels().get(s.get("category", ""), s.get("category", ""))
-            cat_short = cat_label.split("(")[0].strip()
-            st.markdown(f"{icon} **{s['ticker']}** — {cat_short} — `{signal}`")
-    else:
-        st.success(t("dashboard.all_signals_normal"))
-else:
-    st.info(t("dashboard.no_tracking_stocks"))
-    _sig_a, _ = st.columns([1, 3])
-    with _sig_a:
-        if st.button(t("dashboard.button_goto_radar"), use_container_width=True):
-            st.switch_page("views/radar.py")
-
-
-# ---------------------------------------------------------------------------
 # Section 4: Top Holdings
 # ---------------------------------------------------------------------------
-st.divider()
 st.subheader(t("dashboard.top_holdings_title", limit=DASHBOARD_TOP_HOLDINGS_LIMIT))
 
 if rebalance_data and rebalance_data.get("holdings_detail"):
@@ -442,29 +447,57 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
     top_holdings = sorted_holdings[:DASHBOARD_TOP_HOLDINGS_LIMIT]
 
     privacy = _is_privacy()
-    rows = []
-    for h in top_holdings:
-        cat = h.get("category", "")
-        icon = CATEGORY_ICON_SHORT.get(cat, "")
 
-        # Format daily change with arrow
-        change_pct = h.get("change_pct")
-        if change_pct is not None:
-            arrow = "▲" if change_pct >= 0 else "▼"
-            change_str = f"{arrow}{abs(change_pct):.2f}%"
-        else:
-            change_str = "N/A"
+    if top_holdings:
+        col_ticker = t("dashboard.holdings_table.ticker")
+        col_cat = t("dashboard.holdings_table.category")
+        col_weight = t("dashboard.holdings_table.weight")
+        col_value = t("dashboard.holdings_table.market_value")
+        col_change = t("dashboard.holdings_table.daily_change")
 
-        rows.append({
-            t("dashboard.holdings_table.ticker"): h.get("ticker", ""),
-            t("dashboard.holdings_table.category"): f"{icon} {cat}",
-            t("dashboard.holdings_table.weight"): f"{h.get('weight_pct', 0):.1f}%",
-            t("dashboard.holdings_table.market_value"): PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}",
-            t("dashboard.holdings_table.daily_change"): change_str,
-        })
+        header_row = (
+            f"<tr>"
+            f"<th style='text-align:left;padding:4px 8px'>{col_ticker}</th>"
+            f"<th style='text-align:left;padding:4px 8px'>{col_cat}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_weight}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_value}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_change}</th>"
+            f"</tr>"
+        )
+        data_rows = []
+        for h in top_holdings:
+            cat = h.get("category", "")
+            icon = CATEGORY_ICON_SHORT.get(cat, "")
+            change_pct = h.get("change_pct")
+            if change_pct is not None:
+                arrow = "▲" if change_pct >= 0 else "▼"
+                color = "#22c55e" if change_pct >= 0 else "#ef4444"
+                change_cell = (
+                    f"<td style='text-align:right;padding:4px 8px;"
+                    f"color:{color};font-weight:500'>{arrow}{abs(change_pct):.2f}%</td>"
+                )
+            else:
+                change_cell = "<td style='text-align:right;padding:4px 8px'>N/A</td>"
 
-    if rows:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+            value_str = PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}"
+            data_rows.append(
+                f"<tr style='border-top:1px solid rgba(128,128,128,0.15)'>"
+                f"<td style='padding:4px 8px'><b>{h.get('ticker', '')}</b></td>"
+                f"<td style='padding:4px 8px'>{icon} {cat}</td>"
+                f"<td style='text-align:right;padding:4px 8px'>{h.get('weight_pct', 0):.1f}%</td>"
+                f"<td style='text-align:right;padding:4px 8px'>{value_str}</td>"
+                f"{change_cell}"
+                f"</tr>"
+            )
+
+        table_html = (
+            "<table style='width:100%;border-collapse:collapse;font-size:0.88rem'>"
+            f"<thead style='opacity:0.6'>{header_row}</thead>"
+            f"<tbody>{''.join(data_rows)}</tbody>"
+            "</table>"
+        )
+        with st.container(border=True):
+            st.markdown(table_html, unsafe_allow_html=True)
     else:
         st.caption(t("dashboard.no_holdings"))
 else:
@@ -478,8 +511,12 @@ else:
 # ---------------------------------------------------------------------------
 # Section 5: Smart Money Resonance Summary
 # ---------------------------------------------------------------------------
-st.divider()
-st.subheader(t("dashboard.resonance.title"))
+_sm_hdr, _sm_btn_col = st.columns([3, 1])
+with _sm_hdr:
+    st.subheader(t("dashboard.resonance.title"))
+with _sm_btn_col:
+    if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True, key="sm_btn_top"):
+        st.switch_page("views/smart_money.py")
 
 _great_minds = fetch_great_minds()
 
@@ -491,12 +528,8 @@ else:
 
     if _gm_total == 0:
         st.info(t("dashboard.resonance.empty"))
-        _sm_col, _ = st.columns([1, 3])
-        with _sm_col:
-            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
-                st.switch_page("views/smart_money.py")
     else:
-        # Top metrics row
+        # Always-visible KPI metrics
         _gurus_with_overlap = len(
             {g["guru_id"] for s in _gm_stocks for g in s.get("gurus", [])}
         )
@@ -509,30 +542,27 @@ else:
         _mc2.metric(t("dashboard.resonance.gurus_with_overlap"), _gurus_with_overlap)
         _mc3.metric(t("dashboard.resonance.strongest_signal"), _strongest)
 
-        # Per-stock detail cards (top 5)
-        for _stock in _gm_stocks[:5]:
-            _ticker = _stock.get("ticker", "—")
-            _gc = _stock.get("guru_count", 0)
-            _gurus_list = _stock.get("gurus", [])
-            _guru_lines = []
-            for _g in _gurus_list:
-                _name = _g.get("guru_display_name", "—")
-                _action = _g.get("action", "UNCHANGED")
-                _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
-                _label = get_holding_action_label(_action)
-                _weight = _g.get("weight_pct")
-                _weight_str = (
-                    f"  {_weight:.1f}%"
-                    if _weight is not None and _action != "SOLD_OUT"
-                    else ""
-                )
-                _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
-            with st.container(border=True):
-                _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
-                st.markdown(_card_md)
+        # Per-stock detail cards — collapsed by default
+        with st.expander(t("dashboard.resonance.details_expander"), expanded=False):
+            for _stock in _gm_stocks[:5]:
+                _ticker = _stock.get("ticker", "—")
+                _gc = _stock.get("guru_count", 0)
+                _gurus_list = _stock.get("gurus", [])
+                _guru_lines = []
+                for _g in _gurus_list:
+                    _name = _g.get("guru_display_name", "—")
+                    _action = _g.get("action", "UNCHANGED")
+                    _icon = HOLDING_ACTION_ICONS.get(_action, "⚪")
+                    _label = get_holding_action_label(_action)
+                    _weight = _g.get("weight_pct")
+                    _weight_str = (
+                        f"  {_weight:.1f}%"
+                        if _weight is not None and _action != "SOLD_OUT"
+                        else ""
+                    )
+                    _guru_lines.append(f"  {_name}　{_icon} {_label}{_weight_str}")
+                with st.container(border=True):
+                    _card_md = f"**{_ticker}**  ×{_gc}\n" + "\n".join(_guru_lines)
+                    st.markdown(_card_md)
 
-        st.caption(t("dashboard.resonance.caption"))
-        _sm_col2, _ = st.columns([1, 3])
-        with _sm_col2:
-            if st.button(t("dashboard.resonance.goto_smart_money"), use_container_width=True):
-                st.switch_page("views/smart_money.py")
+            st.caption(t("dashboard.resonance.caption"))
