@@ -572,6 +572,7 @@
       "earnings_date": "📅 Earnings: {date}{badge}",
       "dividend_yield": "💰 Yield: {dy}% | Ex-date: {ex_date}",
       "tab": {
+        "metrics": "📊 Metrics",
         "chips": "🐳 Chips (13F)",
         "moat": "🏰 Moat",
         "scan_history": "📈 Scan History",

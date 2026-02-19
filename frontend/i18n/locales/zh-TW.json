@@ -572,6 +572,7 @@
       "earnings_date": "📅 財報日：{date}{badge}",
       "dividend_yield": "💰 殖利率：{dy}% | 除息日：{ex_date}",
       "tab": {
+        "metrics": "📊 技術指標",
         "chips": "🐳 籌碼面",
         "moat": "🏰 護城河",
         "scan_history": "📈 掃描歷史",
