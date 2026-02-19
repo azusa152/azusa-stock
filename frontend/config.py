@@ -349,7 +349,7 @@ CACHE_TTL_FEAR_GREED = 1800  # 30 minutes
 API_FEAR_GREED_TIMEOUT = 15
 
 # Fear & Greed Gauge Chart (CNN-style semicircle)
-FEAR_GREED_GAUGE_HEIGHT = 200
+FEAR_GREED_GAUGE_HEIGHT = 130
 FEAR_GREED_GAUGE_BANDS: list[dict] = [
     {"range": [0, 25], "color": "#d32f2f"},  # 極度恐懼 — dark red
     {"range": [25, 45], "color": "#ff9800"},  # 恐懼 — orange

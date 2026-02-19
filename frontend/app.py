@@ -79,6 +79,11 @@ div[data-testid="stExpander"] details {border-radius: 8px;}
 
 /* Card container rounded */
 div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px;}
+
+/* Hero section — Portfolio Pulse */
+.hero-label {font-size: 0.75rem; opacity: 0.75; margin: 0 0 2px 0;}
+.hero-value {font-size: 2rem; font-weight: 700; margin: 0 0 2px 0; line-height: 1.15;}
+.hero-delta {font-size: 1rem; margin: 0; font-weight: 500;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -145,6 +150,9 @@ with st.sidebar:
         ),
         on_change=_on_language_change,
     )
+    if pg.url_path == "dashboard":
+        with st.expander(t("dashboard.sop.title"), expanded=False):
+            st.markdown(t("dashboard.sop.content"))
 
 # ---------------------------------------------------------------------------
 # Run the selected page
