@@ -1,5 +1,8 @@
 """Tests for stock management routes (CRUD + signals)."""
 
+from domain.entities import Stock
+from domain.enums import StockCategory
+
 
 class TestCreateStock:
     """Tests for POST /ticker."""
@@ -76,6 +79,45 @@ class TestListStocks:
         stocks = resp.json()
         assert len(stocks) == 1
         assert stocks[0]["ticker"] == "NVDA"
+
+    def test_list_stocks_should_include_last_scan_signal(self, client):
+        # Arrange — newly added stock defaults to NORMAL signal
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
+
+        # Act
+        resp = client.get("/stocks")
+
+        # Assert
+        assert resp.status_code == 200
+        stock = resp.json()[0]
+        assert "last_scan_signal" in stock
+        assert stock["last_scan_signal"] == "NORMAL"
+
+    def test_list_stocks_should_reflect_updated_scan_signal(self, client, db_session):
+        # Arrange — seed stock directly via DB to control last_scan_signal precisely.
+        # `client` and `db_session` share the same StaticPool connection (see conftest.py),
+        # so writes committed here are visible to the TestClient's session.
+        db_session.add(
+            Stock(
+                ticker="SNPS",
+                category=StockCategory.MOAT,
+                current_thesis="EDA leader",
+                last_scan_signal="THESIS_BROKEN",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        # Act
+        resp = client.get("/stocks")
+
+        # Assert
+        assert resp.status_code == 200
+        stock = next(s for s in resp.json() if s["ticker"] == "SNPS")
+        assert stock["last_scan_signal"] == "THESIS_BROKEN"
 
 
 class TestDeactivateStock:

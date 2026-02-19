@@ -186,7 +186,7 @@ For advanced use, you can call individual endpoints directly:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/summary` | 純文字投資組合摘要（含總值+日漲跌+前三名+配置偏移+Smart Money） |
-| `GET` | `/stocks` | 所有追蹤中股票清單 |
+| `GET` | `/stocks` | 所有追蹤中股票清單（含 `last_scan_signal` 持久化訊號） |
 | `GET` | `/stocks/export` | 匯出觀察名單 (JSON) |
 | `POST` | `/ticker` | 新增股票 |
 | `GET` | `/ticker/{ticker}/signals` | 技術訊號 (RSI, MA, Bias) |
@@ -317,7 +317,12 @@ The following endpoints now include daily change fields calculated from yfinance
 
 ## Signal Taxonomy
 
-Folio uses an 8-state scan signal cascade. Each stock's `last_scan_signal` (from `/stocks`, `/summary`, weekly digest) maps to one of these states. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
+Folio uses two signal fields per stock:
+
+- **`last_scan_signal`** — persisted result of the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`. Used in weekly digest and Telegram notifications.
+- **`computed_signal`** — real-time signal recomputed on each request from live RSI/bias (moat excluded for performance). Returned by `GET /stocks/enriched`. The dashboard Signal Alerts section and radar page prefer `computed_signal` when available, falling back to `last_scan_signal`. `THESIS_BROKEN` is always taken from the persisted value (requires moat analysis to set).
+
+Both fields share the same 8-state cascade. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
 
 | Priority | Signal | Icon | Condition | Meaning |
 |----------|--------|------|-----------|---------|

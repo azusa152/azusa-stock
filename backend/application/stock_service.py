@@ -176,6 +176,7 @@ def list_active_stocks(session: Session) -> list[dict]:
             "current_thesis": stock.current_thesis,
             "current_tags": _str_to_tags(stock.current_tags),
             "display_order": stock.display_order,
+            "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
         }

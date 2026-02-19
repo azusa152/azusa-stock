@@ -73,7 +73,7 @@ curl -s -X POST http://localhost:8000/webhook \
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/stocks` | All tracked stocks |
+| `GET` | `/stocks` | All tracked stocks (includes `last_scan_signal` — persisted signal from last full scan) |
 | `GET` | `/stocks/export` | Export watchlist as JSON |
 | `POST` | `/ticker` | Add new stock |
 | `GET` | `/ticker/{ticker}/signals` | Technical signals (includes `bias_percentile` and `is_rogue_wave` for Rogue Wave detection) |
@@ -197,7 +197,12 @@ When code changes have been pushed to the repository, follow this workflow to ap
 
 ## Signal Reference
 
-Folio's scan produces one of 8 signal states per stock. The `last_scan_signal` field in `/stocks` and `/summary` responses uses these values:
+Folio uses two signal fields per stock:
+
+- **`last_scan_signal`** — persisted result of the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`.
+- **`computed_signal`** — real-time signal recomputed on each request from live RSI/bias (no moat check). Returned by `GET /stocks/enriched`. The dashboard Signal Alerts section and radar page both prefer `computed_signal` when available, falling back to `last_scan_signal`. `THESIS_BROKEN` is always taken from the persisted value (moat analysis is required to set it).
+
+Both fields use the same 8-state taxonomy:
 
 | Signal | Icon | Condition | What to tell the user |
 |--------|------|-----------|----------------------|

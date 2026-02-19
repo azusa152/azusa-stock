@@ -57,8 +57,13 @@ from utils import (
 )
 
 
-def _compute_health_score(stocks: list) -> tuple[float, int, int]:
+def _compute_health_score(
+    stocks: list, enriched_signal_map: dict[str, str] | None = None
+) -> tuple[float, int, int]:
     """Compute health score = % of active stocks with NORMAL signal.
+
+    Uses real-time computed_signal from enriched data when available (same
+    source as the radar page), falling back to persisted last_scan_signal.
 
     Returns (score_pct, normal_count, total_count).
     """
@@ -68,7 +73,14 @@ def _compute_health_score(stocks: list) -> tuple[float, int, int]:
     total = len(active)
     if total == 0:
         return 0.0, 0, 0
-    normal_count = sum(1 for s in active if s.get("last_scan_signal", "NORMAL") == "NORMAL")
+
+    def _effective_signal(s: dict) -> str:
+        fallback = s.get("last_scan_signal", "NORMAL")
+        if enriched_signal_map:
+            return enriched_signal_map.get(s.get("ticker", ""), fallback)
+        return fallback
+
+    normal_count = sum(1 for s in active if _effective_signal(s) == "NORMAL")
     return (normal_count / total) * 100, normal_count, total
 
 
@@ -305,7 +317,17 @@ twr_data = fetch_twr()  # YTD TWR (start defaults to Jan 1 of current year)
 
 # Pre-compute values used inside the hero columns
 _privacy = _is_privacy()
-health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
+# Single real-time signal map shared by health score and Signal Alerts.
+# Prefers computed_signal (live RSI/bias) over persisted last_scan_signal,
+# matching the radar page behaviour.
+_enriched_signal_map: dict[str, str] = {
+    es["ticker"]: (es.get("computed_signal") or es.get("last_scan_signal", "NORMAL"))
+    for es in (enriched_stocks_data or [])
+    if es.get("ticker")
+}
+health_pct, normal_cnt, total_cnt = _compute_health_score(
+    stocks_data or [], enriched_signal_map=_enriched_signal_map
+)
 market_status = (last_scan_data or {}).get("market_status")
 sentiment_info = get_market_sentiment_label(market_status or "")
 stock_count = len(stocks_data) if stocks_data else 0
@@ -476,6 +498,35 @@ with st.container(border=True):
 # ---------------------------------------------------------------------------
 # Section 2: Signal Alerts (Action Required — before Allocation)
 # ---------------------------------------------------------------------------
+
+
+def _resolve_signal(s: dict, signal_map: dict[str, str]) -> str:
+    """Return the best available signal for a stock.
+
+    Prefers real-time computed_signal from the enriched map; falls back to the
+    persisted last_scan_signal field on the stock dict.
+    """
+    return signal_map.get(s.get("ticker", ""), s.get("last_scan_signal", "NORMAL"))
+
+
+def _render_signal_rows(stock_list: list, signal_map: dict[str, str]) -> None:
+    """Render a column-aligned list of stocks with their resolved signal icons."""
+    cat_labels_map = get_category_labels()
+    for s in stock_list:
+        signal = _resolve_signal(s, signal_map)
+        icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
+        cat_short = cat_labels_map.get(s.get("category", ""), s.get("category", "")).split("(")[0].strip()
+        _a_icon, _a_ticker, _a_cat, _a_signal = st.columns([0.5, 2, 2, 2])
+        with _a_icon:
+            st.markdown(icon)
+        with _a_ticker:
+            st.markdown(f"**{s['ticker']}**")
+        with _a_cat:
+            st.markdown(cat_short)
+        with _a_signal:
+            st.markdown(f"`{signal}`")
+
+
 st.subheader(t("dashboard.signal_alerts_title"))
 
 with st.container(border=True):
@@ -483,39 +534,23 @@ with st.container(border=True):
         _active_stocks = [s for s in stocks_data if s.get("is_active", True)]
         buy_stocks = [
             s for s in _active_stocks
-            if s.get("last_scan_signal", "NORMAL") in BUY_OPPORTUNITY_SIGNALS
+            if _resolve_signal(s, _enriched_signal_map) in BUY_OPPORTUNITY_SIGNALS
         ]
         risk_stocks = [
             s for s in _active_stocks
-            if s.get("last_scan_signal", "NORMAL") in RISK_WARNING_SIGNALS
+            if _resolve_signal(s, _enriched_signal_map) in RISK_WARNING_SIGNALS
         ]
-
-        def _render_signal_rows(stock_list: list) -> None:
-            cat_labels_map = get_category_labels()
-            for s in stock_list:
-                signal = s.get("last_scan_signal", "NORMAL")
-                icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
-                cat_short = cat_labels_map.get(s.get("category", ""), s.get("category", "")).split("(")[0].strip()
-                _a_icon, _a_ticker, _a_cat, _a_signal = st.columns([0.5, 2, 2, 2])
-                with _a_icon:
-                    st.markdown(icon)
-                with _a_ticker:
-                    st.markdown(f"**{s['ticker']}**")
-                with _a_cat:
-                    st.markdown(cat_short)
-                with _a_signal:
-                    st.markdown(f"`{signal}`")
 
         if buy_stocks or risk_stocks:
             if buy_stocks:
                 st.caption(t("dashboard.signal_buy_title"))
-                _render_signal_rows(buy_stocks)
+                _render_signal_rows(buy_stocks, _enriched_signal_map)
 
             if risk_stocks:
                 if buy_stocks:
                     st.divider()
                 st.caption(t("dashboard.signal_risk_title"))
-                _render_signal_rows(risk_stocks)
+                _render_signal_rows(risk_stocks, _enriched_signal_map)
 
                 # Rebalance advice inline — only shown alongside risk warnings
                 advice = rebalance_data.get("advice", []) if rebalance_data else []

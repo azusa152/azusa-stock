@@ -71,7 +71,7 @@
 
 - **五頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控、大師足跡
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
-- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報、歷史績效折線圖（多期間選擇 + 基準疊加 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
+- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + 基準疊加 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
@@ -446,7 +446,7 @@ docker compose up --build -d
 | Method | Path | 說明 |
 |--------|------|------|
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
-| `GET` | `/stocks` | 取得所有追蹤股票 |
+| `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
 | `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號），僅推播差異通知 |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
@@ -462,7 +462,7 @@ docker compose up --build -d
 |--------|------|------|
 | `GET` | `/health` | Health check（Docker 健康檢查用） |
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
-| `GET` | `/stocks` | 取得所有追蹤股票（僅 DB 資料） |
+| `GET` | `/stocks` | 取得所有追蹤股票（DB 資料，含 `last_scan_signal` 持久化訊號） |
 | `PUT` | `/stocks/reorder` | 批次更新股票顯示順位 |
 | `GET` | `/stocks/export` | 匯出所有股票（JSON 格式，含觀點與標籤） |
 | `POST` | `/stocks/import` | 批次匯入股票（JSON body，upsert 邏輯） |

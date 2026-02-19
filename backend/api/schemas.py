@@ -14,7 +14,7 @@ from domain.constants import (
     FX_WATCH_DEFAULT_RECENT_HIGH_DAYS,
     FX_WATCH_DEFAULT_REMINDER_HOURS,
 )
-from domain.enums import StockCategory
+from domain.enums import ScanSignal, StockCategory
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +161,7 @@ class StockResponse(BaseModel):
     current_thesis: str
     current_tags: list[str] = []
     display_order: int = 0
+    last_scan_signal: ScanSignal = ScanSignal.NORMAL
     is_active: bool
     is_etf: bool = False
     signals: Optional[dict] = None
