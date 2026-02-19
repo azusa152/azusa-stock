@@ -291,6 +291,106 @@ def format_guru_filing_digest(summaries: list[dict], lang: str = "zh-TW") -> str
     return "\n".join(parts)
 
 
+def format_weekly_digest_html(
+    *,
+    lang: str,
+    title: str,
+    portfolio_value_line: str | None,
+    benchmark_line: str | None,
+    health_line: str,
+    fear_greed_line: str,
+    top_movers_lines: list[str],
+    non_normal: list[dict],
+    signal_changes: dict[str, int],
+    drift_lines: list[str],
+    smart_money_lines: list[str],
+    all_normal_line: str,
+) -> str:
+    """
+    Assemble the full weekly digest Telegram HTML message from pre-built sections.
+
+    All section strings are already translated by the caller; this function is
+    responsible only for ordering, grouping, and HTML structure.
+
+    Args:
+        lang: language code passed to t() for section header translations
+        title: report title line
+        portfolio_value_line: portfolio value + WoW line, or None if no data
+        benchmark_line: S&P 500 benchmark line, or None if unavailable
+        health_line: health-score line
+        fear_greed_line: fear & greed line
+        top_movers_lines: list of individual mover lines (may be empty)
+        non_normal: list of dicts with keys ticker, cat_label, signal
+        signal_changes: mapping of ticker → change count for the period
+        drift_lines: list of formatted drift lines (may be empty)
+        smart_money_lines: list of formatted resonance-alert lines (may be empty)
+        all_normal_line: translated "all positions normal" string
+
+    Returns:
+        Telegram HTML formatted string (uses <b> tags for section headers)
+    """
+    parts: list[str] = [f"<b>{title}</b>", ""]
+
+    # --- Portfolio value + benchmark ---
+    if portfolio_value_line:
+        parts.append(portfolio_value_line)
+    if benchmark_line:
+        parts.append(benchmark_line)
+    if portfolio_value_line or benchmark_line:
+        parts.append("")
+
+    # --- Health + Fear & Greed ---
+    parts.append(health_line)
+    parts.append(fear_greed_line)
+    parts.append("")
+
+    # --- Top movers ---
+    if top_movers_lines:
+        parts.append(f"<b>{t('notification.top_movers_title', lang=lang)}</b>")
+        parts.extend(top_movers_lines)
+        parts.append("")
+
+    # --- Active signals ---
+    if non_normal:
+        parts.append(f"<b>{t('notification.abnormal_stocks', lang=lang)}</b>")
+        for item in non_normal:
+            parts.append(
+                f"  • {item['ticker']}（{item['cat_label']}）→ {item['signal']}"
+            )
+        parts.append("")
+
+    # --- Signal changes ---
+    if signal_changes:
+        parts.append(f"<b>{t('notification.signal_changes', lang=lang)}</b>")
+        change_label = t("notification.change_label", lang=lang)
+        times_label = t("notification.times_label", lang=lang)
+        for tk, count in sorted(signal_changes.items(), key=lambda x: -x[1]):
+            parts.append(f"  • {tk}：{change_label} {count} {times_label}")
+        parts.append("")
+
+    # --- Allocation drift ---
+    if drift_lines:
+        parts.append(f"<b>{t('notification.drift_title', lang=lang)}</b>")
+        parts.extend(drift_lines)
+        parts.append("")
+
+    # --- Smart money ---
+    if smart_money_lines:
+        parts.append(f"<b>{t('notification.smart_money_title', lang=lang)}</b>")
+        parts.extend(smart_money_lines)
+        parts.append("")
+
+    # --- All normal (only when no signals and no changes) ---
+    if not non_normal and not signal_changes:
+        parts.append(all_normal_line)
+
+    # Strip trailing blank lines
+    while parts and parts[-1] == "":
+        parts.pop()
+
+    return "\n".join(parts)
+
+
 def format_resonance_alert(
     ticker: str, guru_name: str, action: str, lang: str = "zh-TW"
 ) -> str:

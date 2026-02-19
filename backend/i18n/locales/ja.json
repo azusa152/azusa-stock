@@ -84,7 +84,14 @@
     "portfolio_summary_health": "📊 ポートフォリオ健全性：{health}% | 恐怖・貪欲：{fg}",
     "portfolio_summary_no_stocks": "ウォッチリストに銘柄がありません。",
     "portfolio_summary_abnormal": "⚠️ 異常シグナル：",
-    "portfolio_summary_normal": "✅ 全ポジション正常。"
+    "portfolio_summary_normal": "✅ 全ポジション正常。",
+    "portfolio_value": "💰 ポートフォリオ：{currency} {value}（{sign}{pct}% | {sign_abs}{currency} {abs_change} WoW）",
+    "benchmark_label": "📈 S&P 500：{sign}{pct}%（日次変動）  |  Alpha：{sign_a}{alpha}%",
+    "top_movers_title": "🏆 今週の騰落",
+    "drift_title": "⚖️ 配分ドリフト",
+    "drift_item_over": "  • {cat}：目標超過 +{pct}%",
+    "drift_item_under": "  • {cat}：目標未満 -{pct}%",
+    "smart_money_title": "🧠 大家の動向"
   },
   "formatter": {
     "sell": "売却",

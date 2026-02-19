@@ -41,6 +41,13 @@ DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
 
 # ---------------------------------------------------------------------------
+# Persistent Data Directory — root for all app-written state files
+# ---------------------------------------------------------------------------
+import os as _os
+
+DATA_DIR = _os.getenv("DATA_DIR", "/app/data")
+
+# ---------------------------------------------------------------------------
 # Disk Cache (L2) — 持久化快取，容器重啟後仍可使用
 # ---------------------------------------------------------------------------
 DISK_CACHE_DIR = "/app/data/yf_cache"

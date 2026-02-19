@@ -84,7 +84,14 @@
     "portfolio_summary_health": "📊 Portfolio Health: {health}% | Fear & Greed: {fg}",
     "portfolio_summary_no_stocks": "No stocks in watchlist.",
     "portfolio_summary_abnormal": "⚠️ Active Signals:",
-    "portfolio_summary_normal": "✅ All positions normal."
+    "portfolio_summary_normal": "✅ All positions normal.",
+    "portfolio_value": "💰 Portfolio: {currency} {value} ({sign}{pct}% | {sign_abs}{currency} {abs_change} WoW)",
+    "benchmark_label": "📈 S&P 500: {sign}{pct}% (daily)  |  Alpha: {sign_a}{alpha}%",
+    "top_movers_title": "🏆 Top Movers",
+    "drift_title": "⚖️ Allocation Drift",
+    "drift_item_over": "  • {cat}: +{pct}% over target",
+    "drift_item_under": "  • {cat}: -{pct}% under target",
+    "smart_money_title": "🧠 Smart Money"
   },
   "formatter": {
     "sell": "sell",

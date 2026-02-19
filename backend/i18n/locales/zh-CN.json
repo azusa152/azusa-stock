@@ -84,7 +84,14 @@
     "portfolio_summary_health": "📊 投资组合健康：{health}% | 恐惧贪婪：{fg}",
     "portfolio_summary_no_stocks": "关注列表中暂无股票。",
     "portfolio_summary_abnormal": "⚠️ 异常信号：",
-    "portfolio_summary_normal": "✅ 所有持仓正常。"
+    "portfolio_summary_normal": "✅ 所有持仓正常。",
+    "portfolio_value": "💰 投资组合：{currency} {value}（{sign}{pct}% | {sign_abs}{currency} {abs_change} WoW）",
+    "benchmark_label": "📈 S&P 500：{sign}{pct}%（日涨跌）  |  Alpha：{sign_a}{alpha}%",
+    "top_movers_title": "🏆 本周涨跌幅",
+    "drift_title": "⚖️ 配置偏移",
+    "drift_item_over": "  • {cat}：超目标 +{pct}%",
+    "drift_item_under": "  • {cat}：低目标 -{pct}%",
+    "smart_money_title": "🧠 大师动态"
   },
   "formatter": {
     "sell": "卖出",
