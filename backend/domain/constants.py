@@ -3,6 +3,8 @@ Domain — 集中管理所有常數與閾值。
 避免散落在各模組中的 magic numbers / magic strings。
 """
 
+import os as _os
+
 # ---------------------------------------------------------------------------
 # Technical Indicator Parameters
 # ---------------------------------------------------------------------------
@@ -39,6 +41,11 @@ EARNINGS_CACHE_MAXSIZE = 200
 EARNINGS_CACHE_TTL = 86400  # 24 hours
 DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
+
+# ---------------------------------------------------------------------------
+# Persistent Data Directory — root for all app-written state files
+# ---------------------------------------------------------------------------
+DATA_DIR = _os.getenv("DATA_DIR", "/app/data")
 
 # ---------------------------------------------------------------------------
 # Disk Cache (L2) — 持久化快取，容器重啟後仍可使用

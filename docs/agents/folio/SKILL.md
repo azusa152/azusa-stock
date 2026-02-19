@@ -185,8 +185,8 @@ For advanced use, you can call individual endpoints directly:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/summary` | 純文字投資組合摘要 |
-| `GET` | `/stocks` | 所有追蹤中股票清單 |
+| `GET` | `/summary` | 純文字投資組合摘要（含總值+日漲跌+前三名+配置偏移+Smart Money） |
+| `GET` | `/stocks` | 所有追蹤中股票清單（含 `last_scan_signal` 持久化訊號） |
 | `GET` | `/stocks/export` | 匯出觀察名單 (JSON) |
 | `POST` | `/ticker` | 新增股票 |
 | `GET` | `/ticker/{ticker}/signals` | 技術訊號 (RSI, MA, Bias) |
@@ -197,6 +197,9 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/market/fear-greed` | 恐懼與貪婪指數（VIX + CNN 綜合分析） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（判斷資料新鮮度，含 F&G） |
 | `POST` | `/digest` | 觸發每週摘要 |
+| `GET` | `/snapshots` | 歷史投資組合快照（`?days=30` 或 `?start=&end=`，最多 730 天） |
+| `GET` | `/snapshots/twr` | 時間加權報酬率（`?start=&end=`，預設 YTD；`twr_pct` 為 null 時表示快照不足） |
+| `POST` | `/snapshots/take` | 手動觸發當日快照（背景執行，每日 upsert） |
 | `GET` | `/ticker/{ticker}/scan-history` | 掃描歷史 |
 | `GET` | `/ticker/{ticker}/alerts` | 價格警報清單 |
 | `POST` | `/ticker/{ticker}/alerts` | 建立價格警報 |
@@ -210,7 +213,7 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/holdings` | 所有持倉 |
 | `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位，currency 預設 USD） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
-| `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算）。回傳含 `xray` 陣列，揭示 ETF 間接曝險 |
+| `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD`。回傳含 `xray` 陣列、`total_value_change_pct`（日漲跌）、`holdings_detail[].cost_total`（總成本） |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `GET` | `/stress-test` | 壓力測試分析：模擬大盤崩盤情境，支援 `?scenario_drop_pct=-20&display_currency=USD`。回傳組合 Beta、預期損失金額與百分比、痛苦等級（微風輕拂/有感修正/傷筋動骨/睡不著覺）、各持倉明細與建議 |
 | `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`fx_rate_alerts`（三層級警報）、匯率變動、建議 |
@@ -288,7 +291,7 @@ The following endpoints now include daily change fields calculated from yfinance
 ## Usage Tips
 
 - Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful")
-- Use `summary` first to get an overview before drilling into individual stocks
+- Use `summary` first to get a rich plain-text overview: portfolio value + daily change, category groups, active signals, top movers, allocation drift warnings, and Smart Money highlights
 - Use `signals` to check a stock's technical indicators; interpret the scan signal using the **Signal Taxonomy** section below
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
 - Use `scan` to trigger a full portfolio analysis with Telegram notifications
@@ -314,7 +317,12 @@ The following endpoints now include daily change fields calculated from yfinance
 
 ## Signal Taxonomy
 
-Folio uses an 8-state scan signal cascade. Each stock's `last_scan_signal` (from `/stocks`, `/summary`, weekly digest) maps to one of these states. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
+Folio uses two signal fields per stock:
+
+- **`last_scan_signal`** — persisted result of the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`. Used in weekly digest and Telegram notifications.
+- **`computed_signal`** — real-time signal recomputed on each request from live RSI/bias (moat excluded for performance). Returned by `GET /stocks/enriched`. The dashboard Signal Alerts section and radar page prefer `computed_signal` when available, falling back to `last_scan_signal`. `THESIS_BROKEN` is always taken from the persisted value (requires moat analysis to set).
+
+Both fields share the same 8-state cascade. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
 
 | Priority | Signal | Icon | Condition | Meaning |
 |----------|--------|------|-----------|---------|

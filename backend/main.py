@@ -25,6 +25,7 @@ from api.persona_routes import router as persona_router
 from api.preferences_routes import router as preferences_router
 from api.rate_limit import limiter
 from api.scan_routes import router as scan_router
+from api.snapshot_routes import router as snapshot_router
 from api.schemas import HealthResponse
 from api.stock_routes import router as stock_router
 from api.telegram_routes import router as telegram_router
@@ -135,3 +136,4 @@ app.include_router(forex_router, dependencies=auth_deps)
 app.include_router(fx_watch_router, dependencies=auth_deps)
 app.include_router(guru_router, dependencies=auth_deps)
 app.include_router(resonance_router, dependencies=auth_deps)
+app.include_router(snapshot_router, dependencies=auth_deps)

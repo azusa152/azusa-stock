@@ -155,6 +155,24 @@ PRICE_CHART_DEFAULT_PERIOD = "1M"
 PRICE_CHART_HEIGHT = 200
 
 # ---------------------------------------------------------------------------
+# Portfolio Performance Chart (Phase 4)
+# ---------------------------------------------------------------------------
+CACHE_TTL_SNAPSHOTS = 300  # 5 minutes
+API_SNAPSHOTS_TIMEOUT = 15
+PERFORMANCE_CHART_HEIGHT = 280
+SPARKLINE_HEIGHT = 44
+# Maps period label key → number of days to request from /snapshots
+PERFORMANCE_PERIOD_OPTIONS: dict[str, int] = {
+    "1W": 7,
+    "1M": 30,
+    "3M": 90,
+    "6M": 180,
+    "YTD": 0,   # 0 = special sentinel handled in dashboard render logic
+    "1Y": 365,
+    "ALL": 730,
+}
+
+# ---------------------------------------------------------------------------
 # War Room / Asset Allocation
 # ---------------------------------------------------------------------------
 CACHE_TTL_TEMPLATES = 86400  # 24 hours (personas rarely change)

@@ -4,7 +4,7 @@ Domain — 資料庫實體 (SQLModel Tables)。
 """
 
 import json as _json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlmodel import Column, Field, SQLModel, String
@@ -245,6 +245,32 @@ class GuruHolding(SQLModel, table=True):
     change_pct: Optional[float] = Field(default=None, description="持股數量變動百分比")
     weight_pct: Optional[float] = Field(default=None, description="佔該大師總持倉比例")
     sector: Optional[str] = Field(default=None, description="GICS 行業板塊（yfinance）")
+
+
+# ---------------------------------------------------------------------------
+# Portfolio Snapshots — 投資組合每日快照（供績效圖表使用）
+# ---------------------------------------------------------------------------
+
+
+class PortfolioSnapshot(SQLModel, table=True):
+    """每日投資組合總市值快照（用於歷史績效追蹤）。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    snapshot_date: date = Field(
+        index=True, unique=True, description="快照日期（每日唯一）"
+    )
+    total_value: float = Field(description="投資組合總市值")
+    category_values: str = Field(
+        default="{}", description="各類別市值 JSON（如 {'Trend_Setter': 45000, ...}）"
+    )
+    display_currency: str = Field(default="USD", description="顯示幣別")
+    benchmark_value: Optional[float] = Field(
+        default=None, description="同日 S&P 500 收盤價（基準比較用）"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="建立時間",
+    )
 
 
 class FXWatchConfig(SQLModel, table=True):

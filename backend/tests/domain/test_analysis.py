@@ -2,6 +2,7 @@
 
 from domain.analysis import (
     compute_bias_percentile,
+    compute_twr,
     detect_rogue_wave,
     determine_scan_signal,
 )
@@ -445,3 +446,85 @@ class TestDetermineScanSignal:
     def test_regression_aapl_normal(self):
         # AAPL: RSI=49.08, bias=-1.52 → still NORMAL
         assert determine_scan_signal(STABLE, rsi=49.08, bias=-1.52) == ScanSignal.NORMAL
+
+
+# ---------------------------------------------------------------------------
+# compute_twr
+# ---------------------------------------------------------------------------
+
+
+def _snap(date_str: str, value: float) -> dict:
+    return {"snapshot_date": date_str, "total_value": value}
+
+
+class TestComputeTwr:
+    """Tests for compute_twr()."""
+
+    # --- happy path ---
+
+    def test_should_return_zero_for_flat_portfolio(self):
+        snaps = [_snap("2025-01-01", 100_000), _snap("2025-01-31", 100_000)]
+        assert compute_twr(snaps) == 0.0
+
+    def test_should_return_positive_for_growing_portfolio(self):
+        snaps = [_snap("2025-01-01", 100_000), _snap("2025-12-31", 110_000)]
+        assert compute_twr(snaps) == 10.0
+
+    def test_should_return_negative_for_declining_portfolio(self):
+        snaps = [_snap("2025-01-01", 100_000), _snap("2025-12-31", 90_000)]
+        assert compute_twr(snaps) == -10.0
+
+    def test_should_chain_multiply_sub_period_returns(self):
+        # +10% then +10% → TWR = (1.1 * 1.1 - 1) * 100 = 21%
+        snaps = [
+            _snap("2025-01-01", 100_000),
+            _snap("2025-06-01", 110_000),
+            _snap("2025-12-31", 121_000),
+        ]
+        assert compute_twr(snaps) == 21.0
+
+    def test_should_handle_non_contiguous_dates(self):
+        # Gaps between snapshots (weekends/holidays) are handled correctly
+        snaps = [
+            _snap("2025-01-01", 100_000),
+            _snap("2025-01-06", 102_000),  # +2% over a weekend gap
+            _snap("2025-01-13", 99_960),  # back down
+        ]
+        result = compute_twr(snaps)
+        assert result is not None
+        # chain: 1.02 * (99960/102000) = 1.02 * 0.98 = 0.9996 → -0.04%
+        assert abs(result - (-0.04)) < 0.01
+
+    # --- edge cases / error handling ---
+
+    def test_should_return_none_for_empty_list(self):
+        assert compute_twr([]) is None
+
+    def test_should_return_none_for_single_snapshot(self):
+        assert compute_twr([_snap("2025-01-01", 100_000)]) is None
+
+    def test_should_return_none_when_first_value_is_zero(self):
+        snaps = [_snap("2025-01-01", 0), _snap("2025-01-31", 100_000)]
+        assert compute_twr(snaps) is None
+
+    def test_should_return_none_when_intermediate_value_is_zero(self):
+        snaps = [
+            _snap("2025-01-01", 100_000),
+            _snap("2025-06-01", 0),
+            _snap("2025-12-31", 110_000),
+        ]
+        assert compute_twr(snaps) is None
+
+    def test_should_return_none_when_value_is_none(self):
+        snaps = [
+            {"snapshot_date": "2025-01-01", "total_value": None},
+            _snap("2025-01-31", 100_000),
+        ]
+        assert compute_twr(snaps) is None
+
+    def test_should_not_require_last_value_to_be_nonzero(self):
+        # Only intermediate values (not the last) must be non-zero
+        snaps = [_snap("2025-01-01", 100_000), _snap("2025-12-31", 0)]
+        result = compute_twr(snaps)
+        # product = 0/100000 = 0, TWR = -100%
+        assert result == -100.0

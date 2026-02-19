@@ -234,6 +234,10 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         else:
             holding_change_pct = None
 
+        cost_total = (
+            round(agg["cost_sum"] * agg["fx"], 2) if agg["cost_qty"] > 0 else None
+        )
+
         holdings_detail.append(
             {
                 "ticker": ticker,
@@ -243,6 +247,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
                 "market_value": round(agg["mv"], 2),
                 "weight_pct": weight_pct,
                 "avg_cost": avg_cost,
+                "cost_total": cost_total,
                 "current_price": (
                     round(cur_price, 2)
                     if cur_price is not None and isinstance(cur_price, (int, float))

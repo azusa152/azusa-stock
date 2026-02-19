@@ -146,8 +146,13 @@
       "category": "分类",
       "weight": "权重",
       "market_value": "市值",
-      "daily_change": "日涨跌"
+      "daily_change": "日涨跌",
+      "total_return": "总回报",
+      "gain_loss": "盈亏"
     },
+    "ytd_return": "今年回报",
+    "ytd_dividend": "今年股息",
+    "ytd_dividend_estimated": "（依股息率估算）",
     "no_holdings": "无持仓资料。",
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
     "resonance": {
@@ -161,7 +166,17 @@
       "goto_smart_money": "🏦 查看大师足迹",
       "details_expander": "📋 前 5 名共鸣明细"
     },
-    "fear_greed_title": "恐惧与贪婪"
+    "fear_greed_title": "恐惧与贪婪",
+    "performance_title": "📈 投资组合绩效",
+    "performance_no_data": "📭 暂无快照历史。每日 23:00 UTC 自动创建快照。",
+    "performance_benchmark_label": "S&P 500",
+    "performance_period_1w": "1W",
+    "performance_period_1m": "1M",
+    "performance_period_3m": "3M",
+    "performance_period_6m": "6M",
+    "performance_period_ytd": "今年",
+    "performance_period_1y": "1Y",
+    "performance_period_all": "全部"
   },
   "radar": {
     "title": "📡 Folio",

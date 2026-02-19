@@ -7,6 +7,9 @@ import tempfile
 
 # Set environment variables BEFORE any app imports to avoid /app filesystem access
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
+os.environ.setdefault(
+    "DATA_DIR", os.path.join(tempfile.gettempdir(), "folio_test_data")
+)
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 # Disable auth in tests by default (individual tests can override)
@@ -18,12 +21,13 @@ os.environ["FOLIO_API_KEY"] = ""
 # This key is only used in tests and is not a real secret
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
 
-# Patch disk cache dir before infrastructure.market_data imports it
+# Patch disk cache dir and data dir before any infrastructure imports
 import domain.constants  # noqa: E402
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
 )
+domain.constants.DATA_DIR = os.path.join(tempfile.gettempdir(), "folio_test_data")
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402

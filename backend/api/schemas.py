@@ -14,7 +14,7 @@ from domain.constants import (
     FX_WATCH_DEFAULT_RECENT_HIGH_DAYS,
     FX_WATCH_DEFAULT_REMINDER_HOURS,
 )
-from domain.enums import StockCategory
+from domain.enums import ScanSignal, StockCategory
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +161,7 @@ class StockResponse(BaseModel):
     current_thesis: str
     current_tags: list[str] = []
     display_order: int = 0
+    last_scan_signal: ScanSignal = ScanSignal.NORMAL
     is_active: bool
     is_etf: bool = False
     signals: Optional[dict] = None
@@ -436,6 +437,9 @@ class HoldingDetail(BaseModel):
     market_value: float
     weight_pct: float
     avg_cost: Optional[float] = None
+    cost_total: Optional[float] = (
+        None  # avg_cost * quantity * fx，以 display_currency 計
+    )
     current_price: Optional[float] = None
     change_pct: Optional[float] = None
 
@@ -945,6 +949,30 @@ class FilingHistoryResponse(BaseModel):
     """GET /gurus/{guru_id}/filings 完整回應。"""
 
     filings: list[FilingHistoryItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Portfolio Snapshot Schemas
+# ---------------------------------------------------------------------------
+
+
+class SnapshotResponse(BaseModel):
+    """GET /snapshots 回傳的單日投資組合快照。"""
+
+    snapshot_date: str  # ISO date string, e.g. "2025-02-19"
+    total_value: float
+    category_values: dict  # parsed from JSON storage
+    display_currency: str = "USD"
+    benchmark_value: Optional[float] = None
+
+
+class TwrResponse(BaseModel):
+    """GET /snapshots/twr 回傳的時間加權報酬率。"""
+
+    twr_pct: Optional[float]  # 百分比，例如 12.3 代表 +12.3%；None 表示資料不足
+    start_date: Optional[str] = None  # 計算起始日（快照中最早一筆）
+    end_date: Optional[str] = None  # 計算結束日（快照中最新一筆）
+    snapshot_count: int = 0  # 用於計算的快照筆數
 
 
 # ---------------------------------------------------------------------------

@@ -38,7 +38,7 @@
 
 - **自訂價格警報** — 為個股設定 RSI / 價格 / 乖離率門檻，觸發時 Telegram 即時通知
 - **智慧定時掃描** — 每 30 分鐘檢查資料新鮮度，僅推播差異通知，避免重複掃描
-- **每週摘要** — 每週日自動發送投資組合健康報告（健康分數 + 異常股票 + 訊號變化）
+- **每週摘要** — 每週日自動發送豐富投資組合報告（總市值 WoW + S&P 500 Alpha + 健康分數 + 本週漲跌前三名 + 異常訊號 + 配置偏移 + Smart Money 大師動態）
 - **雙模式通知** — 系統預設 Bot 或自訂 Bot Token，兩種 Telegram 發送模式
 
 ### 資產配置
@@ -71,7 +71,7 @@
 
 - **五頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控、大師足跡
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
-- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
+- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + 基準疊加 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
@@ -446,11 +446,14 @@ docker compose up --build -d
 | Method | Path | 說明 |
 |--------|------|------|
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
-| `GET` | `/stocks` | 取得所有追蹤股票 |
+| `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
 | `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號），僅推播差異通知 |
-| `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用） |
+| `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
+| `GET` | `/snapshots` | 歷史投資組合快照（`?days=30` 或 `?start=&end=`） |
+| `GET` | `/snapshots/twr` | 時間加權報酬率（YTD 或自訂日期範圍） |
+| `POST` | `/snapshots/take` | 手動觸發當日快照建立 |
 
 <details>
 <summary>📋 完整 API 端點列表（點擊展開）</summary>
@@ -459,7 +462,7 @@ docker compose up --build -d
 |--------|------|------|
 | `GET` | `/health` | Health check（Docker 健康檢查用） |
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
-| `GET` | `/stocks` | 取得所有追蹤股票（僅 DB 資料） |
+| `GET` | `/stocks` | 取得所有追蹤股票（DB 資料，含 `last_scan_signal` 持久化訊號） |
 | `PUT` | `/stocks/reorder` | 批次更新股票顯示順位 |
 | `GET` | `/stocks/export` | 匯出所有股票（JSON 格式，含觀點與標籤） |
 | `POST` | `/stocks/import` | 批次匯入股票（JSON body，upsert 邏輯） |
@@ -483,7 +486,10 @@ docker compose up --build -d
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
-| `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
+| `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計，含總值 + 日漲跌 + 前三名 + 配置偏移 + Smart Money） |
+| `GET` | `/snapshots` | 歷史投資組合快照清單，支援 `?days=30`（1–730）或 `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
+| `GET` | `/snapshots/twr` | 計算指定期間的時間加權報酬率（TWR），支援 `?start=&end=`，預設 YTD |
+| `POST` | `/snapshots/take` | 手動觸發當日投資組合快照（背景執行，upsert 語意） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/personas/templates` | 取得系統預設投資人格範本 |
 | `GET` | `/profiles` | 取得目前啟用的投資組合配置 |
@@ -529,7 +535,7 @@ docker compose up --build -d
 
 </details>
 
-### 🆕 日漲跌功能 (Daily Change Tracking)
+### 🆕 日漲跌 + 績效追蹤 (Daily Change & Performance Tracking)
 
 以下端點已新增每日變動欄位：
 
@@ -542,6 +548,15 @@ docker compose up --build -d
 - `total_value_change` (float, optional): 投資組合總市值日變動金額
 - `total_value_change_pct` (float, optional): 投資組合總市值日變動百分比
 - `holdings_detail[].change_pct` (float, optional): 個股日漲跌幅百分比
+- `holdings_detail[].cost_total` (float, optional): 個股總成本（avg_cost × quantity × FX，顯示幣別）
+
+**GET `/snapshots`** — 歷史投資組合快照：
+- 每筆快照含 `snapshot_date`, `total_value`, `category_values` (JSON), `display_currency`, `benchmark_value` (S&P 500 收盤)
+
+**GET `/snapshots/twr`** — 時間加權報酬率：
+- `twr_pct` (float, optional): TWR 百分比（不足 2 筆快照時回傳 null）
+- `start_date` / `end_date` (str, optional): 實際計算區間
+- `snapshot_count` (int): 使用的快照筆數
 
 <details>
 <summary>🧪 curl 範例集（點擊展開）</summary>
@@ -811,14 +826,17 @@ azusa-stock/
 │   ├── domain/                       # 領域層：純業務邏輯，無框架依賴
 │   │   ├── constants.py              #   集中管理閾值、快取設定、共用訊息
 │   │   ├── enums.py                  #   分類、狀態列舉 + 常數
-│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences)
-│   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
+│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences, PortfolioSnapshot)
+│   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎, compute_twr（可獨立測試）
 │   │   ├── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
 │   │   ├── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
 │   │   └── stress_test.py            #   純計算：壓力測試 CAPM 模擬（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
 │   │   ├── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
+│   │   ├── notification_service.py   #   每週摘要 + 豐富 get_portfolio_summary（含總值/日漲跌/前三名/偏移/Smart Money）
+│   │   ├── snapshot_service.py       #   投資組合快照：take_daily_snapshot / get_snapshots / get_snapshot_range
+│   │   ├── formatters.py             #   Telegram HTML 格式化（format_weekly_digest_html 等）
 │   │   ├── prewarm_service.py        #   啟動快取預熱（非阻塞背景執行）
 │   │   └── stress_test_service.py    #   壓力測試編排（Beta 取得 + FX + 組合分析）
 │   │
@@ -833,10 +851,11 @@ azusa-stock/
 │   │   └── templates/                #   匯入範本 (stock / holding)
 │   │
 │   └── api/                          # API 層：薄控制器
-│       ├── schemas.py                #   Pydantic 請求/回應 Schema（含 Webhook）
+│       ├── schemas.py                #   Pydantic 請求/回應 Schema（含 Webhook, TwrResponse, SnapshotResponse）
 │       ├── stock_routes.py           #   股票管理 + /summary + /webhook 路由
 │       ├── thesis_routes.py          #   觀點版控路由
 │       ├── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
+│       ├── snapshot_routes.py        #   /snapshots + /snapshots/twr + /snapshots/take 路由
 │       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
 │       ├── holding_routes.py         #   持倉管理 + 再平衡 + 壓力測試路由
 │       ├── telegram_routes.py        #   Telegram 通知設定路由（雙模式）

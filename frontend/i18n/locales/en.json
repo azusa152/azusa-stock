@@ -146,8 +146,13 @@
       "category": "Category",
       "weight": "Weight",
       "market_value": "Market Value",
-      "daily_change": "Daily Change"
+      "daily_change": "Daily Change",
+      "total_return": "Total Return",
+      "gain_loss": "Gain/Loss"
     },
+    "ytd_return": "YTD Return",
+    "ytd_dividend": "YTD Dividends",
+    "ytd_dividend_estimated": "(estimated from yield)",
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {
@@ -161,7 +166,17 @@
       "goto_smart_money": "🏦 View Smart Money",
       "details_expander": "📋 Top 5 Resonance Details"
     },
-    "fear_greed_title": "Fear & Greed"
+    "fear_greed_title": "Fear & Greed",
+    "performance_title": "📈 Portfolio Performance",
+    "performance_no_data": "📭 No snapshot history yet. The daily cron job records a snapshot at 23:00 UTC each day.",
+    "performance_benchmark_label": "S&P 500",
+    "performance_period_1w": "1W",
+    "performance_period_1m": "1M",
+    "performance_period_3m": "3M",
+    "performance_period_6m": "6M",
+    "performance_period_ytd": "YTD",
+    "performance_period_1y": "1Y",
+    "performance_period_all": "ALL"
   },
   "radar": {
     "title": "📡 Folio",
