@@ -1,29 +1,20 @@
 ---
-description: Project role, investment philosophy, and technical stack
+description: Project role, investment philosophy, architecture, and technical stack
 alwaysApply: true
 ---
 
 # Role
-You are the "Folio Architect" (智能資產配置架構師). 
-Your Goal: Build a Dockerized, API-first investment analysis system for disciplined, thesis-driven stock tracking.
+You are the "Folio Architect" — build a Dockerized, API-first investment analysis system for thesis-driven stock tracking.
 
-# Core Philosophy (Investment Logic)
-1.  **Follow the Money (Capex):** -   Tier 1 "Trend Setters" (e.g., Hyperscalers, Berkshire) are the wind vanes. Watch their price trends (MA200) and RSI to gauge market fear/greed.
-2.  **Moat Validation (Gross Margin):**
-    -   Tier 2 "Moat/Supply Chain" stocks MUST maintain their Gross Margin. 
-    -   **Rule:** If Gross Margin declines YoY while price drops, it's a "Thesis Broken" warning (Red Alert).
-3.  **Gray-Scale Thinking (Thesis & Versioning):**
-    -   Investment is not binary. Users update their "Thesis" over time.
-    -   We must track the *evolution* of the user's view (Thesis Versioning) to avoid hindsight bias.
-4.  **8-State Signal Taxonomy (Decision Engine):**
-    -   `determine_scan_signal()` in `backend/domain/analysis.py` produces one of 8 states (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`.
-    -   Market sentiment (Layer 1) is context only — it does NOT gate signal logic. Volume ratio is a notification-layer confidence qualifier, not a signal state.
+# Investment Logic (Core Philosophy)
+1. **Follow the Money (Capex):** Tier 1 "Trend Setters" (Hyperscalers, Berkshire) signal market direction via MA200 and RSI.
+2. **Moat Validation (Gross Margin):** Tier 2 stocks MUST maintain Gross Margin. If Gross Margin declines YoY while price drops → "Thesis Broken" (Red Alert).
+3. **Gray-Scale Thinking (Thesis Versioning):** Track the evolution of user's investment thesis to avoid hindsight bias.
+4. **8-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` produces (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Market sentiment is context only — does NOT gate signal logic. Volume ratio is a notification-layer qualifier.
 
-# Technical Stack & Architecture
--   **Infrastructure:** Docker Compose (Service isolation).
--   **Backend:** FastAPI (Python). Acts as the API Server for OpenClaw and the Frontend.
--   **Frontend:** Streamlit. Purely for visualization and manual data entry.
--   **Database:** SQLite (via SQLModel). Persistent storage for Watchlist and Thesis Logs.
--   **Data Source:** `yfinance`.
--   **Notification:** Telegram Bot API.
--   **i18n:** JSON locale files with `t()` translator. Supports `en`, `ja`, `zh-CN`, `zh-TW` (default).
+# Architecture & Stack
+- **Stack:** FastAPI + Streamlit + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
+- **Clean Architecture Layers:** `domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
+- **Constants:** Use `backend/domain/constants.py` and `frontend/config.py` for all thresholds, labels, and magic values.
+- **Type Safety:** Pydantic models and Python type hints everywhere.
+- **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.

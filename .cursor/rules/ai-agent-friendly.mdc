@@ -1,126 +1,42 @@
 ---
-description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing endpoints. Covers structured responses, OpenAPI completeness, error codes, webhook discoverability, and agent skill documentation sync.
+description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing endpoints. Covers structured responses, OpenAPI completeness, error codes, and webhook discoverability.
 globs: ["backend/**"]
 ---
 
 # AI Agent-Friendly System Design
 
-This system is **AI agent-driven**. Every API surface must be designed so that an AI agent (e.g., OpenClaw, LLM tool-use, MCP client) can discover, call, and interpret endpoints **without human assistance**.
-
----
+Every API surface must be designed so AI agents (OpenClaw, LLM tool-use, MCP clients) can discover, call, and interpret endpoints without human assistance.
 
 ## 1. Structured, Machine-Parseable Responses
 
 - Every endpoint MUST return JSON with typed Pydantic `response_model`.
-- Webhook responses use the standard envelope: `{"success": bool, "message": str, "data": dict}`.
-- The only exception is `GET /summary` which returns plain text for quick LLM consumption.
-
-```python
-# ✅ GOOD — typed response model
-@router.get("/stocks", response_model=list[StockResponse])
-def list_stocks(): ...
-
-# ❌ BAD — untyped dict
-@router.get("/stocks")
-def list_stocks():
-    return {"stocks": [...]}
-```
+- Webhook responses: `{"success": bool, "message": str, "data": dict}`.
+- Exception: `GET /summary` returns plain text for LLM consumption.
+- See `backend/api/stock_routes.py` for canonical examples.
 
 ## 2. Descriptive Error Responses
 
-- All errors MUST return a JSON body with both `detail` (human-readable) and `error_code` (machine-readable slug).
-- Agents branch on `error_code`, not on substring matching `detail`.
-- The `detail` string is **localized** via i18n based on the user's language preference — its language varies per user. Always use `error_code` for programmatic branching.
-
-```python
-# ✅ GOOD — structured error with i18n
-raise HTTPException(status_code=404, detail={
-    "error_code": "STOCK_NOT_FOUND",
-    "detail": t("stock.not_found", ticker=ticker, lang=lang)  # localized message
-})
-
-# ❌ BAD — bare string detail
-raise HTTPException(status_code=404, detail="找不到股票 NVDA。")
-```
+- All errors MUST return JSON with `detail` (localized via i18n) and `error_code` (machine-readable slug).
+- Agents branch on `error_code`, not substring matching `detail`.
+- Example: `raise HTTPException(status_code=404, detail={"error_code": "STOCK_NOT_FOUND", "detail": t("stock.not_found", ticker=ticker, lang=lang)})`
 
 ## 3. Webhook Action Discoverability
 
-- `POST /webhook` with `{"action": "help"}` MUST return the list of all supported actions, their required parameters, and descriptions.
-- This lets agents self-discover capabilities at runtime without reading docs.
-- Keep the action registry in a single dict/enum in `backend/domain/constants.py`.
+- `POST /webhook` with `{"action": "help"}` MUST return all supported actions, required params, and descriptions.
+- Keep action registry in `backend/domain/constants.py`.
 
 ## 4. OpenAPI Completeness
 
 Every FastAPI route MUST have:
-1. A `summary` parameter in the decorator (shown in Swagger & OpenAPI JSON).
-2. A typed `response_model`.
-3. Pydantic request body schemas for POST/PUT/PATCH.
+1. A `summary` parameter (shown in Swagger & OpenAPI JSON)
+2. A typed `response_model`
+3. Pydantic request body schemas for POST/PUT/PATCH
 
-This ensures `/openapi.json` is a complete, self-describing contract that any agent can consume.
+Reference `backend/api/stock_routes.py` for the standard pattern.
 
-```python
-# ✅ GOOD — fully described
-@router.post("/ticker", response_model=StockResponse, summary="Add a stock to the watchlist")
-def create_stock(req: TickerCreateRequest): ...
+## 5. Implementation Guidelines
 
-# ❌ BAD — missing summary and response_model
-@router.post("/ticker")
-def create_stock(req: dict): ...
-```
-
-## 5. Idempotent & Safe Operations
-
-- GET endpoints MUST be safe (no side effects).
-- POST/PUT endpoints SHOULD be idempotent where possible. Document idempotency behavior in the function docstring.
-
-## 6. Pagination & Filtering
-
-- List endpoints (`GET /stocks`, `GET /holdings`, `GET /scan/history`) SHOULD support `limit` and `offset` query params.
-- Default: `limit=50`, `offset=0`. Agents can paginate large datasets.
-
-## 7. Consistent Datetime Format
-
-- All timestamps in JSON responses MUST be ISO 8601 UTC strings (e.g., `"2025-12-01T08:30:00Z"`).
-
-## 8. Rate-Limit Headers
-
-- Include `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers so agents can self-throttle without trial-and-error.
-
-## 9. Versioning Readiness
-
-- The webhook action registry lives in `backend/domain/constants.py` as a single source of truth.
-- Adding a new agent action = one dict entry + one handler function. No scattering across files.
-
-## 10. Implementation Guidelines
-
-- When implementing the "Scanner", strictly follow the specific logic for each Tier (Trend Setter vs. Moat vs. Growth).
-- Ensure the API is RESTful so the user's external bot (OpenClaw) can easily `POST /ticker` or `GET /scan`.
-
----
-
-# Agent Skill & Documentation Sync
-
-Every code change that affects the API surface MUST update the agent skill files so AI agents always have an accurate understanding of the system.
-
-## Files to Update
-
-| File | What to update |
-|------|----------------|
-| `docs/agents/folio/SKILL.md` | Webhook actions table, direct API endpoint table, categories, response format, usage tips |
-| `docs/agents/AGENTS.md` | Key endpoints list, webhook actions table, direct API table, response guidelines |
-
-## When to Update
-
-- **New endpoint added** -- Add it to the direct API table in both files.
-- **New webhook action added** -- Add it to the webhook actions table with description, required params, and example.
-- **Endpoint removed or renamed** -- Remove/update the old entry in both files.
-- **Request/response schema changed** -- Update the example payloads and response format sections.
-- **New category or enum value added** -- Update the categories table.
-- **Error codes changed** -- Update any documented error handling examples.
-
-## Rules
-
-- Skill files are the **primary interface** between AI agents and this system. Treat them as a first-class API contract, not an afterthought.
-- Keep descriptions concise and action-oriented -- agents need to know **what to call** and **what to expect back**, not implementation details.
-- Always include a concrete `curl` or JSON example for new webhook actions.
-- The `POST /webhook {"action": "help"}` response and the skill files MUST stay in sync. If they diverge, agents will make incorrect calls.
+- Strictly follow tier-specific logic (Trend Setter vs. Moat vs. Growth) when implementing the Scanner.
+- List endpoints default to `limit=50, offset=0` for pagination.
+- Action registry: single source of truth in `backend/domain/constants.py`.
+- Adding new agent actions: one dict entry + one handler function.
