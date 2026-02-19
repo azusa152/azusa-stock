@@ -135,7 +135,7 @@ def run_scan(session: Session) -> dict:
         elif signals and "error" in signals:
             alerts.append(signals["error"])
 
-        signal = determine_scan_signal(moat_value, mkt_status, rsi, bias)
+        signal = determine_scan_signal(moat_value, rsi, bias)
 
         # === Rogue Wave (瘋狗浪) ===
         bias_percentile: float | None = None
@@ -180,6 +180,8 @@ def run_scan(session: Session) -> dict:
             alerts.append(
                 t("scan.overheated_alert", lang=lang, ticker=ticker, bias=bias)
             )
+        # TODO(Phase 3): add alert branches for DEEP_VALUE, OVERSOLD, CAUTION_HIGH, WEAKENING
+        # and volume confidence qualifiers (vol_ratio >= 1.5 → surge, <= 0.5 → thin)
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
             alerts.append(

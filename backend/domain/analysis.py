@@ -9,6 +9,8 @@ from typing import Optional
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
+    BIAS_OVERSOLD_THRESHOLD,
+    BIAS_WEAKENING_THRESHOLD,
     CNN_FG_EXTREME_FEAR,
     CNN_FG_FEAR,
     CNN_FG_GREED,
@@ -19,7 +21,9 @@ from domain.constants import (
     ROGUE_WAVE_MIN_HISTORY_DAYS,
     ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
+    RSI_OVERBOUGHT,
     RSI_PERIOD,
+    RSI_WEAKENING_THRESHOLD,
     VIX_EXTREME_FEAR,
     VIX_FEAR,
     VIX_GREED,
@@ -203,35 +207,83 @@ def determine_market_sentiment(
 
 def determine_scan_signal(
     moat: str,
-    market_status: str,
     rsi: Optional[float],
     bias: Optional[float],
 ) -> ScanSignal:
     """
-    根據護城河、市場情緒、RSI、乖離率判定掃描訊號。
-    純函式，不依賴外部狀態。
+    8 優先級掃描訊號決策引擎。
+    純函式，不依賴外部狀態。None 值視為「條件不成立」，安全落穿至 NORMAL。
 
-    | 條件                                               | 訊號             |
-    |----------------------------------------------------|------------------|
-    | moat == DETERIORATING                              | THESIS_BROKEN    |
-    | market == POSITIVE & moat != DETERIORATING & RSI<35| CONTRARIAN_BUY   |
-    | bias > 20                                          | OVERHEATED       |
-    | 其他                                                | NORMAL           |
+    | 優先 | 條件                              | 訊號             |
+    |------|-----------------------------------|------------------|
+    | P1   | moat == DETERIORATING             | THESIS_BROKEN    |
+    | P2   | bias < -20 AND rsi < 35           | DEEP_VALUE       |
+    | P3   | bias < -20                        | OVERSOLD         |
+    | P4   | rsi < 35 AND bias < 20            | CONTRARIAN_BUY   |
+    | P5   | bias > 20 AND rsi > 70            | OVERHEATED       |
+    | P6   | bias > 20 OR rsi > 70             | CAUTION_HIGH     |
+    | P7   | bias < -15 AND rsi < 38           | WEAKENING        |
+    | P8   | 其他                               | NORMAL           |
+
+    None-handling design decisions:
+    - rsi=None  → P2, P4, P5 (RSI part), P6 (RSI part), P7 skipped; P3 still fires if bias < -20.
+    - bias=None → P2, P3, P5 (bias part), P6 (bias part), P7 skipped.
+    - P4 with bias=None: the guard `bias is None or bias < 20` intentionally allows
+      CONTRARIAN_BUY when bias is unavailable (insufficient price history). RSI < 35 is
+      strong enough signal on its own; suppressing it would cause false negatives on newly
+      listed stocks or tickers with short history.
+    - Both None → only P1 (THESIS_BROKEN) or P8 (NORMAL) are reachable.
     """
+    # P1: 護城河惡化 — 論文破裂，優先順序最高
     if moat == MoatStatus.DETERIORATING.value:
         return ScanSignal.THESIS_BROKEN
 
+    # P2: 雙重確認深度價值（最高確信度買入訊號）
     if (
-        market_status == MarketSentiment.POSITIVE.value
-        and moat != MoatStatus.DETERIORATING.value
+        bias is not None
+        and bias < BIAS_OVERSOLD_THRESHOLD
         and rsi is not None
         and rsi < RSI_CONTRARIAN_BUY_THRESHOLD
     ):
+        return ScanSignal.DEEP_VALUE
+
+    # P3: 乖離率極端（e.g. bias=-31%, RSI未確認）
+    if bias is not None and bias < BIAS_OVERSOLD_THRESHOLD:
+        return ScanSignal.OVERSOLD
+
+    # P4: RSI 超賣 + 乖離率未過熱（防止矛盾訊號）
+    if (
+        rsi is not None
+        and rsi < RSI_CONTRARIAN_BUY_THRESHOLD
+        and (bias is None or bias < BIAS_OVERHEATED_THRESHOLD)
+    ):
         return ScanSignal.CONTRARIAN_BUY
 
-    if bias is not None and bias > BIAS_OVERHEATED_THRESHOLD:
+    # P5: 雙重確認過熱（最高確信度賣出警示）
+    if (
+        bias is not None
+        and bias > BIAS_OVERHEATED_THRESHOLD
+        and rsi is not None
+        and rsi > RSI_OVERBOUGHT
+    ):
         return ScanSignal.OVERHEATED
 
+    # P6: 單一指標過熱警示
+    if (bias is not None and bias > BIAS_OVERHEATED_THRESHOLD) or (
+        rsi is not None and rsi > RSI_OVERBOUGHT
+    ):
+        return ScanSignal.CAUTION_HIGH
+
+    # P7: 早期轉弱（收緊閾值以減少警報疲勞）
+    if (
+        bias is not None
+        and bias < BIAS_WEAKENING_THRESHOLD
+        and rsi is not None
+        and rsi < RSI_WEAKENING_THRESHOLD
+    ):
+        return ScanSignal.WEAKENING
+
+    # P8: 真正中性
     return ScanSignal.NORMAL
 
 
