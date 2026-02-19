@@ -146,8 +146,13 @@
       "category": "分类",
       "weight": "权重",
       "market_value": "市值",
-      "daily_change": "日涨跌"
+      "daily_change": "日涨跌",
+      "total_return": "总回报",
+      "gain_loss": "盈亏"
     },
+    "ytd_return": "今年回报",
+    "ytd_dividend": "今年股息",
+    "ytd_dividend_estimated": "（依股息率估算）",
     "no_holdings": "无持仓资料。",
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
     "resonance": {

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session
 
 from api.rate_limit import limiter
-from api.schemas import AcceptedResponse, SnapshotResponse
+from api.schemas import AcceptedResponse, SnapshotResponse, TwrResponse
 from application.snapshot_service import get_snapshot_range, get_snapshots
 from domain.entities import PortfolioSnapshot
 from infrastructure.database import engine, get_session
@@ -55,8 +55,12 @@ def _run_snapshot_background() -> None:
 )
 def list_snapshots(
     days: int = Query(default=30, ge=1, le=730, description="回溯天數（1–730）"),
-    start: date | None = Query(default=None, description="起始日期（YYYY-MM-DD，與 days 互斥）"),
-    end: date | None = Query(default=None, description="結束日期（YYYY-MM-DD，與 days 互斥）"),
+    start: date | None = Query(
+        default=None, description="起始日期（YYYY-MM-DD，與 days 互斥）"
+    ),
+    end: date | None = Query(
+        default=None, description="結束日期（YYYY-MM-DD，與 days 互斥）"
+    ),
     session: Session = Depends(get_session),
 ) -> list[SnapshotResponse]:
     """
@@ -80,6 +84,53 @@ def list_snapshots(
         return [_to_response(s) for s in get_snapshot_range(session, start, end)]
 
     return [_to_response(s) for s in get_snapshots(session, days=days)]
+
+
+@router.get(
+    "/snapshots/twr",
+    response_model=TwrResponse,
+    summary="Compute time-weighted return for a date range",
+)
+def get_twr(
+    start: date | None = Query(
+        default=None, description="起始日期（預設：今年 1 月 1 日）"
+    ),
+    end: date | None = Query(default=None, description="結束日期（預設：今日）"),
+    session: Session = Depends(get_session),
+) -> TwrResponse:
+    """
+    計算指定日期範圍的時間加權報酬率（TWR）。
+
+    - 預設計算今年 YTD（start = 1/1, end = 今日）。
+    - 若無足夠快照，twr_pct 回傳 None。
+    """
+    from datetime import datetime, timezone
+
+    from domain.analysis import compute_twr
+
+    today = datetime.now(timezone.utc).date()
+    effective_start = start or date(today.year, 1, 1)
+    effective_end = end or today
+
+    if effective_start > effective_end:
+        raise HTTPException(
+            status_code=422,
+            detail="start 不得晚於 end",
+        )
+
+    snaps = get_snapshot_range(session, effective_start, effective_end)
+    snap_dicts = [
+        {"snapshot_date": s.snapshot_date.isoformat(), "total_value": s.total_value}
+        for s in snaps
+    ]
+    twr_pct = compute_twr(snap_dicts)
+
+    return TwrResponse(
+        twr_pct=twr_pct,
+        start_date=snap_dicts[0]["snapshot_date"] if snap_dicts else None,
+        end_date=snap_dicts[-1]["snapshot_date"] if snap_dicts else None,
+        snapshot_count=len(snap_dicts),
+    )
 
 
 @router.post(

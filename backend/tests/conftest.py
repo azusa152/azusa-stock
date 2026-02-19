@@ -7,7 +7,9 @@ import tempfile
 
 # Set environment variables BEFORE any app imports to avoid /app filesystem access
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATA_DIR", os.path.join(tempfile.gettempdir(), "folio_test_data"))
+os.environ.setdefault(
+    "DATA_DIR", os.path.join(tempfile.gettempdir(), "folio_test_data")
+)
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 # Disable auth in tests by default (individual tests can override)
@@ -25,9 +27,7 @@ import domain.constants  # noqa: E402
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
 )
-domain.constants.DATA_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_data"
-)
+domain.constants.DATA_DIR = os.path.join(tempfile.gettempdir(), "folio_test_data")
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402

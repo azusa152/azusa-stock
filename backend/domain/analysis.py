@@ -386,3 +386,41 @@ def compute_composite_fear_greed(
     composite = max(0, min(100, composite))
     level = classify_cnn_fear_greed(composite)
     return level, composite
+
+
+# ---------------------------------------------------------------------------
+# 投資組合績效
+# ---------------------------------------------------------------------------
+
+
+def compute_twr(snapshots: list[dict]) -> Optional[float]:
+    """
+    以連鎖法計算時間加權報酬率（TWR）。
+
+    每日子期間報酬為 V_t / V_{t-1} - 1，再將所有子期間連乘後減一，
+    得到整段期間的 TWR（百分比）。
+
+    此實作不考慮期中現金流，適用於每日快照連續完整的情況。
+    若快照中有缺漏日（假日、未觸發 cron），仍可正確跨期計算，
+    因為連鎖法只要求相鄰快照的比值，與日曆間距無關。
+
+    Args:
+        snapshots: 依 snapshot_date 升冪排列的快照字典列表，
+                   每筆須含 ``total_value`` 欄位（float）。
+
+    Returns:
+        TWR 百分比（例如 12.3 代表 +12.3%），
+        或 None（快照不足兩筆、或首筆 total_value 為零）。
+    """
+    if len(snapshots) < 2:
+        return None
+
+    values = [s.get("total_value") for s in snapshots]
+    if any(v is None or v == 0 for v in values[:-1]):
+        return None
+
+    product = 1.0
+    for i in range(1, len(values)):
+        product *= values[i] / values[i - 1]  # type: ignore[operator]
+
+    return round((product - 1) * 100, 2)

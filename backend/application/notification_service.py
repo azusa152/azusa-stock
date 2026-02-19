@@ -211,10 +211,14 @@ def send_weekly_digest(session: Session) -> dict:
         gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
         losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
         gainer_parts = [
-            f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%" for h in gainers if h["change_pct"] > 0
+            f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%"
+            for h in gainers
+            if h["change_pct"] > 0
         ]
         loser_parts = [
-            f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%" for h in losers if h["change_pct"] < 0
+            f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%"
+            for h in losers
+            if h["change_pct"] < 0
         ]
         if gainer_parts:
             top_movers_lines.append("  ".join(gainer_parts))
@@ -227,7 +231,11 @@ def send_weekly_digest(session: Session) -> dict:
         drift = data.get("drift_pct", 0.0)
         if abs(drift) >= DRIFT_THRESHOLD_PCT:
             cat_label = CATEGORY_LABEL.get(cat, cat)
-            key = "notification.drift_item_over" if drift > 0 else "notification.drift_item_under"
+            key = (
+                "notification.drift_item_over"
+                if drift > 0
+                else "notification.drift_item_under"
+            )
             drift_lines.append(
                 t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}")
             )

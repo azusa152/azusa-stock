@@ -63,7 +63,12 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         session.add(existing)
         session.commit()
         session.refresh(existing)
-        logger.info("投資組合快照已更新：%s  total=%.2f %s", today, total_value, display_currency)
+        logger.info(
+            "投資組合快照已更新：%s  total=%.2f %s",
+            today,
+            total_value,
+            display_currency,
+        )
         return existing
 
     snapshot = PortfolioSnapshot(
@@ -76,7 +81,9 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
     session.add(snapshot)
     session.commit()
     session.refresh(snapshot)
-    logger.info("投資組合快照已建立：%s  total=%.2f %s", today, total_value, display_currency)
+    logger.info(
+        "投資組合快照已建立：%s  total=%.2f %s", today, total_value, display_currency
+    )
     return snapshot
 
 

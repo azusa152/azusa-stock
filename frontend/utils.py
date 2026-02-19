@@ -938,6 +938,39 @@ def fetch_snapshots(days: int = 365) -> list[dict] | None:
         return None
 
 
+@st.cache_data(ttl=CACHE_TTL_SNAPSHOTS, show_spinner=False)
+def fetch_twr(
+    start: str | None = None,
+    end: str | None = None,
+) -> dict | None:
+    """Fetch time-weighted return for a date range from the backend.
+
+    Args:
+        start: ISO date string for range start (default: Jan 1 of current year).
+        end: ISO date string for range end (default: today).
+
+    Returns:
+        Dict with ``twr_pct`` (float or None), ``start_date``, ``end_date``,
+        ``snapshot_count``; or None on request failure.
+    """
+    try:
+        params: dict = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        resp = _session.get(
+            f"{BACKEND_URL}/snapshots/twr",
+            params=params,
+            timeout=API_SNAPSHOTS_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except requests.RequestException:
+        return None
+
+
 @st.cache_data(ttl=CACHE_TTL_PREFERENCES, show_spinner=False)
 def fetch_preferences() -> dict | None:
     """Fetch user preferences (privacy mode, etc.)."""

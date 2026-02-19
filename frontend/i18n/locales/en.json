@@ -146,8 +146,13 @@
       "category": "Category",
       "weight": "Weight",
       "market_value": "Market Value",
-      "daily_change": "Daily Change"
+      "daily_change": "Daily Change",
+      "total_return": "Total Return",
+      "gain_loss": "Gain/Loss"
     },
+    "ytd_return": "YTD Return",
+    "ytd_dividend": "YTD Dividends",
+    "ytd_dividend_estimated": "(estimated from yield)",
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {

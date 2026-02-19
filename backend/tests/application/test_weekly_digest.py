@@ -70,8 +70,18 @@ MOCK_REBALANCE = {
         {"ticker": "BABA", "change_pct": -3.1, "category": "Growth"},
     ],
     "categories": {
-        "Growth": {"target_pct": 40.0, "current_pct": 47.5, "drift_pct": 7.5, "market_value": 47_500.0},
-        "Moat": {"target_pct": 30.0, "current_pct": 28.0, "drift_pct": -2.0, "market_value": 28_000.0},
+        "Growth": {
+            "target_pct": 40.0,
+            "current_pct": 47.5,
+            "drift_pct": 7.5,
+            "market_value": 47_500.0,
+        },
+        "Moat": {
+            "target_pct": 30.0,
+            "current_pct": 28.0,
+            "drift_pct": -2.0,
+            "market_value": 28_000.0,
+        },
     },
 }
 
@@ -84,7 +94,12 @@ MOCK_RESONANCE = [
         "overlapping_tickers": ["AAPL"],
         "overlap_count": 1,
         "holdings": [
-            {"ticker": "AAPL", "action": "NEW_POSITION", "weight_pct": 2.5, "change_pct": 0.0}
+            {
+                "ticker": "AAPL",
+                "action": "NEW_POSITION",
+                "weight_pct": 2.5,
+                "change_pct": 0.0,
+            }
         ],
     }
 ]
@@ -103,14 +118,16 @@ class TestSendWeeklyDigest:
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "MSFT", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             result = send_weekly_digest(db_session)
 
         assert result["health_score"] == 100.0
@@ -124,14 +141,16 @@ class TestSendWeeklyDigest:
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "BABA", ScanSignal.THESIS_BROKEN.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             result = send_weekly_digest(db_session)
 
         assert result["health_score"] == 50.0
@@ -148,14 +167,16 @@ class TestSendWeeklyDigest:
         _add_scan_log(db_session, "NIO", ScanSignal.NORMAL.value, days_ago=3)
         _add_scan_log(db_session, "NIO", ScanSignal.OVERSOLD.value, days_ago=1)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -187,14 +208,16 @@ class TestSendWeeklyDigest:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=False), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=False),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         mock_send.assert_not_called()
@@ -206,14 +229,16 @@ class TestSendWeeklyDigest:
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "MSFT", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -237,14 +262,16 @@ class TestSendWeeklyDigestEnriched:
 
         wow_state = {"last_total_value": 95_000.0}  # previous week total
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value=wow_state), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value=wow_state),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -261,14 +288,16 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -280,14 +309,16 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -304,14 +335,16 @@ class TestSendWeeklyDigestEnriched:
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
         # MOCK_REBALANCE has Growth drift = +7.5% (above threshold of 5%)
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -331,19 +364,31 @@ class TestSendWeeklyDigestEnriched:
         rebalance_no_drift = {
             **MOCK_REBALANCE,
             "categories": {
-                "Growth": {"target_pct": 40.0, "current_pct": 42.0, "drift_pct": 2.0, "market_value": 42_000.0},
-                "Moat": {"target_pct": 30.0, "current_pct": 31.0, "drift_pct": 1.0, "market_value": 31_000.0},
+                "Growth": {
+                    "target_pct": 40.0,
+                    "current_pct": 42.0,
+                    "drift_pct": 2.0,
+                    "market_value": 42_000.0,
+                },
+                "Moat": {
+                    "target_pct": 30.0,
+                    "current_pct": 31.0,
+                    "drift_pct": 1.0,
+                    "market_value": 31_000.0,
+                },
             },
         }
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=rebalance_no_drift), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=rebalance_no_drift),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -355,14 +400,16 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=MOCK_RESONANCE), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=MOCK_RESONANCE),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -383,19 +430,26 @@ class TestSendWeeklyDigestEnriched:
                 "overlapping_tickers": ["AAPL"],
                 "overlap_count": 1,
                 "holdings": [
-                    {"ticker": "AAPL", "action": "UNCHANGED", "weight_pct": 2.5, "change_pct": 0.0}
+                    {
+                        "ticker": "AAPL",
+                        "action": "UNCHANGED",
+                        "weight_pct": 2.5,
+                        "change_pct": 0.0,
+                    }
                 ],
             }
         ]
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=resonance_unchanged), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=resonance_unchanged),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
@@ -407,14 +461,16 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED), \
-             patch(_TG_PATCH) as mock_send, \
-             patch(_NOTIF_PATCH, return_value=True), \
-             patch(_REBALANCE_PATCH, side_effect=RuntimeError("yfinance error")), \
-             patch(_SP500_PATCH, return_value=MOCK_SP500), \
-             patch(_RESONANCE_PATCH, return_value=[]), \
-             patch(_WOW_LOAD_PATCH, return_value={}), \
-             patch(_WOW_SAVE_PATCH):
+        with (
+            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
+            patch(_TG_PATCH) as mock_send,
+            patch(_NOTIF_PATCH, return_value=True),
+            patch(_REBALANCE_PATCH, side_effect=RuntimeError("yfinance error")),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+            patch(_RESONANCE_PATCH, return_value=[]),
+            patch(_WOW_LOAD_PATCH, return_value={}),
+            patch(_WOW_SAVE_PATCH),
+        ):
             result = send_weekly_digest(db_session)
 
         mock_send.assert_called_once()
@@ -431,8 +487,12 @@ class TestGetPortfolioSummary:
         """Summary must group stocks by category and not echo raw i18n keys."""
         from application.notification_service import get_portfolio_summary
 
-        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value, StockCategory.TREND_SETTER)
-        _add_stock(db_session, "MSFT", ScanSignal.NORMAL.value, StockCategory.TREND_SETTER)
+        _add_stock(
+            db_session, "AAPL", ScanSignal.NORMAL.value, StockCategory.TREND_SETTER
+        )
+        _add_stock(
+            db_session, "MSFT", ScanSignal.NORMAL.value, StockCategory.TREND_SETTER
+        )
 
         with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED):
             summary = get_portfolio_summary(db_session)
@@ -450,12 +510,16 @@ class TestGetPortfolioSummary:
         assert "notification.portfolio_summary_no_stocks" not in summary
         assert len(summary) > 0
 
-    def test_should_show_abnormal_section_for_non_normal_stocks(self, db_session: Session):
+    def test_should_show_abnormal_section_for_non_normal_stocks(
+        self, db_session: Session
+    ):
         """Stocks with active signals must appear in the abnormal section."""
         from application.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value, StockCategory.MOAT)
-        _add_stock(db_session, "BABA", ScanSignal.THESIS_BROKEN.value, StockCategory.MOAT)
+        _add_stock(
+            db_session, "BABA", ScanSignal.THESIS_BROKEN.value, StockCategory.MOAT
+        )
         _add_stock(db_session, "NIO", ScanSignal.OVERSOLD.value, StockCategory.GROWTH)
 
         with patch(_FG_PATCH, return_value=MOCK_FEAR_GREED):

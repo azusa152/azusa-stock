@@ -436,6 +436,9 @@ class HoldingDetail(BaseModel):
     market_value: float
     weight_pct: float
     avg_cost: Optional[float] = None
+    cost_total: Optional[float] = (
+        None  # avg_cost * quantity * fx，以 display_currency 計
+    )
     current_price: Optional[float] = None
     change_pct: Optional[float] = None
 
@@ -960,6 +963,15 @@ class SnapshotResponse(BaseModel):
     category_values: dict  # parsed from JSON storage
     display_currency: str = "USD"
     benchmark_value: Optional[float] = None
+
+
+class TwrResponse(BaseModel):
+    """GET /snapshots/twr 回傳的時間加權報酬率。"""
+
+    twr_pct: Optional[float]  # 百分比，例如 12.3 代表 +12.3%；None 表示資料不足
+    start_date: Optional[str] = None  # 計算起始日（快照中最早一筆）
+    end_date: Optional[str] = None  # 計算結束日（快照中最新一筆）
+    snapshot_count: int = 0  # 用於計算的快照筆數
 
 
 # ---------------------------------------------------------------------------

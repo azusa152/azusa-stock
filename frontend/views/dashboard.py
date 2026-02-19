@@ -3,7 +3,7 @@ Folio — Summary Dashboard Page (投資組合總覽).
 At-a-glance view of market sentiment, portfolio KPIs, allocation, signals, and top holdings.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -38,6 +38,7 @@ from config import (
 )
 from i18n import t
 from utils import (
+    fetch_enriched_stocks,
     fetch_fear_greed,
     fetch_great_minds,
     fetch_holdings,
@@ -46,6 +47,7 @@ from utils import (
     fetch_rebalance,
     fetch_snapshots,
     fetch_stocks,
+    fetch_twr,
     format_utc_timestamp,
     invalidate_all_caches,
     is_privacy as _is_privacy,
@@ -298,6 +300,8 @@ if not stocks_data and not rebalance_data:
 # ---------------------------------------------------------------------------
 fear_greed_data = fetch_fear_greed()
 snapshots_data = fetch_snapshots(days=730)
+enriched_stocks_data = fetch_enriched_stocks()
+twr_data = fetch_twr()  # YTD TWR (start defaults to Jan 1 of current year)
 
 # Pre-compute values used inside the hero columns
 _privacy = _is_privacy()
@@ -337,6 +341,17 @@ with st.container(border=True):
                     f'<p class="hero-delta" style="color:{color_css}">{delta_str}</p>',
                     unsafe_allow_html=True,
                 )
+            # YTD Time-Weighted Return
+            if twr_data:
+                ytd_twr = twr_data.get("twr_pct")
+                if ytd_twr is not None:
+                    ytd_arrow = "▲" if ytd_twr >= 0 else "▼"
+                    ytd_color = "#22c55e" if ytd_twr >= 0 else "#ef4444"
+                    st.markdown(
+                        f'<p class="hero-delta" style="color:{ytd_color}">'
+                        f'{t("dashboard.ytd_return")} {ytd_arrow}{abs(ytd_twr):.2f}%</p>',
+                        unsafe_allow_html=True,
+                    )
             # Mini sparkline — 30-day portfolio trend
             if snapshots_data and not _privacy:
                 _render_sparkline(snapshots_data)
@@ -413,6 +428,37 @@ with st.container(border=True):
             t("dashboard.kpi.tracking_holdings"),
             t("dashboard.kpi.tracking_holdings_value", stocks=stock_count, holdings=holding_count),
         )
+
+
+# ---------------------------------------------------------------------------
+# Section 1.3: YTD Dividend Estimate
+# ---------------------------------------------------------------------------
+if rebalance_data and enriched_stocks_data:
+    # Build {ticker: dividend_yield} from enriched stocks
+    _div_lookup: dict[str, float] = {}
+    for _es in enriched_stocks_data:
+        _div = _es.get("dividend") or {}
+        _dy = _div.get("dividend_yield")
+        if _dy is not None and _dy > 0:
+            _div_lookup[_es["ticker"]] = _dy
+
+    # Compute estimated YTD dividend income across all holdings
+    _days_elapsed = datetime.now().timetuple().tm_yday  # day-of-year
+    _ytd_div_income = 0.0
+    for _h in rebalance_data.get("holdings_detail", []):
+        _dy_pct = _div_lookup.get(_h["ticker"])
+        if _dy_pct:
+            _ytd_div_income += _h.get("market_value", 0) * (_dy_pct / 100) * (_days_elapsed / 365)
+
+    if _ytd_div_income > 0:
+        _div_col, _ = st.columns([1, 3])
+        with _div_col:
+            _ytd_div_str = PRIVACY_MASK if _privacy else f"${_ytd_div_income:,.2f}"
+            st.metric(
+                t("dashboard.ytd_dividend"),
+                _ytd_div_str,
+                help=t("dashboard.ytd_dividend_estimated"),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -620,6 +666,8 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
         col_weight = t("dashboard.holdings_table.weight")
         col_value = t("dashboard.holdings_table.market_value")
         col_change = t("dashboard.holdings_table.daily_change")
+        col_total_return = t("dashboard.holdings_table.total_return")
+        col_gain_loss = t("dashboard.holdings_table.gain_loss")
 
         header_row = (
             f"<tr>"
@@ -628,6 +676,8 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
             f"<th style='text-align:right;padding:4px 8px'>{col_weight}</th>"
             f"<th style='text-align:right;padding:4px 8px'>{col_value}</th>"
             f"<th style='text-align:right;padding:4px 8px'>{col_change}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_total_return}</th>"
+            f"<th style='text-align:right;padding:4px 8px'>{col_gain_loss}</th>"
             f"</tr>"
         )
         data_rows = []
@@ -645,7 +695,34 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
             else:
                 change_cell = "<td style='text-align:right;padding:4px 8px'>N/A</td>"
 
-            value_str = PRIVACY_MASK if privacy else f"${h.get('market_value', 0):,.2f}"
+            market_value = h.get("market_value", 0)
+            cost_total = h.get("cost_total")
+            if cost_total is not None and cost_total > 0:
+                gain_loss_amt = market_value - cost_total
+                total_return_pct = (gain_loss_amt / cost_total) * 100
+                ret_arrow = "▲" if total_return_pct >= 0 else "▼"
+                ret_color = "#22c55e" if total_return_pct >= 0 else "#ef4444"
+                total_return_cell = (
+                    f"<td style='text-align:right;padding:4px 8px;"
+                    f"color:{ret_color};font-weight:500'>"
+                    f"{ret_arrow}{abs(total_return_pct):.1f}%</td>"
+                )
+                if privacy:
+                    gain_loss_cell = (
+                        f"<td style='text-align:right;padding:4px 8px;"
+                        f"color:{ret_color}'>{PRIVACY_MASK}</td>"
+                    )
+                else:
+                    sign = "+" if gain_loss_amt >= 0 else "-"
+                    gain_loss_cell = (
+                        f"<td style='text-align:right;padding:4px 8px;"
+                        f"color:{ret_color}'>{sign}${abs(gain_loss_amt):,.0f}</td>"
+                    )
+            else:
+                total_return_cell = "<td style='text-align:right;padding:4px 8px'>—</td>"
+                gain_loss_cell = "<td style='text-align:right;padding:4px 8px'>—</td>"
+
+            value_str = PRIVACY_MASK if privacy else f"${market_value:,.2f}"
             data_rows.append(
                 f"<tr style='border-top:1px solid rgba(128,128,128,0.15)'>"
                 f"<td style='padding:4px 8px'><b>{h.get('ticker', '')}</b></td>"
@@ -653,6 +730,8 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
                 f"<td style='text-align:right;padding:4px 8px'>{h.get('weight_pct', 0):.1f}%</td>"
                 f"<td style='text-align:right;padding:4px 8px'>{value_str}</td>"
                 f"{change_cell}"
+                f"{total_return_cell}"
+                f"{gain_loss_cell}"
                 f"</tr>"
             )
 

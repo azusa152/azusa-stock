@@ -256,7 +256,9 @@ class PortfolioSnapshot(SQLModel, table=True):
     """每日投資組合總市值快照（用於歷史績效追蹤）。"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    snapshot_date: date = Field(index=True, unique=True, description="快照日期（每日唯一）")
+    snapshot_date: date = Field(
+        index=True, unique=True, description="快照日期（每日唯一）"
+    )
     total_value: float = Field(description="投資組合總市值")
     category_values: str = Field(
         default="{}", description="各類別市值 JSON（如 {'Trend_Setter': 45000, ...}）"

@@ -116,7 +116,9 @@ class TestTakeDailySnapshot:
         # Must still be only one row for today
         all_today = list(
             db_session.exec(
-                select(PortfolioSnapshot).where(PortfolioSnapshot.snapshot_date == today)
+                select(PortfolioSnapshot).where(
+                    PortfolioSnapshot.snapshot_date == today
+                )
             ).all()
         )
         assert len(all_today) == 1
