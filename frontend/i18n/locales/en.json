@@ -81,8 +81,12 @@
     "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only",
     "signal": {
       "thesis_broken": "🔴 THESIS_BROKEN",
+      "deep_value": "🔵 DEEP_VALUE",
+      "oversold": "🟣 OVERSOLD",
       "contrarian_buy": "🟢 CONTRARIAN_BUY",
       "overheated": "🟠 OVERHEATED",
+      "caution_high": "🟡 CAUTION_HIGH",
+      "weakening": "🟤 WEAKENING",
       "normal": "⚪ NORMAL"
     },
     "pain_level": {
@@ -192,7 +196,13 @@
       "caption": "Scan runs in background, results pushed via Telegram. System auto-scans every 30 minutes.",
       "button": "🚀 Execute Scan",
       "success": "✅ {message}",
-      "default_success": "Scan initiated"
+      "default_success": "Scan initiated",
+      "deep_value_alert": "🔵 **Deep Value**: Price at extreme low with RSI confirming oversold. High-conviction entry opportunity.",
+      "oversold_alert": "🟣 **Oversold**: Bias at extreme low (bias-only, RSI not confirming). Watch for further confirmation.",
+      "caution_high_alert": "🟡 **Caution High**: Single indicator overheating (high bias or RSI). Reduce new positions.",
+      "weakening_alert": "🟤 **Weakening**: Early weakness detected (bias & RSI both softening). Monitor closely.",
+      "volume_surge": "📈 Volume surge",
+      "volume_thin": "📉 Thin volume"
     },
     "export": {
       "download_button": "📥 Download JSON",
@@ -507,7 +517,11 @@
       "volume_ratio": "Vol Ratio",
       "data_updated": "🕐 Updated: {time}",
       "bias_percentile": "P{percentile}",
-      "rogue_wave_warning": "🌊 Rogue Wave — bias at historical extreme with volume surge. Party peaking, no leveraged chasing."
+      "rogue_wave_warning": "🌊 Rogue Wave — bias at historical extreme with volume surge. Party peaking, no leveraged chasing.",
+      "deep_value": "🔵 Deep Value",
+      "oversold": "🟣 Oversold",
+      "caution_high": "🟡 Caution High",
+      "weakening": "🟤 Weakening"
     },
     "moat": {
       "metric_label": "Latest Gross Margin",

@@ -268,8 +268,12 @@ ALERT_METRIC_OPTIONS = ["rsi", "price", "bias"]
 ALERT_OPERATOR_OPTIONS = ["lt", "gt"]
 SCAN_SIGNAL_ICONS = {
     "THESIS_BROKEN": "🔴",
+    "DEEP_VALUE": "🔵",
+    "OVERSOLD": "🟣",
     "CONTRARIAN_BUY": "🟢",
     "OVERHEATED": "🟠",
+    "CAUTION_HIGH": "🟡",
+    "WEAKENING": "🟤",
     "NORMAL": "⚪",
 }
 REORDER_MIN_STOCKS = 2

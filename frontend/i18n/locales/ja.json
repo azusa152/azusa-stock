@@ -81,8 +81,12 @@
     "cnn_unavailable": "⚠️ CNNデータ利用不可、VIXのみ使用",
     "signal": {
       "thesis_broken": "🔴 THESIS_BROKEN",
+      "deep_value": "🔵 DEEP_VALUE",
+      "oversold": "🟣 OVERSOLD",
       "contrarian_buy": "🟢 CONTRARIAN_BUY",
       "overheated": "🟠 OVERHEATED",
+      "caution_high": "🟡 CAUTION_HIGH",
+      "weakening": "🟤 WEAKENING",
       "normal": "⚪ NORMAL"
     },
     "pain_level": {
@@ -192,7 +196,13 @@
       "caption": "スキャンはバックグラウンドで実行され、結果はTelegramで通知されます。30分ごとに自動スキャンします。",
       "button": "🚀 スキャン実行",
       "success": "✅ {message}",
-      "default_success": "スキャンを開始しました"
+      "default_success": "スキャンを開始しました",
+      "deep_value_alert": "🔵 **深度バリュー**：株価が極端に割安でRSIも売られすぎを確認。高確信度の買いエントリー機会。",
+      "oversold_alert": "🟣 **売られすぎ**：乖離率が極端に低い（乖離率のみ確認、RSI未確認）。さらなる確認を待つ。",
+      "caution_high_alert": "🟡 **警戒高**：単一指標が過熱（乖離率またはRSIが高い）。新規ポジション追加を控える。",
+      "weakening_alert": "🟤 **軟化**：早期の弱体化シグナル（乖離率とRSIが共に低下中）。引き続き注視。",
+      "volume_surge": "📈 出来高急増",
+      "volume_thin": "📉 出来高低調"
     },
     "export": {
       "download_button": "📥 JSONダウンロード",
@@ -507,7 +517,11 @@
       "volume_ratio": "出来高比率 Vol Ratio",
       "data_updated": "🕐 データ更新：{time}",
       "bias_percentile": "P{percentile}",
-      "rogue_wave_warning": "🌊 狂乱波 — 乖離率が歴史的極値に達し出来高急増。パーティーのピーク、レバレッジ追いかけ厳禁。"
+      "rogue_wave_warning": "🌊 狂乱波 — 乖離率が歴史的極値に達し出来高急増。パーティーのピーク、レバレッジ追いかけ厳禁。",
+      "deep_value": "🔵 深度バリュー",
+      "oversold": "🟣 売られすぎ",
+      "caution_high": "🟡 警戒高",
+      "weakening": "🟤 軟化"
     },
     "moat": {
       "metric_label": "最新粗利率 (Gross Margin)",

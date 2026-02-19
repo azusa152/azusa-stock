@@ -81,8 +81,12 @@
     "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX",
     "signal": {
       "thesis_broken": "🔴 THESIS_BROKEN",
+      "deep_value": "🔵 DEEP_VALUE",
+      "oversold": "🟣 OVERSOLD",
       "contrarian_buy": "🟢 CONTRARIAN_BUY",
       "overheated": "🟠 OVERHEATED",
+      "caution_high": "🟡 CAUTION_HIGH",
+      "weakening": "🟤 WEAKENING",
       "normal": "⚪ NORMAL"
     },
     "pain_level": {
@@ -192,7 +196,13 @@
       "caption": "扫描在背景执行，结果将透过 Telegram 推播通知。系统每 30 分钟自动扫描一次。",
       "button": "🚀 执行扫描",
       "success": "✅ {message}",
-      "default_success": "扫描已启动"
+      "default_success": "扫描已启动",
+      "deep_value_alert": "🔵 **深度价值**：股价极端低估且 RSI 确认超卖，高确信度进场时机。",
+      "oversold_alert": "🟣 **超卖**：乖离率极端低估（仅乖离率确认，RSI 未确认）。等待进一步信号确认。",
+      "caution_high_alert": "🟡 **偏高警示**：单一指标过热（乖离率或 RSI 偏高）。暂停新加仓，留意风险。",
+      "weakening_alert": "🟤 **转弱**：早期转弱信号（乖离率与 RSI 双双软化）。密切追踪后续走势。",
+      "volume_surge": "📈 量能放大",
+      "volume_thin": "📉 量能萎缩"
     },
     "export": {
       "download_button": "📥 下载 JSON",
@@ -507,7 +517,11 @@
       "volume_ratio": "量比 Vol Ratio",
       "data_updated": "🕐 资料更新：{time}",
       "bias_percentile": "P{percentile}",
-      "rogue_wave_warning": "🌊 疯狗浪 — 乖离率达历史极端值且量能放大。派对接近尾声，切勿加杠杆追高。"
+      "rogue_wave_warning": "🌊 疯狗浪 — 乖离率达历史极端值且量能放大。派对接近尾声，切勿加杠杆追高。",
+      "deep_value": "🔵 深度价值",
+      "oversold": "🟣 超卖",
+      "caution_high": "🟡 偏高警示",
+      "weakening": "🟤 转弱"
     },
     "moat": {
       "metric_label": "最新毛利率 (Gross Margin)",
