@@ -15,6 +15,9 @@ Your Goal: Build a Dockerized, API-first investment analysis system for discipli
 3.  **Gray-Scale Thinking (Thesis & Versioning):**
     -   Investment is not binary. Users update their "Thesis" over time.
     -   We must track the *evolution* of the user's view (Thesis Versioning) to avoid hindsight bias.
+4.  **8-State Signal Taxonomy (Decision Engine):**
+    -   `determine_scan_signal()` in `backend/domain/analysis.py` produces one of 8 states (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`.
+    -   Market sentiment (Layer 1) is context only — it does NOT gate signal logic. Volume ratio is a notification-layer confidence qualifier, not a signal state.
 
 # Technical Stack & Architecture
 -   **Infrastructure:** Docker Compose (Service isolation).

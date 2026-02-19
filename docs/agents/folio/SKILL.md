@@ -287,7 +287,7 @@ The following endpoints now include daily change fields calculated from yfinance
 
 - Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful")
 - Use `summary` first to get an overview before drilling into individual stocks
-- Use `signals` to check if a stock is oversold (RSI < 30) or overheated (Bias > 20%)
+- Use `signals` to check a stock's technical indicators; interpret the scan signal using the **Signal Taxonomy** section below
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
 - Use `scan` to trigger a full portfolio analysis with Telegram notifications
 - Use `rebalance` to check if portfolio allocation drifts from target. The response includes an `xray` array showing true exposure per stock (direct + indirect via ETFs)
@@ -308,6 +308,39 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `GET /resonance` to check which gurus hold the same stocks as the user — response is guru-centric; invert on client side to get per-ticker guru list
 - Use `POST /gurus/{guru_id}/sync` to fetch the latest 13F data from SEC EDGAR for a specific guru — status `"synced"` means new data was fetched, `"skipped"` means already up to date
 - During 13F filing seasons (February, May, August, November), the cron service automatically calls `POST /gurus/sync` daily; off-season it runs weekly
+
+## Signal Taxonomy
+
+Folio uses an 8-state scan signal cascade. Each stock's `last_scan_signal` (from `/stocks`, `/summary`, weekly digest) maps to one of these states. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
+
+| Priority | Signal | Icon | Condition | Meaning |
+|----------|--------|------|-----------|---------|
+| P1 | `THESIS_BROKEN` | 🔴 | Gross margin YoY deteriorated >2pp | Fundamental thesis is broken — re-evaluate holding |
+| P2 | `DEEP_VALUE` | 🔵 | Bias < −20% AND RSI < 35 | Both indicators confirm deep discount — highest-conviction entry opportunity |
+| P3 | `OVERSOLD` | 🟣 | Bias < −20% (RSI ≥ 35) | Price at extreme discount (bias-only); watch for RSI confirmation before acting |
+| P4 | `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold but price not overheated — potential contrarian entry |
+| P5 | `OVERHEATED` | 🟠 | Bias > 20% AND RSI > 70 | Both indicators confirm overheating — highest-conviction sell warning |
+| P6 | `CAUTION_HIGH` | 🟡 | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions, tighten stops |
+| P7 | `WEAKENING` | 🟤 | Bias < −15% AND RSI < 38 | Early weakness — monitor closely, not yet at extreme levels |
+| P8 | `NORMAL` | ⚪ | Everything else | No notable technical signal |
+
+### Volume Confidence Qualifiers
+
+When `volume_ratio` is extreme, Telegram notifications append a suffix to the signal alert:
+
+| Qualifier | Condition | Meaning |
+|-----------|-----------|---------|
+| 📈 volume surge | `volume_ratio ≥ 1.5` | Confirms conviction — capitulation selling (for buy signals) or blow-off top (for sell signals) |
+| 📉 thin volume | `volume_ratio ≤ 0.5` | Weakens conviction — price moves on low volume are less reliable |
+
+> **Note:** Volume qualifiers appear in Telegram notifications only. They do NOT change the signal enum value. `THESIS_BROKEN` never receives a volume qualifier (fundamental signal, volume irrelevant).
+
+### None Handling
+
+When technical data is unavailable (e.g., Cash category stocks skip yfinance signals):
+- RSI = None: P2, P4, P6 (RSI part), P7 conditions are skipped
+- Bias = None: P2, P3, P5, P6 (bias part), P7 conditions are skipped
+- Both None: only `THESIS_BROKEN` (P1) or `NORMAL` (P8) are reachable
 
 ## Service Operations
 
