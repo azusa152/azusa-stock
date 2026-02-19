@@ -261,14 +261,56 @@ with st.container(border=True):
 
 
 # ---------------------------------------------------------------------------
-# Section 2: Allocation at a Glance
+# Section 2: Signal Alerts (Action Required — before Allocation)
+# ---------------------------------------------------------------------------
+st.divider()
+st.subheader(t("dashboard.signal_alerts_title"))
+
+with st.container(border=True):
+    if stocks_data:
+        alert_stocks = [
+            s for s in stocks_data
+            if s.get("is_active", True) and s.get("last_scan_signal", "NORMAL") != "NORMAL"
+        ]
+        if alert_stocks:
+            for s in alert_stocks:
+                signal = s.get("last_scan_signal", "NORMAL")
+                icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
+                cat_label = get_category_labels().get(s.get("category", ""), s.get("category", ""))
+                cat_short = cat_label.split("(")[0].strip()
+                _a_icon, _a_ticker, _a_cat, _a_signal = st.columns([0.5, 2, 2, 2])
+                with _a_icon:
+                    st.markdown(icon)
+                with _a_ticker:
+                    st.markdown(f"**{s['ticker']}**")
+                with _a_cat:
+                    st.markdown(cat_short)
+                with _a_signal:
+                    st.markdown(f"`{signal}`")
+
+            # Rebalance advice inline — only shown alongside actionable alerts
+            advice = rebalance_data.get("advice", []) if rebalance_data else []
+            if advice:
+                st.caption(t("dashboard.rebalance_advice_title"))
+                for item in advice[:5]:
+                    st.caption(f"• {item}")
+        else:
+            st.success(t("dashboard.all_signals_normal"))
+    else:
+        st.info(t("dashboard.no_tracking_stocks"))
+        _sig_a, _ = st.columns([1, 3])
+        with _sig_a:
+            if st.button(t("dashboard.button_goto_radar"), use_container_width=True):
+                st.switch_page("views/radar.py")
+
+
+# ---------------------------------------------------------------------------
+# Section 3: Allocation at a Glance
 # ---------------------------------------------------------------------------
 st.divider()
 
 if rebalance_data and profile_data and rebalance_data.get("categories"):
     breakdown = rebalance_data["categories"]
-
-    # -- 2a. Dual Donut Chart: Target vs Actual (side by side) --
     st.subheader(t("dashboard.allocation_title"))
 
     target_alloc = profile_data.get("config", {})
@@ -286,62 +328,9 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
         actual_vals.append(cat_info.get("current_pct", 0))
         colors.append(CATEGORY_COLOR_MAP.get(cat_key, CATEGORY_COLOR_FALLBACK))
 
-    fig_alloc = make_subplots(
-        rows=1,
-        cols=2,
-        specs=[[{"type": "pie"}, {"type": "pie"}]],
-        subplot_titles=[t("dashboard.chart.target"), t("dashboard.chart.actual")],
-    )
-
-    # Left donut — Target allocation
-    fig_alloc.add_trace(
-        go.Pie(
-            labels=cat_labels,
-            values=target_vals,
-            hole=0.4,
-            marker=dict(colors=colors),
-            textinfo="label+percent",
-            textposition="auto",
-            hovertemplate=(
-                f"<b>%{{label}}</b><br>"
-                f"{t('dashboard.chart.target_pct')}：%{{percent}}<extra></extra>"
-            ),
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Right donut — Actual allocation
-    fig_alloc.add_trace(
-        go.Pie(
-            labels=cat_labels,
-            values=actual_vals,
-            hole=0.4,
-            marker=dict(colors=colors),
-            textinfo="label+percent",
-            textposition="auto",
-            hovertemplate=(
-                f"<b>%{{label}}</b><br>"
-                f"{t('dashboard.chart.actual_pct')}：%{{percent}}<extra></extra>"
-            ),
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig_alloc.update_layout(
-        height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
-        margin=dict(l=20, r=20, t=40, b=20),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
-
-    # -- 2b. Drift Bar Chart --
-    st.subheader(t("dashboard.drift_title"))
     drift_labels = []
     drift_vals = []
     drift_colors = []
-
     for cat_key in target_alloc:
         cat_info = breakdown.get(cat_key, {})
         drift = cat_info.get("drift_pct", 0)
@@ -350,31 +339,75 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
         drift_vals.append(drift)
         drift_colors.append("red" if abs(drift) > 5 else "gray")
 
-    fig_drift = go.Figure(
-        go.Bar(
-            x=drift_labels,
-            y=drift_vals,
-            marker_color=drift_colors,
-            text=[f"{d:+.1f}%" for d in drift_vals],
-            textposition="outside",
-        )
-    )
-    fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="+5%")
-    fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="-5%")
-    fig_drift.update_layout(
-        height=DASHBOARD_DRIFT_CHART_HEIGHT,
-        margin=dict(l=20, r=20, t=30, b=20),
-        yaxis_title=t("dashboard.chart.drift_yaxis"),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
+    with st.container(border=True):
+        _alloc_col, _drift_col = st.columns([1, 1])
 
-    # Rebalance advice summary
-    advice = rebalance_data.get("advice", [])
-    if advice:
-        with st.expander(t("dashboard.rebalance_advice_title"), expanded=False):
-            for item in advice[:5]:
-                st.write(item)
+        with _alloc_col:
+            # -- Dual Donut: Target vs Actual --
+            fig_alloc = make_subplots(
+                rows=1,
+                cols=2,
+                specs=[[{"type": "pie"}, {"type": "pie"}]],
+                subplot_titles=[t("dashboard.chart.target"), t("dashboard.chart.actual")],
+            )
+            fig_alloc.add_trace(
+                go.Pie(
+                    labels=cat_labels,
+                    values=target_vals,
+                    hole=0.4,
+                    marker=dict(colors=colors),
+                    textinfo="percent",
+                    hovertemplate=(
+                        f"<b>%{{label}}</b><br>"
+                        f"{t('dashboard.chart.target_pct')}：%{{percent}}<extra></extra>"
+                    ),
+                ),
+                row=1,
+                col=1,
+            )
+            fig_alloc.add_trace(
+                go.Pie(
+                    labels=cat_labels,
+                    values=actual_vals,
+                    hole=0.4,
+                    marker=dict(colors=colors),
+                    textinfo="percent",
+                    hovertemplate=(
+                        f"<b>%{{label}}</b><br>"
+                        f"{t('dashboard.chart.actual_pct')}：%{{percent}}<extra></extra>"
+                    ),
+                ),
+                row=1,
+                col=2,
+            )
+            fig_alloc.update_layout(
+                height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
+                margin=dict(l=20, r=20, t=40, b=20),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
+
+        with _drift_col:
+            # -- Drift Bar Chart --
+            fig_drift = go.Figure(
+                go.Bar(
+                    x=drift_labels,
+                    y=drift_vals,
+                    marker_color=drift_colors,
+                    text=[f"{d:+.1f}%" for d in drift_vals],
+                    textposition="outside",
+                )
+            )
+            fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="+5%")
+            fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="-5%")
+            fig_drift.update_layout(
+                title={"text": t("dashboard.drift_title"), "font": {"size": 14}, "x": 0.5, "xanchor": "center"},
+                height=DASHBOARD_DRIFT_CHART_HEIGHT,
+                margin=dict(l=20, r=20, t=40, b=20),
+                yaxis_title=t("dashboard.chart.drift_yaxis"),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
 else:
     st.info(t("dashboard.no_allocation_data"))
     col_a, col_b, _ = st.columns([1, 1, 2])
@@ -383,34 +416,6 @@ else:
             st.switch_page("views/allocation.py")
     with col_b:
         if st.button(t("dashboard.button_track_stock"), use_container_width=True):
-            st.switch_page("views/radar.py")
-
-
-# ---------------------------------------------------------------------------
-# Section 3: Signal Alerts
-# ---------------------------------------------------------------------------
-st.divider()
-st.subheader(t("dashboard.signal_alerts_title"))
-
-if stocks_data:
-    alert_stocks = [
-        s for s in stocks_data
-        if s.get("is_active", True) and s.get("last_scan_signal", "NORMAL") != "NORMAL"
-    ]
-    if alert_stocks:
-        for s in alert_stocks:
-            signal = s.get("last_scan_signal", "NORMAL")
-            icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
-            cat_label = get_category_labels().get(s.get("category", ""), s.get("category", ""))
-            cat_short = cat_label.split("(")[0].strip()
-            st.markdown(f"{icon} **{s['ticker']}** — {cat_short} — `{signal}`")
-    else:
-        st.success(t("dashboard.all_signals_normal"))
-else:
-    st.info(t("dashboard.no_tracking_stocks"))
-    _sig_a, _ = st.columns([1, 3])
-    with _sig_a:
-        if st.button(t("dashboard.button_goto_radar"), use_container_width=True):
             st.switch_page("views/radar.py")
 
 

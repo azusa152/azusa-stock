@@ -364,8 +364,8 @@ def get_cnn_unavailable_msg() -> str:
     return t("config.cnn_unavailable")
 
 
-DASHBOARD_DRIFT_CHART_HEIGHT = 250
-DASHBOARD_ALLOCATION_CHART_HEIGHT = 300
+DASHBOARD_DRIFT_CHART_HEIGHT = 260
+DASHBOARD_ALLOCATION_CHART_HEIGHT = 260
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
