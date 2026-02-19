@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 from config import (
+    BUY_OPPORTUNITY_SIGNALS,
     CATEGORY_COLOR_FALLBACK,
     CATEGORY_COLOR_MAP,
     CATEGORY_ICON_SHORT,
@@ -21,6 +22,7 @@ from config import (
     HEALTH_SCORE_WARN_THRESHOLD,
     HOLDING_ACTION_ICONS,
     PRIVACY_MASK,
+    RISK_WARNING_SIGNALS,
     SCAN_SIGNAL_ICONS,
     get_cnn_unavailable_msg,
     get_fear_greed_label,
@@ -266,16 +268,22 @@ st.subheader(t("dashboard.signal_alerts_title"))
 
 with st.container(border=True):
     if stocks_data:
-        alert_stocks = [
-            s for s in stocks_data
-            if s.get("is_active", True) and s.get("last_scan_signal", "NORMAL") != "NORMAL"
+        _active_stocks = [s for s in stocks_data if s.get("is_active", True)]
+        buy_stocks = [
+            s for s in _active_stocks
+            if s.get("last_scan_signal", "NORMAL") in BUY_OPPORTUNITY_SIGNALS
         ]
-        if alert_stocks:
-            for s in alert_stocks:
+        risk_stocks = [
+            s for s in _active_stocks
+            if s.get("last_scan_signal", "NORMAL") in RISK_WARNING_SIGNALS
+        ]
+
+        def _render_signal_rows(stock_list: list) -> None:
+            cat_labels_map = get_category_labels()
+            for s in stock_list:
                 signal = s.get("last_scan_signal", "NORMAL")
                 icon = SCAN_SIGNAL_ICONS.get(signal, "⚪")
-                cat_label = get_category_labels().get(s.get("category", ""), s.get("category", ""))
-                cat_short = cat_label.split("(")[0].strip()
+                cat_short = cat_labels_map.get(s.get("category", ""), s.get("category", "")).split("(")[0].strip()
                 _a_icon, _a_ticker, _a_cat, _a_signal = st.columns([0.5, 2, 2, 2])
                 with _a_icon:
                     st.markdown(icon)
@@ -286,12 +294,24 @@ with st.container(border=True):
                 with _a_signal:
                     st.markdown(f"`{signal}`")
 
-            # Rebalance advice inline — only shown alongside actionable alerts
-            advice = rebalance_data.get("advice", []) if rebalance_data else []
-            if advice:
-                st.caption(t("dashboard.rebalance_advice_title"))
-                for item in advice[:5]:
-                    st.caption(f"• {item}")
+        if buy_stocks or risk_stocks:
+            if buy_stocks:
+                st.caption(t("dashboard.signal_buy_title"))
+                _render_signal_rows(buy_stocks)
+
+            if risk_stocks:
+                if buy_stocks:
+                    st.divider()
+                st.caption(t("dashboard.signal_risk_title"))
+                _render_signal_rows(risk_stocks)
+
+                # Rebalance advice inline — only shown alongside risk warnings
+                advice = rebalance_data.get("advice", []) if rebalance_data else []
+                if advice:
+                    st.divider()
+                    st.caption(t("dashboard.rebalance_advice_title"))
+                    for item in advice[:5]:
+                        st.caption(f"• {item}")
         else:
             st.success(t("dashboard.all_signals_normal"))
     else:

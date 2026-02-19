@@ -295,6 +295,9 @@ SCAN_SIGNAL_LABELS = {
     "WEAKENING": "Weakening",
     "NORMAL": "",
 }
+# Signal grouping by action intent (derived from determine_scan_signal() priority table)
+BUY_OPPORTUNITY_SIGNALS: frozenset[str] = frozenset({"DEEP_VALUE", "OVERSOLD", "CONTRARIAN_BUY"})
+RISK_WARNING_SIGNALS: frozenset[str] = frozenset({"THESIS_BROKEN", "OVERHEATED", "CAUTION_HIGH", "WEAKENING"})
 REORDER_MIN_STOCKS = 2
 PRIVACY_MASK = "***"
 
