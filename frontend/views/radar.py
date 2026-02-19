@@ -41,11 +41,26 @@ from utils import (
 
 
 # ---------------------------------------------------------------------------
+# Session State Flag Handling (must run before any rendering)
+# ---------------------------------------------------------------------------
+
+if st.session_state.pop("stock_added", False):
+    invalidate_stock_caches()
+    refresh_ui()
+
+
+# ---------------------------------------------------------------------------
 # Page Header
 # ---------------------------------------------------------------------------
 
-st.title(t("radar.title"))
-st.caption(t("radar.caption"))
+_title_col, _refresh_col = st.columns([6, 1])
+with _title_col:
+    st.title(t("radar.title"))
+    st.caption(t("radar.caption"))
+with _refresh_col:
+    if st.button(t("common.refresh"), use_container_width=True):
+        invalidate_all_caches()
+        refresh_ui()
 
 with st.expander(t("radar.sop.title"), expanded=False):
     st.markdown(t("radar.sop.content"))
@@ -131,8 +146,7 @@ with st.sidebar:
                     )
                     if result:
                         st.success(t("radar.form.success_added", ticker=full_ticker))
-                        invalidate_stock_caches()
-                        refresh_ui()
+                        st.session_state["stock_added"] = True
 
     else:  # Bond mode
         with st.form("add_bond_form", clear_on_submit=True):
@@ -173,8 +187,7 @@ with st.sidebar:
                         st.success(
                             t("radar.form.success_added", ticker=bond_ticker.strip().upper())
                         )
-                        invalidate_stock_caches()
-                        refresh_ui()
+                        st.session_state["stock_added"] = True
 
     st.divider()
 
@@ -240,13 +253,6 @@ with st.sidebar:
         mime="application/json",
         use_container_width=True,
     )
-
-    st.divider()
-
-    # -- Refresh --
-    if st.button(t("radar.refresh_button"), use_container_width=True):
-        invalidate_all_caches()
-        refresh_ui()
 
 
 # ---------------------------------------------------------------------------
