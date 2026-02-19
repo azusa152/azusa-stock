@@ -49,7 +49,7 @@ curl -s -X POST http://localhost:8000/webhook \
 
 ### Primary (use these first)
 
-- **`GET /summary`** — Plain-text portfolio health overview. Start here.
+- **`GET /summary`** — Rich plain-text portfolio overview. Start here. Includes: total value + daily change %, category groups, active signals, top 3 movers, allocation drift warnings, Smart Money highlights.
 - **`POST /webhook`** — Single structured entry point for all actions. Accepts `{"action": "...", "ticker": "...", "params": {}}`.
 
 ### Webhook Actions
@@ -89,6 +89,9 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/ticker/{ticker}/dividend` | Dividend info |
 | `POST` | `/scan` | Trigger scan |
 | `POST` | `/digest` | Trigger weekly digest |
+| `GET` | `/snapshots` | Historical portfolio snapshots — `?days=30` (1–730) or `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
+| `GET` | `/snapshots/twr` | Time-weighted return — `?start=&end=` (defaults to YTD); `twr_pct` is null when < 2 snapshots |
+| `POST` | `/snapshots/take` | Trigger today's portfolio snapshot (background, upsert) |
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
@@ -185,7 +188,7 @@ When code changes have been pushed to the repository, follow this workflow to ap
 - When a `signals` response has `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
 - When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
-- When asked about portfolio status, call `/summary` first
+- When asked about portfolio status, call `/summary` first — it returns total value + daily change, category groups, active signals, top movers, drift warnings, and Smart Money highlights in one plain-text response
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the `last_scan_signal` value using the **Signal Reference** section below
 - When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance` to get the full overlap matrix
 - Use `PATCH /alerts/{alert_id}/toggle` to pause or resume a price alert without deleting it — useful for silencing alerts during earnings season or known volatile periods
