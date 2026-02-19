@@ -1449,7 +1449,10 @@ def render_stock_card(
         signals = fetch_signals(ticker) or {}
 
     # Build expander header with signal icon, ticker, category, price, daily change, and market
-    last_signal = stock.get("last_scan_signal", "NORMAL")
+    if enrichment and enrichment.get("computed_signal"):
+        last_signal = enrichment["computed_signal"]
+    else:
+        last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
     cat_label_short = get_category_labels().get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")

@@ -204,7 +204,12 @@ def run_scan(session: Session) -> dict:
             )
         elif signal == ScanSignal.OVERHEATED:
             alerts.append(
-                t("scan.overheated_alert", lang=lang, ticker=ticker, bias=round(bias, 1))
+                t(
+                    "scan.overheated_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    bias=round(bias, 1),
+                )
             )
         elif signal == ScanSignal.CAUTION_HIGH:
             alerts.append(
@@ -229,9 +234,14 @@ def run_scan(session: Session) -> dict:
 
         # Volume confidence qualifier: append to the last signal alert (if any).
         # Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal, volume irrelevant).
-        if alerts and volume_ratio is not None and signal not in (
-            ScanSignal.NORMAL,
-            ScanSignal.THESIS_BROKEN,
+        if (
+            alerts
+            and volume_ratio is not None
+            and signal
+            not in (
+                ScanSignal.NORMAL,
+                ScanSignal.THESIS_BROKEN,
+            )
         ):
             if volume_ratio >= VOLUME_SURGE_THRESHOLD:
                 alerts[-1] += " " + t("scan.volume_surge", lang=lang)

@@ -371,7 +371,7 @@ ROGUE_WAVE_MIN_HISTORY_DAYS = 200
 ROGUE_WAVE_BIAS_PERCENTILE = 95  # 95th percentile = extreme overheating
 ROGUE_WAVE_VOLUME_RATIO_THRESHOLD = 1.5  # 50% above normal volume
 VOLUME_SURGE_THRESHOLD = 1.5  # volume confidence qualifier: surge
-VOLUME_THIN_THRESHOLD = 0.5   # volume confidence qualifier: thin volume
+VOLUME_THIN_THRESHOLD = 0.5  # volume confidence qualifier: thin volume
 
 ROGUE_WAVE_CACHE_MAXSIZE = 200
 ROGUE_WAVE_CACHE_TTL = 86400  # L1: 24 hours

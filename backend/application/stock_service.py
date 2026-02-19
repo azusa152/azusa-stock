@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from domain.analysis import determine_scan_signal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     ENRICHED_PER_TICKER_TIMEOUT,
@@ -579,6 +580,7 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             "signals": None,
             "earnings": None,
             "dividend": None,
+            "computed_signal": None,
         }
 
     def _fetch_enrichment(
@@ -617,7 +619,7 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             for stock in stocks
         }
         for future in as_completed(futures):
-            t = futures[future]
+            tk = futures[future]
             try:
                 ticker, signals, earnings, dividend = future.result(
                     timeout=ENRICHED_PER_TICKER_TIMEOUT
@@ -626,14 +628,27 @@ def get_enriched_stocks(session: Session) -> list[dict]:
                     enriched[ticker]["signals"] = signals
                     enriched[ticker]["earnings"] = earnings
                     enriched[ticker]["dividend"] = dividend
+                    # Compute real-time signal from live RSI/bias (skip moat — too expensive here)
+                    persisted_signal = enriched[ticker].get(
+                        "last_scan_signal", "NORMAL"
+                    )
+                    if persisted_signal != "THESIS_BROKEN":
+                        rsi = (signals or {}).get("rsi")
+                        bias = (signals or {}).get("bias")
+                        computed = determine_scan_signal(
+                            moat="NOT_AVAILABLE", rsi=rsi, bias=bias
+                        )
+                        enriched[ticker]["computed_signal"] = computed.value
+                    else:
+                        enriched[ticker]["computed_signal"] = "THESIS_BROKEN"
             except TimeoutError:
                 logger.warning(
                     "批次取得 %s 豐富資料超時（%ds），跳過。",
-                    t,
+                    tk,
                     ENRICHED_PER_TICKER_TIMEOUT,
                 )
             except Exception as exc:
-                logger.error("批次取得 %s 豐富資料失敗：%s", t, exc, exc_info=True)
+                logger.error("批次取得 %s 豐富資料失敗：%s", tk, exc, exc_info=True)
 
     logger.info("批次豐富資料取得完成。")
     return list(enriched.values())
