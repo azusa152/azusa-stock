@@ -456,24 +456,90 @@ _SETUP_MSG = t("allocation.setup_required")
 
 
 # ---------------------------------------------------------------------------
-# Main Content: Top-level tabs
+# Main Content: 4 narrative-driven tabs (P4)
+# Portfolio | Risk | Actions | Settings
 # ---------------------------------------------------------------------------
 
-tab_setup, tab_rebal, tab_fx, tab_withdraw, tab_stress, tab_telegram = st.tabs([
-    t("allocation.tab.setup"),
-    t("allocation.tab.rebalance"),
-    t("allocation.tab.fx"),
-    t("allocation.tab.withdraw"),
-    t("allocation.tab.stress"),
-    t("allocation.tab.telegram"),
+tab_portfolio, tab_risk, tab_actions, tab_settings = st.tabs([
+    t("allocation.tab.portfolio"),
+    t("allocation.tab.risk"),
+    t("allocation.tab.actions"),
+    t("allocation.tab.settings"),
 ])
 
 
 # ===========================================================================
-# Tab 1: Setup — Target Allocation + Holdings + Display Currency
+# Tab 1: Portfolio — Display Currency + Rebalance Analysis
+# (Health Score, Pies/Treemap, Drift with $, Holdings, X-Ray, Sector)
 # ===========================================================================
 
-with tab_setup:
+with tab_portfolio:
+    if _setup_done:
+        try:
+            # Display currency selector lives here so it's visible alongside analysis
+            _ctrl_cols = st.columns([3, 1])
+            with _ctrl_cols[0]:
+                display_cur = st.selectbox(
+                    t("allocation.display_currency"),
+                    options=DISPLAY_CURRENCY_OPTIONS,
+                    index=DISPLAY_CURRENCY_OPTIONS.index("USD"),
+                    key="display_currency",
+                )
+            with _ctrl_cols[1]:
+                st.write("")  # vertical spacer
+                if st.button(
+                    t("allocation.refresh_button"),
+                    type="secondary",
+                    key="btn_refresh_analysis",
+                ):
+                    fetch_rebalance.clear()
+                    fetch_stress_test.clear()
+                    fetch_currency_exposure.clear()
+                    st.rerun()
+        except Exception as e:
+            st.error(t("allocation.error_setup", error=e))
+            display_cur = "USD"
+
+        render_rebalance(_profile, _holdings, st.session_state.get("display_currency", "USD"))
+    else:
+        st.info(_SETUP_MSG)
+
+# Resolved for Risk / Actions tabs (display currency selectbox already rendered above)
+_display_cur = st.session_state.get("display_currency", "USD")
+
+
+# ===========================================================================
+# Tab 2: Risk — FX Exposure + Stress Test
+# ===========================================================================
+
+with tab_risk:
+    if _setup_done:
+        st.subheader(t("allocation.tab.fx"))
+        render_currency_exposure(_profile, _holdings, _display_cur)
+
+        st.divider()
+        st.subheader(t("allocation.tab.stress"))
+        render_stress_test(display_currency=_display_cur)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 3: Actions — Smart Withdrawal
+# ===========================================================================
+
+with tab_actions:
+    if _setup_done:
+        render_withdrawal(_profile, _holdings)
+    else:
+        st.info(_SETUP_MSG)
+
+
+# ===========================================================================
+# Tab 4: Settings — Target Allocation + Holdings + Telegram
+# ===========================================================================
+
+with tab_settings:
     try:
         # Step 1 — collapsible when profile exists
         with st.expander(
@@ -486,85 +552,10 @@ with tab_setup:
         st.subheader(t("allocation.step2_title"))
         render_holdings(_holdings)
 
-        st.divider()
-
-        # Shared display currency selector + refresh button
-        _ctrl_cols = st.columns([3, 1])
-        with _ctrl_cols[0]:
-            display_cur = st.selectbox(
-                t("allocation.display_currency"),
-                options=DISPLAY_CURRENCY_OPTIONS,
-                index=DISPLAY_CURRENCY_OPTIONS.index("USD"),
-                key="display_currency",
-            )
-        with _ctrl_cols[1]:
-            st.write("")  # vertical spacer
-            if st.button(
-                t("allocation.refresh_button"),
-                type="secondary",
-                key="btn_refresh_analysis",
-            ):
-                fetch_rebalance.clear()
-                fetch_stress_test.clear()
-                fetch_currency_exposure.clear()
-                st.rerun()
-
     except Exception as e:
         st.error(t("allocation.error_setup", error=e))
 
-# Resolved once after Setup tab (selectbox has already populated session state)
-_display_cur = st.session_state.get("display_currency", "USD")
-
-
-# ===========================================================================
-# Tab 2: Rebalance Analysis
-# ===========================================================================
-
-with tab_rebal:
-    if _setup_done:
-        render_rebalance(_profile, _holdings, _display_cur)
-    else:
-        st.info(_SETUP_MSG)
-
-
-# ===========================================================================
-# Tab 3: Currency Exposure
-# ===========================================================================
-
-with tab_fx:
-    if _setup_done:
-        render_currency_exposure(_profile, _holdings, _display_cur)
-    else:
-        st.info(_SETUP_MSG)
-
-
-# ===========================================================================
-# Tab 4: Smart Withdrawal
-# ===========================================================================
-
-with tab_withdraw:
-    if _setup_done:
-        render_withdrawal(_profile, _holdings)
-    else:
-        st.info(_SETUP_MSG)
-
-
-# ===========================================================================
-# Tab 5: Stress Test
-# ===========================================================================
-
-with tab_stress:
-    if _setup_done:
-        render_stress_test(display_currency=_display_cur)
-    else:
-        st.info(_SETUP_MSG)
-
-
-# ===========================================================================
-# Tab 6: Telegram Settings
-# ===========================================================================
-
-with tab_telegram:
+    st.divider()
     st.subheader(t("allocation.telegram.title"))
     st.caption(t("allocation.telegram.caption"))
 

@@ -18,6 +18,7 @@ from infrastructure.database import engine
 from infrastructure.repositories import find_all_active_gurus
 from infrastructure.market_data import (
     get_fear_greed_index,
+    get_ticker_sector,
     prewarm_beta_batch,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
@@ -88,6 +89,11 @@ def prewarm_all_caches() -> None:
 
     # Phase 6: Smart Money 歷史 13F 回填（非阻塞、冪等）
     _prewarm_phase("guru_backfill", _backfill_all_gurus)
+
+    # Phase 7: 行業板塊（sector）— 供 rebalance 端點快取讀取使用
+    # 使用 moat 名單（排除 Bond/Cash）填充磁碟快取，讓首次 rebalance 呼叫可命中快取。
+    if tickers["moat"]:
+        _prewarm_phase("sector", lambda: _prewarm_sectors(tickers["moat"]))
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
@@ -197,6 +203,27 @@ def _backfill_all_gurus() -> None:
                 guru.id,
                 exc,
             )
+
+
+def _prewarm_sectors(tickers: list[str]) -> None:
+    """對股票類持倉逐一呼叫 get_ticker_sector()，填充磁碟快取。
+
+    在背景執行緒中順序處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
+    """
+    total = len(tickers)
+    ok = 0
+    for i, ticker in enumerate(tickers, 1):
+        try:
+            sector = get_ticker_sector(ticker)
+            ok += 1
+            logger.debug(
+                "快取預熱 [sector] (%d/%d) %s → %s", i, total, ticker, sector or "N/A"
+            )
+        except Exception as exc:
+            logger.warning(
+                "快取預熱 [sector] (%d/%d) %s 失敗：%s", i, total, ticker, exc
+            )
+    logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok, total)
 
 
 def _prewarm_phase(name: str, fn) -> None:

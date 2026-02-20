@@ -252,6 +252,7 @@ class TestCollectTickers:
 class TestPrewarmAllCaches:
     """Tests for the orchestration function."""
 
+    @patch("application.prewarm_service.get_ticker_sector")
     @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
@@ -264,6 +265,7 @@ class TestPrewarmAllCaches:
         mock_moat,
         mock_etf,
         mock_beta,
+        mock_sector,
         db_session: Session,
     ):
         # Arrange
@@ -290,6 +292,7 @@ class TestPrewarmAllCaches:
         mock_moat.return_value = {}
         mock_etf.return_value = {}
         mock_beta.return_value = {}
+        mock_sector.return_value = "Technology"
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -301,6 +304,11 @@ class TestPrewarmAllCaches:
         mock_moat.assert_called_once()
         mock_etf.assert_called_once()
         mock_beta.assert_called_once()
+
+        # Phase 7: sector prewarm called for moat tickers (NVDA + VTI)
+        sector_tickers = sorted(c.args[0] for c in mock_sector.call_args_list)
+        assert "NVDA" in sector_tickers
+        assert "VTI" in sector_tickers
 
         # Verify correct tickers passed
         signals_tickers = sorted(mock_signals.call_args[0][0])
@@ -318,6 +326,7 @@ class TestPrewarmAllCaches:
         assert "NVDA" in beta_tickers
         assert "VTI" in beta_tickers
 
+    @patch("application.prewarm_service.get_ticker_sector")
     @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
@@ -330,6 +339,7 @@ class TestPrewarmAllCaches:
         mock_moat,
         mock_etf,
         mock_beta,
+        mock_sector,
         db_session: Session,
     ):
         # Act — empty DB
@@ -342,7 +352,9 @@ class TestPrewarmAllCaches:
         mock_moat.assert_not_called()
         mock_etf.assert_not_called()
         mock_beta.assert_not_called()
+        mock_sector.assert_not_called()
 
+    @patch("application.prewarm_service.get_ticker_sector")
     @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
@@ -355,6 +367,7 @@ class TestPrewarmAllCaches:
         mock_moat,
         mock_etf,
         mock_beta,
+        mock_sector,
         db_session: Session,
     ):
         # Arrange
@@ -372,6 +385,7 @@ class TestPrewarmAllCaches:
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_beta.return_value = {}
+        mock_sector.return_value = "Technology"
 
         # Act — should NOT raise
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -382,7 +396,9 @@ class TestPrewarmAllCaches:
         mock_fg.assert_called_once()
         mock_moat.assert_called_once()
         mock_beta.assert_called_once()
+        mock_sector.assert_called_once()  # sector prewarm still runs
 
+    @patch("application.prewarm_service.get_ticker_sector")
     @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
@@ -395,6 +411,7 @@ class TestPrewarmAllCaches:
         mock_moat,
         mock_etf,
         mock_beta,
+        mock_sector,
         db_session: Session,
     ):
         # Arrange — no ETFs
@@ -412,6 +429,7 @@ class TestPrewarmAllCaches:
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_beta.return_value = {}
+        mock_sector.return_value = "Technology"
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -421,6 +439,7 @@ class TestPrewarmAllCaches:
         mock_etf.assert_not_called()
         mock_beta.assert_called_once()
 
+    @patch("application.prewarm_service.get_ticker_sector")
     @patch("application.prewarm_service.prewarm_beta_batch")
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
@@ -433,6 +452,7 @@ class TestPrewarmAllCaches:
         mock_moat,
         mock_etf,
         mock_beta,
+        mock_sector,
         db_session: Session,
     ):
         # Arrange
@@ -456,6 +476,7 @@ class TestPrewarmAllCaches:
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_beta.return_value = {}
+        mock_sector.return_value = "Technology"
 
         # Act
         with patch("application.prewarm_service.engine", db_session.get_bind()):
@@ -472,3 +493,8 @@ class TestPrewarmAllCaches:
         assert "NVDA" in signals_tickers
         assert "NVDA" in moat_tickers
         assert "NVDA" in beta_tickers
+
+        # Sector prewarm uses moat tickers (excludes Cash)
+        sector_tickers = [c.args[0] for c in mock_sector.call_args_list]
+        assert "USD" not in sector_tickers
+        assert "NVDA" in sector_tickers

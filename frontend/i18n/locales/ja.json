@@ -152,7 +152,7 @@
     },
     "ytd_return": "年初来リターン",
     "ytd_dividend": "年初来配当",
-    "ytd_dividend_estimated": "（利回りより推計）",
+    "ytd_dividend_actual": "（年初来の実際の配当に基づく）",
     "no_holdings": "保有銘柄データがありません。",
     "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。",
     "resonance": {
@@ -216,6 +216,9 @@
       "button": "🚀 スキャン実行",
       "success": "✅ {message}",
       "default_success": "スキャンを開始しました",
+      "running": "📡 スキャン実行中... 結果はTelegramで通知されます。",
+      "running_description": "3層ファネル：市場センチメント → 経済的堀の検証 → テクニカルシグナル",
+      "already_running": "⚠️ スキャンが既に実行中です。完了するまでお待ちください。",
       "deep_value_alert": "🔵 **深度バリュー**：株価が極端に割安でRSIも売られすぎを確認。高確信度の買いエントリー機会。",
       "oversold_alert": "🟣 **売られすぎ**：乖離率が極端に低い（乖離率のみ確認、RSI未確認）。さらなる確認を待つ。",
       "caution_high_alert": "🟡 **警戒高**：単一指標が過熱（乖離率またはRSIが高い）。新規ポジション追加を控える。",
@@ -379,7 +382,11 @@
       "fx": "💱 為替リスク",
       "withdraw": "💰 スマート引出し",
       "stress": "🧪 ストレステスト",
-      "telegram": "📡 Telegram"
+      "telegram": "📡 Telegram",
+      "portfolio": "📊 ポートフォリオ",
+      "risk": "🛡️ リスク分析",
+      "actions": "💡 アクション",
+      "settings": "⚙️ 設定"
     },
     "step1_title": "🎯 Step 1 — 目標配分の設定",
     "step2_title": "💼 Step 2 — 保有銘柄管理",
@@ -661,7 +668,8 @@
         "market_value": "時価総額({currency})",
         "unrealized_pl": "未実現損益",
         "pl_pct": "損益%",
-        "weight": "比率"
+        "weight": "比率",
+        "daily_change": "日次変動"
       },
       "xray_title": "**🔬 透過保有 X-Ray（{currency}）：**",
       "xray_caption": "ETF成分銘柄を解析し、直接保有とETF間接リスクの実質比率を表示。",
@@ -682,7 +690,27 @@
           "sources": "間接ソース"
         }
       },
-      "xray_telegram_button": "📨 X-Ray警告をTelegramに送信"
+      "xray_telegram_button": "📨 X-Ray警告をTelegramに送信",
+      "health": {
+        "label": "ポートフォリオ健全度",
+        "healthy": "健全",
+        "caution": "要注意",
+        "alert": "要調整",
+        "score_suffix": "/ 100"
+      },
+      "view_toggle": "グラフタイプ",
+      "view_pies": "🥧 円グラフ",
+      "view_treemap": "🗺️ ツリーマップ",
+      "treemap_title": "カテゴリをクリックで展開。色 = 未実現損益 %",
+      "treemap_weight": "比率",
+      "treemap_pl": "損益",
+      "treemap_colorbar": "損益%",
+      "drift_action_buy": "買い",
+      "drift_action_sell": "売り",
+      "sector_title": "**🏭 業種別エクスポージャー（株式保有）：**",
+      "sector_chart_title": "業種別エクスポージャー（総ポートフォリオ比 %）",
+      "sector_xaxis": "比率 (%)",
+      "sector_no_data": "業種データなし（ETFまたは債券・現金のみの可能性）"
     },
     "currency": {
       "loading": "💱 為替リスク分析を読み込み中...",

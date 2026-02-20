@@ -152,7 +152,7 @@
     },
     "ytd_return": "YTD Return",
     "ytd_dividend": "YTD Dividends",
-    "ytd_dividend_estimated": "(estimated from yield)",
+    "ytd_dividend_actual": "(based on actual dividends paid YTD)",
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {
@@ -216,6 +216,9 @@
       "button": "🚀 Execute Scan",
       "success": "✅ {message}",
       "default_success": "Scan initiated",
+      "running": "📡 Scan in progress... Results will be pushed via Telegram.",
+      "running_description": "Three-layer funnel: Market Sentiment → Moat Validation → Technical Signals",
+      "already_running": "⚠️ A scan is already running. Please wait for it to complete.",
       "deep_value_alert": "🔵 **Deep Value**: Price at extreme low with RSI confirming oversold. High-conviction entry opportunity.",
       "oversold_alert": "🟣 **Oversold**: Bias at extreme low (bias-only, RSI not confirming). Watch for further confirmation.",
       "caution_high_alert": "🟡 **Caution High**: Single indicator overheating (high bias or RSI). Reduce new positions.",
@@ -379,7 +382,11 @@
       "fx": "💱 FX Exposure",
       "withdraw": "💰 Smart Withdrawal",
       "stress": "🧪 Stress Test",
-      "telegram": "📡 Telegram"
+      "telegram": "📡 Telegram",
+      "portfolio": "📊 Portfolio",
+      "risk": "🛡️ Risk",
+      "actions": "💡 Actions",
+      "settings": "⚙️ Settings"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
     "step2_title": "💼 Step 2 — Holdings Management",
@@ -661,7 +668,8 @@
         "market_value": "Value ({currency})",
         "unrealized_pl": "Unrealized P/L",
         "pl_pct": "P/L %",
-        "weight": "Weight"
+        "weight": "Weight",
+        "daily_change": "Daily Chg"
       },
       "xray_title": "**🔬 X-Ray Holdings ({currency}):**",
       "xray_caption": "Parse ETF holdings to reveal direct + indirect exposure.",
@@ -682,7 +690,27 @@
           "sources": "Sources"
         }
       },
-      "xray_telegram_button": "📨 Send X-Ray Alert to Telegram"
+      "xray_telegram_button": "📨 Send X-Ray Alert to Telegram",
+      "health": {
+        "label": "Portfolio Health",
+        "healthy": "Healthy",
+        "caution": "Needs Attention",
+        "alert": "Needs Rebalancing",
+        "score_suffix": "/ 100"
+      },
+      "view_toggle": "Chart Type",
+      "view_pies": "🥧 Pie Charts",
+      "view_treemap": "🗺️ Treemap",
+      "treemap_title": "Click a category to drill in. Color = Unrealized P/L %",
+      "treemap_weight": "Weight",
+      "treemap_pl": "P/L",
+      "treemap_colorbar": "P/L %",
+      "drift_action_buy": "Buy",
+      "drift_action_sell": "Sell",
+      "sector_title": "**🏭 Sector Exposure (Equity Holdings):**",
+      "sector_chart_title": "Sector Exposure (% of Total Portfolio)",
+      "sector_xaxis": "Weight (%)",
+      "sector_no_data": "No sector data available (may be all ETFs or bonds/cash)"
     },
     "currency": {
       "loading": "💱 Loading FX exposure...",

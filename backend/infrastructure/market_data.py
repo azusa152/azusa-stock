@@ -138,6 +138,13 @@ def _is_error_dict(result) -> bool:
     return isinstance(result, dict) and "error" in result
 
 
+def _is_dividend_error(result) -> bool:
+    """判斷股息 fetcher 結果是否為錯誤。
+    ytd_dividend_per_share 為 None 表示 yfinance 呼叫異常（非股息股的合法回應為 0.0）。
+    """
+    return isinstance(result, dict) and result.get("ytd_dividend_per_share") is None
+
+
 # ---------------------------------------------------------------------------
 # Rate Limiter：限制 yfinance (Yahoo Finance) 呼叫頻率，避免被封鎖
 # ---------------------------------------------------------------------------
@@ -261,8 +268,13 @@ def _cached_fetch(
     """
     cached = l1_cache.get(ticker)
     if cached is not None:
-        logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
-        return cached
+        # If L1 has an error entry but L2 may have recovered valid data, fall through.
+        if is_error is None or not is_error(cached):
+            logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
+            return cached
+        logger.debug(
+            "%s L1 為錯誤結果，繼續嘗試 L2（prefix=%s）。", ticker, disk_prefix
+        )
 
     disk_key = f"{disk_prefix}:{ticker}"
     disk_cached = _disk_get(disk_key)
@@ -355,6 +367,20 @@ def _yf_ticker_obj(ticker: str):
     """建立 yfinance Ticker 物件（含重試）。用於 ETF funds_data 等屬性存取。"""
     _rate_limiter.wait()
     return yf.Ticker(ticker, session=_get_session())
+
+
+@_yf_retry
+def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
+    """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
+    合併兩次呼叫以避免重複建立 session，同時保留重試保護。
+    """
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    info = stock.info or {}
+    _rate_limiter.wait()
+    dividends = stock.get_dividends()
+    return info, dividends
 
 
 # ===========================================================================
@@ -875,7 +901,7 @@ def get_earnings_date(ticker: str) -> dict:
 def _fetch_dividend_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
     try:
-        info = _yf_info(ticker)
+        info, dividends = _yf_dividend_data(ticker)
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")
@@ -892,28 +918,61 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
             except Exception:
                 ex_dividend_date = str(ex_date_raw)[:10]
 
+        # Compute actual YTD dividend per share from payment history (ex-dividend dates).
+        # Uses real payments rather than yield-based proration for accuracy.
+        ytd_dividend_per_share: float | None = None
+        try:
+            if dividends is not None and not dividends.empty:
+                current_year = datetime.now(tz=timezone.utc).year
+                ytd_divs = dividends[dividends.index.year == current_year]
+                ytd_dividend_per_share = (
+                    round(float(ytd_divs.sum()), 6) if not ytd_divs.empty else 0.0
+                )
+            else:
+                ytd_dividend_per_share = 0.0
+        except Exception as e:
+            logger.debug("無法取得 %s 年初至今股息歷史：%s", ticker, e)
+
         return {
             "ticker": ticker,
             "dividend_yield": round(dividend_yield * 100, 2)
             if dividend_yield
             else None,
             "ex_dividend_date": ex_dividend_date,
+            "ytd_dividend_per_share": ytd_dividend_per_share,
         }
 
     except Exception as e:
         logger.debug("無法取得 %s 股息資訊：%s", ticker, e)
-        return {"ticker": ticker, "dividend_yield": None, "ex_dividend_date": None}
+        return {
+            "ticker": ticker,
+            "dividend_yield": None,
+            "ex_dividend_date": None,
+            "ytd_dividend_per_share": None,
+        }
 
 
 def get_dividend_info(ticker: str) -> dict:
     """取得股息資訊。結果快取避免重複呼叫 yfinance。"""
-    return _cached_fetch(
+    result = _cached_fetch(
         _dividend_cache,
         ticker,
         DISK_KEY_DIVIDEND,
         DISK_DIVIDEND_TTL,
         _fetch_dividend_from_yf,
+        is_error=_is_dividend_error,
     )
+    # Evict and re-fetch stale cache entries that predate the ytd_dividend_per_share field.
+    if isinstance(result, dict) and "ytd_dividend_per_share" not in result:
+        logger.debug(
+            "%s 股息快取過期（缺少 ytd_dividend_per_share），清除並重新取得。", ticker
+        )
+        _dividend_cache.pop(ticker, None)
+        _disk_cache.delete(f"{DISK_KEY_DIVIDEND}:{ticker}")
+        result = _fetch_dividend_from_yf(ticker)
+        _dividend_cache[ticker] = result
+        _disk_set(f"{DISK_KEY_DIVIDEND}:{ticker}", result, DISK_DIVIDEND_TTL)
+    return result
 
 
 # ===========================================================================
@@ -1569,6 +1628,7 @@ def get_ticker_sector(ticker: str) -> str | None:
     """
     取得股票行業板塊（GICS sector）。
     行業板塊極少變動，透過 L2 磁碟快取（30 天 TTL）。
+    若快取未命中，會發起 yfinance 網路請求（可能耗時 10–15 秒）。
 
     回傳板塊名稱字串（如 "Technology"）或 None（無資料 / 非股票）。
     """
@@ -1583,3 +1643,19 @@ def get_ticker_sector(ticker: str) -> str | None:
     result = _fetch_sector_from_yf(ticker)
     _disk_set(disk_key, result, DISK_SECTOR_TTL)
     return None if result == _SECTOR_NOT_FOUND else result
+
+
+def get_ticker_sector_cached(ticker: str) -> str | None:
+    """
+    從磁碟快取讀取行業板塊（非阻塞版本）。
+    若快取未命中，直接回傳 None — 不發起任何 yfinance 網路請求。
+
+    專供熱路徑（如 `/rebalance` 端點）使用，避免因 yfinance 呼叫而阻塞請求。
+    背景預熱（prewarm_service）負責填充快取，確保後續呼叫可命中。
+    """
+    if not ticker:
+        return None
+    cached = _disk_get(f"{DISK_KEY_SECTOR}:{ticker}")
+    if cached is not None:
+        return None if cached == _SECTOR_NOT_FOUND else cached
+    return None
