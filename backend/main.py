@@ -86,7 +86,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS middleware for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ALLOW_ORIGIN", "http://localhost:8501")],
+    allow_origins=os.getenv("CORS_ALLOW_ORIGIN", "http://localhost:8501,http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["X-API-Key", "Content-Type"],

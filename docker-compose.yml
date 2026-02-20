@@ -18,6 +18,23 @@ services:
       retries: 3
       start_period: 30s
 
+  frontend-react:
+    build:
+      context: ./frontend-react
+      args:
+        VITE_API_KEY: ${FOLIO_API_KEY:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   frontend:
     build: ./frontend
     ports:
