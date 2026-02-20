@@ -28,6 +28,7 @@ from utils import (
     fetch_last_scan,
     fetch_removed_stocks,
     fetch_resonance_overview,
+    fetch_scan_status,
     fetch_stocks,
     fetch_thesis_history,
     format_utc_timestamp,
@@ -37,6 +38,7 @@ from utils import (
     render_reorder_section,
     render_stock_card,
     render_thesis_history,
+    trigger_scan,
 )
 
 
@@ -194,10 +196,37 @@ with st.sidebar:
     # -- Scan --
     st.subheader(t("radar.panel.scan"))
     st.caption(t("radar.scan.caption"))
-    if st.button(t("radar.scan.button"), use_container_width=True):
-        result = api_post("/scan", {})
+
+    _scan_initiated = st.session_state.get("scan_initiated", False)
+    _is_backend_running = fetch_scan_status()
+
+    # Clear stale session flag once backend confirms the scan has finished.
+    if _scan_initiated and not _is_backend_running:
+        st.session_state.pop("scan_initiated", None)
+        _scan_initiated = False
+
+    _scan_running = _is_backend_running or _scan_initiated
+
+    if _scan_running:
+        st.info(t("radar.scan.running"))
+        st.caption(t("radar.scan.running_description"))
+
+    if st.button(
+        t("radar.scan.button"),
+        use_container_width=True,
+        disabled=_scan_running,
+    ):
+        with st.spinner(t("radar.scan.running")):
+            result = trigger_scan()
         if result:
-            st.success(t("radar.scan.success", message=result.get('message', t("radar.scan.default_success"))))
+            if result.get("error_code") == "scan_in_progress":
+                st.warning(t("radar.scan.already_running"))
+            else:
+                st.session_state["scan_initiated"] = True
+                st.success(t("radar.scan.success", message=result.get("message", t("radar.scan.default_success"))))
+                st.rerun()
+        else:
+            st.session_state.pop("scan_initiated", None)
 
     st.divider()
 

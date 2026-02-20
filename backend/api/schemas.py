@@ -282,6 +282,12 @@ class AcceptedResponse(BaseModel):
     message: str
 
 
+class ScanStatusResponse(BaseModel):
+    """GET /scan/status 回應。"""
+
+    is_running: bool
+
+
 class ThesisLogResponse(BaseModel):
     """觀點歷史單一紀錄。"""
 

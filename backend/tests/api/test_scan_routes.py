@@ -1,4 +1,4 @@
-"""Tests for scan routes (GET /scan/last with market_status)."""
+"""Tests for scan routes (GET /scan/last, GET /scan/status)."""
 
 from datetime import datetime, timezone
 
@@ -101,3 +101,32 @@ class TestGetLastScan:
         data = resp.json()
         assert data["market_status"] == "CAUTION"
         assert data["market_status_details"] == "風向球偏空（3/4 跌破 60MA）"
+
+
+class TestGetScanStatus:
+    """Tests for GET /scan/status — returns whether a scan is running."""
+
+    def test_scan_status_should_return_not_running_by_default(self, client):
+        # Act
+        resp = client.get("/scan/status")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_running"] is False
+
+    def test_scan_status_should_return_running_when_lock_is_held(self, client):
+        from api.scan_routes import _scan_lock
+
+        # Arrange — acquire the lock to simulate an in-progress scan
+        _scan_lock.acquire()
+        try:
+            # Act
+            resp = client.get("/scan/status")
+
+            # Assert
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["is_running"] is True
+        finally:
+            _scan_lock.release()

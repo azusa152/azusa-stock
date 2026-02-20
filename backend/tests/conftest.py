@@ -123,7 +123,11 @@ def _clean_tables():
 # All external service patches — collected as a list to avoid Python's
 # "too many statically nested blocks" limit with the `with` statement.
 _MOCK_EARNINGS = {"ticker": "NVDA", "next_earnings_date": None}
-_MOCK_DIVIDEND = {"ticker": "NVDA", "dividend_yield": None, "ytd_dividend_per_share": None}
+_MOCK_DIVIDEND = {
+    "ticker": "NVDA",
+    "dividend_yield": None,
+    "ytd_dividend_per_share": None,
+}
 _MOCK_FX_RATES = {"USD": 1.0, "TWD": 0.032}
 
 _PATCHES: list[tuple[str, object]] = [

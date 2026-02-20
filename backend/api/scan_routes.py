@@ -15,6 +15,7 @@ from api.schemas import (
     CNNFearGreedData,
     FearGreedResponse,
     LastScanResponse,
+    ScanStatusResponse,
     VIXData,
 )
 from application.formatters import format_fear_greed_label
@@ -77,6 +78,16 @@ def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanRespo
         fear_greed_level=fg_level,
         fear_greed_score=fg_score,
     )
+
+
+@router.get(
+    "/scan/status",
+    response_model=ScanStatusResponse,
+    summary="Check if scan is running",
+)
+def get_scan_status() -> ScanStatusResponse:
+    """回傳目前掃描是否正在執行中（用於前端 UI 狀態顯示）。"""
+    return ScanStatusResponse(is_running=_scan_lock.locked())
 
 
 @router.get(

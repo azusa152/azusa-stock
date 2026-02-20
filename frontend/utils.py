@@ -900,6 +900,33 @@ def fetch_last_scan() -> dict | None:
     return api_get_silent("/scan/last")
 
 
+def fetch_scan_status() -> bool:
+    """Return True if a scan is currently running (uncached — always fresh)."""
+    result = api_get_silent("/scan/status")
+    return bool(result and result.get("is_running", False))
+
+
+def trigger_scan() -> dict | None:
+    """POST /scan and return the response dict.
+
+    Returns:
+        dict with ``status`` key on success (202),
+        dict with ``error_code`` == ``"scan_in_progress"`` on 409,
+        or None on other errors (error is shown via st.error).
+    """
+    try:
+        resp = _session.post(
+            f"{BACKEND_URL}/scan", json={}, timeout=API_POST_TIMEOUT
+        )
+        if resp.status_code == 409:
+            return {"error_code": "scan_in_progress"}
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        st.error(t("utils.api_error", error=e))
+        return None
+
+
 @st.cache_data(ttl=CACHE_TTL_FEAR_GREED, show_spinner=False)
 def fetch_fear_greed() -> dict | None:
     """Fetch Fear & Greed Index (VIX + CNN composite)."""
