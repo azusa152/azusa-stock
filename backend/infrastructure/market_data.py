@@ -357,6 +357,20 @@ def _yf_ticker_obj(ticker: str):
     return yf.Ticker(ticker, session=_get_session())
 
 
+@_yf_retry
+def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
+    """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
+    合併兩次呼叫以避免重複建立 session，同時保留重試保護。
+    """
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    info = stock.info or {}
+    _rate_limiter.wait()
+    dividends = stock.get_dividends()
+    return info, dividends
+
+
 # ===========================================================================
 # 技術面訊號
 # ===========================================================================
@@ -873,14 +887,9 @@ def get_earnings_date(ticker: str) -> dict:
 
 
 def _fetch_dividend_from_yf(ticker: str) -> dict:
-    """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。
-    使用單一 Ticker 物件同時取得 info 與股息歷史，避免重複建立 session。
-    """
+    """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        info = stock.info or {}
+        info, dividends = _yf_dividend_data(ticker)
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")
@@ -901,8 +910,6 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
         # Uses real payments rather than yield-based proration for accuracy.
         ytd_dividend_per_share: float | None = None
         try:
-            _rate_limiter.wait()
-            dividends = stock.get_dividends()
             if dividends is not None and not dividends.empty:
                 current_year = datetime.now(tz=timezone.utc).year
                 ytd_divs = dividends[dividends.index.year == current_year]
@@ -935,13 +942,22 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
 
 def get_dividend_info(ticker: str) -> dict:
     """取得股息資訊。結果快取避免重複呼叫 yfinance。"""
-    return _cached_fetch(
+    result = _cached_fetch(
         _dividend_cache,
         ticker,
         DISK_KEY_DIVIDEND,
         DISK_DIVIDEND_TTL,
         _fetch_dividend_from_yf,
     )
+    # Evict and re-fetch stale cache entries that predate the ytd_dividend_per_share field.
+    if isinstance(result, dict) and "ytd_dividend_per_share" not in result:
+        logger.debug("%s 股息快取過期（缺少 ytd_dividend_per_share），清除並重新取得。", ticker)
+        _dividend_cache.pop(ticker, None)
+        _disk_cache.delete(f"{DISK_KEY_DIVIDEND}:{ticker}")
+        result = _fetch_dividend_from_yf(ticker)
+        _dividend_cache[ticker] = result
+        _disk_set(f"{DISK_KEY_DIVIDEND}:{ticker}", result, DISK_DIVIDEND_TTL)
+    return result
 
 
 # ===========================================================================
