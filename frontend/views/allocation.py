@@ -443,13 +443,24 @@ with st.sidebar:
 # Shared data (fetched once, available to all tabs)
 # ---------------------------------------------------------------------------
 
-try:
-    _templates = fetch_templates() or []
-    _profile = fetch_profile()
-    _holdings = fetch_holdings() or []
-except Exception as e:
-    st.error(t("allocation.error_loading", error=e))
-    _templates, _profile, _holdings = [], None, []
+with st.status(t("allocation.loading"), expanded=True) as _data_status:
+    try:
+        _templates = fetch_templates() or []
+        _profile = fetch_profile()
+        _holdings = fetch_holdings() or []
+        _data_status.update(
+            label=t("allocation.loaded"),
+            state="complete",
+            expanded=False,
+        )
+    except Exception as e:
+        _data_status.update(
+            label=t("allocation.error_loading_label"),
+            state="error",
+            expanded=True,
+        )
+        st.error(t("allocation.error_loading", error=e))
+        _templates, _profile, _holdings = [], None, []
 
 _setup_done = bool(_profile and _holdings)
 _SETUP_MSG = t("allocation.setup_required")

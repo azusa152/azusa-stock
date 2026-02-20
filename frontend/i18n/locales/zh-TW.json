@@ -427,7 +427,10 @@
         "fx_alerts_help": "匯率風險等級異常或匯率大幅波動時"
       },
       "save_notif": "💾 儲存通知偏好"
-    }
+    },
+    "loading": "📊 載入投資組合資料中...",
+    "loaded": "✅ 投資組合資料已載入",
+    "error_loading_label": "❌ 投資組合資料載入失敗"
   },
   "fx_watch": {
     "title": "💱 外匯換匯時機監控",

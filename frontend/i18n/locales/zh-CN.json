@@ -427,7 +427,10 @@
         "fx_alerts_help": "汇率风险等级异常或汇率大幅波动时"
       },
       "save_notif": "💾 保存通知偏好"
-    }
+    },
+    "loading": "📊 加载投资组合数据中...",
+    "loaded": "✅ 投资组合数据已加载",
+    "error_loading_label": "❌ 投资组合数据加载失败"
   },
   "fx_watch": {
     "title": "💱 外汇换汇时机监控",

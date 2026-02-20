@@ -80,6 +80,31 @@ div[data-testid="stExpander"] details {border-radius: 8px;}
 /* Card container rounded + spacing */
 div[data-testid="stVerticalBlockBorderWrapper"] {border-radius: 12px; margin-bottom: 12px;}
 
+/* Prominent running indicator — top progress bar */
+[data-testid="stStatusWidget"] {
+    padding: 8px 16px !important;
+    font-size: 0.9rem !important;
+}
+
+/* Pulsing top border while app is running */
+.stApp[data-test-script-state="running"]::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 9999;
+    background: linear-gradient(90deg, #3B82F6, #8B5CF6, #3B82F6);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
 /* Hero section — Portfolio Pulse */
 .hero-label {font-size: 0.75rem; opacity: 0.75; margin: 0 0 2px 0;}
 .hero-value {font-size: 2rem; font-weight: 700; margin: 0 0 2px 0; line-height: 1.15;}

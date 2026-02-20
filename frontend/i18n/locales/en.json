@@ -427,7 +427,10 @@
         "fx_alerts_help": "When FX risk level is abnormal or rates move sharply"
       },
       "save_notif": "💾 Save Notification Preferences"
-    }
+    },
+    "loading": "📊 Loading portfolio data...",
+    "loaded": "✅ Portfolio data loaded",
+    "error_loading_label": "❌ Failed to load portfolio data"
   },
   "fx_watch": {
     "title": "💱 FX Timing Monitor",
