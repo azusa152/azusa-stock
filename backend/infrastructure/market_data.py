@@ -138,6 +138,11 @@ def _is_error_dict(result) -> bool:
     return isinstance(result, dict) and "error" in result
 
 
+def _is_dividend_error(result) -> bool:
+    """判斷股息 fetcher 結果是否為錯誤（dividend_yield 為 None 表示 yfinance 呼叫失敗）。"""
+    return isinstance(result, dict) and result.get("dividend_yield") is None
+
+
 # ---------------------------------------------------------------------------
 # Rate Limiter：限制 yfinance (Yahoo Finance) 呼叫頻率，避免被封鎖
 # ---------------------------------------------------------------------------
@@ -948,6 +953,7 @@ def get_dividend_info(ticker: str) -> dict:
         DISK_KEY_DIVIDEND,
         DISK_DIVIDEND_TTL,
         _fetch_dividend_from_yf,
+        is_error=_is_dividend_error,
     )
     # Evict and re-fetch stale cache entries that predate the ytd_dividend_per_share field.
     if isinstance(result, dict) and "ytd_dividend_per_share" not in result:

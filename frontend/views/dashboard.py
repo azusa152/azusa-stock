@@ -472,15 +472,14 @@ if rebalance_data and enriched_stocks_data:
             _fx = _h.get("fx", 1.0)
             _ytd_div_income += _h.get("quantity", 0) * _ytd_dps * _fx
 
-    if _ytd_div_income > 0:
-        _div_col, _ = st.columns([1, 3])
-        with _div_col:
-            _ytd_div_str = PRIVACY_MASK if _privacy else f"${_ytd_div_income:,.2f}"
-            st.metric(
-                t("dashboard.ytd_dividend"),
-                _ytd_div_str,
-                help=t("dashboard.ytd_dividend_actual"),
-            )
+    _div_col, _ = st.columns([1, 3])
+    with _div_col:
+        _ytd_div_str = PRIVACY_MASK if _privacy else f"${_ytd_div_income:,.2f}"
+        st.metric(
+            t("dashboard.ytd_dividend"),
+            _ytd_div_str,
+            help=t("dashboard.ytd_dividend_actual"),
+        )
 
 
 # ---------------------------------------------------------------------------
