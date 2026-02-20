@@ -11,6 +11,7 @@ from application.stock_service import StockNotFoundError
 from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
+    EQUITY_CATEGORIES,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
@@ -21,7 +22,10 @@ from domain.fx_analysis import (
     analyze_fx_rate_changes,
     determine_fx_risk_level,
 )
-from domain.rebalance import calculate_rebalance as _pure_rebalance
+from domain.rebalance import (
+    calculate_rebalance as _pure_rebalance,
+    compute_portfolio_health_score,
+)
 from i18n import get_user_language, t
 from infrastructure.market_data import (
     get_etf_top_holdings,
@@ -29,6 +33,7 @@ from infrastructure.market_data import (
     get_forex_history,
     get_forex_history_long,
     get_technical_signals,
+    get_ticker_sector_cached,
     prewarm_etf_holdings_batch,
     prewarm_signals_batch,
 )
@@ -342,6 +347,38 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
 
     xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
     result["xray"] = xray_entries
+
+    # 9) 投資組合健康分數
+    health_score, health_level = compute_portfolio_health_score(
+        result["categories"],
+        xray_entries,
+    )
+    result["health_score"] = health_score
+    result["health_level"] = health_level
+    logger.info("投資組合健康分數：%d (%s)", health_score, health_level)
+
+    # 10) 行業板塊曝險（僅股票持倉，Bond/Cash 排除）
+    # 使用快取專用版本（get_ticker_sector_cached），僅讀磁碟快取，不發起 yfinance 請求。
+    # 若快取未命中（首次啟動），歸類為 "Unknown"；背景預熱會在啟動後填充快取。
+    sector_values: dict[str, float] = {}
+    for ticker, agg in ticker_agg.items():
+        if agg["category"] not in EQUITY_CATEGORIES or agg["mv"] <= 0:
+            continue
+        sector = get_ticker_sector_cached(ticker) or "Unknown"
+        sector_values[sector] = sector_values.get(sector, 0.0) + agg["mv"]
+
+    equity_total = sum(sector_values.values())
+    result["sector_exposure"] = [
+        {
+            "sector": s,
+            "value": round(v, 2),
+            "weight_pct": round(v / total_value * 100, 2) if total_value > 0 else 0.0,
+            "equity_pct": round(v / equity_total * 100, 2) if equity_total > 0 else 0.0,
+        }
+        for s, v in sorted(sector_values.items(), key=lambda x: x[1], reverse=True)
+        if v > 0
+    ]
+
     result["calculated_at"] = datetime.now(timezone.utc).isoformat()
 
     return result

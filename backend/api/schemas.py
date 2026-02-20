@@ -465,6 +465,15 @@ class XRayEntry(BaseModel):
     indirect_sources: list[str] = []  # e.g. ["VTI (5.2%)", "QQQ (8.1%)"]
 
 
+class SectorExposureItem(BaseModel):
+    """行業板塊曝險單筆資料（股票持倉用）。"""
+
+    sector: str
+    value: float
+    weight_pct: float  # 佔總投資組合 %
+    equity_pct: float  # 佔股票部位 %
+
+
 class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
@@ -477,6 +486,9 @@ class RebalanceResponse(BaseModel):
     advice: list[str]
     holdings_detail: list[HoldingDetail] = []
     xray: list[XRayEntry] = []
+    health_score: int = 100
+    health_level: str = "healthy"  # "healthy" | "caution" | "alert"
+    sector_exposure: list[SectorExposureItem] = []
     calculated_at: str = ""
 
 

@@ -382,7 +382,11 @@
       "fx": "💱 匯率曝險",
       "withdraw": "💰 聰明提款",
       "stress": "🧪 壓力測試",
-      "telegram": "📡 Telegram"
+      "telegram": "📡 Telegram",
+      "portfolio": "📊 投資組合",
+      "risk": "🛡️ 風險分析",
+      "actions": "💡 操作建議",
+      "settings": "⚙️ 設定"
     },
     "step1_title": "🎯 Step 1 — 設定目標配置",
     "step2_title": "💼 Step 2 — 持倉管理",
@@ -664,7 +668,8 @@
         "market_value": "市值({currency})",
         "unrealized_pl": "未實現損益",
         "pl_pct": "損益%",
-        "weight": "佔比"
+        "weight": "佔比",
+        "daily_change": "日漲跌"
       },
       "xray_title": "**🔬 穿透式持倉 X-Ray（{currency}）：**",
       "xray_caption": "解析 ETF 成分股，揭示直接持倉與 ETF 間接曝險的真實比例。",
@@ -685,7 +690,27 @@
           "sources": "間接來源"
         }
       },
-      "xray_telegram_button": "📨 發送 X-Ray 警告至 Telegram"
+      "xray_telegram_button": "📨 發送 X-Ray 警告至 Telegram",
+      "health": {
+        "label": "組合健康度",
+        "healthy": "健康",
+        "caution": "需要關注",
+        "alert": "需要調整",
+        "score_suffix": "/ 100"
+      },
+      "view_toggle": "圖表類型",
+      "view_pies": "🥧 餅圖",
+      "view_treemap": "🗺️ 樹狀圖",
+      "treemap_title": "點擊分類可展開，顏色代表未實現損益 %",
+      "treemap_weight": "佔比",
+      "treemap_pl": "損益",
+      "treemap_colorbar": "損益%",
+      "drift_action_buy": "買",
+      "drift_action_sell": "賣",
+      "sector_title": "**🏭 行業板塊分佈（股票持倉）：**",
+      "sector_chart_title": "行業板塊曝險（佔總組合 %）",
+      "sector_xaxis": "佔比 (%)",
+      "sector_no_data": "無行業板塊資料（可能全為 ETF 或債券 / 現金）"
     },
     "currency": {
       "loading": "💱 載入匯率曝險分析中...",

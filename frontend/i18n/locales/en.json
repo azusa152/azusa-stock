@@ -382,7 +382,11 @@
       "fx": "💱 FX Exposure",
       "withdraw": "💰 Smart Withdrawal",
       "stress": "🧪 Stress Test",
-      "telegram": "📡 Telegram"
+      "telegram": "📡 Telegram",
+      "portfolio": "📊 Portfolio",
+      "risk": "🛡️ Risk",
+      "actions": "💡 Actions",
+      "settings": "⚙️ Settings"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
     "step2_title": "💼 Step 2 — Holdings Management",
@@ -664,7 +668,8 @@
         "market_value": "Value ({currency})",
         "unrealized_pl": "Unrealized P/L",
         "pl_pct": "P/L %",
-        "weight": "Weight"
+        "weight": "Weight",
+        "daily_change": "Daily Chg"
       },
       "xray_title": "**🔬 X-Ray Holdings ({currency}):**",
       "xray_caption": "Parse ETF holdings to reveal direct + indirect exposure.",
@@ -685,7 +690,27 @@
           "sources": "Sources"
         }
       },
-      "xray_telegram_button": "📨 Send X-Ray Alert to Telegram"
+      "xray_telegram_button": "📨 Send X-Ray Alert to Telegram",
+      "health": {
+        "label": "Portfolio Health",
+        "healthy": "Healthy",
+        "caution": "Needs Attention",
+        "alert": "Needs Rebalancing",
+        "score_suffix": "/ 100"
+      },
+      "view_toggle": "Chart Type",
+      "view_pies": "🥧 Pie Charts",
+      "view_treemap": "🗺️ Treemap",
+      "treemap_title": "Click a category to drill in. Color = Unrealized P/L %",
+      "treemap_weight": "Weight",
+      "treemap_pl": "P/L",
+      "treemap_colorbar": "P/L %",
+      "drift_action_buy": "Buy",
+      "drift_action_sell": "Sell",
+      "sector_title": "**🏭 Sector Exposure (Equity Holdings):**",
+      "sector_chart_title": "Sector Exposure (% of Total Portfolio)",
+      "sector_xaxis": "Weight (%)",
+      "sector_no_data": "No sector data available (may be all ETFs or bonds/cash)"
     },
     "currency": {
       "loading": "💱 Loading FX exposure...",

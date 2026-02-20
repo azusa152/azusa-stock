@@ -505,3 +505,8 @@ DISK_GURU_FILING_TTL = 604800  # 7 days
 DISK_KEY_GURU_FILING = "guru_filing"
 DISK_SECTOR_TTL = 2592000  # 30 days (sectors change very rarely)
 DISK_KEY_SECTOR = "sector"
+
+# ---------------------------------------------------------------------------
+# Equity Categories (used by sector exposure, X-Ray, etc.)
+# ---------------------------------------------------------------------------
+EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})

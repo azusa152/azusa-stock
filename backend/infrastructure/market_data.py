@@ -139,8 +139,10 @@ def _is_error_dict(result) -> bool:
 
 
 def _is_dividend_error(result) -> bool:
-    """判斷股息 fetcher 結果是否為錯誤（dividend_yield 為 None 表示 yfinance 呼叫失敗）。"""
-    return isinstance(result, dict) and result.get("dividend_yield") is None
+    """判斷股息 fetcher 結果是否為錯誤。
+    ytd_dividend_per_share 為 None 表示 yfinance 呼叫異常（非股息股的合法回應為 0.0）。
+    """
+    return isinstance(result, dict) and result.get("ytd_dividend_per_share") is None
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +268,13 @@ def _cached_fetch(
     """
     cached = l1_cache.get(ticker)
     if cached is not None:
-        logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
-        return cached
+        # If L1 has an error entry but L2 may have recovered valid data, fall through.
+        if is_error is None or not is_error(cached):
+            logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
+            return cached
+        logger.debug(
+            "%s L1 為錯誤結果，繼續嘗試 L2（prefix=%s）。", ticker, disk_prefix
+        )
 
     disk_key = f"{disk_prefix}:{ticker}"
     disk_cached = _disk_get(disk_key)
@@ -957,7 +964,9 @@ def get_dividend_info(ticker: str) -> dict:
     )
     # Evict and re-fetch stale cache entries that predate the ytd_dividend_per_share field.
     if isinstance(result, dict) and "ytd_dividend_per_share" not in result:
-        logger.debug("%s 股息快取過期（缺少 ytd_dividend_per_share），清除並重新取得。", ticker)
+        logger.debug(
+            "%s 股息快取過期（缺少 ytd_dividend_per_share），清除並重新取得。", ticker
+        )
         _dividend_cache.pop(ticker, None)
         _disk_cache.delete(f"{DISK_KEY_DIVIDEND}:{ticker}")
         result = _fetch_dividend_from_yf(ticker)
@@ -1619,6 +1628,7 @@ def get_ticker_sector(ticker: str) -> str | None:
     """
     取得股票行業板塊（GICS sector）。
     行業板塊極少變動，透過 L2 磁碟快取（30 天 TTL）。
+    若快取未命中，會發起 yfinance 網路請求（可能耗時 10–15 秒）。
 
     回傳板塊名稱字串（如 "Technology"）或 None（無資料 / 非股票）。
     """
@@ -1633,3 +1643,19 @@ def get_ticker_sector(ticker: str) -> str | None:
     result = _fetch_sector_from_yf(ticker)
     _disk_set(disk_key, result, DISK_SECTOR_TTL)
     return None if result == _SECTOR_NOT_FOUND else result
+
+
+def get_ticker_sector_cached(ticker: str) -> str | None:
+    """
+    從磁碟快取讀取行業板塊（非阻塞版本）。
+    若快取未命中，直接回傳 None — 不發起任何 yfinance 網路請求。
+
+    專供熱路徑（如 `/rebalance` 端點）使用，避免因 yfinance 呼叫而阻塞請求。
+    背景預熱（prewarm_service）負責填充快取，確保後續呼叫可命中。
+    """
+    if not ticker:
+        return None
+    cached = _disk_get(f"{DISK_KEY_SECTOR}:{ticker}")
+    if cached is not None:
+        return None if cached == _SECTOR_NOT_FOUND else cached
+    return None
