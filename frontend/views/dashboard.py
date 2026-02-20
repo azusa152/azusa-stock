@@ -453,24 +453,24 @@ with st.container(border=True):
 
 
 # ---------------------------------------------------------------------------
-# Section 1.3: YTD Dividend Estimate
+# Section 1.3: YTD Dividend Income
 # ---------------------------------------------------------------------------
 if rebalance_data and enriched_stocks_data:
-    # Build {ticker: dividend_yield} from enriched stocks
+    # Build {ticker: ytd_dividend_per_share} from enriched stocks (native currency per share)
     _div_lookup: dict[str, float] = {}
     for _es in enriched_stocks_data:
         _div = _es.get("dividend") or {}
-        _dy = _div.get("dividend_yield")
-        if _dy is not None and _dy > 0:
-            _div_lookup[_es["ticker"]] = _dy
+        _ytd_dps = _div.get("ytd_dividend_per_share")
+        if _ytd_dps is not None and _ytd_dps > 0:
+            _div_lookup[_es["ticker"]] = _ytd_dps
 
-    # Compute estimated YTD dividend income across all holdings
-    _days_elapsed = datetime.now().timetuple().tm_yday  # day-of-year
+    # Compute actual YTD dividend income: shares × ytd_div_per_share × fx_to_display_currency
     _ytd_div_income = 0.0
     for _h in rebalance_data.get("holdings_detail", []):
-        _dy_pct = _div_lookup.get(_h["ticker"])
-        if _dy_pct:
-            _ytd_div_income += _h.get("market_value", 0) * (_dy_pct / 100) * (_days_elapsed / 365)
+        _ytd_dps = _div_lookup.get(_h["ticker"])
+        if _ytd_dps:
+            _fx = _h.get("fx", 1.0)
+            _ytd_div_income += _h.get("quantity", 0) * _ytd_dps * _fx
 
     if _ytd_div_income > 0:
         _div_col, _ = st.columns([1, 3])
@@ -479,7 +479,7 @@ if rebalance_data and enriched_stocks_data:
             st.metric(
                 t("dashboard.ytd_dividend"),
                 _ytd_div_str,
-                help=t("dashboard.ytd_dividend_estimated"),
+                help=t("dashboard.ytd_dividend_actual"),
             )
 
 

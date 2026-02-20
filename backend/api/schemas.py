@@ -249,6 +249,7 @@ class DividendResponse(BaseModel):
     ticker: str = ""
     dividend_yield: Optional[float] = None
     ex_date: Optional[str] = None
+    ytd_dividend_per_share: Optional[float] = None
     error: Optional[str] = None
 
 

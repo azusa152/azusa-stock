@@ -873,9 +873,14 @@ def get_earnings_date(ticker: str) -> dict:
 
 
 def _fetch_dividend_from_yf(ticker: str) -> dict:
-    """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
+    """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。
+    使用單一 Ticker 物件同時取得 info 與股息歷史，避免重複建立 session。
+    """
     try:
-        info = _yf_info(ticker)
+        _rate_limiter.wait()
+        stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
+        info = stock.info or {}
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")
@@ -892,17 +897,40 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
             except Exception:
                 ex_dividend_date = str(ex_date_raw)[:10]
 
+        # Compute actual YTD dividend per share from payment history (ex-dividend dates).
+        # Uses real payments rather than yield-based proration for accuracy.
+        ytd_dividend_per_share: float | None = None
+        try:
+            _rate_limiter.wait()
+            dividends = stock.get_dividends()
+            if dividends is not None and not dividends.empty:
+                current_year = datetime.now(tz=timezone.utc).year
+                ytd_divs = dividends[dividends.index.year == current_year]
+                ytd_dividend_per_share = (
+                    round(float(ytd_divs.sum()), 6) if not ytd_divs.empty else 0.0
+                )
+            else:
+                ytd_dividend_per_share = 0.0
+        except Exception as e:
+            logger.debug("無法取得 %s 年初至今股息歷史：%s", ticker, e)
+
         return {
             "ticker": ticker,
             "dividend_yield": round(dividend_yield * 100, 2)
             if dividend_yield
             else None,
             "ex_dividend_date": ex_dividend_date,
+            "ytd_dividend_per_share": ytd_dividend_per_share,
         }
 
     except Exception as e:
         logger.debug("無法取得 %s 股息資訊：%s", ticker, e)
-        return {"ticker": ticker, "dividend_yield": None, "ex_dividend_date": None}
+        return {
+            "ticker": ticker,
+            "dividend_yield": None,
+            "ex_dividend_date": None,
+            "ytd_dividend_per_share": None,
+        }
 
 
 def get_dividend_info(ticker: str) -> dict:

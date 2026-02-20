@@ -152,7 +152,7 @@
     },
     "ytd_return": "年初来リターン",
     "ytd_dividend": "年初来配当",
-    "ytd_dividend_estimated": "（利回りより推計）",
+    "ytd_dividend_actual": "（年初来の実際の配当に基づく）",
     "no_holdings": "保有銘柄データがありません。",
     "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。",
     "resonance": {
