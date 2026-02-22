@@ -499,17 +499,17 @@
       "error_no_alert": "⚠️ At least one alert condition must be enabled"
     },
     "analysis": {
-      "title": "**📊 Analysis Reason**",
+      "title": "📊 Analysis Reason",
       "waiting": "⏳ Waiting for analysis..."
     },
     "chart": {
       "insufficient_data": "📉 Insufficient FX history (need at least 5 trading days).",
       "period_label": "Trend Period",
       "hover_template": "%{x}<br>Rate: %{y}",
-      "high_annotation": "{days}-day high: {high:.4f}"
+      "high_annotation": "{days}-day high: {high}"
     },
     "settings": {
-      "title": "**⚙️ Monitor Settings**",
+      "title": "⚙️ Monitor Settings",
       "recent_high": "• Recent high: {days} days",
       "consecutive": "• Consecutive up: {days} days",
       "interval": "• Interval: {hours} hours",

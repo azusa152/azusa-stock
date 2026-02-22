@@ -499,17 +499,17 @@
       "error_no_alert": "⚠️ 至少要启用一项警报条件"
     },
     "analysis": {
-      "title": "**📊 分析原因**",
+      "title": "📊 分析原因",
       "waiting": "⏳ 等待分析..."
     },
     "chart": {
       "insufficient_data": "📉 汇率历史资料不足（需至少 5 个交易日）。",
       "period_label": "趋势区间",
       "hover_template": "%{x}<br>汇率: %{y}",
-      "high_annotation": "{days}日高点: {high:.4f}"
+      "high_annotation": "{days}日高点: {high}"
     },
     "settings": {
-      "title": "**⚙️ 监控设定**",
+      "title": "⚙️ 监控设定",
       "recent_high": "• 近期高点: {days} 日",
       "consecutive": "• 连续上涨: {days} 日",
       "interval": "• 间隔: {hours} 小时",
