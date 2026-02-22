@@ -67,7 +67,11 @@ export const DEFAULT_TAG_OPTIONS = [
 
 export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
+export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
+
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+
+export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
 
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [

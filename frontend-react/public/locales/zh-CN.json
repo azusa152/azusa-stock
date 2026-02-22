@@ -432,7 +432,110 @@
     },
     "loading": "📊 加载投资组合数据中...",
     "loaded": "✅ 投资组合数据已加载",
-    "error_loading_label": "❌ 投资组合数据加载失败"
+    "error_loading_label": "❌ 投资组合数据加载失败",
+    "health": {
+      "title": "投资组合健康度",
+      "calculated_at": "更新时间：",
+      "advice_title": "再平衡建议",
+      "level_label": "等级",
+      "level_healthy": "健康",
+      "level_caution": "注意",
+      "level_alert": "警示"
+    },
+    "charts": {
+      "title": "目标 vs 实际配置",
+      "toggle_pie": "饼图",
+      "toggle_treemap": "树状图",
+      "target": "目标",
+      "actual": "实际"
+    },
+    "drift": {
+      "title": "配置偏移",
+      "threshold_5": "±5% 警戒线",
+      "threshold_10": "±10% 警戒线",
+      "axis_label": "偏移 %"
+    },
+    "col": {
+      "ticker": "代号",
+      "category": "类别",
+      "qty": "数量",
+      "value": "市值",
+      "weight_pct": "比重%",
+      "cost": "成本",
+      "change_pct": "涨跌%"
+    },
+    "holdings": {
+      "title": "持仓明细",
+      "empty": "无持仓数据。"
+    },
+    "xray": {
+      "title": "🔬 X-Ray 重叠分析",
+      "empty": "无 ETF 重叠数据。",
+      "warning": "⚠️ 部分持仓超过 {threshold}% 集中度",
+      "alert_button": "📨 发送 X-Ray 警报",
+      "col_name": "名称",
+      "col_direct": "直接",
+      "col_indirect": "间接",
+      "col_total": "合计"
+    },
+    "sector": {
+      "title": "行业敞口",
+      "empty": "无行业数据。"
+    },
+    "fx": {
+      "title": "💱 外币敞口",
+      "home_currency": "主要货币",
+      "save_home": "保存",
+      "cash_chart": "💵 现金敞口",
+      "total_chart": "📊 全资产敞口",
+      "movements_title": "近期外汇变动",
+      "alerts_title": "汇率警报",
+      "alert_button": "📨 发送外汇警报",
+      "col_pair": "货币对",
+      "col_rate": "汇率",
+      "col_change": "变动"
+    },
+    "stress": {
+      "title": "🧪 压力测试",
+      "slider_label": "市场崩盘情境",
+      "beta": "组合 β",
+      "loss": "预估损失",
+      "pain_level": "痛苦指数",
+      "breakdown_title": "个股明细",
+      "col_beta": "β",
+      "col_drop": "跌幅%",
+      "col_loss": "预估损失"
+    },
+    "withdraw": {
+      "title": "💰 智慧提现",
+      "amount_label": "提现金额",
+      "currency_label": "币种",
+      "notify_label": "发送 Telegram 通知",
+      "calculate_button": "💰 计算",
+      "target": "目标金额",
+      "total_sell": "可卖总额",
+      "shortfall": "缺口",
+      "col_qty": "卖出数量",
+      "col_value": "卖出金额",
+      "col_reason": "原因",
+      "post_drift_title": "售后配置"
+    },
+    "target": {
+      "title": "🎯 目标配置",
+      "template_label": "投资者风格模板",
+      "template_placeholder": "选择模板",
+      "sum_label": "合计",
+      "remaining": "剩余",
+      "save_button": "💾 保存配置"
+    },
+    "manager": {
+      "title": "💼 持仓管理",
+      "edit_button": "编辑",
+      "delete_button": "删除",
+      "confirm_delete": "确认删除",
+      "col_broker": "券商",
+      "col_actions": "操作"
+    }
   },
   "fx_watch": {
     "title": "💱 外汇换汇时机监控",
@@ -929,7 +1032,13 @@
     },
     "col": {
       "value": "市值",
-      "shares": "股数"
+      "shares": "股数",
+      "ticker": "代号",
+      "company": "公司",
+      "change_pct": "变动%",
+      "weight_pct": "权重%",
+      "rank": "#",
+      "action": "操作"
     },
     "changes": {
       "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。",

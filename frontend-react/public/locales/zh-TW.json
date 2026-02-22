@@ -432,7 +432,110 @@
     },
     "loading": "📊 載入投資組合資料中...",
     "loaded": "✅ 投資組合資料已載入",
-    "error_loading_label": "❌ 投資組合資料載入失敗"
+    "error_loading_label": "❌ 投資組合資料載入失敗",
+    "health": {
+      "title": "投資組合健康度",
+      "calculated_at": "更新時間：",
+      "advice_title": "再平衡建議",
+      "level_label": "等級",
+      "level_healthy": "健康",
+      "level_caution": "注意",
+      "level_alert": "警示"
+    },
+    "charts": {
+      "title": "目標 vs 實際配置",
+      "toggle_pie": "圓餅圖",
+      "toggle_treemap": "樹狀圖",
+      "target": "目標",
+      "actual": "實際"
+    },
+    "drift": {
+      "title": "配置偏移",
+      "threshold_5": "±5% 警戒線",
+      "threshold_10": "±10% 警戒線",
+      "axis_label": "偏移 %"
+    },
+    "col": {
+      "ticker": "代號",
+      "category": "類別",
+      "qty": "數量",
+      "value": "市值",
+      "weight_pct": "比重%",
+      "cost": "成本",
+      "change_pct": "漲跌%"
+    },
+    "holdings": {
+      "title": "持倉明細",
+      "empty": "無持倉資料。"
+    },
+    "xray": {
+      "title": "🔬 X-Ray 重疊分析",
+      "empty": "無 ETF 重疊資料。",
+      "warning": "⚠️ 部分持倉超過 {threshold}% 集中度",
+      "alert_button": "📨 發送 X-Ray 警報",
+      "col_name": "名稱",
+      "col_direct": "直接",
+      "col_indirect": "間接",
+      "col_total": "合計"
+    },
+    "sector": {
+      "title": "產業曝險",
+      "empty": "無產業資料。"
+    },
+    "fx": {
+      "title": "💱 外幣曝險",
+      "home_currency": "主要貨幣",
+      "save_home": "儲存",
+      "cash_chart": "💵 現金曝險",
+      "total_chart": "📊 全資產曝險",
+      "movements_title": "近期外匯變動",
+      "alerts_title": "匯率警報",
+      "alert_button": "📨 發送外匯警報",
+      "col_pair": "貨幣對",
+      "col_rate": "匯率",
+      "col_change": "變動"
+    },
+    "stress": {
+      "title": "🧪 壓力測試",
+      "slider_label": "市場崩盤情境",
+      "beta": "組合 β",
+      "loss": "預估損失",
+      "pain_level": "痛苦指數",
+      "breakdown_title": "個股明細",
+      "col_beta": "β",
+      "col_drop": "跌幅%",
+      "col_loss": "預估損失"
+    },
+    "withdraw": {
+      "title": "💰 智慧提領",
+      "amount_label": "提領金額",
+      "currency_label": "幣別",
+      "notify_label": "發送 Telegram 通知",
+      "calculate_button": "💰 計算",
+      "target": "目標金額",
+      "total_sell": "可賣總額",
+      "shortfall": "缺口",
+      "col_qty": "賣出數量",
+      "col_value": "賣出金額",
+      "col_reason": "原因",
+      "post_drift_title": "售後配置"
+    },
+    "target": {
+      "title": "🎯 目標配置",
+      "template_label": "投資人風格模板",
+      "template_placeholder": "選擇模板",
+      "sum_label": "合計",
+      "remaining": "剩餘",
+      "save_button": "💾 儲存配置"
+    },
+    "manager": {
+      "title": "💼 持倉管理",
+      "edit_button": "編輯",
+      "delete_button": "刪除",
+      "confirm_delete": "確認刪除",
+      "col_broker": "券商",
+      "col_actions": "操作"
+    }
   },
   "fx_watch": {
     "title": "💱 外匯換匯時機監控",
@@ -929,7 +1032,13 @@
     },
     "col": {
       "value": "市值",
-      "shares": "股數"
+      "shares": "股數",
+      "ticker": "代號",
+      "company": "公司",
+      "change_pct": "變動%",
+      "weight_pct": "權重%",
+      "rank": "#",
+      "action": "操作"
     },
     "changes": {
       "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。",

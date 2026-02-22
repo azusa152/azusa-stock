@@ -432,7 +432,110 @@
     },
     "loading": "📊 Loading portfolio data...",
     "loaded": "✅ Portfolio data loaded",
-    "error_loading_label": "❌ Failed to load portfolio data"
+    "error_loading_label": "❌ Failed to load portfolio data",
+    "health": {
+      "title": "Portfolio Health",
+      "calculated_at": "Updated:",
+      "advice_title": "Rebalance Suggestions",
+      "level_label": "Level",
+      "level_healthy": "Healthy",
+      "level_caution": "Caution",
+      "level_alert": "Alert"
+    },
+    "charts": {
+      "title": "Target vs Actual Allocation",
+      "toggle_pie": "Pie",
+      "toggle_treemap": "Treemap",
+      "target": "Target",
+      "actual": "Actual"
+    },
+    "drift": {
+      "title": "Allocation Drift",
+      "threshold_5": "±5% threshold",
+      "threshold_10": "±10% threshold",
+      "axis_label": "Drift %"
+    },
+    "col": {
+      "ticker": "Ticker",
+      "category": "Category",
+      "qty": "Qty",
+      "value": "Value",
+      "weight_pct": "Wt%",
+      "cost": "Cost",
+      "change_pct": "Chg%"
+    },
+    "holdings": {
+      "title": "Holdings Detail",
+      "empty": "No holdings data."
+    },
+    "xray": {
+      "title": "🔬 X-Ray Overlap Analysis",
+      "empty": "No ETF overlap data.",
+      "warning": "⚠️ Some positions exceed {threshold}% concentration",
+      "alert_button": "📨 Send X-Ray Alert",
+      "col_name": "Name",
+      "col_direct": "Direct",
+      "col_indirect": "Indirect",
+      "col_total": "Total"
+    },
+    "sector": {
+      "title": "Sector Exposure",
+      "empty": "No sector data."
+    },
+    "fx": {
+      "title": "💱 Currency Exposure",
+      "home_currency": "Home Currency",
+      "save_home": "Save",
+      "cash_chart": "💵 Cash Exposure",
+      "total_chart": "📊 Total Exposure",
+      "movements_title": "Recent FX Changes",
+      "alerts_title": "FX Rate Alerts",
+      "alert_button": "📨 Send FX Alert",
+      "col_pair": "Pair",
+      "col_rate": "Rate",
+      "col_change": "Change"
+    },
+    "stress": {
+      "title": "🧪 Stress Test",
+      "slider_label": "Market Crash Scenario",
+      "beta": "Portfolio β",
+      "loss": "Expected Loss",
+      "pain_level": "Pain Level",
+      "breakdown_title": "Holdings Breakdown",
+      "col_beta": "β",
+      "col_drop": "Drop%",
+      "col_loss": "Est. Loss"
+    },
+    "withdraw": {
+      "title": "💰 Smart Withdrawal",
+      "amount_label": "Withdrawal Amount",
+      "currency_label": "Currency",
+      "notify_label": "Send Telegram Notification",
+      "calculate_button": "💰 Calculate",
+      "target": "Target",
+      "total_sell": "Sell Total",
+      "shortfall": "Shortfall",
+      "col_qty": "Sell Qty",
+      "col_value": "Sell Value",
+      "col_reason": "Reason",
+      "post_drift_title": "Remaining Allocation"
+    },
+    "target": {
+      "title": "🎯 Target Allocation",
+      "template_label": "Investor Profile Template",
+      "template_placeholder": "Select a template",
+      "sum_label": "Total",
+      "remaining": "remaining",
+      "save_button": "💾 Save Allocation"
+    },
+    "manager": {
+      "title": "💼 Holdings Manager",
+      "edit_button": "Edit",
+      "delete_button": "Delete",
+      "confirm_delete": "Confirm Delete",
+      "col_broker": "Broker",
+      "col_actions": "Actions"
+    }
   },
   "fx_watch": {
     "title": "💱 FX Timing Monitor",
@@ -929,7 +1032,13 @@
     },
     "col": {
       "value": "Value",
-      "shares": "Shares"
+      "shares": "Shares",
+      "ticker": "Ticker",
+      "company": "Company",
+      "change_pct": "Chg%",
+      "weight_pct": "Wt%",
+      "rank": "#",
+      "action": "Action"
     },
     "changes": {
       "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",
