@@ -38,3 +38,39 @@ export const RISK_WARNING_SIGNALS = new Set([
   "OVERHEATED",
   "CAUTION_HIGH",
 ])
+
+export const STOCK_CATEGORIES = [
+  "Trend_Setter",
+  "Moat",
+  "Growth",
+  "Bond",
+  "Cash",
+] as const
+
+export const RADAR_CATEGORIES = [
+  "Trend_Setter",
+  "Moat",
+  "Growth",
+  "Bond",
+] as const
+
+export const DEFAULT_TAG_OPTIONS = [
+  "AI",
+  "Cloud",
+  "SaaS",
+  "Semi",
+  "Infra",
+  "Pharma",
+  "Energy",
+  "Finance",
+]
+
+export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
+
+// Market options: labelKey references config.market.* i18n keys
+export const MARKET_OPTIONS = [
+  { key: "US", labelKey: "config.market.us", suffix: "", currency: "USD" },
+  { key: "TW", labelKey: "config.market.tw", suffix: ".TW", currency: "TWD" },
+  { key: "JP", labelKey: "config.market.jp", suffix: ".T", currency: "JPY" },
+  { key: "HK", labelKey: "config.market.hk", suffix: ".HK", currency: "HKD" },
+] as const
