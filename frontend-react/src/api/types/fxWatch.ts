@@ -16,6 +16,11 @@ export interface FxAnalysis {
   should_alert: boolean
   recommendation: string
   reasoning: string
+  is_recent_high: boolean
+  lookback_high: number
+  lookback_days: number
+  consecutive_increases: number
+  consecutive_threshold: number
 }
 
 export interface FxHistoryPoint {
@@ -37,6 +42,11 @@ export interface FxCheckResponse {
       should_alert: boolean
       recommendation_zh: string
       reasoning_zh: string
+      is_recent_high: boolean
+      lookback_high: number
+      lookback_days: number
+      consecutive_increases: number
+      consecutive_threshold: number
     }
   }>
 }

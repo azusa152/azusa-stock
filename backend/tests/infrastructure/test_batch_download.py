@@ -25,7 +25,7 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_batch"
 )
 
-from unittest.mock import MagicMock, patch  # noqa: E402
+from unittest.mock import patch  # noqa: E402
 
 import pandas as pd  # noqa: E402
 from cachetools import TTLCache  # noqa: E402

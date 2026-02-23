@@ -37,6 +37,28 @@ export function useFxHistory(base: string, quote: string, enabled = true) {
   })
 }
 
+/** Eagerly fetches history for a list of currency pairs for sparklines. */
+export function useFxHistoryMap(pairs: Array<{ base: string; quote: string }>) {
+  return useQuery<Record<string, FxHistoryPoint[]>>({
+    queryKey: ["fxHistoryMap", pairs.map((p) => `${p.base}/${p.quote}`).join(",")],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        pairs.map(async ({ base, quote }) => {
+          try {
+            const { data } = await apiClient.get<FxHistoryPoint[]>(`/forex/${base}/${quote}/history-long`)
+            return [`${base}/${quote}`, data] as const
+          } catch {
+            return [`${base}/${quote}`, []] as const
+          }
+        }),
+      )
+      return Object.fromEntries(entries)
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: pairs.length > 0,
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Mutation hooks
 // ---------------------------------------------------------------------------
@@ -101,6 +123,11 @@ async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
       should_alert: r.result.should_alert,
       recommendation: r.result.recommendation_zh,
       reasoning: r.result.reasoning_zh,
+      is_recent_high: r.result.is_recent_high,
+      lookback_high: r.result.lookback_high,
+      lookback_days: r.result.lookback_days,
+      consecutive_increases: r.result.consecutive_increases,
+      consecutive_threshold: r.result.consecutive_threshold,
     }
     map[r.watch_id] = entry
   }
