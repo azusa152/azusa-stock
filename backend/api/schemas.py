@@ -289,6 +289,12 @@ class ScanStatusResponse(BaseModel):
     is_running: bool
 
 
+class PrewarmStatusResponse(BaseModel):
+    """GET /prewarm-status 回應。"""
+
+    ready: bool
+
+
 class ThesisLogResponse(BaseModel):
     """觀點歷史單一紀錄。"""
 

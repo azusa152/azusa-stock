@@ -73,7 +73,9 @@ DISK_CACHE_DIR = "/app/data/yf_cache"
 DISK_CACHE_SIZE_LIMIT = 100 * 1024 * 1024  # 100 MB
 
 # Disk Cache TTLs（比 L1 更長，作為冷啟動 fallback）
-DISK_SIGNALS_TTL = 900  # 15 minutes — matches SCAN_STALE_SECONDS cadence
+DISK_SIGNALS_TTL = (
+    3600  # 1 hour — warm restarts skip prewarm for recently-fetched signals
+)
 DISK_MOAT_TTL = 86400  # 24 hours
 DISK_EARNINGS_TTL = 604800  # 7 days
 DISK_DIVIDEND_TTL = 86400  # 24 hours

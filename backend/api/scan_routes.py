@@ -15,10 +15,12 @@ from api.schemas import (
     CNNFearGreedData,
     FearGreedResponse,
     LastScanResponse,
+    PrewarmStatusResponse,
     ScanStatusResponse,
     VIXData,
 )
 from application.formatters import format_fear_greed_label
+from application.prewarm_service import is_prewarm_ready
 from application.services import run_scan, send_weekly_digest
 from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
 from i18n import get_user_language, t
@@ -88,6 +90,16 @@ def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanRespo
 def get_scan_status() -> ScanStatusResponse:
     """回傳目前掃描是否正在執行中（用於前端 UI 狀態顯示）。"""
     return ScanStatusResponse(is_running=_scan_lock.locked())
+
+
+@router.get(
+    "/prewarm-status",
+    response_model=PrewarmStatusResponse,
+    summary="Check if startup cache prewarm is complete",
+)
+def get_prewarm_status() -> PrewarmStatusResponse:
+    """回傳啟動快取預熱是否已完成。前端可在 ready=false 時顯示載入提示，避免在預熱中觸發大量重複請求。"""
+    return PrewarmStatusResponse(ready=is_prewarm_ready())
 
 
 @router.get(

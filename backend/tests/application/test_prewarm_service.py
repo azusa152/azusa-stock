@@ -1,10 +1,14 @@
 """Tests for startup cache prewarm service."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from sqlmodel import Session
 
-from application.prewarm_service import _collect_tickers, prewarm_all_caches
+from application.prewarm_service import (
+    _batch_prewarm_signals,
+    _collect_tickers,
+    prewarm_all_caches,
+)
 from domain.entities import Holding, Stock
 from domain.enums import StockCategory
 
@@ -257,7 +261,7 @@ class TestPrewarmAllCaches:
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service._batch_prewarm_signals")
     def test_happy_path_should_call_all_phases(
         self,
         mock_signals,
@@ -287,7 +291,7 @@ class TestPrewarmAllCaches:
         )
         db_session.commit()
 
-        mock_signals.return_value = {}
+        mock_signals.return_value = None
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_etf.return_value = {}
@@ -305,7 +309,7 @@ class TestPrewarmAllCaches:
         mock_etf.assert_called_once()
         mock_beta.assert_called_once()
 
-        # Phase 7: sector prewarm called for moat tickers (NVDA + VTI)
+        # Phase 7: sector prewarm called for equity tickers (NVDA + VTI)
         sector_tickers = sorted(c.args[0] for c in mock_sector.call_args_list)
         assert "NVDA" in sector_tickers
         assert "VTI" in sector_tickers
@@ -331,7 +335,7 @@ class TestPrewarmAllCaches:
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service._batch_prewarm_signals")
     def test_empty_db_should_skip_all_phases(
         self,
         mock_signals,
@@ -359,7 +363,7 @@ class TestPrewarmAllCaches:
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service._batch_prewarm_signals")
     def test_partial_failure_should_not_block_other_phases(
         self,
         mock_signals,
@@ -391,7 +395,7 @@ class TestPrewarmAllCaches:
         with patch("application.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
-        # Assert — subsequent phases still called
+        # Assert — parallel phases still run (signals failure is isolated)
         mock_signals.assert_called_once()
         mock_fg.assert_called_once()
         mock_moat.assert_called_once()
@@ -403,7 +407,7 @@ class TestPrewarmAllCaches:
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service._batch_prewarm_signals")
     def test_no_etf_should_skip_etf_phase(
         self,
         mock_signals,
@@ -425,7 +429,7 @@ class TestPrewarmAllCaches:
         )
         db_session.commit()
 
-        mock_signals.return_value = {}
+        mock_signals.return_value = None
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_beta.return_value = {}
@@ -444,7 +448,7 @@ class TestPrewarmAllCaches:
     @patch("application.prewarm_service.prewarm_etf_holdings_batch")
     @patch("application.prewarm_service.prewarm_moat_batch")
     @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service._batch_prewarm_signals")
     def test_cash_stocks_should_be_excluded_from_signals_and_moat(
         self,
         mock_signals,
@@ -472,7 +476,7 @@ class TestPrewarmAllCaches:
         )
         db_session.commit()
 
-        mock_signals.return_value = {}
+        mock_signals.return_value = None
         mock_fg.return_value = {}
         mock_moat.return_value = {}
         mock_beta.return_value = {}
@@ -482,7 +486,7 @@ class TestPrewarmAllCaches:
         with patch("application.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
-        # Assert
+        # Assert — _batch_prewarm_signals receives signals tickers (no USD)
         signals_tickers = mock_signals.call_args[0][0]
         moat_tickers = mock_moat.call_args[0][0]
         beta_tickers = mock_beta.call_args[0][0]
@@ -494,7 +498,78 @@ class TestPrewarmAllCaches:
         assert "NVDA" in moat_tickers
         assert "NVDA" in beta_tickers
 
-        # Sector prewarm uses moat tickers (excludes Cash)
+        # Sector prewarm uses equity tickers (excludes Cash)
         sector_tickers = [c.args[0] for c in mock_sector.call_args_list]
         assert "USD" not in sector_tickers
         assert "NVDA" in sector_tickers
+
+
+# ---------------------------------------------------------------------------
+# _batch_prewarm_signals
+# ---------------------------------------------------------------------------
+
+
+class TestBatchPrewarmSignals:
+    """Tests for _batch_prewarm_signals — batch download + fallback logic."""
+
+    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service.prime_signals_cache_batch")
+    @patch("application.prewarm_service.batch_download_history")
+    def test_full_batch_success_should_not_call_fallback(
+        self, mock_batch_dl, mock_prime, mock_fallback
+    ):
+        # Arrange — all tickers returned by batch download
+        mock_batch_dl.return_value = {"AAPL": MagicMock(), "NVDA": MagicMock()}
+        mock_prime.return_value = 2
+
+        # Act
+        _batch_prewarm_signals(["AAPL", "NVDA"])
+
+        # Assert — prime called with full batch, no fallback
+        mock_prime.assert_called_once()
+        mock_fallback.assert_not_called()
+
+    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service.prime_signals_cache_batch")
+    @patch("application.prewarm_service.batch_download_history")
+    def test_partial_batch_should_fallback_for_missed_tickers(
+        self, mock_batch_dl, mock_prime, mock_fallback
+    ):
+        # Arrange — AAPL returned but 0050.TW missing (non-US ticker)
+        mock_batch_dl.return_value = {"AAPL": MagicMock()}
+        mock_prime.return_value = 1
+        mock_fallback.return_value = {}
+
+        # Act
+        _batch_prewarm_signals(["AAPL", "0050.TW"])
+
+        # Assert — prime called for batch, fallback called only for missed ticker
+        mock_prime.assert_called_once()
+        mock_fallback.assert_called_once_with(["0050.TW"])
+
+    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service.prime_signals_cache_batch")
+    @patch("application.prewarm_service.batch_download_history")
+    def test_empty_batch_result_should_fully_fallback(
+        self, mock_batch_dl, mock_prime, mock_fallback
+    ):
+        # Arrange — batch download fails / returns nothing
+        mock_batch_dl.return_value = {}
+        mock_fallback.return_value = {}
+
+        # Act
+        _batch_prewarm_signals(["AAPL", "NVDA"])
+
+        # Assert — prime never called, full fallback to individual calls
+        mock_prime.assert_not_called()
+        mock_fallback.assert_called_once_with(["AAPL", "NVDA"])
+
+    @patch("application.prewarm_service.prewarm_signals_batch")
+    @patch("application.prewarm_service.batch_download_history")
+    def test_empty_ticker_list_should_be_a_no_op(self, mock_batch_dl, mock_fallback):
+        # Act
+        _batch_prewarm_signals([])
+
+        # Assert — nothing called at all
+        mock_batch_dl.assert_not_called()
+        mock_fallback.assert_not_called()

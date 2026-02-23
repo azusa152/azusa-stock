@@ -177,6 +177,49 @@ _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 
 
 # ---------------------------------------------------------------------------
+# In-flight 重複請求去重：避免同一 key 並發觸發多次 yfinance 呼叫
+# ---------------------------------------------------------------------------
+_inflight_lock = threading.Lock()
+_inflight_events: dict[str, threading.Event] = {}
+
+
+def _deduped_fetch(
+    key: str, fetcher: Callable[[], T], result_getter: Callable[[], T]
+) -> T:
+    """確保同一 key 的 yfinance 呼叫在任意時刻只有一個在飛行中。
+
+    若已有相同 key 的請求進行中，等待其完成後透過 result_getter 取用結果（例如讀 L1 快取）。
+
+    Args:
+        key: 唯一識別此請求的字串（通常為 disk_prefix:ticker）。
+        fetcher: 實際執行 yfinance 呼叫並寫入快取的函式。
+        result_getter: 等待完成後用來讀取快取結果的函式（fetcher 寫入後呼叫）。
+    """
+    with _inflight_lock:
+        if key in _inflight_events:
+            event = _inflight_events[key]
+            should_wait = True
+        else:
+            event = threading.Event()
+            _inflight_events[key] = event
+            should_wait = False
+
+    if should_wait:
+        event.wait()
+        # fetcher 已將結果寫入快取；透過 result_getter 取得
+        return result_getter()
+
+    try:
+        return fetcher()
+    finally:
+        # set() before pop(): any late-arriving thread that finds this event already set
+        # calls result_getter() and reads L1 — no redundant yfinance call.
+        event.set()
+        with _inflight_lock:
+            _inflight_events.pop(key, None)
+
+
+# ---------------------------------------------------------------------------
 # L1 快取（記憶體）：避免每次頁面載入都重複呼叫 yfinance
 # ---------------------------------------------------------------------------
 _signals_cache: TTLCache = TTLCache(
@@ -294,14 +337,30 @@ def _cached_fetch(
         return disk_cached
 
     logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
-    result = fetcher(ticker)
-    l1_cache[ticker] = result
-    # Only persist to disk if the result is NOT an error
-    if is_error is not None and is_error(result):
-        logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
-    else:
-        _disk_set(disk_key, result, disk_ttl)
-    return result
+
+    def _do_fetch() -> T:
+        res = fetcher(ticker)
+        l1_cache[ticker] = res
+        if is_error is not None and is_error(res):
+            logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
+        else:
+            _disk_set(disk_key, res, disk_ttl)
+        return res
+
+    def _get_cached() -> T:
+        # fetcher 已寫入 L1（成功路徑）；直接讀取即可。
+        # 注意：接受 is_error 結果 — fetcher 可能寫了一個錯誤哨兵，這也是合法快取。
+        cached = l1_cache.get(ticker)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
+        disk_val = _disk_get(disk_key)
+        if disk_val is not None:
+            l1_cache[ticker] = disk_val
+            return disk_val  # type: ignore[return-value]
+        # fetcher 拋出例外（非錯誤哨兵）— 每個等待者各自重試一次（已由速率限制器節流）
+        return fetcher(ticker)
+
+    return _deduped_fetch(disk_key, _do_fetch, _get_cached)
 
 
 def _get_session() -> cffi_requests.Session:

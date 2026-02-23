@@ -4,13 +4,16 @@ Application — 啟動快取預熱服務。
 讓前端首次載入即可命中暖快取。
 """
 
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlmodel import Session, select
 
 from domain.constants import (
     EQUITY_CATEGORIES,
     GURU_BACKFILL_YEARS,
+    SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
 )
@@ -18,9 +21,11 @@ from domain.entities import Holding, Stock
 from infrastructure.database import engine
 from infrastructure.repositories import find_all_active_gurus
 from infrastructure.market_data import (
+    batch_download_history,
     get_etf_sector_weights,
     get_fear_greed_index,
     get_ticker_sector,
+    prime_signals_cache_batch,
     prewarm_beta_batch,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
@@ -31,6 +36,24 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
+# 預熱就緒旗標（供 /prewarm-status 端點查詢）
+# ---------------------------------------------------------------------------
+_prewarm_ready = False
+_prewarm_lock = threading.Lock()
+
+
+def is_prewarm_ready() -> bool:
+    """回傳快取預熱是否已完成。"""
+    return _prewarm_ready
+
+
+def _set_prewarm_ready(value: bool) -> None:
+    global _prewarm_ready  # noqa: PLW0603
+    with _prewarm_lock:
+        _prewarm_ready = value
+
+
+# ---------------------------------------------------------------------------
 # 常數
 # ---------------------------------------------------------------------------
 _DEFAULT_USER_ID = "default"
@@ -39,12 +62,10 @@ _DEFAULT_USER_ID = "default"
 def prewarm_all_caches() -> None:
     """非阻塞式啟動預熱 — 填充 L1/L2 快取。
 
-    依序預熱：
-    1. 技術訊號（signals + piggyback price history）
-    2. 恐懼與貪婪指數（Fear & Greed）
-    3. 護城河趨勢（moat）— 排除 Bond/Cash
-    4. ETF 成分股（etf_holdings）— 僅 is_etf=True 的標的
-    5. Beta 值（beta）— 壓力測試用，排除 Cash
+    流程：
+    1. 技術訊號（batch_download_history + prime_signals_cache_batch，一次 HTTP 請求）
+    2. 其餘各階段並行執行：moat、fear_greed、etf_holdings、beta、
+       guru_backfill、sector、etf_sector_weights
 
     整個流程以 try/except 包裹，確保任何失敗都不會影響應用程式正常運作。
     """
@@ -55,10 +76,12 @@ def prewarm_all_caches() -> None:
         tickers = _collect_tickers()
     except Exception as exc:
         logger.error("快取預熱：無法讀取資料庫，中止預熱。%s", exc, exc_info=True)
+        _set_prewarm_ready(True)  # 服務仍可運作，只是快取為冷啟動狀態
         return
 
     if not tickers["all"]:
         logger.info("快取預熱：資料庫中無任何股票或持倉，跳過預熱。")
+        _set_prewarm_ready(True)
         return
 
     logger.info(
@@ -72,43 +95,43 @@ def prewarm_all_caches() -> None:
         len(tickers["etf"]),
     )
 
-    # Phase 1: 技術訊號（含 piggyback price history）
-    _prewarm_phase("signals", lambda: prewarm_signals_batch(tickers["signals"]))
+    # Phase 1: 技術訊號（批次下載，大幅減少 HTTP 請求數量）
+    _prewarm_phase("signals", lambda: _batch_prewarm_signals(tickers["signals"]))
 
-    # Phase 2: 恐懼與貪婪指數
-    _prewarm_phase("fear_greed", get_fear_greed_index)
-
-    # Phase 3: 護城河趨勢
-    _prewarm_phase("moat", lambda: prewarm_moat_batch(tickers["moat"]))
-
-    # Phase 4: ETF 成分股
+    # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
+    parallel_phases: list[tuple[str, object]] = [
+        ("fear_greed", get_fear_greed_index),
+        ("moat", lambda: prewarm_moat_batch(tickers["moat"])),
+        ("guru_backfill", _backfill_all_gurus),
+    ]
     if tickers["etf"]:
-        _prewarm_phase(
-            "etf_holdings", lambda: prewarm_etf_holdings_batch(tickers["etf"])
+        parallel_phases.append(
+            ("etf_holdings", lambda: prewarm_etf_holdings_batch(tickers["etf"]))
         )
-
-    # Phase 5: Beta 值（壓力測試用）
+        parallel_phases.append(
+            ("etf_sector_weights", lambda: _prewarm_etf_sector_weights(tickers["etf"]))
+        )
     if tickers["beta"]:
-        _prewarm_phase("beta", lambda: prewarm_beta_batch(tickers["beta"]))
-
-    # Phase 6: Smart Money 歷史 13F 回填（非阻塞、冪等）
-    _prewarm_phase("guru_backfill", _backfill_all_gurus)
-
-    # Phase 7: 行業板塊（sector）— 供 rebalance 端點快取讀取使用
-    # 使用 equity 名單（EQUITY_CATEGORIES）填充磁碟快取，與 sector_exposure 邏輯完全對齊。
+        parallel_phases.append(("beta", lambda: prewarm_beta_batch(tickers["beta"])))
     if tickers["equity"]:
-        _prewarm_phase("sector", lambda: _prewarm_sectors(tickers["equity"]))
+        parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["equity"])))
 
-    # Phase 8: ETF 行業板塊權重（etf_sector_weights）— ETF 穿透板塊計算的 Approach B
-    # 僅針對 is_etf=True 的標的，填充 yfinance funds_data.sector_weightings 快取。
-    if tickers["etf"]:
-        _prewarm_phase(
-            "etf_sector_weights",
-            lambda: _prewarm_etf_sector_weights(tickers["etf"]),
-        )
+    with ThreadPoolExecutor(max_workers=min(len(parallel_phases), 4)) as pool:
+        phase_futures = {
+            pool.submit(_prewarm_phase, name, fn): name for name, fn in parallel_phases
+        }
+        for future in as_completed(phase_futures):
+            phase_name = phase_futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                logger.warning(
+                    "快取預熱並行階段 [%s] 發生未預期錯誤：%s", phase_name, exc
+                )
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
+    _set_prewarm_ready(True)
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +210,34 @@ def _collect_tickers() -> dict[str, list[str]]:
     }
 
 
+def _batch_prewarm_signals(signal_tickers: list[str]) -> None:
+    """批次下載所有標的歷史資料（一次 HTTP 請求），再並行計算訊號填充快取。
+    若批次下載失敗或部分標的缺資料，回退至逐一呼叫。
+    """
+    if not signal_tickers:
+        return
+
+    hist_batch = batch_download_history(signal_tickers)
+    if hist_batch:
+        primed = prime_signals_cache_batch(hist_batch)
+        logger.info(
+            "快取預熱 [signals] 批次預熱 %d/%d 檔。", primed, len(signal_tickers)
+        )
+        # 回退：批次下載中缺失的標的（非 US 市場、資料不足等）
+        missed = [t for t in signal_tickers if t not in hist_batch]
+        if missed:
+            logger.info(
+                "快取預熱 [signals] 回退至個別呼叫：%d 檔（%s）。",
+                len(missed),
+                ", ".join(missed),
+            )
+            prewarm_signals_batch(missed)
+    else:
+        # 批次下載完全失敗，回退至個別呼叫
+        logger.warning("快取預熱 [signals] 批次下載失敗，回退至個別呼叫。")
+        prewarm_signals_batch(signal_tickers)
+
+
 def _backfill_all_gurus() -> None:
     """對所有啟用中大師執行 5 年 13F 歷史回填。
 
@@ -227,53 +278,54 @@ def _backfill_all_gurus() -> None:
 
 
 def _prewarm_sectors(tickers: list[str]) -> None:
-    """對股票類持倉逐一呼叫 get_ticker_sector()，填充磁碟快取。
+    """對股票類持倉並行呼叫 get_ticker_sector()，填充磁碟快取。
 
-    在背景執行緒中順序處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
+    以 ThreadPoolExecutor 並行處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
     """
     total = len(tickers)
-    ok = 0
-    for i, ticker in enumerate(tickers, 1):
-        try:
-            sector = get_ticker_sector(ticker)
-            ok += 1
-            logger.debug(
-                "快取預熱 [sector] (%d/%d) %s → %s", i, total, ticker, sector or "N/A"
-            )
-        except Exception as exc:
-            logger.warning(
-                "快取預熱 [sector] (%d/%d) %s 失敗：%s", i, total, ticker, exc
-            )
-    logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok, total)
+    ok_count = 0
+
+    def _fetch_one(ticker: str) -> tuple[str, bool]:
+        sector = get_ticker_sector(ticker)
+        logger.debug("快取預熱 [sector] %s → %s", ticker, sector or "N/A")
+        return ticker, True
+
+    with ThreadPoolExecutor(max_workers=SCAN_THREAD_POOL_SIZE) as pool:
+        futures = {pool.submit(_fetch_one, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                future.result()
+                ok_count += 1
+            except Exception as exc:
+                logger.warning("快取預熱 [sector] %s 失敗：%s", ticker, exc)
+    logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok_count, total)
 
 
 def _prewarm_etf_sector_weights(tickers: list[str]) -> None:
-    """對 ETF 標的逐一呼叫 get_etf_sector_weights()，填充磁碟快取。
+    """對 ETF 標的並行呼叫 get_etf_sector_weights()，填充磁碟快取。
 
-    在背景執行緒中順序處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
+    以 ThreadPoolExecutor 並行處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
     """
     total = len(tickers)
-    ok = 0
-    for i, ticker in enumerate(tickers, 1):
-        try:
-            weights = get_etf_sector_weights(ticker)
-            ok += 1
-            logger.debug(
-                "快取預熱 [etf_sector_weights] (%d/%d) %s → %d 板塊",
-                i,
-                total,
-                ticker,
-                len(weights) if weights else 0,
-            )
-        except Exception as exc:
-            logger.warning(
-                "快取預熱 [etf_sector_weights] (%d/%d) %s 失敗：%s",
-                i,
-                total,
-                ticker,
-                exc,
-            )
-    logger.info("快取預熱 [etf_sector_weights] 完成 %d/%d 筆。", ok, total)
+    ok_count = 0
+
+    def _fetch_one(ticker: str) -> tuple[str, int]:
+        weights = get_etf_sector_weights(ticker)
+        sector_count = len(weights) if weights else 0
+        logger.debug("快取預熱 [etf_sector_weights] %s → %d 板塊", ticker, sector_count)
+        return ticker, sector_count
+
+    with ThreadPoolExecutor(max_workers=SCAN_THREAD_POOL_SIZE) as pool:
+        futures = {pool.submit(_fetch_one, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                future.result()
+                ok_count += 1
+            except Exception as exc:
+                logger.warning("快取預熱 [etf_sector_weights] %s 失敗：%s", ticker, exc)
+    logger.info("快取預熱 [etf_sector_weights] 完成 %d/%d 筆。", ok_count, total)
 
 
 def _prewarm_phase(name: str, fn) -> None:
