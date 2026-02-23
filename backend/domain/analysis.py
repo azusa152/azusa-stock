@@ -11,15 +11,19 @@ from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
     BIAS_OVERSOLD_THRESHOLD,
     BIAS_WEAKENING_THRESHOLD,
+    CATEGORY_RSI_OFFSET,
     CNN_FG_EXTREME_FEAR,
     CNN_FG_FEAR,
     CNN_FG_GREED,
     CNN_FG_NEUTRAL_HIGH,
+    MA200_DEEP_DEVIATION_THRESHOLD,
+    MA200_HIGH_DEVIATION_THRESHOLD,
     MARKET_CAUTION_BELOW_60MA_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     ROGUE_WAVE_BIAS_PERCENTILE,
     ROGUE_WAVE_MIN_HISTORY_DAYS,
     ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
+    RSI_APPROACHING_BUY_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
     RSI_OVERBOUGHT,
     RSI_PERIOD,
@@ -72,10 +76,10 @@ def compute_rsi(closes: list[float], period: int = RSI_PERIOD) -> Optional[float
     return round(100.0 - (100.0 / (1.0 + rs)), 2)
 
 
-def compute_bias(price: float, ma60: float) -> Optional[float]:
-    """計算乖離率 (%)：(現價 - 60MA) / 60MA * 100。"""
-    if ma60 and ma60 != 0:
-        return round((price - ma60) / ma60 * 100, 2)
+def compute_bias(price: float, ma: float) -> Optional[float]:
+    """計算乖離率 (%)：(現價 - MA) / MA * 100。可用於任意移動平均線（MA60、MA200 等）。"""
+    if ma and ma != 0:
+        return round((price - ma) / ma * 100, 2)
     return None
 
 
@@ -209,31 +213,52 @@ def determine_scan_signal(
     moat: str,
     rsi: Optional[float],
     bias: Optional[float],
+    bias_200: Optional[float] = None,
+    category: Optional[str] = None,
 ) -> ScanSignal:
     """
-    8 優先級掃描訊號決策引擎。
+    9 優先級掃描訊號決策引擎（兩階段架構）。
     純函式，不依賴外部狀態。None 值視為「條件不成立」，安全落穿至 NORMAL。
 
-    | 優先 | 條件                              | 訊號             |
-    |------|-----------------------------------|------------------|
-    | P1   | moat == DETERIORATING             | THESIS_BROKEN    |
-    | P2   | bias < -20 AND rsi < 35           | DEEP_VALUE       |
-    | P3   | bias < -20                        | OVERSOLD         |
-    | P4   | rsi < 35 AND bias < 20            | CONTRARIAN_BUY   |
-    | P5   | bias > 20 AND rsi > 70            | OVERHEATED       |
-    | P6   | bias > 20 OR rsi > 70             | CAUTION_HIGH     |
-    | P7   | bias < -15 AND rsi < 38           | WEAKENING        |
-    | P8   | 其他                               | NORMAL           |
+    ── Phase 1：分類感知優先漏斗 ──────────────────────────────────────────────
+    依 CATEGORY_RSI_OFFSET 計算 RSI 偏移，對買賣雙側對稱套用（高 beta 擴大區間）。
 
-    None-handling design decisions:
-    - rsi=None  → P2, P4, P5 (RSI part), P6 (RSI part), P7 skipped; P3 still fires if bias < -20.
-    - bias=None → P2, P3, P5 (bias part), P6 (bias part), P7 skipped.
-    - P4 with bias=None: the guard `bias is None or bias < 20` intentionally allows
-      CONTRARIAN_BUY when bias is unavailable (insufficient price history). RSI < 35 is
-      strong enough signal on its own; suppressing it would cause false negatives on newly
-      listed stocks or tickers with short history.
-    - Both None → only P1 (THESIS_BROKEN) or P8 (NORMAL) are reachable.
+    | 優先  | 條件                                        | 訊號             |
+    |-------|---------------------------------------------|------------------|
+    | P1    | moat == DETERIORATING                       | THESIS_BROKEN    |
+    | P2    | bias < -20 AND rsi < (35+offset)            | DEEP_VALUE       |
+    | P3    | bias < -20                                  | OVERSOLD         |
+    | P4    | rsi < (35+offset) AND bias < 20             | CONTRARIAN_BUY   |
+    | P4.5  | rsi < (37+offset) AND bias < -15            | APPROACHING_BUY  |
+    | P5    | bias > 20 AND rsi > (70+offset)             | OVERHEATED       |
+    | P6    | bias > 20 OR rsi > (70+offset)              | CAUTION_HIGH     |
+    | P7    | bias < -15 AND rsi < (38+offset)            | WEAKENING        |
+    | P8    | 其他                                         | NORMAL           |
+
+    ── Phase 2：對稱 MA200 放大器 ──────────────────────────────────────────────
+    - 買側（bias_200 < -15%）：WEAKENING → APPROACHING_BUY → CONTRARIAN_BUY
+    - 賣側（bias_200 > +20%，非對稱：市場長期向上偏移）：CAUTION_HIGH → OVERHEATED
+    - P1-P3 及已確認的 OVERHEATED/NORMAL 不受影響。
+
+    ── category 對應的 RSI 偏移 ────────────────────────────────────────────────
+    Trend_Setter: 0, Moat: +1, Growth: +2, Bond: -3, Cash: 0
+    公式：round((beta - 1.0) * 4)，來源：CATEGORY_FALLBACK_BETA
+
+    ── None 處理設計決策 ────────────────────────────────────────────────────────
+    - rsi=None  → P2, P4, P4.5, P5(RSI), P6(RSI), P7 跳過；P3 在 bias < -20 時仍觸發。
+    - bias=None → P2, P3, P4.5, P5(bias), P6(bias), P7 跳過。
+    - P4 with bias=None：允許 CONTRARIAN_BUY（RSI < threshold 已足夠，避免新掛牌股票漏報）。
+    - bias_200=None → Phase 2 放大器整體跳過。
+    - Both None → 僅 P1 (THESIS_BROKEN) 或 P8 (NORMAL) 可觸達。
     """
+    # ── Phase 1：分類感知優先漏斗 ────────────────────────────────────────────
+    rsi_offset = CATEGORY_RSI_OFFSET.get(category, 0) if category else 0
+
+    rsi_contrarian = RSI_CONTRARIAN_BUY_THRESHOLD + rsi_offset
+    rsi_approaching = RSI_APPROACHING_BUY_THRESHOLD + rsi_offset
+    rsi_weakening = RSI_WEAKENING_THRESHOLD + rsi_offset
+    rsi_overbought = RSI_OVERBOUGHT + rsi_offset
+
     # P1: 護城河惡化 — 論文破裂，優先順序最高
     if moat == MoatStatus.DETERIORATING.value:
         return ScanSignal.THESIS_BROKEN
@@ -243,48 +268,74 @@ def determine_scan_signal(
         bias is not None
         and bias < BIAS_OVERSOLD_THRESHOLD
         and rsi is not None
-        and rsi < RSI_CONTRARIAN_BUY_THRESHOLD
+        and rsi < rsi_contrarian
     ):
-        return ScanSignal.DEEP_VALUE
+        signal = ScanSignal.DEEP_VALUE
 
     # P3: 乖離率極端（e.g. bias=-31%, RSI未確認）
-    if bias is not None and bias < BIAS_OVERSOLD_THRESHOLD:
-        return ScanSignal.OVERSOLD
+    elif bias is not None and bias < BIAS_OVERSOLD_THRESHOLD:
+        signal = ScanSignal.OVERSOLD
 
     # P4: RSI 超賣 + 乖離率未過熱（防止矛盾訊號）
-    if (
+    elif (
         rsi is not None
-        and rsi < RSI_CONTRARIAN_BUY_THRESHOLD
+        and rsi < rsi_contrarian
         and (bias is None or bias < BIAS_OVERHEATED_THRESHOLD)
     ):
-        return ScanSignal.CONTRARIAN_BUY
+        signal = ScanSignal.CONTRARIAN_BUY
+
+    # P4.5: 接近買入區（RSI 進入累積區，bias 偏弱但未達極端）
+    elif (
+        rsi is not None
+        and rsi < rsi_approaching
+        and bias is not None
+        and bias < BIAS_WEAKENING_THRESHOLD
+    ):
+        signal = ScanSignal.APPROACHING_BUY
 
     # P5: 雙重確認過熱（最高確信度賣出警示）
-    if (
+    elif (
         bias is not None
         and bias > BIAS_OVERHEATED_THRESHOLD
         and rsi is not None
-        and rsi > RSI_OVERBOUGHT
+        and rsi > rsi_overbought
     ):
-        return ScanSignal.OVERHEATED
+        signal = ScanSignal.OVERHEATED
 
     # P6: 單一指標過熱警示
-    if (bias is not None and bias > BIAS_OVERHEATED_THRESHOLD) or (
-        rsi is not None and rsi > RSI_OVERBOUGHT
+    elif (bias is not None and bias > BIAS_OVERHEATED_THRESHOLD) or (
+        rsi is not None and rsi > rsi_overbought
     ):
-        return ScanSignal.CAUTION_HIGH
+        signal = ScanSignal.CAUTION_HIGH
 
     # P7: 早期轉弱（收緊閾值以減少警報疲勞）
-    if (
+    elif (
         bias is not None
         and bias < BIAS_WEAKENING_THRESHOLD
         and rsi is not None
-        and rsi < RSI_WEAKENING_THRESHOLD
+        and rsi < rsi_weakening
     ):
-        return ScanSignal.WEAKENING
+        signal = ScanSignal.WEAKENING
 
     # P8: 真正中性
-    return ScanSignal.NORMAL
+    else:
+        signal = ScanSignal.NORMAL
+
+    # ── Phase 2：對稱 MA200 放大器 ──────────────────────────────────────────
+    if bias_200 is not None:
+        # 買側：深度偏離 MA200 → 升級信號（均值回歸確認）
+        if bias_200 < MA200_DEEP_DEVIATION_THRESHOLD:
+            if signal == ScanSignal.WEAKENING:
+                signal = ScanSignal.APPROACHING_BUY
+            elif signal == ScanSignal.APPROACHING_BUY:
+                signal = ScanSignal.CONTRARIAN_BUY
+
+        # 賣側：顯著高於 MA200 → 升級至過熱（+20% 非對稱：市場長期向上偏移）
+        elif bias_200 > MA200_HIGH_DEVIATION_THRESHOLD:
+            if signal == ScanSignal.CAUTION_HIGH:
+                signal = ScanSignal.OVERHEATED
+
+    return signal
 
 
 # ---------------------------------------------------------------------------

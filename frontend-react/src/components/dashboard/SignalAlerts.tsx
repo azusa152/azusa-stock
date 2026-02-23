@@ -16,8 +16,11 @@ interface SignalRowProps {
 }
 
 function SignalRow({ stock, signal }: SignalRowProps) {
+  const { t } = useTranslation()
   const icon = SCAN_SIGNAL_ICONS[signal] ?? "⚪"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
+  const signalKey = signal.toLowerCase()
+  const signalLabel = t(`config.signal.${signalKey}`, { defaultValue: signal })
 
   return (
     <div className="grid grid-cols-[1.5rem_5rem_auto_auto] gap-2 items-center py-1">
@@ -26,8 +29,8 @@ function SignalRow({ stock, signal }: SignalRowProps) {
       <span className="text-xs text-muted-foreground">
         {catIcon} {stock.category}
       </span>
-      <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded ml-auto">
-        {signal}
+      <span className="text-xs bg-muted px-1.5 py-0.5 rounded ml-auto">
+        {signalLabel}
       </span>
     </div>
   )

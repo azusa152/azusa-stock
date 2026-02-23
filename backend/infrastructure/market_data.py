@@ -433,16 +433,18 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         ma200 = compute_moving_average(closes, MA200_WINDOW)
         ma60 = compute_moving_average(closes, MA60_WINDOW)
         bias = compute_bias(current_price, ma60) if ma60 else None
+        bias_200 = compute_bias(current_price, ma200) if ma200 else None
         volume_ratio = compute_volume_ratio(volumes)
 
         logger.info(
-            "%s 技術訊號：price=%.2f, RSI=%s, 200MA=%s, 60MA=%s, Bias=%s%%, VolRatio=%s",
+            "%s 技術訊號：price=%.2f, RSI=%s, 200MA=%s, 60MA=%s, Bias=%s%%, Bias200=%s%%, VolRatio=%s",
             ticker,
             current_price,
             rsi,
             ma200,
             ma60,
             bias,
+            bias_200,
             volume_ratio,
         )
 
@@ -485,6 +487,7 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
             "ma200": ma200,
             "ma60": ma60,
             "bias": bias,
+            "bias_200": bias_200,
             "volume_ratio": volume_ratio,
             "institutional_holders": institutional_holders,
             "fetched_at": datetime.now(timezone.utc).isoformat(),

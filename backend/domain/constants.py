@@ -23,11 +23,25 @@ MIN_CLOSE_PRICES_FOR_CHANGE = 2  # 計算日漲跌所需的最少收盤價數據
 RSI_OVERSOLD = 30
 RSI_OVERBOUGHT = 70
 RSI_CONTRARIAN_BUY_THRESHOLD = 35
+RSI_APPROACHING_BUY_THRESHOLD = 37
 RSI_WEAKENING_THRESHOLD = 38
 BIAS_OVERHEATED_THRESHOLD = 20
 BIAS_OVERSOLD_THRESHOLD = -20
 BIAS_WEAKENING_THRESHOLD = -15
+# Same magnitude as BIAS_WEAKENING but measured against MA200 (not MA60); may diverge independently.
+MA200_DEEP_DEVIATION_THRESHOLD = -15  # buy amplifier: price deeply below MA200
+MA200_HIGH_DEVIATION_THRESHOLD = 20  # sell amplifier: price highly above MA200 (asymmetric due to positive market drift)
 MOAT_MARGIN_DETERIORATION_THRESHOLD = -2  # percentage points YoY
+
+# Category RSI offset — derived from CATEGORY_FALLBACK_BETA via round((beta - 1.0) * 4)
+# Widens/narrows RSI bands symmetrically on both buy and sell sides per category
+CATEGORY_RSI_OFFSET: dict[str, int] = {
+    "Trend_Setter": 0,  # beta ~1.0
+    "Moat": 1,  # beta ~1.2
+    "Growth": 2,  # beta ~1.5
+    "Bond": -3,  # beta ~0.3
+    "Cash": 0,
+}
 MARKET_CAUTION_BELOW_60MA_PCT = 50  # % of trend stocks below 60MA
 
 # ---------------------------------------------------------------------------

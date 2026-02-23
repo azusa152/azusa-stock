@@ -210,6 +210,7 @@ class SignalsResponse(BaseModel):
     ma200: Optional[float] = None
     ma60: Optional[float] = None
     bias: Optional[float] = None
+    bias_200: Optional[float] = None
     volume_ratio: Optional[float] = None
     status: list[str] = []
     error: Optional[str] = None

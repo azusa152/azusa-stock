@@ -210,7 +210,7 @@ class TestDetectRogueWave:
 
 
 # ---------------------------------------------------------------------------
-# determine_scan_signal — 8-priority cascade
+# determine_scan_signal — 9-priority cascade
 # ---------------------------------------------------------------------------
 
 STABLE = MoatStatus.STABLE.value
@@ -218,7 +218,7 @@ DETERIORATING = MoatStatus.DETERIORATING.value
 
 
 class TestDetermineScanSignal:
-    """Tests for the 8-priority determine_scan_signal() cascade."""
+    """Tests for the 9-priority determine_scan_signal() cascade."""
 
     # --- P1: THESIS_BROKEN ---
 
@@ -446,6 +446,213 @@ class TestDetermineScanSignal:
     def test_regression_aapl_normal(self):
         # AAPL: RSI=49.08, bias=-1.52 → still NORMAL
         assert determine_scan_signal(STABLE, rsi=49.08, bias=-1.52) == ScanSignal.NORMAL
+
+
+class TestDetermineScanSignalEnhancements:
+    """Tests for P4.5 APPROACHING_BUY, category-aware thresholds, and MA200 amplifier."""
+
+    # --- P4.5: APPROACHING_BUY base signal ---
+
+    def test_p45_approaching_buy_rsi_in_accumulation_zone(self):
+        # RSI=36 (35 < 36 < 37), bias=-16 (< -15) → APPROACHING_BUY (no category)
+        assert (
+            determine_scan_signal(STABLE, rsi=36.0, bias=-16.0)
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_p45_approaching_buy_boundary_exactly_at_threshold(self):
+        # RSI=36.99, bias=-15.01 → just inside both boundaries
+        assert (
+            determine_scan_signal(STABLE, rsi=36.99, bias=-15.01)
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_p45_not_approaching_buy_when_rsi_above_threshold(self):
+        # RSI=37.1 (≥ 37+0), bias=-16 → falls to WEAKENING
+        assert (
+            determine_scan_signal(STABLE, rsi=37.1, bias=-16.0) == ScanSignal.WEAKENING
+        )
+
+    def test_p45_not_approaching_buy_when_bias_above_weakening_threshold(self):
+        # RSI=36, bias=-14 (> -15) → misses P4.5 bias condition → NORMAL
+        assert determine_scan_signal(STABLE, rsi=36.0, bias=-14.0) == ScanSignal.NORMAL
+
+    # --- Category-aware thresholds: buy side ---
+
+    def test_category_growth_offset_upgrades_to_contrarian_buy(self):
+        # Growth offset=+2; rsi_contrarian=37; RSI=36 < 37 → CONTRARIAN_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=36.0, bias=-5.0, category="Growth")
+            == ScanSignal.CONTRARIAN_BUY
+        )
+
+    def test_category_trend_setter_no_offset_stays_approaching_buy(self):
+        # Trend_Setter offset=0; rsi_contrarian=35; RSI=36 > 35 → only APPROACHING_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=36.0, bias=-16.0, category="Trend_Setter")
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_category_moat_offset_plus1_approaching_buy(self):
+        # Moat offset=+1; rsi_contrarian=36; RSI=36.5 > 36 → rsi_approaching=38; RSI=36.5 < 38 → APPROACHING_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=36.5, bias=-16.0, category="Moat")
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_category_bond_offset_minus3_tighter_buy_threshold(self):
+        # Bond offset=-3; rsi_contrarian=32; RSI=33 > 32 → misses P4; rsi_approaching=34; RSI=33 < 34, bias=-16 < -15 → APPROACHING_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=33.0, bias=-16.0, category="Bond")
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_category_bond_offset_rsi_above_approaching_threshold_is_weakening(self):
+        # Bond offset=-3; rsi_weakening=35; RSI=34 < 35 → WEAKENING
+        assert (
+            determine_scan_signal(STABLE, rsi=34.0, bias=-16.0, category="Bond")
+            == ScanSignal.WEAKENING
+        )
+
+    # --- Category-aware thresholds: sell side ---
+
+    def test_category_growth_rsi71_stays_caution_high(self):
+        # Growth offset=+2; rsi_overbought=72; RSI=71 < 72, bias=21 > 20 → only bias triggers → CAUTION_HIGH
+        assert (
+            determine_scan_signal(STABLE, rsi=71.0, bias=21.0, category="Growth")
+            == ScanSignal.CAUTION_HIGH
+        )
+
+    def test_category_trend_setter_rsi71_becomes_overheated(self):
+        # Trend_Setter offset=0; rsi_overbought=70; RSI=71 > 70 AND bias=21 > 20 → OVERHEATED
+        assert (
+            determine_scan_signal(STABLE, rsi=71.0, bias=21.0, category="Trend_Setter")
+            == ScanSignal.OVERHEATED
+        )
+
+    def test_category_bond_rsi68_becomes_overheated(self):
+        # Bond offset=-3; rsi_overbought=67; RSI=68 > 67 AND bias=21 > 20 → OVERHEATED
+        assert (
+            determine_scan_signal(STABLE, rsi=68.0, bias=21.0, category="Bond")
+            == ScanSignal.OVERHEATED
+        )
+
+    def test_category_growth_rsi72_becomes_overheated(self):
+        # Growth offset=+2; rsi_overbought=72; RSI=72.5 > 72 AND bias=22 > 20 → OVERHEATED
+        assert (
+            determine_scan_signal(STABLE, rsi=72.5, bias=22.0, category="Growth")
+            == ScanSignal.OVERHEATED
+        )
+
+    # --- MA200 buy-side amplifier ---
+
+    def test_ma200_buy_amplifier_weakening_to_approaching_buy(self):
+        # RSI=37.5, bias=-16 → WEAKENING; bias_200=-16 < -15 → upgraded to APPROACHING_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=37.5, bias=-16.0, bias_200=-16.0)
+            == ScanSignal.APPROACHING_BUY
+        )
+
+    def test_ma200_buy_amplifier_approaching_buy_to_contrarian_buy(self):
+        # P4.5 produces APPROACHING_BUY; bias_200=-16 < -15 → upgraded to CONTRARIAN_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=36.0, bias=-16.0, bias_200=-16.0)
+            == ScanSignal.CONTRARIAN_BUY
+        )
+
+    def test_ma200_buy_amplifier_no_op_when_bias_200_above_threshold(self):
+        # WEAKENING + bias_200=-14 (> -15) → no upgrade
+        assert (
+            determine_scan_signal(STABLE, rsi=37.5, bias=-16.0, bias_200=-14.0)
+            == ScanSignal.WEAKENING
+        )
+
+    # --- MA200 sell-side amplifier ---
+
+    def test_ma200_sell_amplifier_caution_high_to_overheated(self):
+        # P6 CAUTION_HIGH (bias=22, RSI=65); bias_200=21 > 20 → upgraded to OVERHEATED
+        assert (
+            determine_scan_signal(STABLE, rsi=65.0, bias=22.0, bias_200=21.0)
+            == ScanSignal.OVERHEATED
+        )
+
+    def test_ma200_sell_amplifier_no_double_upgrade_already_overheated(self):
+        # Already OVERHEATED (RSI=75, bias=25); bias_200=21 > 20 → still OVERHEATED
+        assert (
+            determine_scan_signal(STABLE, rsi=75.0, bias=25.0, bias_200=21.0)
+            == ScanSignal.OVERHEATED
+        )
+
+    def test_ma200_sell_amplifier_no_op_when_bias_200_below_threshold(self):
+        # CAUTION_HIGH + bias_200=19 (< 20) → no upgrade
+        assert (
+            determine_scan_signal(STABLE, rsi=65.0, bias=22.0, bias_200=19.0)
+            == ScanSignal.CAUTION_HIGH
+        )
+
+    # --- MA200 amplifier no-op for NORMAL and extreme signals ---
+
+    def test_ma200_amplifier_noop_for_normal_buy_side(self):
+        assert (
+            determine_scan_signal(STABLE, rsi=50.0, bias=0.0, bias_200=-16.0)
+            == ScanSignal.NORMAL
+        )
+
+    def test_ma200_amplifier_noop_for_normal_sell_side(self):
+        assert (
+            determine_scan_signal(STABLE, rsi=50.0, bias=0.0, bias_200=21.0)
+            == ScanSignal.NORMAL
+        )
+
+    def test_ma200_amplifier_noop_for_deep_value(self):
+        # DEEP_VALUE is never downgraded by amplifier
+        assert (
+            determine_scan_signal(STABLE, rsi=30.0, bias=-25.0, bias_200=-16.0)
+            == ScanSignal.DEEP_VALUE
+        )
+
+    # --- Combined: category + MA200 amplifier ---
+
+    def test_combined_growth_and_ma200_buy_amplifier(self):
+        # Growth offset=+2; RSI=37.5 < 39 (rsi_approaching) → APPROACHING_BUY
+        # bias_200=-16 < -15 → upgraded to CONTRARIAN_BUY
+        assert (
+            determine_scan_signal(
+                STABLE, rsi=37.5, bias=-16.0, bias_200=-16.0, category="Growth"
+            )
+            == ScanSignal.CONTRARIAN_BUY
+        )
+
+    def test_combined_bond_and_ma200_sell_amplifier(self):
+        # Bond offset=-3; rsi_overbought=67; RSI=65 < 67, bias=22 → CAUTION_HIGH
+        # bias_200=21 > 20 → upgraded to OVERHEATED
+        assert (
+            determine_scan_signal(
+                STABLE, rsi=65.0, bias=22.0, bias_200=21.0, category="Bond"
+            )
+            == ScanSignal.OVERHEATED
+        )
+
+    # --- Regression: CRWD-like scenario ---
+
+    def test_regression_crwd_growth_contrarian_buy(self):
+        # CRWD: RSI=35.74, bias=-16.34, bias_200=-17.55, category=Growth
+        # Growth offset=+2; rsi_contrarian=37; RSI=35.74 < 37 → CONTRARIAN_BUY
+        # MA200 amplifier: already CONTRARIAN_BUY → no further upgrade
+        assert (
+            determine_scan_signal(
+                STABLE, rsi=35.74, bias=-16.34, bias_200=-17.55, category="Growth"
+            )
+            == ScanSignal.CONTRARIAN_BUY
+        )
+
+    def test_regression_crwd_no_category_was_weakening(self):
+        # Same CRWD values without category → falls to WEAKENING (dead zone scenario)
+        # RSI=35.74 > 35 (misses P4); RSI=35.74 < 37 but bias=-16.34 < -15 → APPROACHING_BUY
+        assert (
+            determine_scan_signal(STABLE, rsi=35.74, bias=-16.34)
+            == ScanSignal.APPROACHING_BUY
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ export type ScanSignal =
   | "DEEP_VALUE"
   | "OVERSOLD"
   | "CONTRARIAN_BUY"
+  | "APPROACHING_BUY"
   | "OVERHEATED"
   | "CAUTION_HIGH"
   | "WEAKENING"

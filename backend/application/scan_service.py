@@ -126,18 +126,21 @@ def run_scan(session: Session) -> dict:
             signals = get_technical_signals(ticker)
         rsi: float | None = None
         bias: float | None = None
+        bias_200: float | None = None
         volume_ratio: float | None = None
         price: float | None = None
-
         if signals and "error" not in signals:
             rsi = signals.get("rsi")
             bias = signals.get("bias")
+            bias_200 = signals.get("bias_200")
             volume_ratio = signals.get("volume_ratio")
             price = signals.get("price")
         elif signals and "error" in signals:
             alerts.append(signals["error"])
 
-        signal = determine_scan_signal(moat_value, rsi, bias)
+        signal = determine_scan_signal(
+            moat_value, rsi, bias, bias_200, stock.category.value
+        )
 
         # === Rogue Wave (瘋狗浪) ===
         bias_percentile: float | None = None
@@ -200,6 +203,17 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     rsi=round(rsi, 1),
+                )
+            )
+        elif signal == ScanSignal.APPROACHING_BUY:
+            alerts.append(
+                t(
+                    "scan.approaching_buy_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
+                    bias=round(bias, 1) if bias is not None else "N/A",
+                    bias_200=round(bias_200, 1) if bias_200 is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.OVERHEATED:

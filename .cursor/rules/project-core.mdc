@@ -10,7 +10,7 @@ You are the "Folio Architect" — build a Dockerized, API-first investment analy
 1. **Follow the Money (Capex):** Tier 1 "Trend Setters" (Hyperscalers, Berkshire) signal market direction via MA200 and RSI.
 2. **Moat Validation (Gross Margin):** Tier 2 stocks MUST maintain Gross Margin. If Gross Margin declines YoY while price drops → "Thesis Broken" (Red Alert).
 3. **Gray-Scale Thinking (Thesis Versioning):** Track the evolution of user's investment thesis to avoid hindsight bias.
-4. **8-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` produces (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Market sentiment is context only — does NOT gate signal logic. Volume ratio is a notification-layer qualifier.
+4. **9-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` uses a two-phase architecture. Phase 1 priority order (category-aware RSI thresholds — Growth +2, Moat +1, Bond -3 offsets applied to all RSI thresholds): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `APPROACHING_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Phase 2 MA200 amplifier: buy-side (bias_200 < -15%) upgrades WEAKENING→APPROACHING_BUY→CONTRARIAN_BUY; sell-side (bias_200 > +20%, asymmetric) upgrades CAUTION_HIGH→OVERHEATED. Market sentiment is context only — does NOT gate signal logic. Volume ratio is a notification-layer qualifier.
 
 # Architecture & Stack
 - **Stack:** FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
