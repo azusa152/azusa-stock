@@ -47,6 +47,7 @@ from domain.constants import (
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
+    DISK_ETF_SECTOR_WEIGHTS_TTL,
     DISK_FEAR_GREED_TTL,
     DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
@@ -55,6 +56,7 @@ from domain.constants import (
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
+    DISK_KEY_ETF_SECTOR_WEIGHTS,
     DISK_KEY_FEAR_GREED,
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
@@ -194,6 +196,9 @@ _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_T
 _etf_holdings_cache: TTLCache = TTLCache(
     maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
 )
+_etf_sector_weights_cache: TTLCache = TTLCache(
+    maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
+)
 _forex_history_cache: TTLCache = TTLCache(
     maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL
 )
@@ -241,6 +246,7 @@ def clear_all_caches() -> dict:
         _price_history_cache,
         _forex_cache,
         _etf_holdings_cache,
+        _etf_sector_weights_cache,
         _forex_history_cache,
         _forex_history_long_cache,
         _fear_greed_cache,
@@ -1372,6 +1378,123 @@ def prewarm_etf_holdings_batch(
                 results[ticker] = future.result()
             except Exception as exc:
                 logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results
+
+
+# ===========================================================================
+# ETF 行業板塊權重（Sector Weightings）
+# ===========================================================================
+
+_ETF_SECTOR_WEIGHTS_NOT_FOUND: dict = {}  # 空 dict 哨兵值：非 ETF 或無資料時的快取標記
+
+# yfinance funds_data.sector_weightings 使用 snake_case 鍵；此對照表轉換為 GICS 標準名稱。
+# 未收錄的鍵直接用 .title() 處理（如 "other" → "Other"）。
+_ETF_SECTOR_KEY_MAP: dict[str, str] = {
+    "technology": "Technology",
+    "consumer_cyclical": "Consumer Cyclical",
+    "financial_services": "Financial Services",
+    "realestate": "Real Estate",
+    "consumer_defensive": "Consumer Defensive",
+    "healthcare": "Healthcare",
+    "utilities": "Utilities",
+    "communication_services": "Communication Services",
+    "energy": "Energy",
+    "industrials": "Industrials",
+    "basic_materials": "Basic Materials",
+}
+
+
+def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+    """
+    從 yfinance funds_data.sector_weightings 取得 ETF 的行業板塊權重分佈。
+    回傳 {"Technology": 0.32, "Healthcare": 0.14, ...} 或 None。
+    涵蓋 100% ETF 資產，比分析成分股更準確。
+    非 ETF 標的或無資料時回傳 None。
+    """
+    _rate_limiter.wait()
+    try:
+        t = _yf_ticker_obj(ticker)
+        fd = t.funds_data
+        if fd is None:
+            return None
+        weights = fd.sector_weightings
+        if not weights:
+            return None
+        # yfinance 回傳 list[dict] 或 dict，視版本而定
+        # list[dict] 格式：[{"realestate": 0.01, "consumer_cyclical": 0.13, ...}]
+        # dict 格式：{"realestate": 0.01, ...}
+        if isinstance(weights, list):
+            if not weights:
+                return None
+            merged: dict[str, float] = {}
+            for item in weights:
+                if isinstance(item, dict):
+                    merged.update(item)
+            weights = merged
+        if not isinstance(weights, dict) or not weights:
+            return None
+
+        result: dict[str, float] = {}
+        for raw_key, weight in weights.items():
+            if not isinstance(weight, (int, float)) or weight <= 0:
+                continue
+            normalized = _ETF_SECTOR_KEY_MAP.get(
+                str(raw_key).lower(), str(raw_key).title()
+            )
+            result[normalized] = result.get(normalized, 0.0) + float(weight)
+
+        if not result:
+            return None
+        logger.info("%s ETF 行業板塊權重取得 %d 個板塊", ticker, len(result))
+        return result
+    except Exception as e:
+        logger.debug("%s 非 ETF 或取得行業板塊權重失敗：%s", ticker, e)
+        return None
+
+
+def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+    """
+    取得 ETF 行業板塊權重分佈（含 L1 + L2 快取）。
+    回傳 {"Technology": 0.32, ...} 或 None（非 ETF 或無資料）。
+    使用空 dict 哨兵避免反覆呼叫 yfinance。
+    """
+
+    def _fetch_with_sentinel(t: str) -> dict[str, float]:
+        result = _fetch_etf_sector_weights(t)
+        return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
+
+    data = _cached_fetch(
+        _etf_sector_weights_cache,
+        ticker,
+        DISK_KEY_ETF_SECTOR_WEIGHTS,
+        DISK_ETF_SECTOR_WEIGHTS_TTL,
+        _fetch_with_sentinel,
+    )
+    return data if data else None
+
+
+def prewarm_etf_sector_weights_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, dict[str, float] | None]:
+    """
+    並行預熱多檔 ETF 的行業板塊權重快取。
+    非 ETF 標的會快速命中哨兵快取，不造成額外 yfinance 呼叫。
+    回傳 {ticker: weights_or_None} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, dict[str, float] | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error(
+                    "預熱 %s ETF 行業板塊權重失敗：%s", ticker, exc, exc_info=True
+                )
                 results[ticker] = None
     return results
 

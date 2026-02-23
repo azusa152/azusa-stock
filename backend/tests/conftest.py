@@ -148,11 +148,13 @@ _PATCHES: list[tuple[str, object]] = [
     # rebalance_service
     ("application.rebalance_service.get_technical_signals", MOCK_SIGNALS),
     ("application.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
-    ("application.rebalance_service.get_etf_top_holdings", []),
+    ("application.rebalance_service.get_etf_top_holdings", None),
+    ("application.rebalance_service.get_etf_sector_weights", None),
     ("application.rebalance_service.get_forex_history", []),
     ("application.rebalance_service.get_forex_history_long", []),
     ("application.rebalance_service.prewarm_signals_batch", {}),
     ("application.rebalance_service.prewarm_etf_holdings_batch", {}),
+    ("application.rebalance_service.prewarm_etf_sector_weights_batch", {}),
     # webhook_service
     ("application.webhook_service.get_technical_signals", MOCK_SIGNALS),
     ("application.webhook_service.analyze_moat_trend", MOCK_MOAT),

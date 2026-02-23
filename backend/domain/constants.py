@@ -185,6 +185,7 @@ ETF_HOLDINGS_CACHE_MAXSIZE = 100
 ETF_HOLDINGS_CACHE_TTL = 86400  # 24 hours (ETF holdings change slowly)
 DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
 ETF_TOP_N = 10  # only resolve top N constituents per ETF
+DISK_ETF_SECTOR_WEIGHTS_TTL = 604800  # 7 days (same cadence as ETF holdings)
 
 # ---------------------------------------------------------------------------
 # Currency Exposure Monitor
@@ -271,6 +272,7 @@ DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"
+DISK_KEY_ETF_SECTOR_WEIGHTS = "etf_sector_weights"
 DISK_KEY_FEAR_GREED = "fear_greed"
 DISK_KEY_ROGUE_WAVE = "rogue_wave"
 

@@ -18,6 +18,7 @@ from domain.entities import Holding, Stock
 from infrastructure.database import engine
 from infrastructure.repositories import find_all_active_gurus
 from infrastructure.market_data import (
+    get_etf_sector_weights,
     get_fear_greed_index,
     get_ticker_sector,
     prewarm_beta_batch,
@@ -61,13 +62,14 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, equity=%d, etf=%d, beta=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, equity=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
         len(tickers["equity"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
+        len(tickers["etf"]),
     )
 
     # Phase 1: 技術訊號（含 piggyback price history）
@@ -96,6 +98,14 @@ def prewarm_all_caches() -> None:
     # 使用 equity 名單（EQUITY_CATEGORIES）填充磁碟快取，與 sector_exposure 邏輯完全對齊。
     if tickers["equity"]:
         _prewarm_phase("sector", lambda: _prewarm_sectors(tickers["equity"]))
+
+    # Phase 8: ETF 行業板塊權重（etf_sector_weights）— ETF 穿透板塊計算的 Approach B
+    # 僅針對 is_etf=True 的標的，填充 yfinance funds_data.sector_weightings 快取。
+    if tickers["etf"]:
+        _prewarm_phase(
+            "etf_sector_weights",
+            lambda: _prewarm_etf_sector_weights(tickers["etf"]),
+        )
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
@@ -235,6 +245,35 @@ def _prewarm_sectors(tickers: list[str]) -> None:
                 "快取預熱 [sector] (%d/%d) %s 失敗：%s", i, total, ticker, exc
             )
     logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok, total)
+
+
+def _prewarm_etf_sector_weights(tickers: list[str]) -> None:
+    """對 ETF 標的逐一呼叫 get_etf_sector_weights()，填充磁碟快取。
+
+    在背景執行緒中順序處理；失敗的單筆記錄警告後繼續，不中斷整個預熱流程。
+    """
+    total = len(tickers)
+    ok = 0
+    for i, ticker in enumerate(tickers, 1):
+        try:
+            weights = get_etf_sector_weights(ticker)
+            ok += 1
+            logger.debug(
+                "快取預熱 [etf_sector_weights] (%d/%d) %s → %d 板塊",
+                i,
+                total,
+                ticker,
+                len(weights) if weights else 0,
+            )
+        except Exception as exc:
+            logger.warning(
+                "快取預熱 [etf_sector_weights] (%d/%d) %s 失敗：%s",
+                i,
+                total,
+                ticker,
+                exc,
+            )
+    logger.info("快取預熱 [etf_sector_weights] 完成 %d/%d 筆。", ok, total)
 
 
 def _prewarm_phase(name: str, fn) -> None:
