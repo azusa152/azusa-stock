@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,12 @@ export function EditWatchPopover({ watch }: Props) {
 
   const update = useUpdateFxWatch()
 
-  useEffect(() => {
+  // Reset form state when popover opens or watched config changes
+  const [prevOpen, setPrevOpen] = useState(open)
+  const [prevWatch, setPrevWatch] = useState(watch)
+  if (prevOpen !== open || prevWatch !== watch) {
+    setPrevOpen(open)
+    setPrevWatch(watch)
     if (open) {
       setRecentHighDays(watch.recent_high_days)
       setConsecutiveDays(watch.consecutive_increase_days)
@@ -31,7 +36,7 @@ export function EditWatchPopover({ watch }: Props) {
       setReminderHours(watch.reminder_interval_hours)
       setFeedback(null)
     }
-  }, [open, watch])
+  }
 
   const handleSave = () => {
     if (!alertOnHigh && !alertOnConsecutive) {

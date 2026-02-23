@@ -60,8 +60,10 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
   const currentRate = analysis?.current_rate
   const rateStr = currentRate != null ? currentRate.toFixed(4) : "—"
 
-  const displayHistory = sparklineData ?? historyData ?? []
-  const dailyChangePct = useMemo(() => computeDailyChangePct(displayHistory), [displayHistory])
+  const dailyChangePct = useMemo(
+    () => computeDailyChangePct(sparklineData ?? historyData ?? []),
+    [sparklineData, historyData],
+  )
   const dailyChangeStr = formatChangePct(dailyChangePct)
 
   const handleToggle = () => {

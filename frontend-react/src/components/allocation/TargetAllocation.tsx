@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -19,8 +19,10 @@ export function TargetAllocation() {
   )
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  // Populate sliders from existing profile config on mount
-  useEffect(() => {
+  // Populate sliders from existing profile config when server data changes
+  const [prevProfile, setPrevProfile] = useState(profile)
+  if (prevProfile !== profile) {
+    setPrevProfile(profile)
     if (profile?.config) {
       const merged: Record<string, number> = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
       for (const [k, v] of Object.entries(profile.config)) {
@@ -28,7 +30,7 @@ export function TargetAllocation() {
       }
       setSliders(merged)
     }
-  }, [profile])
+  }
 
   const total = Object.values(sliders).reduce((a, b) => a + b, 0)
   const remaining = 100 - total

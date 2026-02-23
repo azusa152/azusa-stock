@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -23,12 +23,14 @@ export function NotificationPreferences() {
     Object.fromEntries(PREF_KEYS.map((k) => [k, true]))
   )
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [prevData, setPrevData] = useState(data)
 
-  useEffect(() => {
+  if (prevData !== data) {
+    setPrevData(data)
     if (data?.notification_preferences) {
       setPrefs((prev) => ({ ...prev, ...data.notification_preferences }))
     }
-  }, [data])
+  }
 
   const handleSave = () => {
     setFeedback(null)

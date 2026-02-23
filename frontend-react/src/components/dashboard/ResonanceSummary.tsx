@@ -99,7 +99,7 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
                           : ""
                         return (
                           <p key={i} className="text-xs text-muted-foreground">
-                            {g.guru_display_name}　{icon} {label}{weight}
+                            {g.guru_display_name} {icon} {label}{weight}
                           </p>
                         )
                       })}
