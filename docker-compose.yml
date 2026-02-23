@@ -18,7 +18,7 @@ services:
       retries: 3
       start_period: 30s
 
-  frontend-react:
+  frontend:
     build:
       context: ./frontend-react
       args:
@@ -34,23 +34,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "8501:8501"
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - BACKEND_URL=http://backend:8000
-      - FOLIO_API_KEY=${FOLIO_API_KEY:-}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
 
   scanner:
     image: alpine:3.19

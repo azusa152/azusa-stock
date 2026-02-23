@@ -1,5 +1,6 @@
 import { useState, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import {
   Sheet,
   SheetContent,
@@ -75,11 +76,15 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
       {
         onSuccess: () => {
           setAddFeedback(t("radar.form.success_added", { ticker: fullTicker }))
+          toast.success(t("radar.form.success_added", { ticker: fullTicker }))
           setTicker("")
           setThesis("")
           setSelectedTags([])
         },
-        onError: () => setAddFeedback(t("common.error")),
+        onError: () => {
+          setAddFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -100,11 +105,15 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
       {
         onSuccess: () => {
           setAddFeedback(t("radar.form.success_added", { ticker: fullTicker }))
+          toast.success(t("radar.form.success_added", { ticker: fullTicker }))
           setTicker("")
           setThesis("")
           setSelectedTags([])
         },
-        onError: () => setAddFeedback(t("common.error")),
+        onError: () => {
+          setAddFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -115,11 +124,17 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
       onSuccess: (data) => {
         if (data?.error_code === "scan_in_progress") {
           setScanFeedback(t("radar.scan.already_running"))
+          toast.success(t("radar.scan.already_running"))
         } else {
-          setScanFeedback(t("radar.scan.success", { message: data?.message ?? t("radar.scan.default_success") }))
+          const msg = t("radar.scan.success", { message: data?.message ?? t("radar.scan.default_success") })
+          setScanFeedback(msg)
+          toast.success(msg)
         }
       },
-      onError: () => setScanFeedback(t("common.error")),
+      onError: () => {
+        setScanFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
     })
   }
 
@@ -152,8 +167,15 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           return
         }
         importStocks.mutate(parsed as StockImportItem[], {
-          onSuccess: (data) => setImportFeedback(data?.message ?? t("radar.import.success")),
-          onError: () => setImportFeedback(t("common.error")),
+          onSuccess: (data) => {
+            const msg = data?.message ?? t("radar.import.success")
+            setImportFeedback(msg)
+            toast.success(msg)
+          },
+          onError: () => {
+            setImportFeedback(t("common.error"))
+            toast.error(t("common.error"))
+          },
         })
       } catch {
         setImportFeedback(t("radar.import.error_json"))

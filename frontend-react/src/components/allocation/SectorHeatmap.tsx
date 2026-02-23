@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import type { SectorExposureItem } from "@/api/types/allocation"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   data: SectorExposureItem[]
@@ -8,6 +9,7 @@ interface Props {
 
 export function SectorHeatmap({ data }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
 
   if (!data || data.length === 0) {
     return (
@@ -36,9 +38,8 @@ export function SectorHeatmap({ data }: Props) {
         layout={{
           height: 250,
           margin: { l: 0, r: 0, t: 5, b: 0 },
-          plot_bgcolor: "rgba(0,0,0,0)",
-          paper_bgcolor: "rgba(0,0,0,0)",
-          font: { size: 11 },
+          ...plotlyTheme,
+          font: { ...plotlyTheme.font, size: 11 },
         }}
         config={{ displayModeBar: false, responsive: true }}
         style={{ width: "100%" }}

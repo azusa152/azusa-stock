@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -55,6 +56,7 @@ interface Props {
 }
 
 function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
+  const plotlyTheme = usePlotlyTheme()
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - 30)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
@@ -90,8 +92,7 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
         xaxis: { visible: false },
         yaxis: { visible: false, range: [vMin - pad, vMax + pad] },
         showlegend: false,
-        plot_bgcolor: "rgba(0,0,0,0)",
-        paper_bgcolor: "rgba(0,0,0,0)",
+        ...plotlyTheme,
       }}
       config={{ displayModeBar: false, responsive: true }}
       style={{ width: "100%" }}
@@ -111,12 +112,13 @@ export function PortfolioPulse({
   isLoading,
 }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
 
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="grid grid-cols-3 gap-4 p-6">
+        <CardContent className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="space-y-3">
               <Skeleton className="h-4 w-24" />
@@ -230,8 +232,7 @@ export function PortfolioPulse({
                 layout={{
                   height: 180,
                   margin: { l: 10, r: 10, t: 30, b: 5 },
-                  plot_bgcolor: "rgba(0,0,0,0)",
-                  paper_bgcolor: "rgba(0,0,0,0)",
+                  ...plotlyTheme,
                 }}
                 config={{ displayModeBar: false, responsive: true }}
                 style={{ width: "100%" }}

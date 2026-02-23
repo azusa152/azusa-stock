@@ -76,36 +76,38 @@ export function TopHoldings({ rebalance }: Props) {
           {t("dashboard.top_holdings_title", { limit: TOP_LIMIT })}
         </CardTitle>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-0">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-xs text-muted-foreground">
-              <th className="text-left px-3 py-2">{t("dashboard.holdings_table.ticker")}</th>
-              <th className="text-left px-3 py-2">{t("dashboard.holdings_table.category")}</th>
-              <th className="text-right px-3 py-2">{t("dashboard.holdings_table.weight")}</th>
-              <th className="text-right px-3 py-2">{t("dashboard.holdings_table.market_value")}</th>
-              <th className="text-right px-3 py-2">{t("dashboard.holdings_table.daily_change")}</th>
-              <th className="text-right px-3 py-2">{t("dashboard.holdings_table.total_return")}</th>
-              <th className="text-right px-3 py-2">{t("dashboard.holdings_table.gain_loss")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {top.map((h) => (
-              <tr key={`${h.ticker}-${h.weight_pct}`} className="border-t border-border/50 hover:bg-muted/30">
-                <td className="px-3 py-2 font-semibold">{h.ticker}</td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {CATEGORY_ICON_SHORT[h.category] ?? ""} {h.category}
-                </td>
-                <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
-                <td className="text-right px-3 py-2">
-                  {isPrivate ? "***" : `$${h.market_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
-                </td>
-                <ChangeCell value={h.change_pct} />
-                <ReturnCells holding={h} isPrivate={isPrivate} />
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-xs text-muted-foreground">
+                <th className="text-left px-3 py-2">{t("dashboard.holdings_table.ticker")}</th>
+                <th className="text-left px-3 py-2">{t("dashboard.holdings_table.category")}</th>
+                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.weight")}</th>
+                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.market_value")}</th>
+                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.daily_change")}</th>
+                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.total_return")}</th>
+                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.gain_loss")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {top.map((h) => (
+                <tr key={`${h.ticker}-${h.weight_pct}`} className="border-t border-border/50 hover:bg-muted/30">
+                  <td className="px-3 py-2 font-semibold">{h.ticker}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {CATEGORY_ICON_SHORT[h.category] ?? ""} {h.category}
+                  </td>
+                  <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
+                  <td className="text-right px-3 py-2">
+                    {isPrivate ? "***" : `$${h.market_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                  </td>
+                  <ChangeCell value={h.change_pct} />
+                  <ReturnCells holding={h} isPrivate={isPrivate} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   )

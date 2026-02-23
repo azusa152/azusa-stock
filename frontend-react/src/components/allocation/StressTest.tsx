@@ -70,7 +70,7 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
       ) : !data ? null : (
         <>
           {/* Metrics row */}
-          <div className="grid grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
             <div className="rounded-lg border border-border p-3">
               <p className="text-muted-foreground">{t("allocation.stress.beta")}</p>
               <p className="text-xl font-bold">{data.portfolio_beta.toFixed(2)}</p>

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -53,10 +54,14 @@ function ThesisSection({ ticker, stock }: { ticker: string; stock: RadarStock })
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
+          toast.success(t("common.success"))
           setThesisText("")
           setTagsText("")
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -136,8 +141,15 @@ function ChangeCategorySection({ ticker, currentCategory }: { ticker: string; cu
     updateCategory.mutate(
       { ticker, payload: { category: selected } },
       {
-        onSuccess: (data) => setFeedback(data?.message ?? t("common.success")),
-        onError: () => setFeedback(t("common.error")),
+        onSuccess: (data) => {
+          const msg = data?.message ?? t("common.success")
+          setFeedback(msg)
+          toast.success(msg)
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -181,8 +193,15 @@ function RemoveSection({ ticker }: { ticker: string }) {
     deactivate.mutate(
       { ticker, payload: { reason: reason.trim() } },
       {
-        onSuccess: (data) => setFeedback(data?.message ?? t("common.success")),
-        onError: () => setFeedback(t("common.error")),
+        onSuccess: (data) => {
+          const msg = data?.message ?? t("common.success")
+          setFeedback(msg)
+          toast.success(msg)
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }

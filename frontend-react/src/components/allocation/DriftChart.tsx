@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import type { CategoryAllocation } from "@/api/types/allocation"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   categories: Record<string, CategoryAllocation>
@@ -8,6 +9,7 @@ interface Props {
 
 export function DriftChart({ categories }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
 
   const entries = Object.entries(categories).sort((a, b) => b[1].drift_pct - a[1].drift_pct)
   const labels = entries.map(([name]) => name)
@@ -58,9 +60,8 @@ export function DriftChart({ categories }: Props) {
               line: { color: "#f97316", width: 1, dash: "dash" },
             },
           ],
-          plot_bgcolor: "rgba(0,0,0,0)",
-          paper_bgcolor: "rgba(0,0,0,0)",
-          font: { size: 10 },
+          ...plotlyTheme,
+          font: { ...plotlyTheme.font, size: 10 },
         }}
         config={{ displayModeBar: false, responsive: true }}
         style={{ width: "100%" }}

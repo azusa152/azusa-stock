@@ -2,15 +2,18 @@
 # Folio — Development Shortcuts
 # ---------------------------------------------------------------------------
 # Usage:
-#   make install   # 首次安裝依賴（建立 venv + pip install）
-#   make test      # 執行所有後端測試
-#   make lint      # Ruff 靜態分析（自動修正）
-#   make format    # Ruff 程式碼格式化
-#   make up        # 啟動所有服務（背景執行）
-#   make down      # 停止並移除所有容器
-#   make restart   # 重新建構並重啟所有服務（保留資料）
-#   make security  # 安全性檢查（.env 檔案、API Key、敏感資料）
-#   make help      # 列出所有可用目標
+#   make install          # 首次安裝依賴（建立 venv + pip install）
+#   make test             # 執行所有後端測試
+#   make lint             # Ruff 靜態分析（自動修正）
+#   make format           # Ruff 程式碼格式化
+#   make frontend-dev     # 啟動前端開發伺服器（http://localhost:3000）
+#   make frontend-build   # 建構前端生產版本
+#   make frontend-lint    # 執行前端 ESLint
+#   make up               # 啟動所有服務（背景執行）
+#   make down             # 停止並移除所有容器
+#   make restart          # 重新建構並重啟所有服務（保留資料）
+#   make security         # 安全性檢查（.env 檔案、API Key、敏感資料）
+#   make help             # 列出所有可用目標
 # ---------------------------------------------------------------------------
 
 PYTHON   ?= backend/.venv/bin/python
@@ -23,7 +26,7 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format generate-key backup restore up down restart security
+.PHONY: help install test lint format generate-key backup restore up down restart security frontend-dev frontend-build frontend-lint
 
 # Dynamic volume name detection (project directory name may vary)
 VOLUME_NAME := $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -76,6 +79,15 @@ down: ## 停止並移除所有容器
 
 restart: ## 重新建構並重啟所有服務（保留資料）
 	docker compose up --build -d
+
+frontend-dev: ## 啟動前端開發伺服器（http://localhost:3000）
+	cd frontend-react && npm run dev
+
+frontend-build: ## 建構前端生產版本
+	cd frontend-react && npm run build
+
+frontend-lint: ## 執行前端 ESLint
+	cd frontend-react && npm run lint
 
 security: ## 安全性檢查（.env 檔案、API Key、敏感資料）
 	@echo "=== Security Audit ==="

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTelegramSettings, useSaveTelegram, useTestTelegram, useTriggerDigest } from "@/api/hooks/useAllocation"
@@ -39,9 +40,13 @@ export function TelegramSettings({ privacyMode }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
+          toast.success(t("common.success"))
           setEditOpen(false)
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -49,16 +54,28 @@ export function TelegramSettings({ privacyMode }: Props) {
   const handleTest = () => {
     setFeedback(null)
     testMutation.mutate(undefined, {
-      onSuccess: () => setFeedback(t("common.success")),
-      onError: () => setFeedback(t("common.error")),
+      onSuccess: () => {
+        setFeedback(t("common.success"))
+        toast.success(t("common.success"))
+      },
+      onError: () => {
+        setFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
     })
   }
 
   const handleDigest = () => {
     setFeedback(null)
     digestMutation.mutate(undefined, {
-      onSuccess: () => setFeedback(t("common.success")),
-      onError: () => setFeedback(t("common.error")),
+      onSuccess: () => {
+        setFeedback(t("common.success"))
+        toast.success(t("common.success"))
+      },
+      onError: () => {
+        setFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
     })
   }
 

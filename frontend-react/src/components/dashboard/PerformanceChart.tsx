@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Snapshot } from "@/api/types/dashboard"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 const PERIOD_OPTIONS: { key: string; labelKey: string; days: number | "YTD" | "ALL" }[] = [
   { key: "1W", labelKey: "dashboard.performance_period_1w", days: 7 },
@@ -20,6 +21,7 @@ interface Props {
 
 export function PerformanceChart({ snapshots }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const [selectedKey, setSelectedKey] = useState("1M")
 
   const today = new Date()
@@ -120,8 +122,7 @@ export function PerformanceChart({ snapshots }: Props) {
               showlegend: plotData.length > 1,
               legend: { orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "right", x: 1 },
               hovermode: "x unified",
-              plot_bgcolor: "rgba(0,0,0,0)",
-              paper_bgcolor: "rgba(0,0,0,0)",
+              ...plotlyTheme,
             }}
             config={{ displayModeBar: false, responsive: true }}
             style={{ width: "100%" }}

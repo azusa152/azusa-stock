@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -105,8 +106,15 @@ function ReactivateSection({ ticker }: { ticker: string }) {
         payload: { category, thesis: thesis.trim() || undefined },
       },
       {
-        onSuccess: (data) => setFeedback(data?.message ?? t("radar.removed.reactivate_success")),
-        onError: () => setFeedback(t("common.error")),
+        onSuccess: (data) => {
+          const msg = data?.message ?? t("radar.removed.reactivate_success")
+          setFeedback(msg)
+          toast.success(msg)
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }

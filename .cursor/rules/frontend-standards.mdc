@@ -1,57 +1,52 @@
 ---
-description: Apply when working with Streamlit frontend code in the frontend/ directory. Covers caching strategies, session state management, layout patterns, and privacy mode.
-globs: ["frontend/**"]
+description: Apply when working with React frontend code in the frontend-react/ directory. Covers data fetching, state management, i18n, privacy mode, and component patterns.
+globs: ["frontend-react/**"]
 ---
 
-# Frontend Standards (Streamlit)
+# Frontend Standards (React + TypeScript)
 
-## Caching
--   Use `@st.cache_data` for data fetches and `@st.cache_resource` for connections.
--   Always set `ttl` to avoid stale data (e.g., `@st.cache_data(ttl=300)`).
+## Data Fetching
+- Use TanStack Query for all API calls. Never use raw `fetch` or `axios` directly in components.
+- Set appropriate `staleTime` per query (match backend cache TTLs).
+- Use `useMutation` for write operations; invalidate related queries on success.
+- API client lives in `src/api/client.ts`. Import `apiClient` from there, never import `axios` directly in pages or components.
 
-## Session State
--   Use `st.session_state` for cross-rerun persistence.
--   Initialize with `if key not in st.session_state: st.session_state[key] = default`.
+## State Management
+- **Server state:** TanStack Query cache (queries and mutations).
+- **Global UI state:** Zustand stores (`usePrivacyMode`, `useTheme`).
+- **Local UI state:** `useState` for form inputs, toggles, and component-specific state.
+- Avoid prop-drilling more than 2 levels — use context or Zustand for shared state.
 
 ## Configuration
--   All labels, URLs, and thresholds go in `frontend/config.py`. No magic strings in view files.
+- All constants in `src/lib/constants.ts`. No magic strings in components.
+- Never redeclare constant arrays (currencies, categories, markets) inline in components — always import from constants.
 
-## Layout
--   Reference existing views in `frontend/views/` for page structure patterns before creating new pages.
-
-## API Calls
--   All backend calls go through helper functions in `frontend/utils.py`. Never call `requests` directly in view files.
-
-## i18n (Internationalization)
--   All user-facing strings MUST use `from i18n import t` and call `t("key")`. Never hardcode display text.
--   Language is stored in `st.session_state["language"]` (loaded from user preferences on app startup).
--   Supported languages: `zh-TW` (default), `en`, `ja`, `zh-CN`.
--   Locale files live in `frontend/i18n/locales/{en,ja,zh-CN,zh-TW}.json`.
--   Key naming: dot-notation organized by page/component (e.g., `radar.add_stock`, `common.refresh`, `config.category.moat`).
--   SOP content: stored as a single markdown string per locale (e.g., `radar.sop.content`).
--   **Lazy evaluation:** Labels that depend on language (e.g., category labels, market options) MUST be wrapped in functions — not module-level dicts — to ensure `t()` is called at render time, not import time. See `get_category_labels()` in `frontend/config.py` for the pattern.
--   String interpolation: Use Python `str.format()` syntax in locale JSON values (e.g., `"已新增 {ticker}"`), then `t("key", ticker="AAPL")`.
+## i18n
+- All user-facing strings use `useTranslation()` hook and `t("key")`. Never hardcode display text.
+- Locale files: `public/locales/{en,ja,zh-CN,zh-TW}.json`.
+- Key naming: dot-notation by page/component (e.g., `radar.add_stock`, `common.refresh`).
+- String interpolation: Use i18next `{{variable}}` syntax in locale values, then `t("key", { variable: value })`.
+- SOP content: stored as a single markdown string per locale (e.g., `radar.sop.content`).
 
 ## Privacy Mode
+- Use `usePrivacyMode()` Zustand hook for privacy state.
+- Monetary values: pass `privacyMode` boolean as prop, use `privacyMode ? "***" : formatted_value`.
+- Backend-generated advice strings with embedded amounts: render as-is (backend does not embed raw numbers in advice text).
 
-The app supports a cross-device privacy toggle that masks all sensitive monetary values.
+## Dark Mode
+- Use `useTheme()` Zustand hook — persisted to `localStorage` as `folio-theme`.
+- All Tailwind dark-mode variants (`dark:`) are supported via `.dark` class on `<html>`.
+- Plotly charts: use `usePlotlyTheme()` hook for layout overrides (`paper_bgcolor`, `plot_bgcolor`, `font.color`).
 
-### Rules
-- **Monetary values** (prices, market values, totals, costs) MUST be formatted through `_mask_money(value, fmt)`, never with raw f-strings or `.format()`.
-- **Quantities** (share counts, unit amounts) MUST be formatted through `_mask_qty(value, fmt)`.
-- **Backend-generated text** that embeds monetary amounts (e.g., advice strings from `_generate_fx_advice`) MUST be rendered through `_render_advice(lines)`, never raw `st.write()`.
-- **Exchange rates and other numeric table columns** that could reveal portfolio details MUST check `_is_privacy()` and substitute `PRIVACY_MASK` when active.
-- The privacy state is checked via `_is_privacy()` which reads `st.session_state["privacy_mode"]`.
-- The mask placeholder is `PRIVACY_MASK` from `frontend/config.py`.
+## Components
+- Use shadcn/ui components as base (Button, Card, Tabs, Sheet, Dialog, etc.).
+- Skeleton loading: wrap data sections with `<Skeleton>` while `isLoading`.
+- Tables: always wrap `<table>` in `<div className="overflow-x-auto">` for mobile.
+- Toast feedback: use `toast.success()` / `toast.error()` from `sonner` on mutation success/error.
+- Error boundaries: all pages are wrapped in `<ErrorBoundary>` via `PageShell`.
+- Empty states: use `<EmptyState>` component when API returns empty arrays.
 
-### Existing helpers (defined in `frontend/views/allocation.py` and `frontend/views/dashboard.py`)
-- `_mask_money(value, fmt="${:,.2f}")` -- formats or masks a monetary value
-- `_mask_qty(value, fmt="{:,.4f}")` -- formats or masks a quantity
-- `_render_advice(lines)` -- renders advice strings, regex-masking embedded amounts
-- `_is_privacy()` -- returns True when privacy toggle is active
-
-### Checklist for new features
-- Every `st.metric()` showing money or quantities: use `_mask_money()` / `_mask_qty()`
-- Every `st.dataframe()` column with amounts: use `_mask_money()` per cell
-- Every `st.write()` of backend-generated text with numbers: use `_render_advice()`
-- Plotly chart `textinfo` and `hovertemplate`: conditionally hide values (see `_render_fx_donut` pattern)
+## Styling
+- Tailwind CSS utility classes. No inline styles except for Plotly chart `layout` objects.
+- Dark mode: use `dark:` Tailwind variants.
+- Responsive: use `sm:`, `md:`, `lg:` prefixes. Grids that are 3+ columns on desktop must stack on mobile (e.g., `grid-cols-1 sm:grid-cols-3`).

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import {
   DndContext,
   closestCenter,
@@ -81,9 +82,13 @@ export function ReorderSection({ stocks }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("radar.stock_card.success_order"))
+          toast.success(t("radar.stock_card.success_order"))
           setReorderOn(false)
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }

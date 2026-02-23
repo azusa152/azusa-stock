@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 function PageSkeleton() {
   return (
@@ -22,7 +23,9 @@ interface PageShellProps {
 export function PageShell({ children }: PageShellProps) {
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

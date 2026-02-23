@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useTemplates, useCreateProfile, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { useProfile } from "@/api/hooks/useDashboard"
@@ -56,14 +57,26 @@ export function TargetAllocation() {
       updateMutation.mutate(
         { id: profile.id, payload: { config: sliders } },
         {
-          onSuccess: () => setFeedback(t("common.success")),
-          onError: () => setFeedback(t("common.error")),
+          onSuccess: () => {
+            setFeedback(t("common.success"))
+            toast.success(t("common.success"))
+          },
+          onError: () => {
+            setFeedback(t("common.error"))
+            toast.error(t("common.error"))
+          },
         },
       )
     } else {
       createMutation.mutate(payload, {
-        onSuccess: () => setFeedback(t("common.success")),
-        onError: () => setFeedback(t("common.error")),
+        onSuccess: () => {
+          setFeedback(t("common.success"))
+          toast.success(t("common.success"))
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       })
     }
   }

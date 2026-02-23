@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 import {
   useGuruFiling,
   useGuruFilings,
@@ -46,6 +47,7 @@ const ACTION_ORDER = ["NEW_POSITION", "SOLD_OUT", "INCREASED", "DECREASED", "UNC
 
 export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const [historyOpen, setHistoryOpen] = useState(false)
   const [greatMindsOpen, setGreatMindsOpen] = useState(false)
 
@@ -285,9 +287,8 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                 gridcolor: "rgba(128,128,128,0.1)",
               },
               yaxis: { showgrid: false, automargin: true },
-              plot_bgcolor: "rgba(0,0,0,0)",
-              paper_bgcolor: "rgba(0,0,0,0)",
-              font: { size: 10 },
+              ...plotlyTheme,
+              font: { ...plotlyTheme.font, size: 10 },
             }}
             config={{ displayModeBar: false, responsive: true }}
             style={{ width: "100%" }}

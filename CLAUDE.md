@@ -11,4 +11,12 @@ make lint          # Run ruff linter
 make format        # Format code
 ```
 
+## Frontend Development
+
+```bash
+cd frontend-react && npm run dev    # Start dev server (http://localhost:3000)
+cd frontend-react && npm run build  # Production build
+cd frontend-react && npm run lint   # ESLint
+```
+
 See `.cursor/rules/` for project conventions and coding standards.

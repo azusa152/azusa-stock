@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useUpdateFxWatch } from "@/api/hooks/useFxWatch"
@@ -51,9 +52,13 @@ export function EditWatchPopover({ watch }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
+          toast.success(t("common.success"))
           setOpen(false)
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }

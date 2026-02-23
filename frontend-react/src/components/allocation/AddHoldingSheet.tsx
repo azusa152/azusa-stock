@@ -1,5 +1,6 @@
 import { useState, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -79,9 +80,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -108,9 +113,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -131,9 +140,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("allocation.sidebar.cash_added", { label: currency, amount: cashAmount }))
+          toast.success(t("allocation.sidebar.cash_added", { label: currency, amount: cashAmount }))
           resetForm()
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -163,9 +176,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     importMutation.mutate(pendingImport, {
       onSuccess: () => {
         setImportFeedback(t("allocation.sidebar.import_success"))
+        toast.success(t("allocation.sidebar.import_success"))
         setPendingImport(null)
       },
-      onError: () => setImportFeedback(t("common.error")),
+      onError: () => {
+        setImportFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
     })
   }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 
@@ -26,8 +27,14 @@ export function NotificationPreferences() {
     saveMutation.mutate(
       { notification_preferences: prefs },
       {
-        onSuccess: () => setFeedback(t("common.success")),
-        onError: () => setFeedback(t("common.error")),
+        onSuccess: () => {
+          setFeedback(t("common.success"))
+          toast.success(t("common.success"))
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }

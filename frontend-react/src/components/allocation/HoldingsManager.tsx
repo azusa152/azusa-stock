@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useUpdateHolding, useDeleteHolding } from "@/api/hooks/useAllocation"
@@ -50,9 +51,13 @@ export function HoldingsManager({ privacyMode }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
+          toast.success(t("common.success"))
           setEditing(null)
         },
-        onError: () => setFeedback(t("common.error")),
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
       },
     )
   }
@@ -62,8 +67,12 @@ export function HoldingsManager({ privacyMode }: Props) {
       onSuccess: () => {
         setDeleteId(null)
         setFeedback(t("common.success"))
+        toast.success(t("common.success"))
       },
-      onError: () => setFeedback(t("common.error")),
+      onError: () => {
+        setFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
     })
   }
 

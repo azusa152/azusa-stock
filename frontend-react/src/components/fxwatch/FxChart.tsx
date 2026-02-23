@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import type { FxHistoryPoint } from "@/api/types/fxWatch"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 const PERIOD_OPTIONS = [
   { key: "1M", days: 30 },
@@ -16,6 +17,7 @@ interface Props {
 
 export function FxChart({ data, recentHighDays }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const [period, setPeriod] = useState("3M")
 
   const sliced = useMemo(() => {
@@ -118,11 +120,10 @@ export function FxChart({ data, recentHighDays }: Props) {
             gridcolor: "rgba(128,128,128,0.1)",
           },
           xaxis: { showgrid: false },
-          plot_bgcolor: "rgba(0,0,0,0)",
-          paper_bgcolor: "rgba(0,0,0,0)",
+          ...plotlyTheme,
+          font: { ...plotlyTheme.font, size: 10 },
           shapes,
           annotations,
-          font: { size: 10 },
         }}
         config={{ displayModeBar: false, responsive: true }}
         style={{ width: "100%" }}

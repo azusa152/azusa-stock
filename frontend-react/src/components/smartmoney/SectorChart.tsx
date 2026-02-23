@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import type { SectorBreakdownItem } from "@/api/types/smartMoney"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   data: SectorBreakdownItem[]
@@ -8,6 +9,7 @@ interface Props {
 
 export function SectorChart({ data }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
 
   if (!data || data.length === 0) {
     return (
@@ -40,9 +42,8 @@ export function SectorChart({ data }: Props) {
           gridcolor: "rgba(128,128,128,0.1)",
         },
         yaxis: { showgrid: false, automargin: true },
-        plot_bgcolor: "rgba(0,0,0,0)",
-        paper_bgcolor: "rgba(0,0,0,0)",
-        font: { size: 11 },
+        ...plotlyTheme,
+        font: { ...plotlyTheme.font, size: 11 },
       }}
       config={{ displayModeBar: false, responsive: true }}
       style={{ width: "100%" }}

@@ -24,3 +24,10 @@ alwaysApply: false
 ## Image Security
 - **Image pinning:** Pin base images with SHA256 digest. Update periodically.
 - **No USER directive with volumes:** Do not use `USER` in Dockerfiles that mount persistent volumes. Use the entrypoint pattern instead.
+
+## React Frontend (frontend-react/)
+- **Multi-stage build:** Node 20 Alpine builds the Vite app (`npm ci && npm run build`), then nginx Alpine serves the `dist/` static files.
+- **No persistent volumes:** Static assets only — no volume mounts needed for the frontend container.
+- **SPA routing:** nginx config must include `try_files $uri $uri/ /index.html` so client-side routes work on reload.
+- **API proxy:** nginx proxies `/api` to `backend:8000`, enabling same-origin API calls (no CORS needed).
+- **Build arg:** `VITE_API_KEY` is passed as a Docker build argument for the API key header injection.

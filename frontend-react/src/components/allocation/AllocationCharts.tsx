@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import type { CategoryAllocation } from "@/api/types/allocation"
 import { CATEGORY_COLOR_MAP, CATEGORY_COLOR_FALLBACK } from "@/lib/constants"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   categories: Record<string, CategoryAllocation>
@@ -14,6 +15,7 @@ function getCategoryColor(name: string): string {
 
 export function AllocationCharts({ categories }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const [chartType, setChartType] = useState<"pie" | "treemap">("pie")
 
   const entries = Object.entries(categories)
@@ -25,9 +27,8 @@ export function AllocationCharts({ categories }: Props) {
   const commonLayout = {
     height: 260,
     margin: { l: 0, r: 0, t: 30, b: 0 },
-    plot_bgcolor: "rgba(0,0,0,0)",
-    paper_bgcolor: "rgba(0,0,0,0)",
-    font: { size: 11 },
+    ...plotlyTheme,
+    font: { ...plotlyTheme.font, size: 11 },
     showlegend: true,
     legend: { orientation: "h" as const, y: -0.1 },
   }

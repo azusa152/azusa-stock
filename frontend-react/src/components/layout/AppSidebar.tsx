@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { useLanguage } from "@/hooks/useLanguage"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { useTheme } from "@/hooks/useTheme"
 import { Switch } from "@/components/ui/switch"
 
 const NAV_ITEMS = [
@@ -35,6 +36,7 @@ export function AppSidebar() {
   const location = useLocation()
   const { language, changeLanguage, LANGUAGE_OPTIONS } = useLanguage()
   const { isPrivate, toggle: togglePrivacy } = usePrivacyMode()
+  const { theme, toggle: toggleTheme } = useTheme()
 
   return (
     <Sidebar>
@@ -62,6 +64,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-3 space-y-2">
+        {/* Dark mode toggle */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-muted-foreground">
+            {theme === "dark" ? t("common.dark_mode") : t("common.light_mode")}
+          </span>
+          <button
+            onClick={toggleTheme}
+            className="text-sm leading-none"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
+        </div>
+        {/* Privacy mode toggle */}
         <div className="flex items-center justify-between px-1">
           <span className="text-xs text-muted-foreground">
             {isPrivate ? t("common.privacy_on") : t("common.privacy_off")}

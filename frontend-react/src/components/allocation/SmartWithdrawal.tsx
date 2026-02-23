@@ -2,10 +2,11 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { useWithdraw } from "@/api/hooks/useAllocation"
 import type { WithdrawResponse } from "@/api/types/allocation"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   privacyMode: boolean
@@ -18,6 +19,7 @@ function fmtCurrency(v: number, currency: string, privacyMode: boolean): string 
 
 export function SmartWithdrawal({ privacyMode }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const [amount, setAmount] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [notify, setNotify] = useState(false)
@@ -88,7 +90,7 @@ export function SmartWithdrawal({ privacyMode }: Props) {
           {/* Summary */}
           <div className="rounded-md border border-border p-3 text-sm space-y-1">
             <p className="font-semibold">{result.message}</p>
-            <div className="grid grid-cols-3 gap-3 text-xs mt-2">
+            <div className="grid grid-cols-1 gap-3 text-xs mt-2 sm:grid-cols-3">
               <div>
                 <p className="text-muted-foreground">{t("allocation.withdraw.target")}</p>
                 <p className="font-semibold">{fmtCurrency(result.target_amount, currency, privacyMode)}</p>
@@ -150,9 +152,8 @@ export function SmartWithdrawal({ privacyMode }: Props) {
                   height: 200,
                   margin: { l: 0, r: 0, t: 5, b: 0 },
                   showlegend: false,
-                  plot_bgcolor: "rgba(0,0,0,0)",
-                  paper_bgcolor: "rgba(0,0,0,0)",
-                  font: { size: 10 },
+                  ...plotlyTheme,
+                  font: { ...plotlyTheme.font, size: 10 },
                 }}
                 config={{ displayModeBar: false, responsive: true }}
                 style={{ width: "100%" }}

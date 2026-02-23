@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { useCurrencyExposure, useFxExposureAlert, useUpdateProfile } from "@/api/hooks/useAllocation"
 import type { ProfileResponse } from "@/api/types/allocation"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   privacyMode: boolean
@@ -20,6 +22,7 @@ const ALERT_COLORS: Record<string, string> = {
 
 export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const { data, isLoading } = useCurrencyExposure(enabled)
   const alertMutation = useFxExposureAlert()
   const updateProfileMutation = useUpdateProfile()
@@ -51,9 +54,8 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
     margin: { l: 0, r: 0, t: 5, b: 0 },
     showlegend: true,
     legend: { orientation: "h" as const, y: -0.15 },
-    plot_bgcolor: "rgba(0,0,0,0)",
-    paper_bgcolor: "rgba(0,0,0,0)",
-    font: { size: 10 },
+    ...plotlyTheme,
+    font: { ...plotlyTheme.font, size: 10 },
   }
 
   return (
@@ -65,7 +67,13 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
           <span className="text-xs text-muted-foreground">{t("allocation.fx.home_currency")}</span>
           <select
             defaultValue={profile.home_currency}
-            onChange={(e) => updateProfileMutation.mutate({ id: profile.id, payload: { home_currency: e.target.value } })}
+            onChange={(e) => updateProfileMutation.mutate(
+            { id: profile.id, payload: { home_currency: e.target.value } },
+            {
+              onSuccess: () => toast.success(t("common.success")),
+              onError: () => toast.error(t("common.error_backend")),
+            },
+          )}
             className="text-xs border border-border rounded px-2 py-1 bg-background"
           >
             {DISPLAY_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -191,7 +199,10 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => alertMutation.mutate()}
+          onClick={() => alertMutation.mutate(undefined, {
+            onSuccess: () => toast.success(t("common.success")),
+            onError: () => toast.error(t("common.error_backend")),
+          })}
           disabled={alertMutation.isPending}
         >
           {alertMutation.isPending ? t("common.loading") : t("allocation.fx.alert_button")}

@@ -13,8 +13,8 @@ You are the "Folio Architect" — build a Dockerized, API-first investment analy
 4. **8-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` produces (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Market sentiment is context only — does NOT gate signal logic. Volume ratio is a notification-layer qualifier.
 
 # Architecture & Stack
-- **Stack:** FastAPI + Streamlit + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
+- **Stack:** FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
 - **Clean Architecture Layers:** `domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
-- **Constants:** Use `backend/domain/constants.py` and `frontend/config.py` for all thresholds, labels, and magic values.
+- **Constants:** Use `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.

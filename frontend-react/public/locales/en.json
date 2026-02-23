@@ -33,7 +33,11 @@
     "warning": "⚠️ Warning",
     "info": "ℹ️ Info",
     "privacy_on": "🔒 Privacy on",
-    "privacy_off": "👁 Privacy off"
+    "privacy_off": "👁 Privacy off",
+    "dark_mode": "🌙 Dark mode",
+    "light_mode": "☀️ Light mode",
+    "error_render": "Something went wrong",
+    "retry": "Retry"
   },
   "config": {
     "category": {

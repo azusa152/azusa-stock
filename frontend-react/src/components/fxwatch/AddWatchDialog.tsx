@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -52,9 +53,13 @@ export function AddWatchDialog({ open, onClose }: Props) {
       },
       {
         onSuccess: () => {
+          toast.success(t("common.success"))
           onClose()
         },
-        onError: () => setError(t("common.error")),
+        onError: () => {
+          setError(t("common.error"))
+          toast.error(t("common.error_backend"))
+        },
       },
     )
   }

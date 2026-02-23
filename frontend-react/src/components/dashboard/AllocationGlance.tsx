@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
-import Plot from "react-plotly.js"
+import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +9,7 @@ import {
   CATEGORY_COLOR_FALLBACK,
 } from "@/lib/constants"
 import type { RebalanceResponse, ProfileResponse } from "@/api/types/dashboard"
+import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   rebalance?: RebalanceResponse | null
@@ -17,6 +18,7 @@ interface Props {
 
 export function AllocationGlance({ rebalance, profile }: Props) {
   const { t } = useTranslation()
+  const plotlyTheme = usePlotlyTheme()
   const navigate = useNavigate()
 
   if (!rebalance || !profile || !rebalance.categories) {
@@ -94,8 +96,7 @@ export function AllocationGlance({ rebalance, profile }: Props) {
               { text: t("dashboard.chart.target"), x: 0.18, y: 1.08, xref: "paper", yref: "paper", showarrow: false, font: { size: 12 } },
               { text: t("dashboard.chart.actual"), x: 0.82, y: 1.08, xref: "paper", yref: "paper", showarrow: false, font: { size: 12 } },
             ],
-            plot_bgcolor: "rgba(0,0,0,0)",
-            paper_bgcolor: "rgba(0,0,0,0)",
+            ...plotlyTheme,
           }}
           config={{ displayModeBar: false, responsive: true }}
           style={{ width: "100%" }}
@@ -127,8 +128,7 @@ export function AllocationGlance({ rebalance, profile }: Props) {
               { x: catKeys.length - 0.5, y: 5, text: "+5%", xref: "x", yref: "y", showarrow: false, font: { size: 10, color: "orange" } },
               { x: catKeys.length - 0.5, y: -5, text: "-5%", xref: "x", yref: "y", showarrow: false, font: { size: 10, color: "orange" } },
             ],
-            plot_bgcolor: "rgba(0,0,0,0)",
-            paper_bgcolor: "rgba(0,0,0,0)",
+            ...plotlyTheme,
           }}
           config={{ displayModeBar: false, responsive: true }}
           style={{ width: "100%" }}
