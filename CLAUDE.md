@@ -5,10 +5,12 @@
 ## Quick Start
 
 ```bash
-docker-compose up -d
-make test          # Run backend tests
-make lint          # Run ruff linter
+docker compose up -d
+make ci            # Full CI check (lint + test)
+make test          # Run all tests (backend)
+make lint          # Lint all (backend + frontend)
 make format        # Format code
+make clean         # Remove build caches
 ```
 
 ## Frontend Development
