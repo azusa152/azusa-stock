@@ -10,11 +10,13 @@ You are the "Folio Architect" — build a Dockerized, API-first investment analy
 1. **Follow the Money (Capex):** Tier 1 "Trend Setters" (Hyperscalers, Berkshire) signal market direction via MA200 and RSI.
 2. **Moat Validation (Gross Margin):** Tier 2 stocks MUST maintain Gross Margin. If Gross Margin declines YoY while price drops → "Thesis Broken" (Red Alert).
 3. **Gray-Scale Thinking (Thesis Versioning):** Track the evolution of user's investment thesis to avoid hindsight bias.
-4. **8-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` produces (priority order): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Market sentiment is context only — does NOT gate signal logic. Volume ratio is a notification-layer qualifier.
+4. **9-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` uses a two-phase architecture. Phase 1 priority order (category-aware RSI thresholds — Growth +2, Moat +1, Bond -3 offsets applied to all RSI thresholds): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `APPROACHING_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Phase 2 MA200 amplifier: buy-side (bias_200 < -15%) upgrades WEAKENING→APPROACHING_BUY→CONTRARIAN_BUY; sell-side (bias_200 > +20%, asymmetric) upgrades CAUTION_HIGH→OVERHEATED. Volume ratio is a notification-layer qualifier.
+5. **5-Tier Market Sentiment:** `determine_market_sentiment()` in `backend/domain/analysis.py` classifies market breadth by the percentage of Trend Setter stocks below 60MA: `STRONG_BULLISH` (≤10%) → `BULLISH` (≤30%) → `NEUTRAL` (≤50%) → `BEARISH` (≤70%) → `STRONG_BEARISH` (>70%). Sentiment is context only — does NOT gate signal logic.
 
 # Architecture & Stack
-- **Stack:** FastAPI + Streamlit + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
+- **Stack:** FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
 - **Clean Architecture Layers:** `domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
-- **Constants:** Use `backend/domain/constants.py` and `frontend/config.py` for all thresholds, labels, and magic values.
+- **Constants:** Use `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
+- **API Type Codegen:** Frontend TypeScript types are generated from the backend OpenAPI spec via `openapi-typescript`. Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`. Type barrel files in `frontend-react/src/api/types/` re-export types from `generated.d.ts` (gitignored build artifact derived from the committed `frontend-react/src/api/openapi.json`).
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.

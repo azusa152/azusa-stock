@@ -15,7 +15,11 @@ alwaysApply: false
 - **Import ordering:** stdlib, third-party, local — ruff handles this automatically.
 
 ## Makefile Shortcuts
-- **Makefile shortcuts:** Use `make test`, `make lint`, `make format` from the project root. Run `make help` to see all targets.
+- **Fullstack targets:** `make lint` (backend + frontend), `make test` (backend; frontend added in Phase 4), `make format` (backend). These run the whole project.
+- **Granular targets:** `make backend-lint`, `make backend-test`, `make backend-format` for backend only; `make frontend-lint` for frontend only.
+- **CI gate:** Use `make ci` to run all linting + all tests — this mirrors what the CI pipeline runs. Always pass before committing.
+- **Cleanup:** Use `make clean` to remove `.pytest_cache`, `.ruff_cache`, `dist`, and `node_modules/.cache`.
+- Run `make help` to see all available targets.
 
 ## Dependencies
 - **Dependencies:** Pin versions in `requirements.txt`. When adding a new package, add it with a pinned version.

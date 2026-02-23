@@ -1,9 +1,0 @@
-[server]
-enableCORS = false
-enableXsrfProtection = false
-headless = true
-fileWatcherType = "none"
-maxUploadSize = 5  # MB — security limit for file uploads
-
-[browser]
-gatherUsageStats = false

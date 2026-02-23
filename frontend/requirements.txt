@@ -1,8 +1,0 @@
-# Core UI
-streamlit==1.41.1
-requests==2.32.4  # CVE-2024-47081: Minimum safe version
-
-# UI Components
-streamlit-sortables==0.3.1
-streamlit-js-eval==0.1.7
-plotly==5.24.1

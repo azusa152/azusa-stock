@@ -25,10 +25,13 @@ class MoatStatus(str, Enum):
 
 
 class MarketSentiment(str, Enum):
-    """市場情緒判定"""
+    """市場情緒判定（5 階段，基於風向球跌破 60MA 之比例）"""
 
-    POSITIVE = "POSITIVE"
-    CAUTION = "CAUTION"
+    STRONG_BULLISH = "STRONG_BULLISH"
+    BULLISH = "BULLISH"
+    NEUTRAL = "NEUTRAL"
+    BEARISH = "BEARISH"
+    STRONG_BEARISH = "STRONG_BEARISH"
 
 
 class ScanSignal(str, Enum):
@@ -38,6 +41,7 @@ class ScanSignal(str, Enum):
     DEEP_VALUE = "DEEP_VALUE"
     OVERSOLD = "OVERSOLD"
     CONTRARIAN_BUY = "CONTRARIAN_BUY"
+    APPROACHING_BUY = "APPROACHING_BUY"
     OVERHEATED = "OVERHEATED"
     CAUTION_HIGH = "CAUTION_HIGH"
     WEAKENING = "WEAKENING"

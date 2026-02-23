@@ -1,6 +1,6 @@
 ---
 description: Apply when working with backend or frontend source code. Covers i18n, documentation sync, and error handling patterns.
-globs: ["backend/**", "frontend/**"]
+globs: ["backend/**", "frontend-react/**"]
 alwaysApply: false
 ---
 
@@ -10,20 +10,21 @@ alwaysApply: false
 
 All user-facing strings MUST use the `t()` translation function — never hardcode text.
 
-- `from i18n import t` (backend and frontend)
-- Resolve language: `lang=get_user_language(session)` at backend API layer
-- Locale files: `backend/i18n/locales/{en,ja,zh-CN,zh-TW}.json` and `frontend/i18n/locales/`
+- **Backend:** `from i18n import t`; resolve language: `lang=get_user_language(session)` at backend API layer
+- **Frontend:** `useTranslation()` hook and `t("key")` from react-i18next
+- Locale files: `backend/i18n/locales/{en,ja,zh-CN,zh-TW}.json` and `frontend-react/public/locales/`
 - Default: `zh-TW`. Fallback chain: requested lang → `zh-TW` → raw key
 - Log messages remain in Traditional Chinese (developer-facing, NOT translated)
-- Frontend-specific i18n patterns (lazy evaluation, key naming, SOP content) are in `frontend-standards.mdc`
+- Frontend-specific i18n patterns (key naming, SOP content, interpolation) are in `frontend-standards.mdc`
 
 ## Documentation Sync
 
-**Triggers:** New endpoint, removed/renamed endpoint, schema change, new category/enum value, error code change.
+**Triggers:** New endpoint, removed/renamed endpoint, schema change, new category/enum value, error code change, Pydantic request/response model change in `backend/api/schemas.py`.
 
 **Files to update:**
+- `frontend-react/src/api/openapi.json` — Regenerate via `make generate-api` after any Pydantic schema change; this is the committed API contract
 - `README.md` — Feature list, API reference, architecture diagrams, examples
-- Frontend SOP (`st.expander("SOP")` in `frontend/pages/radar.py`) — In-app user guide
+- Frontend SOP (collapsible section in React pages via `allocation.sop.content`, `radar.sop.content`, etc.) — In-app user guide
 - `docs/agents/folio/SKILL.md` — Webhook actions table, direct API endpoint table, categories, response format
 - `docs/agents/AGENTS.md` — Key endpoints list, webhook actions table, response guidelines
 
@@ -31,4 +32,4 @@ All user-facing strings MUST use the `t()` translation function — never hardco
 
 ## Working with Existing Code
 
-Before writing new modules, check existing files in the same layer for patterns (e.g., `backend/api/stock_routes.py` for routes, `backend/infrastructure/repositories.py` for repositories).
+Before writing new modules, check existing files in the same layer for patterns (e.g., `backend/api/stock_routes.py` for routes, `backend/infrastructure/repositories.py` for repositories, `frontend-react/src/api/hooks/useDashboard.ts` for query hooks).

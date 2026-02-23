@@ -47,6 +47,7 @@ from domain.constants import (
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
+    DISK_ETF_SECTOR_WEIGHTS_TTL,
     DISK_FEAR_GREED_TTL,
     DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
@@ -55,6 +56,7 @@ from domain.constants import (
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
+    DISK_KEY_ETF_SECTOR_WEIGHTS,
     DISK_KEY_FEAR_GREED,
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
@@ -119,6 +121,10 @@ T = TypeVar("T")
 
 logger = get_logger(__name__)
 
+_BEARISH_TIERS: frozenset = frozenset(
+    {MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH}
+)
+
 
 # ---------------------------------------------------------------------------
 # Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
@@ -171,6 +177,49 @@ _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 
 
 # ---------------------------------------------------------------------------
+# In-flight 重複請求去重：避免同一 key 並發觸發多次 yfinance 呼叫
+# ---------------------------------------------------------------------------
+_inflight_lock = threading.Lock()
+_inflight_events: dict[str, threading.Event] = {}
+
+
+def _deduped_fetch(
+    key: str, fetcher: Callable[[], T], result_getter: Callable[[], T]
+) -> T:
+    """確保同一 key 的 yfinance 呼叫在任意時刻只有一個在飛行中。
+
+    若已有相同 key 的請求進行中，等待其完成後透過 result_getter 取用結果（例如讀 L1 快取）。
+
+    Args:
+        key: 唯一識別此請求的字串（通常為 disk_prefix:ticker）。
+        fetcher: 實際執行 yfinance 呼叫並寫入快取的函式。
+        result_getter: 等待完成後用來讀取快取結果的函式（fetcher 寫入後呼叫）。
+    """
+    with _inflight_lock:
+        if key in _inflight_events:
+            event = _inflight_events[key]
+            should_wait = True
+        else:
+            event = threading.Event()
+            _inflight_events[key] = event
+            should_wait = False
+
+    if should_wait:
+        event.wait()
+        # fetcher 已將結果寫入快取；透過 result_getter 取得
+        return result_getter()
+
+    try:
+        return fetcher()
+    finally:
+        # set() before pop(): any late-arriving thread that finds this event already set
+        # calls result_getter() and reads L1 — no redundant yfinance call.
+        event.set()
+        with _inflight_lock:
+            _inflight_events.pop(key, None)
+
+
+# ---------------------------------------------------------------------------
 # L1 快取（記憶體）：避免每次頁面載入都重複呼叫 yfinance
 # ---------------------------------------------------------------------------
 _signals_cache: TTLCache = TTLCache(
@@ -188,6 +237,9 @@ _price_history_cache: TTLCache = TTLCache(
 )
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
 _etf_holdings_cache: TTLCache = TTLCache(
+    maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
+)
+_etf_sector_weights_cache: TTLCache = TTLCache(
     maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
 )
 _forex_history_cache: TTLCache = TTLCache(
@@ -237,6 +289,7 @@ def clear_all_caches() -> dict:
         _price_history_cache,
         _forex_cache,
         _etf_holdings_cache,
+        _etf_sector_weights_cache,
         _forex_history_cache,
         _forex_history_long_cache,
         _fear_greed_cache,
@@ -284,14 +337,30 @@ def _cached_fetch(
         return disk_cached
 
     logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
-    result = fetcher(ticker)
-    l1_cache[ticker] = result
-    # Only persist to disk if the result is NOT an error
-    if is_error is not None and is_error(result):
-        logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
-    else:
-        _disk_set(disk_key, result, disk_ttl)
-    return result
+
+    def _do_fetch() -> T:
+        res = fetcher(ticker)
+        l1_cache[ticker] = res
+        if is_error is not None and is_error(res):
+            logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
+        else:
+            _disk_set(disk_key, res, disk_ttl)
+        return res
+
+    def _get_cached() -> T:
+        # fetcher 已寫入 L1（成功路徑）；直接讀取即可。
+        # 注意：接受 is_error 結果 — fetcher 可能寫了一個錯誤哨兵，這也是合法快取。
+        cached = l1_cache.get(ticker)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
+        disk_val = _disk_get(disk_key)
+        if disk_val is not None:
+            l1_cache[ticker] = disk_val
+            return disk_val  # type: ignore[return-value]
+        # fetcher 拋出例外（非錯誤哨兵）— 每個等待者各自重試一次（已由速率限制器節流）
+        return fetcher(ticker)
+
+    return _deduped_fetch(disk_key, _do_fetch, _get_cached)
 
 
 def _get_session() -> cffi_requests.Session:
@@ -388,10 +457,18 @@ def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
 # ===========================================================================
 
 
-def _fetch_signals_from_yf(ticker: str) -> dict:
-    """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。"""
+def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
+    """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。
+    pre_fetched_hist: 若提供，略過 _yf_history 呼叫，直接使用此 DataFrame（批次掃描優化路徑）。
+    機構持倉仍需個別 Ticker 呼叫（best-effort）。
+    """
     try:
-        stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
+        if pre_fetched_hist is not None:
+            hist = pre_fetched_hist
+            _rate_limiter.wait()
+            stock = yf.Ticker(ticker, session=_get_session())
+        else:
+            stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
 
         if hist.empty or len(hist) < MIN_HISTORY_DAYS_FOR_SIGNALS:
             logger.warning(
@@ -433,16 +510,18 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         ma200 = compute_moving_average(closes, MA200_WINDOW)
         ma60 = compute_moving_average(closes, MA60_WINDOW)
         bias = compute_bias(current_price, ma60) if ma60 else None
+        bias_200 = compute_bias(current_price, ma200) if ma200 else None
         volume_ratio = compute_volume_ratio(volumes)
 
         logger.info(
-            "%s 技術訊號：price=%.2f, RSI=%s, 200MA=%s, 60MA=%s, Bias=%s%%, VolRatio=%s",
+            "%s 技術訊號：price=%.2f, RSI=%s, 200MA=%s, 60MA=%s, Bias=%s%%, Bias200=%s%%, VolRatio=%s",
             ticker,
             current_price,
             rsi,
             ma200,
             ma60,
             bias,
+            bias_200,
             volume_ratio,
         )
 
@@ -485,6 +564,7 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
             "ma200": ma200,
             "ma60": ma60,
             "bias": bias,
+            "bias_200": bias_200,
             "volume_ratio": volume_ratio,
             "institutional_holders": institutional_holders,
             "fetched_at": datetime.now(timezone.utc).isoformat(),
@@ -516,6 +596,86 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
         _fetch_signals_from_yf,
         is_error=_is_error_dict,
     )
+
+
+def batch_download_history(
+    tickers: list[str], period: str = YFINANCE_HISTORY_PERIOD
+) -> dict:
+    """
+    使用 yf.download() 一次批次下載多檔股票的價格歷史，大幅減少 HTTP 請求數量。
+    回傳 {ticker: DataFrame}，僅包含有效且資料量足夠的股票。
+    失敗時靜默回傳空字典（呼叫端應回退至個別呼叫）。
+    """
+    if not tickers:
+        return {}
+    try:
+        _rate_limiter.wait()
+        data = yf.download(
+            tickers,
+            period=period,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=True,
+        )
+        result: dict = {}
+        for ticker in tickers:
+            try:
+                df = data[ticker] if len(tickers) > 1 else data
+                df = df.dropna(how="all")
+                if not df.empty and len(df) >= MIN_HISTORY_DAYS_FOR_SIGNALS:
+                    result[ticker] = df
+                else:
+                    logger.debug(
+                        "%s 批次下載資料不足（%d 筆），將回退至個別呼叫。",
+                        ticker,
+                        len(df),
+                    )
+            except (KeyError, Exception) as e:
+                logger.debug("批次下載 %s 資料擷取失敗（已略過）：%s", ticker, e)
+        logger.info("批次下載完成：%d/%d 檔股票有效。", len(result), len(tickers))
+        return result
+    except Exception as e:
+        logger.warning("批次下載歷史資料失敗，回退至個別呼叫：%s", e)
+        return {}
+
+
+def prime_signals_cache_batch(
+    ticker_hist_map: dict,
+    max_workers: int = SCAN_THREAD_POOL_SIZE,
+) -> int:
+    """
+    從批次下載的歷史資料預熱訊號 L1+L2 快取。
+    跳過已在 L1 快取中的 ticker。
+    回傳成功預熱的股票數量。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _prime_one(ticker: str, hist) -> bool:
+        if _signals_cache.get(ticker) is not None:
+            logger.debug("%s 訊號已在 L1 快取，略過預熱。", ticker)
+            return False
+        result = _fetch_signals_from_yf(ticker, pre_fetched_hist=hist)
+        _signals_cache[ticker] = result
+        if not _is_error_dict(result):
+            _disk_set(f"{DISK_KEY_SIGNALS}:{ticker}", result, DISK_SIGNALS_TTL)
+        return True
+
+    primed = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_prime_one, ticker, hist): ticker
+            for ticker, hist in ticker_hist_map.items()
+        }
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                if future.result():
+                    primed += 1
+            except Exception as e:
+                logger.warning("預熱 %s 訊號快取失敗：%s", ticker, e)
+    logger.info("訊號快取預熱完成：%d/%d 檔股票。", primed, len(ticker_hist_map))
+    return primed
 
 
 def prewarm_signals_batch(
@@ -771,12 +931,12 @@ def prewarm_moat_batch(
 
 def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     """
-    分析風向球股票的整體市場情緒。
+    分析風向球股票的整體市場情緒（5 階段）。
     接受動態的 ticker_list，計算跌破 60MA 的比例。
     """
     if not ticker_list:
         return {
-            "status": MarketSentiment.POSITIVE.value,
+            "status": MarketSentiment.BULLISH.value,
             "details": t("market.no_trend_stocks", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }
@@ -794,37 +954,30 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
                 if price is not None and ma60 is not None and price < ma60:
                     below_count += 1
 
-        # 使用 domain 層的純判定函式
         sentiment, pct = determine_market_sentiment(below_count, valid_count)
 
-        if sentiment == MarketSentiment.CAUTION:
+        if sentiment in _BEARISH_TIERS:
             logger.warning(
-                "市場情緒：CAUTION — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                "市場情緒：%s — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                sentiment.value,
                 pct,
                 below_count,
                 valid_count,
             )
-            return {
-                "status": sentiment.value,
-                "details": t(
-                    "market.caution_details",
-                    lang=DEFAULT_LANGUAGE,
-                    below=below_count,
-                    total=valid_count,
-                ),
-                "below_60ma_pct": pct,
-            }
+        else:
+            logger.info(
+                "市場情緒：%s — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                sentiment.value,
+                pct,
+                below_count,
+                valid_count,
+            )
 
-        logger.info(
-            "市場情緒：POSITIVE — %.1f%% 的風向球跌破 60MA（%d/%d）",
-            pct,
-            below_count,
-            valid_count,
-        )
+        detail_key = f"market.{sentiment.value.lower()}_details"
         return {
             "status": sentiment.value,
             "details": t(
-                "market.positive_details",
+                detail_key,
                 lang=DEFAULT_LANGUAGE,
                 below=below_count,
                 total=valid_count,
@@ -835,7 +988,7 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     except Exception as e:
         logger.error("市場情緒分析失敗：%s", e, exc_info=True)
         return {
-            "status": MarketSentiment.POSITIVE.value,
+            "status": MarketSentiment.BULLISH.value,
             "details": t("market.fallback_optimistic", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }
@@ -1284,6 +1437,123 @@ def prewarm_etf_holdings_batch(
                 results[ticker] = future.result()
             except Exception as exc:
                 logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
+                results[ticker] = None
+    return results
+
+
+# ===========================================================================
+# ETF 行業板塊權重（Sector Weightings）
+# ===========================================================================
+
+_ETF_SECTOR_WEIGHTS_NOT_FOUND: dict = {}  # 空 dict 哨兵值：非 ETF 或無資料時的快取標記
+
+# yfinance funds_data.sector_weightings 使用 snake_case 鍵；此對照表轉換為 GICS 標準名稱。
+# 未收錄的鍵直接用 .title() 處理（如 "other" → "Other"）。
+_ETF_SECTOR_KEY_MAP: dict[str, str] = {
+    "technology": "Technology",
+    "consumer_cyclical": "Consumer Cyclical",
+    "financial_services": "Financial Services",
+    "realestate": "Real Estate",
+    "consumer_defensive": "Consumer Defensive",
+    "healthcare": "Healthcare",
+    "utilities": "Utilities",
+    "communication_services": "Communication Services",
+    "energy": "Energy",
+    "industrials": "Industrials",
+    "basic_materials": "Basic Materials",
+}
+
+
+def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+    """
+    從 yfinance funds_data.sector_weightings 取得 ETF 的行業板塊權重分佈。
+    回傳 {"Technology": 0.32, "Healthcare": 0.14, ...} 或 None。
+    涵蓋 100% ETF 資產，比分析成分股更準確。
+    非 ETF 標的或無資料時回傳 None。
+    """
+    _rate_limiter.wait()
+    try:
+        t = _yf_ticker_obj(ticker)
+        fd = t.funds_data
+        if fd is None:
+            return None
+        weights = fd.sector_weightings
+        if not weights:
+            return None
+        # yfinance 回傳 list[dict] 或 dict，視版本而定
+        # list[dict] 格式：[{"realestate": 0.01, "consumer_cyclical": 0.13, ...}]
+        # dict 格式：{"realestate": 0.01, ...}
+        if isinstance(weights, list):
+            if not weights:
+                return None
+            merged: dict[str, float] = {}
+            for item in weights:
+                if isinstance(item, dict):
+                    merged.update(item)
+            weights = merged
+        if not isinstance(weights, dict) or not weights:
+            return None
+
+        result: dict[str, float] = {}
+        for raw_key, weight in weights.items():
+            if not isinstance(weight, (int, float)) or weight <= 0:
+                continue
+            normalized = _ETF_SECTOR_KEY_MAP.get(
+                str(raw_key).lower(), str(raw_key).title()
+            )
+            result[normalized] = result.get(normalized, 0.0) + float(weight)
+
+        if not result:
+            return None
+        logger.info("%s ETF 行業板塊權重取得 %d 個板塊", ticker, len(result))
+        return result
+    except Exception as e:
+        logger.debug("%s 非 ETF 或取得行業板塊權重失敗：%s", ticker, e)
+        return None
+
+
+def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+    """
+    取得 ETF 行業板塊權重分佈（含 L1 + L2 快取）。
+    回傳 {"Technology": 0.32, ...} 或 None（非 ETF 或無資料）。
+    使用空 dict 哨兵避免反覆呼叫 yfinance。
+    """
+
+    def _fetch_with_sentinel(t: str) -> dict[str, float]:
+        result = _fetch_etf_sector_weights(t)
+        return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
+
+    data = _cached_fetch(
+        _etf_sector_weights_cache,
+        ticker,
+        DISK_KEY_ETF_SECTOR_WEIGHTS,
+        DISK_ETF_SECTOR_WEIGHTS_TTL,
+        _fetch_with_sentinel,
+    )
+    return data if data else None
+
+
+def prewarm_etf_sector_weights_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, dict[str, float] | None]:
+    """
+    並行預熱多檔 ETF 的行業板塊權重快取。
+    非 ETF 標的會快速命中哨兵快取，不造成額外 yfinance 呼叫。
+    回傳 {ticker: weights_or_None} 對照表。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[str, dict[str, float] | None] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results[ticker] = future.result()
+            except Exception as exc:
+                logger.error(
+                    "預熱 %s ETF 行業板塊權重失敗：%s", ticker, exc, exc_info=True
+                )
                 results[ticker] = None
     return results
 

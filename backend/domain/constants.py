@@ -23,12 +23,31 @@ MIN_CLOSE_PRICES_FOR_CHANGE = 2  # 計算日漲跌所需的最少收盤價數據
 RSI_OVERSOLD = 30
 RSI_OVERBOUGHT = 70
 RSI_CONTRARIAN_BUY_THRESHOLD = 35
+RSI_APPROACHING_BUY_THRESHOLD = 37
 RSI_WEAKENING_THRESHOLD = 38
 BIAS_OVERHEATED_THRESHOLD = 20
 BIAS_OVERSOLD_THRESHOLD = -20
 BIAS_WEAKENING_THRESHOLD = -15
+# Same magnitude as BIAS_WEAKENING but measured against MA200 (not MA60); may diverge independently.
+MA200_DEEP_DEVIATION_THRESHOLD = -15  # buy amplifier: price deeply below MA200
+MA200_HIGH_DEVIATION_THRESHOLD = 20  # sell amplifier: price highly above MA200 (asymmetric due to positive market drift)
 MOAT_MARGIN_DETERIORATION_THRESHOLD = -2  # percentage points YoY
-MARKET_CAUTION_BELOW_60MA_PCT = 50  # % of trend stocks below 60MA
+
+# Category RSI offset — derived from CATEGORY_FALLBACK_BETA via round((beta - 1.0) * 4)
+# Widens/narrows RSI bands symmetrically on both buy and sell sides per category
+CATEGORY_RSI_OFFSET: dict[str, int] = {
+    "Trend_Setter": 0,  # beta ~1.0
+    "Moat": 1,  # beta ~1.2
+    "Growth": 2,  # beta ~1.5
+    "Bond": -3,  # beta ~0.3
+    "Cash": 0,
+}
+# Market sentiment thresholds — % of Trend Setter stocks below 60MA
+MARKET_STRONG_BULLISH_MAX_PCT = 10  # ≤10%  → ☀️ Strong Bullish
+MARKET_BULLISH_MAX_PCT = 30  # ≤30%  → 🌤️ Bullish
+MARKET_NEUTRAL_MAX_PCT = 50  # ≤50%  → ⛅ Neutral
+MARKET_BEARISH_MAX_PCT = 70  # ≤70%  → 🌧️ Bearish
+# >70% → ⛈️ Strong Bearish
 
 # ---------------------------------------------------------------------------
 # Cache Configuration
@@ -54,7 +73,9 @@ DISK_CACHE_DIR = "/app/data/yf_cache"
 DISK_CACHE_SIZE_LIMIT = 100 * 1024 * 1024  # 100 MB
 
 # Disk Cache TTLs（比 L1 更長，作為冷啟動 fallback）
-DISK_SIGNALS_TTL = 1800  # 30 minutes
+DISK_SIGNALS_TTL = (
+    3600  # 1 hour — warm restarts skip prewarm for recently-fetched signals
+)
 DISK_MOAT_TTL = 86400  # 24 hours
 DISK_EARNINGS_TTL = 604800  # 7 days
 DISK_DIVIDEND_TTL = 86400  # 24 hours
@@ -62,15 +83,17 @@ DISK_DIVIDEND_TTL = 86400  # 24 hours
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-YFINANCE_RATE_LIMIT_CPS = 2.0  # calls per second
+YFINANCE_RATE_LIMIT_CPS = (
+    0.4  # calls per second — 2 req/5 sec (yfinance official recommendation)
+)
 
 # ---------------------------------------------------------------------------
 # Scan & Alerts
 # ---------------------------------------------------------------------------
-SCAN_THREAD_POOL_SIZE = 4
-ENRICHED_THREAD_POOL_SIZE = 8  # 批次豐富資料用較大執行緒池
-ENRICHED_PER_TICKER_TIMEOUT = 15  # 每檔股票豐富資料超時（秒）
-SCAN_STALE_SECONDS = 1800  # 30 minutes — scanner skips if last scan is fresher
+SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
+ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
+ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬
+SCAN_STALE_SECONDS = 900  # 15 minutes — scanner skips if last scan is fresher
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
 SCAN_HISTORY_DEFAULT_LIMIT = 20
@@ -164,6 +187,7 @@ ETF_HOLDINGS_CACHE_MAXSIZE = 100
 ETF_HOLDINGS_CACHE_TTL = 86400  # 24 hours (ETF holdings change slowly)
 DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
 ETF_TOP_N = 10  # only resolve top N constituents per ETF
+DISK_ETF_SECTOR_WEIGHTS_TTL = 604800  # 7 days (same cadence as ETF holdings)
 
 # ---------------------------------------------------------------------------
 # Currency Exposure Monitor
@@ -250,6 +274,7 @@ DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"
+DISK_KEY_ETF_SECTOR_WEIGHTS = "etf_sector_weights"
 DISK_KEY_FEAR_GREED = "fear_greed"
 DISK_KEY_ROGUE_WAVE = "rogue_wave"
 

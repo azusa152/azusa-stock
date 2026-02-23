@@ -59,7 +59,7 @@ _MOCK_FG = {
 }
 
 _MOCK_MARKET_SENTIMENT = {
-    "status": "POSITIVE",
+    "status": "BULLISH",
     "details": "ok",
     "below_60ma_pct": 20.0,
 }
@@ -84,6 +84,7 @@ def _add_cash_stock(session: Session, ticker: str = "CASH") -> None:
 # ---------------------------------------------------------------------------
 
 
+@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestScanRogueWaveFields:
     """bias_percentile and is_rogue_wave should always be present in scan results."""
 
@@ -159,6 +160,7 @@ class TestScanRogueWaveFields:
 # ---------------------------------------------------------------------------
 
 
+@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestScanRogueWaveAlert:
     """rogue_wave_alert should be appended iff both thresholds are met."""
 
@@ -266,6 +268,7 @@ class TestScanRogueWaveAlert:
 # ---------------------------------------------------------------------------
 
 
+@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestScanRogueWaveSkippedForCash:
     """Cash category stocks skip signal fetching and must not trigger rogue wave."""
 

@@ -322,18 +322,23 @@ Folio uses two signal fields per stock:
 - **`last_scan_signal`** — persisted result of the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`. Used in weekly digest and Telegram notifications.
 - **`computed_signal`** — real-time signal recomputed on each request from live RSI/bias (moat excluded for performance). Returned by `GET /stocks/enriched`. The dashboard Signal Alerts section and radar page prefer `computed_signal` when available, falling back to `last_scan_signal`. `THESIS_BROKEN` is always taken from the persisted value (requires moat analysis to set).
 
-Both fields share the same 8-state cascade. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
+Both fields share the same 9-state cascade. Higher priority (lower P number) trumps lower priority when multiple conditions apply.
 
-| Priority | Signal | Icon | Condition | Meaning |
-|----------|--------|------|-----------|---------|
-| P1 | `THESIS_BROKEN` | 🔴 | Gross margin YoY deteriorated >2pp | Fundamental thesis is broken — re-evaluate holding |
-| P2 | `DEEP_VALUE` | 🔵 | Bias < −20% AND RSI < 35 | Both indicators confirm deep discount — highest-conviction entry opportunity |
-| P3 | `OVERSOLD` | 🟣 | Bias < −20% (RSI ≥ 35) | Price at extreme discount (bias-only); watch for RSI confirmation before acting |
+**Category-aware RSI offsets** are applied to all RSI thresholds (buy and sell side): Growth +2, Moat +1, Trend_Setter 0, Bond −3, Cash 0. For example, Growth stocks need RSI < 37 (not 35) for CONTRARIAN_BUY, and RSI > 72 (not 70) for OVERHEATED.
+
+**MA200 amplifier (Phase 2)**: After the priority cascade, if `bias_200` (price deviation from 200-day MA) is available, it can upgrade signals: buy-side when bias_200 < −15% (WEAKENING→APPROACHING_BUY, APPROACHING_BUY→CONTRARIAN_BUY); sell-side when bias_200 > +20% (CAUTION_HIGH→OVERHEATED, asymmetric threshold due to positive market drift).
+
+| Priority | Signal | Icon | Condition (default offset=0) | Meaning |
+|----------|--------|------|------------------------------|---------|
+| P1 | `THESIS_BROKEN` | 🚨 | Gross margin YoY deteriorated >2pp | Fundamental thesis is broken — re-evaluate holding |
+| P2 | `DEEP_VALUE` | 💎 | Bias < −20% AND RSI < 35 | Both indicators confirm deep discount — highest-conviction entry opportunity |
+| P3 | `OVERSOLD` | 📉 | Bias < −20% (RSI ≥ 35) | Price at extreme discount (bias-only); watch for RSI confirmation before acting |
 | P4 | `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold but price not overheated — potential contrarian entry |
-| P5 | `OVERHEATED` | 🟠 | Bias > 20% AND RSI > 70 | Both indicators confirm overheating — highest-conviction sell warning |
-| P6 | `CAUTION_HIGH` | 🟡 | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions, tighten stops |
-| P7 | `WEAKENING` | 🟤 | Bias < −15% AND RSI < 38 | Early weakness — monitor closely, not yet at extreme levels |
-| P8 | `NORMAL` | ⚪ | Everything else | No notable technical signal |
+| P4.5 | `APPROACHING_BUY` | 🎯 | RSI < 37 AND Bias < −15% | Accumulation zone — entering buy range; monitor for RSI confirmation |
+| P5 | `OVERHEATED` | 🔥 | Bias > 20% AND RSI > 70 | Both indicators confirm overheating — highest-conviction sell warning |
+| P6 | `CAUTION_HIGH` | ⚠️ | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions, tighten stops |
+| P7 | `WEAKENING` | 🔻 | Bias < −15% AND RSI < 38 | Early weakness — monitor closely, not yet at extreme levels |
+| P8 | `NORMAL` | ➖ | Everything else | No notable technical signal |
 
 ### Volume Confidence Qualifiers
 
@@ -349,9 +354,24 @@ When `volume_ratio` is extreme, Telegram notifications append a suffix to the si
 ### None Handling
 
 When technical data is unavailable (e.g., Cash category stocks skip yfinance signals):
-- RSI = None: P2, P4, P6 (RSI part), P7 conditions are skipped
-- Bias = None: P2, P3, P5, P6 (bias part), P7 conditions are skipped
+- RSI = None: P2, P4, P4.5, P6 (RSI part), P7 conditions are skipped
+- Bias = None: P2, P3, P4.5, P5, P6 (bias part), P7 conditions are skipped
+- bias_200 = None: Phase 2 MA200 amplifier is skipped entirely
 - Both None: only `THESIS_BROKEN` (P1) or `NORMAL` (P8) are reachable
+
+## Market Sentiment (5-Tier)
+
+Market sentiment is determined by the percentage of **Trend Setter** stocks trading below their 60-day moving average. It serves as a contextual backdrop — it does NOT gate signal logic.
+
+| % Below 60MA | Sentiment | Icon | Guidance |
+|--------------|-----------|------|----------|
+| 0–10% | `STRONG_BULLISH` | ☀️ | Nearly all trend setters healthy — strong breadth, full risk-on |
+| 10–30% | `BULLISH` | 🌤️ | Mostly healthy — normal accumulation conditions |
+| 30–50% | `NEUTRAL` | ⛅ | Mixed breadth — transition zone, be selective |
+| 50–70% | `BEARISH` | 🌧️ | Majority weakening — reduce exposure, tighten stops |
+| >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
+
+The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
 
 ## Service Operations
 

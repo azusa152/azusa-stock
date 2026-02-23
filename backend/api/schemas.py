@@ -210,6 +210,7 @@ class SignalsResponse(BaseModel):
     ma200: Optional[float] = None
     ma60: Optional[float] = None
     bias: Optional[float] = None
+    bias_200: Optional[float] = None
     volume_ratio: Optional[float] = None
     status: list[str] = []
     error: Optional[str] = None
@@ -286,6 +287,12 @@ class ScanStatusResponse(BaseModel):
     """GET /scan/status 回應。"""
 
     is_running: bool
+
+
+class PrewarmStatusResponse(BaseModel):
+    """GET /prewarm-status 回應。"""
+
+    ready: bool
 
 
 class ThesisLogResponse(BaseModel):

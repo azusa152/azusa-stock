@@ -148,5 +148,6 @@ async def take_snapshot(
 
     Rate limited: 10/minute。
     """
+    logger.info("快照觸發請求已收到，啟動背景執行緒。")
     threading.Thread(target=_run_snapshot_background, daemon=True).start()
     return AcceptedResponse(message="snapshot triggered")

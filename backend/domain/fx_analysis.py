@@ -5,7 +5,7 @@ Domain — 匯率變動分析純函式。
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from domain.constants import (
     FX_DAILY_SPIKE_PCT,
@@ -153,6 +153,9 @@ class FXTimingResult:
     should_alert: bool  # 是否應發出警報
     recommendation_zh: str  # 繁體中文建議
     reasoning_zh: str  # 繁體中文理由
+    # i18n support: scenario code + interpolation vars for t() in the service layer
+    scenario: str = ""
+    scenario_vars: dict = field(default_factory=dict)
 
 
 def is_recent_high(
@@ -249,11 +252,24 @@ def assess_exchange_timing(
             should_alert=False,
             recommendation_zh="無歷史資料，無法分析",
             reasoning_zh="歷史資料不足",
+            scenario="no_data",
+            scenario_vars={"base": base_currency, "quote": quote_currency},
         )
 
     current_rate = history[-1]["close"]
     near_high, high = is_recent_high(current_rate, history, recent_high_days)
     consec = count_consecutive_increases(history)
+
+    # Common vars available to all scenario templates
+    common_vars: dict = {
+        "base": base_currency,
+        "quote": quote_currency,
+        "pair": f"{base_currency}/{quote_currency}",
+        "high_days": recent_high_days,
+        "high": high,
+        "consec": consec,
+        "consec_threshold": consecutive_threshold,
+    }
 
     # 判斷是否應發出警報：根據啟用的條件使用 OR 邏輯
     if not alert_on_recent_high and not alert_on_consecutive_increase:
@@ -261,6 +277,7 @@ def assess_exchange_timing(
         should_alert = False
         recommendation_zh = "監控已停用：兩項條件皆關閉"
         reasoning_zh = "請啟用至少一項警報條件（近期高點或連續上漲）"
+        scenario = "disabled"
     else:
         # 評估啟用的條件
         high_condition = alert_on_recent_high and near_high
@@ -274,10 +291,13 @@ def assess_exchange_timing(
             triggers = []
             if high_condition and consec_condition:
                 triggers.append("近期高點 + 連續上漲")
+                scenario = "should_alert_both"
             elif high_condition:
                 triggers.append("近期高點")
-            elif consec_condition:
+                scenario = "should_alert_high"
+            else:
                 triggers.append("連續上漲")
+                scenario = "should_alert_consec"
 
             recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
             parts = []
@@ -296,6 +316,7 @@ def assess_exchange_timing(
                 f"匯率接近 {recent_high_days} 日高點，但連續上漲僅 {consec} 日 "
                 f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
             )
+            scenario = "near_high_disabled"
         elif consec >= consecutive_threshold:
             # 連續上漲達標但未達高點（alert_on_consecutive_increase 必為 False，否則 should_alert=True）
             recommendation_zh = "持續上漲但未達高點，可再等待"
@@ -303,9 +324,11 @@ def assess_exchange_timing(
                 f"連續上漲 {consec} 日但匯率尚未達 {recent_high_days} 日高點附近，"
                 f"可能還有上漲空間。"
             )
+            scenario = "consec_disabled"
         else:
             recommendation_zh = "暫無換匯訊號"
             reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {consec} 日。"
+            scenario = "no_signal"
 
     return FXTimingResult(
         base_currency=base_currency,
@@ -321,4 +344,6 @@ def assess_exchange_timing(
         should_alert=should_alert,
         recommendation_zh=recommendation_zh,
         reasoning_zh=reasoning_zh,
+        scenario=scenario,
+        scenario_vars=common_vars,
     )

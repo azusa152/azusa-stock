@@ -9,6 +9,7 @@ from domain.entities import Stock
 from domain.enums import StockCategory
 
 
+@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestETFExclusionFromSentiment:
     """ETFs flagged with is_etf=True should be excluded from Layer 1 sentiment."""
 
@@ -47,7 +48,7 @@ class TestETFExclusionFromSentiment:
         db_session.commit()
 
         mock_sentiment.return_value = {
-            "status": "POSITIVE",
+            "status": "BULLISH",
             "details": "test",
             "below_60ma_pct": 0.0,
         }
@@ -114,7 +115,7 @@ class TestETFExclusionFromSentiment:
         db_session.commit()
 
         mock_sentiment.return_value = {
-            "status": "POSITIVE",
+            "status": "BULLISH",
             "details": "test",
             "below_60ma_pct": 0.0,
         }

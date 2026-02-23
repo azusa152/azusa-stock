@@ -41,9 +41,11 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
+    batch_download_history,
     get_bias_distribution,
     get_fear_greed_index,
     get_technical_signals,
+    prime_signals_cache_batch,
 )
 from infrastructure.notification import (
     is_notification_enabled,
@@ -52,6 +54,27 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+# ===========================================================================
+# Helpers
+# ===========================================================================
+
+
+def _insert_volume_qualifier(alert: str, qualifier: str) -> str:
+    """Insert volume qualifier on the metrics line (line 1) of a signal alert.
+
+    Multi-line alerts have the format:
+        <emoji> <b>TICKER</b>  SIGNAL  Bias X% · RSI Y
+           → action hint
+
+    The qualifier should sit on line 1 alongside the metrics, not after the
+    action hint.  For single-line alerts the qualifier is appended as before.
+    """
+    if "\n" in alert:
+        line1, rest = alert.split("\n", 1)
+        return f"{line1} {qualifier}\n{rest}"
+    return f"{alert} {qualifier}"
 
 
 # ===========================================================================
@@ -70,10 +93,25 @@ def run_scan(session: Session) -> dict:
     logger.info("三層漏斗掃描啟動...")
     lang = get_user_language(session)
 
+    # === 預先載入所有股票（供 Layer 1 情緒分析與 Layer 2+3 掃描共用） ===
+    all_stocks = repo.find_active_stocks(session)
+    stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
+    logger.info("掃描對象：%d 檔股票。", len(all_stocks))
+
+    # === 批次預取價格歷史並預熱訊號快取（減少個別 yfinance 呼叫） ===
+    scan_tickers = [
+        s.ticker for s in all_stocks if s.category.value not in SKIP_SIGNALS_CATEGORIES
+    ]
+    try:
+        hist_batch = batch_download_history(scan_tickers)
+        if hist_batch:
+            primed = prime_signals_cache_batch(hist_batch)
+            logger.info("批次訊號快取預熱：%d/%d 檔股票", primed, len(scan_tickers))
+    except Exception as _batch_err:
+        logger.warning("批次預熱失敗，回退至個別呼叫：%s", _batch_err)
+
     # === Layer 1: 市場情緒 ===
-    trend_stocks = repo.find_active_stocks_by_category(
-        session, StockCategory.TREND_SETTER
-    )
+    trend_stocks = [s for s in all_stocks if s.category == StockCategory.TREND_SETTER]
     # ETF 不參與市場情緒計算（VTI/VT 本身就是大盤，會造成循環推理）
     excluded_etfs = [s.ticker for s in trend_stocks if s.is_etf]
     if excluded_etfs:
@@ -82,7 +120,7 @@ def run_scan(session: Session) -> dict:
     logger.info("Layer 1 — 風向球股票（情緒計算用）：%s", trend_tickers)
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
-    market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)
+    market_status_value = market_sentiment.get("status", MarketSentiment.BULLISH.value)
     market_status_details_value = market_sentiment.get("details", "")
     logger.info(
         "Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value
@@ -96,9 +134,6 @@ def run_scan(session: Session) -> dict:
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
-    all_stocks = repo.find_active_stocks(session)
-    stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
-    logger.info("掃描對象：%d 檔股票。", len(all_stocks))
 
     def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
         """單一股票的分析邏輯（可在 Thread 中執行）。"""
@@ -126,18 +161,21 @@ def run_scan(session: Session) -> dict:
             signals = get_technical_signals(ticker)
         rsi: float | None = None
         bias: float | None = None
+        bias_200: float | None = None
         volume_ratio: float | None = None
         price: float | None = None
-
         if signals and "error" not in signals:
             rsi = signals.get("rsi")
             bias = signals.get("bias")
+            bias_200 = signals.get("bias_200")
             volume_ratio = signals.get("volume_ratio")
             price = signals.get("price")
         elif signals and "error" in signals:
             alerts.append(signals["error"])
 
-        signal = determine_scan_signal(moat_value, rsi, bias)
+        signal = determine_scan_signal(
+            moat_value, rsi, bias, bias_200, stock.category.value
+        )
 
         # === Rogue Wave (瘋狗浪) ===
         bias_percentile: float | None = None
@@ -191,6 +229,7 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     bias=round(bias, 1),
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.CONTRARIAN_BUY:
@@ -200,6 +239,18 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     rsi=round(rsi, 1),
+                    bias=round(bias, 1) if bias is not None else "N/A",
+                )
+            )
+        elif signal == ScanSignal.APPROACHING_BUY:
+            alerts.append(
+                t(
+                    "scan.approaching_buy_alert",
+                    lang=lang,
+                    ticker=ticker,
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
+                    bias=round(bias, 1) if bias is not None else "N/A",
+                    bias_200=round(bias_200, 1) if bias_200 is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.OVERHEATED:
@@ -209,6 +260,7 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     bias=round(bias, 1),
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.CAUTION_HIGH:
@@ -232,8 +284,8 @@ def run_scan(session: Session) -> dict:
                 )
             )
 
-        # Volume confidence qualifier: append to the last signal alert (if any).
-        # Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal, volume irrelevant).
+        # Volume confidence qualifier: insert on the metrics line (line 1) of the last
+        # signal alert. Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal).
         if (
             alerts
             and volume_ratio is not None
@@ -243,10 +295,13 @@ def run_scan(session: Session) -> dict:
                 ScanSignal.THESIS_BROKEN,
             )
         ):
+            qualifier: str | None = None
             if volume_ratio >= VOLUME_SURGE_THRESHOLD:
-                alerts[-1] += " " + t("scan.volume_surge", lang=lang)
+                qualifier = t("scan.volume_surge", lang=lang)
             elif volume_ratio <= VOLUME_THIN_THRESHOLD:
-                alerts[-1] += " " + t("scan.volume_thin", lang=lang)
+                qualifier = t("scan.volume_thin", lang=lang)
+            if qualifier:
+                alerts[-1] = _insert_volume_qualifier(alerts[-1], qualifier)
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
             alerts.append(

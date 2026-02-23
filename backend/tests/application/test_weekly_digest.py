@@ -43,7 +43,7 @@ def _add_scan_log(
     log = ScanLog(
         stock_ticker=ticker,
         signal=signal,
-        market_status="POSITIVE",
+        market_status="BULLISH",
         scanned_at=datetime.now(timezone.utc) - timedelta(days=days_ago),
     )
     session.add(log)

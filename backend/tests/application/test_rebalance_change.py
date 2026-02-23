@@ -18,10 +18,14 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
     @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
     def test_calculate_rebalance_should_include_total_change(
         self,
+        _mock_etf_weights,
         _mock_etf,
+        _mock_etf_sector_prewarm,
         _mock_etf_prewarm,
         mock_prewarm,
         mock_fx,
@@ -78,10 +82,14 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
     @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
     def test_calculate_rebalance_should_include_holding_change_pct(
         self,
+        _mock_etf_weights,
         _mock_etf,
+        _mock_etf_sector_prewarm,
         _mock_etf_prewarm,
         mock_prewarm,
         mock_fx,
@@ -135,10 +143,14 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
     @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
     def test_calculate_rebalance_should_handle_missing_previous_close(
         self,
+        _mock_etf_weights,
         _mock_etf,
+        _mock_etf_sector_prewarm,
         _mock_etf_prewarm,
         mock_prewarm,
         mock_fx,
@@ -222,10 +234,14 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
     @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
     def test_calculate_rebalance_should_aggregate_multiple_holdings_change(
         self,
+        _mock_etf_weights,
         _mock_etf,
+        _mock_etf_sector_prewarm,
         _mock_etf_prewarm,
         mock_prewarm,
         mock_fx,

@@ -30,7 +30,7 @@
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號
 - **恐懼與貪婪指數** — 結合 VIX 與 CNN Fear & Greed 的綜合市場情緒指標（五級）
 - **護城河健檢** — 毛利率 5 季走勢圖 + YoY 五級診斷
-- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🔴🔵🟣🟢🟠🟡🟤⚪），移除市場情緒硬關卡，支援量能信心修正
+- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🚨💎📉🟢🎯🔥⚠️🔻➖），9 級分類感知 RSI 閾值（Growth/Moat/Bond 依 beta 動態調整），MA200 放大器自動升級邊緣訊號
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
 - **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
 
@@ -95,22 +95,28 @@
 
 ```mermaid
 flowchart TD
-    L1["Layer 1: 市場情緒"] -->|"風向球跌破 60MA 比例"| Decision{">50%?"}
-    Decision -->|"是"| CAUTION["CAUTION 雨天（顯示用，不影響訊號）"]
-    Decision -->|"否"| POSITIVE["POSITIVE 晴天（顯示用，不影響訊號）"]
+    L1["Layer 1: 市場情緒（5 階段）"] -->|"風向球跌破 60MA 比例"| SentCheck
+    SentCheck -->|"0–10%"| SB["☀️ STRONG_BULLISH（晴天）"]
+    SentCheck -->|"10–30%"| BL["🌤️ BULLISH（晴時多雲）"]
+    SentCheck -->|"30–50%"| NT["⛅ NEUTRAL（多雲）"]
+    SentCheck -->|"50–70%"| BR["🌧️ BEARISH（雨天）"]
+    SentCheck -->|">70%"| SBR["⛈️ STRONG_BEARISH（暴風雨）"]
 
     L2["Layer 2: 護城河趨勢"] -->|"毛利率 YoY"| MoatCheck{"衰退 >2pp?"}
-    MoatCheck -->|"是"| BROKEN["🔴 THESIS_BROKEN（P1）"]
+    MoatCheck -->|"是"| BROKEN["🚨 THESIS_BROKEN（P1）"]
     MoatCheck -->|"否"| L3
 
-    L3["Layer 3: 技術面 8 級決策引擎"] -->|"RSI, Bias"| TechCheck
-    TechCheck -->|"Bias<-20% AND RSI<35"| DV["🔵 DEEP_VALUE（P2）"]
-    TechCheck -->|"Bias<-20%"| OS["🟣 OVERSOLD（P3）"]
-    TechCheck -->|"RSI<35 AND Bias<20%"| BUY["🟢 CONTRARIAN_BUY（P4）"]
-    TechCheck -->|"Bias>20% AND RSI>70"| HOT["🟠 OVERHEATED（P5）"]
-    TechCheck -->|"Bias>20% OR RSI>70"| CH["🟡 CAUTION_HIGH（P6）"]
-    TechCheck -->|"Bias<-15% AND RSI<38"| WK["🟤 WEAKENING（P7）"]
-    TechCheck -->|"其他"| NORMAL["⚪ NORMAL（P8）"]
+    L3["Layer 3: 技術面 9 級決策引擎（分類感知 RSI + MA200 放大器）"] -->|"RSI, Bias, Bias200, Category"| TechCheck
+    TechCheck -->|"Bias<-20% AND RSI<35+offset"| DV["💎 DEEP_VALUE（P2）"]
+    TechCheck -->|"Bias<-20%"| OS["📉 OVERSOLD（P3）"]
+    TechCheck -->|"RSI<35+offset AND Bias<20%"| BUY["🟢 CONTRARIAN_BUY（P4）"]
+    TechCheck -->|"RSI<37+offset AND Bias<-15%"| AB["🎯 APPROACHING_BUY（P4.5）"]
+    TechCheck -->|"Bias>20% AND RSI>70+offset"| HOT["🔥 OVERHEATED（P5）"]
+    TechCheck -->|"Bias>20% OR RSI>70+offset"| CH["⚠️ CAUTION_HIGH（P6）"]
+    TechCheck -->|"Bias<-15% AND RSI<38+offset"| WK["🔻 WEAKENING（P7）"]
+    TechCheck -->|"其他"| NORMAL["➖ NORMAL（P8）"]
+    TechCheck -->|"MA200偏離<-15%放大"| MA200B["買側 MA200 放大器"]
+    TechCheck -->|"MA200偏離>+20%放大"| MA200S["賣側 MA200 放大器"]
 
     L3 -->|"Bias ≥ P95 + 量比 ≥ 1.5x"| ROGUE["🌊 ROGUE WAVE（疊加警示）"]
     L3 -->|"量比 ≥ 1.5x"| VS["📈 量能放大（通知修正）"]
@@ -122,7 +128,7 @@ flowchart TD
 ```mermaid
 graph LR
   subgraph docker [Docker Compose]
-    FE["Streamlit Frontend :8501"]
+    FE["React Frontend :3000"]
     BE["FastAPI Backend :8000"]
     DB[("SQLite radar.db")]
     subgraph backend [Backend Modules]
@@ -143,7 +149,7 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit 五頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
+- **Frontend** — React (Vite + TypeScript + shadcn/ui + Tailwind) 五頁面 SPA（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
 - **Database** — SQLite，透過 Docker Volume 持久化
 - **資料來源** — yfinance，含多層快取、速率限制與自動重試機制
 - **啟動快取預熱** — 後端啟動時非阻塞式背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），前端首次載入即命中暖快取
@@ -254,7 +260,7 @@ docker compose up --build
 ```
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
-- **Frontend Dashboard** — http://localhost:8501
+- **Frontend Dashboard** — http://localhost:3000
 - **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
 
 > **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
@@ -339,7 +345,24 @@ docker compose up --build
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
 
-### 5. 執行測試
+### 5. API 型別產生（OpenAPI Codegen）
+
+前端 TypeScript 型別由後端 OpenAPI 規格自動產生，避免手動維護導致型別不一致。
+
+```bash
+# 首次完整設定（安裝後端 + 前端依賴，並產生型別）
+make setup
+
+# 修改 backend/api/schemas.py 後重新產生型別
+make generate-api
+```
+
+- `frontend-react/src/api/openapi.json`（已提交）— API 契約，可在 PR 中審查
+- `frontend-react/src/api/types/generated.d.ts`（gitignored）— 建構時自動產生，不提交至版本控制
+
+CI 流程（GitHub Actions）會自動驗證 `openapi.json` 是否與後端保持同步，並確認前端可正常編譯。
+
+### 6. 執行測試
 
 ```bash
 # 首次安裝依賴
@@ -447,7 +470,7 @@ docker compose up --build -d
 |--------|------|------|
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
 | `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
-| `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 放大器），僅推播差異通知 |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
@@ -481,7 +504,7 @@ docker compose up --build -d
 | `POST` | `/ticker/{ticker}/alerts` | 建立自訂價格警報（metric / operator / threshold） |
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
-| `POST` | `/scan` | V2 三層漏斗掃描（8 級訊號燈號，非同步），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 放大器），僅推播差異通知 |
 | `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
@@ -778,7 +801,7 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 ```
 azusa-stock/
 ├── backend/       # FastAPI + SQLModel（domain / application / infrastructure / api / tests）
-├── frontend/      # Streamlit 四頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控）
+├── frontend-react/ # React + Vite SPA（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
 ├── scripts/       # 匯入腳本 + OpenClaw 設定
 └── docker-compose.yml
 ```
@@ -877,27 +900,19 @@ azusa-stock/
 │           ├── test_market_data_beta.py     #   Beta 快取與 yfinance 整合（19 tests）
 │           └── ...                   #   其他 infrastructure 測試
 │
-├── frontend/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── config.py                     # 前端集中常數與設定
-│   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
-│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測 + 隱私模式載入 + FX 監控頁
-│   └── views/
-│       ├── components/               # 可重用 UI 元件（各 Step 獨立元件）
-│       │   ├── __init__.py
-│       │   ├── target_allocation.py  # Step 1：目標配置（範本選擇 + 微調）
-│       │   ├── holdings_manager.py   # Step 2：持倉管理（即時編輯 + 儲存 + 刪除）
-│       │   ├── rebalance.py          # Step 3：再平衡分析（餅圖 + Drift + X-Ray）
-│       │   ├── currency_exposure.py  # Step 4：匯率曝險（甜甜圈圖 + 警報 + 建議）
-│       │   ├── withdrawal.py         # Step 5：聰明提款（Waterfall 演算 + 賣出建議）
-│       │   └── stress_test.py        # Step 6：壓力測試（滑桿 + 痛苦等級 + 持倉明細）
-│       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報 + 共鳴摘要）
-│       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存 + 共鳴徽章）
-│       ├── allocation.py             # 個人資產配置頁（War Room 編排器 + Telegram 設定）
-│       └── smart_money.py            # 大師足跡頁（13F 持倉異動 + 前 10 大持倉 + 英雄所見略同）
+├── frontend-react/
+│   ├── Dockerfile                    # Multi-stage：Node build → nginx serve
+│   ├── package.json
+│   ├── src/
+│   │   ├── api/                      # TanStack Query hooks + axios client + types（generated + hand-written）
+│   │   ├── components/               # 頁面元件（allocation/, dashboard/, radar/, fxwatch/, smartmoney/）
+│   │   ├── hooks/                    # useTheme, usePrivacyMode, useLanguage, usePlotlyTheme
+│   │   ├── lib/                      # constants.ts、i18n.ts
+│   │   └── pages/                    # Dashboard, Radar, Allocation, FxWatch, SmartMoney
+│   └── public/locales/               # i18n JSON（en, zh-TW, ja, zh-CN）
 │
 ├── scripts/
+│   ├── export_openapi.py             # 匯出 FastAPI OpenAPI 規格供前端 codegen 使用
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
 │   ├── data/
 │   │   └── folio_watchlist.json      # 預設觀察名單
