@@ -64,7 +64,7 @@ export function useScanStatus() {
       return data
     },
     staleTime: 0,
-    refetchInterval: 10 * 1000,
+    refetchInterval: 60 * 1000,
   })
 }
 

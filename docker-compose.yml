@@ -48,14 +48,29 @@ services:
       - |
         apk add --no-cache curl jq
 
-        # --- smart-scan wrapper: only scan if data is stale (>= 30 min) ---
+        # --- smart-scan wrapper: market-hours aware, only scan if data is stale (>= 15 min) ---
         cat > /usr/local/bin/smart-scan.sh << 'SCRIPT'
         #!/bin/sh
         # Source environment for cron context (Alpine crond doesn't inherit env)
         [ -f /etc/folio.env ] && . /etc/folio.env
 
         BACKEND="http://backend:8000"
-        STALE_SECONDS=1800
+        STALE_SECONDS=900
+
+        # Market-hours gate: skip scans on weekends and outside extended US market hours
+        DOW=$$(date +%u)   # 1=Mon ... 7=Sun
+        HOUR=$$(date -u +%H)  # UTC hour (0-23)
+
+        if [ "$$DOW" -ge 6 ]; then
+          echo "$$(date) Weekend — skipping scan."
+          exit 0
+        fi
+
+        # Extended US market window: 13:00-22:00 UTC (pre-market 08:00 ET to post-close 18:00 ET)
+        if [ "$$HOUR" -lt 13 ] || [ "$$HOUR" -ge 22 ]; then
+          echo "$$(date) Off-market hours (UTC $$HOUR) — skipping scan."
+          exit 0
+        fi
 
         # Helper function for authenticated curl requests
         folio_curl() {
@@ -130,10 +145,11 @@ services:
         SYNCSCRIPT
         chmod +x /usr/local/bin/sync-13f.sh
 
-        # Cron: smart scan every 30 min + weekly digest Sunday 18:00 UTC + FX alert every 6 hours
+        # Cron: smart scan every 15 min (market-hours-aware) + closing scan 21:15 UTC Mon-Fri
+        #       + weekly digest Sunday 18:00 UTC + FX alert every 6 hours
         #       + 13F sync daily 02:00 UTC (sync-13f.sh handles filing-season vs off-season logic)
         #       + daily portfolio snapshot 23:00 UTC (after markets close)
-        (echo "*/30 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest > /dev/null 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"; echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"; echo "0 23 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/snapshots/take > /dev/null 2>&1") | crontab -
+        (echo "*/15 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "15 21 * * 1-5 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/scan > /dev/null 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest > /dev/null 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"; echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"; echo "0 23 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/snapshots/take > /dev/null 2>&1") | crontab -
         crond -f -l 2
     restart: unless-stopped
 

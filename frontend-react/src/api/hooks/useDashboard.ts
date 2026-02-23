@@ -42,8 +42,8 @@ export function useLastScan() {
       const { data } = await apiClient.get<LastScanResponse>("/scan/last")
       return data
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 30 * 1000,
+    staleTime: 120 * 1000,
+    refetchInterval: 120 * 1000,
   })
 }
 

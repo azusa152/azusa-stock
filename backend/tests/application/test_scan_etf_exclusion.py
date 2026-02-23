@@ -9,6 +9,7 @@ from domain.entities import Stock
 from domain.enums import StockCategory
 
 
+@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestETFExclusionFromSentiment:
     """ETFs flagged with is_etf=True should be excluded from Layer 1 sentiment."""
 

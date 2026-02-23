@@ -41,9 +41,11 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
+    batch_download_history,
     get_bias_distribution,
     get_fear_greed_index,
     get_technical_signals,
+    prime_signals_cache_batch,
 )
 from infrastructure.notification import (
     is_notification_enabled,
@@ -70,10 +72,25 @@ def run_scan(session: Session) -> dict:
     logger.info("三層漏斗掃描啟動...")
     lang = get_user_language(session)
 
+    # === 預先載入所有股票（供 Layer 1 情緒分析與 Layer 2+3 掃描共用） ===
+    all_stocks = repo.find_active_stocks(session)
+    stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
+    logger.info("掃描對象：%d 檔股票。", len(all_stocks))
+
+    # === 批次預取價格歷史並預熱訊號快取（減少個別 yfinance 呼叫） ===
+    scan_tickers = [
+        s.ticker for s in all_stocks if s.category.value not in SKIP_SIGNALS_CATEGORIES
+    ]
+    try:
+        hist_batch = batch_download_history(scan_tickers)
+        if hist_batch:
+            primed = prime_signals_cache_batch(hist_batch)
+            logger.info("批次訊號快取預熱：%d/%d 檔股票", primed, len(scan_tickers))
+    except Exception as _batch_err:
+        logger.warning("批次預熱失敗，回退至個別呼叫：%s", _batch_err)
+
     # === Layer 1: 市場情緒 ===
-    trend_stocks = repo.find_active_stocks_by_category(
-        session, StockCategory.TREND_SETTER
-    )
+    trend_stocks = [s for s in all_stocks if s.category == StockCategory.TREND_SETTER]
     # ETF 不參與市場情緒計算（VTI/VT 本身就是大盤，會造成循環推理）
     excluded_etfs = [s.ticker for s in trend_stocks if s.is_etf]
     if excluded_etfs:
@@ -96,9 +113,6 @@ def run_scan(session: Session) -> dict:
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
-    all_stocks = repo.find_active_stocks(session)
-    stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
-    logger.info("掃描對象：%d 檔股票。", len(all_stocks))
 
     def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
         """單一股票的分析邏輯（可在 Thread 中執行）。"""

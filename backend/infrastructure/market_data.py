@@ -390,10 +390,18 @@ def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
 # ===========================================================================
 
 
-def _fetch_signals_from_yf(ticker: str) -> dict:
-    """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。"""
+def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
+    """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。
+    pre_fetched_hist: 若提供，略過 _yf_history 呼叫，直接使用此 DataFrame（批次掃描優化路徑）。
+    機構持倉仍需個別 Ticker 呼叫（best-effort）。
+    """
     try:
-        stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
+        if pre_fetched_hist is not None:
+            hist = pre_fetched_hist
+            _rate_limiter.wait()
+            stock = yf.Ticker(ticker, session=_get_session())
+        else:
+            stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
 
         if hist.empty or len(hist) < MIN_HISTORY_DAYS_FOR_SIGNALS:
             logger.warning(
@@ -521,6 +529,84 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
         _fetch_signals_from_yf,
         is_error=_is_error_dict,
     )
+
+
+def batch_download_history(
+    tickers: list[str], period: str = YFINANCE_HISTORY_PERIOD
+) -> dict:
+    """
+    使用 yf.download() 一次批次下載多檔股票的價格歷史，大幅減少 HTTP 請求數量。
+    回傳 {ticker: DataFrame}，僅包含有效且資料量足夠的股票。
+    失敗時靜默回傳空字典（呼叫端應回退至個別呼叫）。
+    """
+    if not tickers:
+        return {}
+    try:
+        _rate_limiter.wait()
+        data = yf.download(
+            tickers,
+            period=period,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=True,
+        )
+        result: dict = {}
+        for ticker in tickers:
+            try:
+                df = data[ticker] if len(tickers) > 1 else data
+                df = df.dropna(how="all")
+                if not df.empty and len(df) >= MIN_HISTORY_DAYS_FOR_SIGNALS:
+                    result[ticker] = df
+                else:
+                    logger.debug(
+                        "%s 批次下載資料不足（%d 筆），將回退至個別呼叫。", ticker, len(df)
+                    )
+            except (KeyError, Exception) as e:
+                logger.debug("批次下載 %s 資料擷取失敗（已略過）：%s", ticker, e)
+        logger.info("批次下載完成：%d/%d 檔股票有效。", len(result), len(tickers))
+        return result
+    except Exception as e:
+        logger.warning("批次下載歷史資料失敗，回退至個別呼叫：%s", e)
+        return {}
+
+
+def prime_signals_cache_batch(
+    ticker_hist_map: dict,
+    max_workers: int = SCAN_THREAD_POOL_SIZE,
+) -> int:
+    """
+    從批次下載的歷史資料預熱訊號 L1+L2 快取。
+    跳過已在 L1 快取中的 ticker。
+    回傳成功預熱的股票數量。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _prime_one(ticker: str, hist) -> bool:
+        if _signals_cache.get(ticker) is not None:
+            logger.debug("%s 訊號已在 L1 快取，略過預熱。", ticker)
+            return False
+        result = _fetch_signals_from_yf(ticker, pre_fetched_hist=hist)
+        _signals_cache[ticker] = result
+        if not _is_error_dict(result):
+            _disk_set(f"{DISK_KEY_SIGNALS}:{ticker}", result, DISK_SIGNALS_TTL)
+        return True
+
+    primed = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_prime_one, ticker, hist): ticker
+            for ticker, hist in ticker_hist_map.items()
+        }
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                if future.result():
+                    primed += 1
+            except Exception as e:
+                logger.warning("預熱 %s 訊號快取失敗：%s", ticker, e)
+    logger.info("訊號快取預熱完成：%d/%d 檔股票。", primed, len(ticker_hist_map))
+    return primed
 
 
 def prewarm_signals_batch(

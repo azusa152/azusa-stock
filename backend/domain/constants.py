@@ -73,7 +73,7 @@ DISK_CACHE_DIR = "/app/data/yf_cache"
 DISK_CACHE_SIZE_LIMIT = 100 * 1024 * 1024  # 100 MB
 
 # Disk Cache TTLs（比 L1 更長，作為冷啟動 fallback）
-DISK_SIGNALS_TTL = 1800  # 30 minutes
+DISK_SIGNALS_TTL = 900  # 15 minutes — matches SCAN_STALE_SECONDS cadence
 DISK_MOAT_TTL = 86400  # 24 hours
 DISK_EARNINGS_TTL = 604800  # 7 days
 DISK_DIVIDEND_TTL = 86400  # 24 hours
@@ -81,15 +81,15 @@ DISK_DIVIDEND_TTL = 86400  # 24 hours
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-YFINANCE_RATE_LIMIT_CPS = 2.0  # calls per second
+YFINANCE_RATE_LIMIT_CPS = 0.4  # calls per second — 2 req/5 sec (yfinance official recommendation)
 
 # ---------------------------------------------------------------------------
 # Scan & Alerts
 # ---------------------------------------------------------------------------
-SCAN_THREAD_POOL_SIZE = 4
-ENRICHED_THREAD_POOL_SIZE = 8  # 批次豐富資料用較大執行緒池
-ENRICHED_PER_TICKER_TIMEOUT = 15  # 每檔股票豐富資料超時（秒）
-SCAN_STALE_SECONDS = 1800  # 30 minutes — scanner skips if last scan is fresher
+SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
+ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
+ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬
+SCAN_STALE_SECONDS = 900  # 15 minutes — scanner skips if last scan is fresher
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
 SCAN_HISTORY_DEFAULT_LIMIT = 20
