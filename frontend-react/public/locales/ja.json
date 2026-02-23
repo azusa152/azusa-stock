@@ -109,8 +109,8 @@
       "content": "### ページ概要\n\n本ページは**投資ダッシュボードのホーム**です。ポートフォリオの健全性を一目で確認できます。すべてのデータはシステムがリアルタイムで計算 — 手動操作は不要です。\n\n---\n\n### 🕐 データ更新時刻\n\nページ上部に2つのタイムスタンプが表示されます：\n\n- **💰 価格データ更新** — yfinanceで最後に株価を取得した時刻。リバランス分析の市場価値に対応\n- **🔍 最終スキャン** — 三層ファネルスキャンの最終実行時刻。30分ごとに自動実行\n\n> 2つの時刻に大きな差がある場合は、「投資レーダー」ページからスキャンを手動実行できます。\n\n---\n\n### 📊 ポートフォリオパルス（メインカード — 3列）\n\nメインカードはスクロールなしで最重要な3つの指標を表示します：\n\n- **左列（広い）：総市場価値** — 選択通貨での保有時価合計と日次損益（▲/▼ 変動率と金額）。プライバシーモードでは金額をマスク。\n- **中列：恐怖＆貪欲ゲージ** — 総合恐怖＆貪欲指数（0–100）のコンパクト半円ゲージ。データソース優先順位：CNN恐怖＆貪欲指数 → VIXフォールバック。VIX値とCNNスコアをキャプションで表示。\n- **右列：市場センチメント / 健全性スコア / 追跡・保有** — 3つの積み重ね指標：\n  - *市場センチメント*：トレンドセッター銘柄と60日移動平均線の関係\n  - *健全性スコア*：追跡銘柄のうちNORMALシグナルの割合（≥80% 緑、≥50% 黄、<50% 赤）\n  - *追跡 / 保有*：レーダー追跡銘柄数 vs 保有件数\n\n**恐怖＆貪欲カラーバンド：**\n\n| スコア | 色 | レベル |\n|--------|-----|--------|\n| 0–25 | 🟥 ディープレッド | 極度の恐怖 |\n| 25–45 | 🟧 オレンジ | 恐怖 |\n| 45–55 | 🟨 イエロー | 中立 |\n| 55–75 | 🟩 ライトグリーン | 貪欲 |\n| 75–100 | 🟢 ダークグリーン | 極度の貪欲 |\n\n---\n\n### ⚠️ シグナルアラート（要対応）\n\n配分チャートの**前に表示** — これらを優先して確認してください。\n\n**非NORMALシグナル**の全追跡銘柄をテーブル形式で表示（アイコン、ティッカー、カテゴリー、シグナル名）：\n\n| シグナル | アイコン | 意味 |\n|----------|----------|------|\n| `THESIS_BROKEN` | 🔴 | モート毀損（粗利率が大幅に低下）|\n| `DEEP_VALUE` | 🔵 | 著しい割安を検出 |\n| `OVERSOLD` | 🟣 | RSI売られすぎ |\n| `CONTRARIAN_BUY` | 🟢 | RSI低値だがモート堅固 — 割安機会の可能性 |\n| `OVERHEATED` | 🟠 | 乖離率高 — 短期的に過熱の可能性 |\n| `CAUTION_HIGH` | 🟡 | 注意水準上昇 |\n| `WEAKENING` | 🟤 | モメンタム低下 |\n\nアラートがある場合、**リバランス提案**がリスト下にインライン表示されます（自動生成の加減提案）。すべての銘柄がNORMALの場合、緑色の成功バナーが表示されます。\n\n---\n\n### 🎯 配分概要（左右並列）\n\n同一カード内に2つのチャートを並列表示：\n\n- **左 — ダブルドーナツ（目標 vs 実績）**：同じカテゴリーカラーの2つのパイチャート。左 = 投資家プロファイルの目標配分、右 = 現在の保有時価比率。ホバーで正確なパーセンテージを表示。\n- **右 — ドリフト棒グラフ**：各カテゴリーの実績と目標の乖離（ポイント）。正値 = オーバーウェイト、負値 = アンダーウェイト。オレンジ破線が±5%閾値を示し、超過時は棒が赤色に変化。\n\n---\n\n### 🏆 上位10保有銘柄\n\n**ウェイト（総市場価値に占める割合）**順の上位10保有を色付きテーブルで表示：\n\n- **日次変動** — 正値は緑（▲）、負値は赤（▼）で表示。yfinance履歴データに基づく\n- **プライバシーモード** — 時価は`***`でマスク、日次変動率は表示\n\n> 💡 単一保有のウェイトが15%を超える場合、集中リスクに注意。資産配分ページのX-Ray分析で詳細なエクスポージャーを確認できます。\n>\n> ⚠️ **注意**：日次変動データには最低2日の履歴が必要です。新規追加銘柄やデータ不足の場合は`N/A`と表示されます。\n\n---\n\n### 🏦 スマートマネー共鳴\n\nウォッチリスト・保有銘柄と機関投資家の13F四半期報告の重複を表示します。\n\n- **3つのKPI指標は常時表示**：重複銘柄数、重複投資家数、最強シグナル\n- **「📋 上位5件の共鳴詳細」を展開**すると銘柄別の投資家カードを表示（デフォルトは折りたたみ）\n- **「スマートマネーを見る」ボタン** はセクションヘッダー横に配置 — スマートマネーページに直接リンク\n\n> ⚠️ 四半期13Fスナップショットに基づくデータ — リアルタイムではありません。\n\n---\n\n### 🙈 プライバシーモード（クロスデバイス同期）\n\nタイトル行のプライバシートグルで全**金額関連数値**（総額、保有時価）をマスク。割合とカテゴリー構造のみ表示。設定はデータベースに保存され、デバイス・セッションを跨いで同期。「資産配分」ページでも切替可能 — 両ページは同期します。"
     },
     "currency_selector": "表示通貨",
-    "price_updated": "💰 価格更新：{timestamp}",
-    "last_scan": "🔍 前回スキャン：{timestamp}",
+    "price_updated": "💰 価格更新：{{timestamp}}",
+    "last_scan": "🔍 前回スキャン：{{timestamp}}",
     "no_update_record": "⏳ 更新記録がありません",
     "welcome": "👋 Folioへようこそ！ポートフォリオの設定を始めましょう。",
     "welcome_button_persona": "💼 投資ペルソナを設定",
@@ -120,7 +120,7 @@
       "total_value": "総時価総額",
       "health_score": "健全性スコア",
       "tracking_holdings": "追跡 / 保有",
-      "tracking_holdings_value": "{stocks} 銘柄 / {holdings} 件"
+      "tracking_holdings_value": "{{stocks}} 銘柄 / {{holdings}} 件"
     },
     "chart": {
       "target": "🎯 目標配分",
@@ -137,7 +137,7 @@
     "market_sentiment": "市場センチメント",
     "total_market_value": "総時価総額",
     "health_score": "健全性スコア",
-    "health_delta": "{normal}/{total} 正常",
+    "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目標 vs 実際の配分",
     "drift_title": "📊 ドリフト分析",
     "no_allocation_data": "📭 配分データがありません。まず投資ペルソナを設定し、保有銘柄を追加してください。",
@@ -146,7 +146,7 @@
     "signal_risk_title": "🔴 リスク警告",
     "all_signals_normal": "✅ すべての追跡銘柄のシグナルは正常です！",
     "no_tracking_stocks": "📭 追跡銘柄がありません。投資レーダーで追跡を開始してください。",
-    "top_holdings_title": "🏆 上位 {limit} 件の保有銘柄",
+    "top_holdings_title": "🏆 上位 {{limit}} 件の保有銘柄",
     "holdings_table": {
       "ticker": "銘柄",
       "category": "カテゴリ",
@@ -203,7 +203,7 @@
       "asset_stock": "📈 株式",
       "asset_bond": "🛡️ 債券",
       "market": "市場",
-      "currency": "通貨：{currency}",
+      "currency": "通貨：{{currency}}",
       "ticker": "銘柄コード",
       "bond_ticker": "債券コード",
       "category": "カテゴリ",
@@ -215,12 +215,12 @@
       "error_no_ticker": "⚠️ 銘柄コードを入力してください。",
       "error_no_bond_ticker": "⚠️ 債券コードを入力してください。",
       "error_no_thesis": "⚠️ 初期投資論を入力してください。",
-      "success_added": "✅ {ticker} を追跡リストに追加しました！"
+      "success_added": "✅ {{ticker}} を追跡リストに追加しました！"
     },
     "scan": {
       "caption": "スキャンはバックグラウンドで実行され、結果はTelegramで通知されます。30分ごとに自動スキャンします。",
       "button": "🚀 スキャン実行",
-      "success": "✅ {message}",
+      "success": "✅ {{message}}",
       "default_success": "スキャンを開始しました",
       "running": "📡 スキャン実行中... 結果はTelegramで通知されます。",
       "running_description": "3層ファネル：市場センチメント → 経済的堀の検証 → テクニカルシグナル",
@@ -234,12 +234,12 @@
     },
     "export": {
       "download_button": "📥 JSONダウンロード",
-      "count": "合計 {count} 銘柄（投資論・タグ含む）",
+      "count": "合計 {{count}} 銘柄（投資論・タグ含む）",
       "no_stocks": "エクスポートする銘柄がありません。"
     },
     "import": {
       "file_label": "JSONファイルをアップロード",
-      "detected": "{count} 件を検出しました。",
+      "detected": "{{count}} 件を検出しました。",
       "confirm_button": "📤 インポート確認",
       "success": "✅ インポート完了",
       "error_not_array": "⚠️ JSON形式エラー、配列が必要です。",
@@ -251,30 +251,30 @@
       "error": "❌ バックエンドに接続できません",
       "error_hint": "バックエンドは通常10〜30秒で初期化されます。下のボタンで再試行してください。",
       "retry_button": "🔄 再接続",
-      "success": "✅ {count} 銘柄を読み込みました"
+      "success": "✅ {{count}} 銘柄を読み込みました"
     },
-    "last_scan_time": "🕐 前回スキャン：{time}",
+    "last_scan_time": "🕐 前回スキャン：{{time}}",
     "no_scan_yet": "🕐 まだスキャンが実行されていません。",
     "tab": {
-      "trend_setter": "🌊 トレンドセッター ({count})",
-      "moat": "🏰 モート ({count})",
-      "growth": "🚀 グロース ({count})",
-      "bond": "🛡️ 債券 ({count})",
-      "removed": "📦 削除済み ({count})"
+      "trend_setter": "🌊 トレンドセッター ({{count}})",
+      "moat": "🏰 モート ({{count}})",
+      "growth": "🚀 グロース ({{count}})",
+      "bond": "🛡️ 債券 ({{count}})",
+      "removed": "📦 削除済み ({{count}})"
     },
-    "empty_category": "📭 {category} 銘柄がまだありません。左パネルから追加してください。",
+    "empty_category": "📭 {{category}} 銘柄がまだありません。左パネルから追加してください。",
     "removed": {
-      "category": "カテゴリ：{category}",
-      "date": "削除日：{date}",
+      "category": "カテゴリ：{{category}}",
+      "date": "削除日：{{date}}",
       "unknown": "不明",
       "reason_title": "🗑️ 削除理由：",
       "last_thesis_title": "💡 最終投資論：",
       "no_thesis": "投資論なし",
-      "history_title": "📜 削除履歴 — {ticker}",
+      "history_title": "📜 削除履歴 — {{ticker}}",
       "unknown_date": "日付不明",
       "no_history": "削除履歴がありません。",
-      "thesis_history_title": "📝 投資論履歴 — {ticker}",
-      "reactivate_title": "🔄 再アクティブ化 — {ticker}",
+      "thesis_history_title": "📝 投資論履歴 — {{ticker}}",
+      "reactivate_title": "🔄 再アクティブ化 — {{ticker}}",
       "reactivate_category": "カテゴリ",
       "reactivate_thesis": "新投資論（任意）",
       "reactivate_thesis_placeholder": "再アクティブ化時の投資論...",
@@ -319,7 +319,14 @@
       "reorder": "📋 ドラッグで並べ替え",
       "reorder_hint": "銘柄コードをドラッグして表示順を調整してください。",
       "save_order": "💾 順序を保存",
-      "success_order": "✅ 順序を保存しました"
+      "success_order": "✅ 順序を保存しました",
+      "price_chart_title": "📈 価格推移（1 年）",
+      "moat_chart_title": "🏰 粗利率トレンド",
+      "remove_warning": "⚠️ この操作でトラッキングリストから削除されます。",
+      "remove_reason_required": "⚠️ 削除理由を入力してください。",
+      "current_category_label": "現在：{{cat}}",
+      "confirm_switch": "切替確認",
+      "tags_placeholder": "タグ（カンマ区切り）"
     }
   },
   "allocation": {
@@ -337,9 +344,9 @@
       "asset_bond": "🛡️ 債券",
       "asset_cash": "💵 現金",
       "market": "市場",
-      "currency": "通貨：{currency}",
+      "currency": "通貨：{{currency}}",
       "stock_ticker": "銘柄コード",
-      "in_radar": "📋 レーダー登録済み、カテゴリ自動同期：{category}",
+      "in_radar": "📋 レーダー登録済み、カテゴリ自動同期：{{category}}",
       "not_in_radar": "📌 この銘柄はレーダーに未登録です。追加後に自動で追跡に追加されます。",
       "bond_in_radar": "📋 レーダー登録済み、既存カテゴリを使用します。",
       "thesis_optional": "投資論（任意）",
@@ -352,7 +359,7 @@
       "add_button": "追加",
       "error_ticker": "⚠️ 銘柄コードを入力してください。",
       "error_quantity": "⚠️ 株数を入力してください。",
-      "added": "✅ {ticker} を追加しました",
+      "added": "✅ {{ticker}} を追加しました",
       "auto_radar": "📡 レーダー追跡に自動追加しました",
       "bond_ticker": "債券コード",
       "currency_label": "通貨",
@@ -365,14 +372,14 @@
       "cash_notes": "備考（任意）",
       "cash_notes_placeholder": "例：緊急予備金、旅行基金...",
       "error_cash_amount": "⚠️ 金額を入力してください。",
-      "cash_added": "✅ {label} {amount} を追加しました",
+      "cash_added": "✅ {{label}} {{amount}} を追加しました",
       "export_title": "📥 保有銘柄をエクスポート",
       "download_json": "📥 JSONダウンロード",
-      "export_count": "合計 {count} 件",
+      "export_count": "合計 {{count}} 件",
       "no_export": "エクスポートする保有銘柄がありません。",
       "import_title": "📤 保有銘柄をインポート",
       "upload_json": "JSONファイルをアップロード",
-      "import_detected": "{count} 件を検出しました。",
+      "import_detected": "{{count}} 件を検出しました。",
       "import_confirm": "📤 インポート確認",
       "import_success": "✅ インポート完了",
       "import_error_format": "⚠️ JSON形式エラー、配列が必要です。",
@@ -380,7 +387,7 @@
       "download_template": "📋 インポートテンプレートをダウンロード",
       "refresh": "🔄 画面を更新"
     },
-    "error_loading": "❌ 資産配分の読み込みに失敗：{error}",
+    "error_loading": "❌ 資産配分の読み込みに失敗：{{error}}",
     "setup_required": "⚠️ まず「⚙️ 設定」タブで Step 1（目標配分）と Step 2（保有銘柄追加）を完了してください。",
     "tab": {
       "setup": "⚙️ 設定",
@@ -398,7 +405,7 @@
     "step2_title": "💼 Step 2 — 保有銘柄管理",
     "display_currency": "表示通貨",
     "refresh_button": "🔄 更新",
-    "error_setup": "❌ 設定の読み込みに失敗：{error}",
+    "error_setup": "❌ 設定の読み込みに失敗：{{error}}",
     "telegram": {
       "title": "🔔 Telegram通知設定",
       "caption": "システムは2モード対応：システムデフォルトBot（.env設定）またはカスタムBotトークン。",
@@ -475,7 +482,7 @@
     "xray": {
       "title": "🔬 X-Ray 重複分析",
       "empty": "ETF重複データなし。",
-      "warning": "⚠️ 一部のポジションが{threshold}%を超えています",
+      "warning": "⚠️ 一部のポジションが{{threshold}}%を超えています",
       "alert_button": "📨 X-Rayアラート送信",
       "col_name": "名称",
       "col_direct": "直接",
@@ -579,7 +586,7 @@
     },
     "edit": {
       "button": "⚙️ 編集",
-      "title": "{pair} を編集"
+      "title": "{{pair}} を編集"
     },
     "dialog": {
       "title": "➕ 監視設定を追加"
@@ -613,29 +620,29 @@
       "insufficient_data": "📉 為替履歴データ不足（最低5営業日必要）。",
       "period_label": "トレンド期間",
       "hover_template": "%{x}<br>レート: %{y}",
-      "high_annotation": "{days}日高値: {high}"
+      "high_annotation": "{{days}}日高値: {{high}}"
     },
     "settings": {
       "title": "⚙️ 監視設定",
-      "recent_high": "• 直近高値: {days} 日",
-      "consecutive": "• 連続上昇: {days} 日",
-      "interval": "• 間隔: {hours} 時間",
-      "high_alert": "• 高値アラート: {icon}",
-      "consec_alert": "• 上昇アラート: {icon}",
-      "last_alert_time": "• 最終アラート: {time}",
+      "recent_high": "• 直近高値: {{days}} 日",
+      "consecutive": "• 連続上昇: {{days}} 日",
+      "interval": "• 間隔: {{hours}} 時間",
+      "high_alert": "• 高値アラート: {{icon}}",
+      "consec_alert": "• 上昇アラート: {{icon}}",
+      "last_alert_time": "• 最終アラート: {{time}}",
       "last_alert_none": "• 最終アラート: 未送信"
     },
-    "chart_title": "📈 {base}/{quote} 為替推移",
+    "chart_title": "📈 {{base}}/{{quote}} 為替推移",
     "insufficient_data": "📉 為替履歴データ不足（最低5営業日必要）。",
     "privacy_enabled": "🔒 プライバシーモード有効、チャートと分析を非表示にしました。"
   },
   "utils": {
-    "api_error": "❌ APIリクエスト失敗：{error}",
+    "api_error": "❌ APIリクエスト失敗：{{error}}",
     "thesis": {
       "tags": "タグ：",
       "no_history": "投資論履歴がありません。",
       "history_title": "**📜 投資論履歴：**",
-      "version": "**v{ver}** ({date})",
+      "version": "**v{{ver}}** ({{date}})",
       "unknown_date": "日付不明",
       "updated": "✅ 投資論を更新しました",
       "empty_error": "⚠️ 投資論の内容を入力してください。",
@@ -651,21 +658,21 @@
       "ma200": "200MA",
       "ma60": "60MA",
       "bias": "乖離率 Bias",
-      "bias_with_color": "{color} 乖離率 Bias",
+      "bias_with_color": "{{color}} 乖離率 Bias",
       "volume_ratio": "出来高比率 Vol Ratio",
-      "data_updated": "🕐 データ更新：{time}",
-      "bias_percentile": "P{percentile}",
+      "data_updated": "🕐 データ更新：{{time}}",
+      "bias_percentile": "P{{percentile}}",
       "rogue_wave_warning": "🌊 狂乱波 — 乖離率が歴史的極値に達し出来高急増。パーティーのピーク、レバレッジ追いかけ厳禁。",
       "deep_value": "🔵 深度バリュー",
       "oversold": "🟣 売られすぎ",
       "caution_high": "🟡 警戒高",
       "weakening": "🟤 軟化",
-      "summary_rsi": "{color} RSI {value}",
+      "summary_rsi": "{{color}} RSI {{value}}",
       "summary_rsi_na": "⚪ RSI N/A",
-      "summary_bias": "{color} 乖離 {value}%",
-      "summary_bias_pct": "{color} 乖離 {value}% {pct_color}P{percentile}",
+      "summary_bias": "{{color}} 乖離 {{value}}%",
+      "summary_bias_pct": "{{color}} 乖離 {{value}}% {{pct_color}}P{{percentile}}",
       "summary_bias_na": "⚪ 乖離 N/A",
-      "summary_vol": "{color} 出来高比 {value}x",
+      "summary_vol": "{{color}} 出来高比 {{value}}x",
       "summary_vol_na": "⚪ 出来高比 N/A"
     },
     "moat": {
@@ -680,12 +687,12 @@
     },
     "scan_history": {
       "no_history": "スキャン履歴がありません。",
-      "consecutive_warning": "⚠️ {signal} が連続 {count} 回検出されています"
+      "consecutive_warning": "⚠️ {{signal}} が連続 {{count}} 回検出されています"
     },
     "alerts": {
       "created": "✅ アラートを作成しました",
       "current_title": "**現在のアラート：**",
-      "last_triggered": "（前回発動：{date}）",
+      "last_triggered": "（前回発動：{{date}}）",
       "delete_help": "このアラートを削除",
       "pause_help": "このアラートを一時停止",
       "resume_help": "このアラートを再開",
@@ -696,7 +703,7 @@
       "op_gt": ">（超過）",
       "threshold_label": "閾値",
       "add_button": "アラートを追加",
-      "current_value": "現在の {metric}：{value}",
+      "current_value": "現在の {{metric}}：{{value}}",
       "proximity_close": "⚠️ トリガーに近い",
       "proximity_triggered": "🔔 今すぐ発動"
     },
@@ -710,10 +717,10 @@
       "na": "💰 配当利回り：N/A"
     },
     "stock_card": {
-      "category": "カテゴリ：{category}",
-      "earnings_badge": " ({days}日)",
-      "earnings_date": "📅 決算日：{date}{badge}",
-      "dividend_yield": "💰 配当利回り：{dy}% | 権利落ち日：{ex_date}",
+      "category": "カテゴリ：{{category}}",
+      "earnings_badge": " ({{days}}日)",
+      "earnings_date": "📅 決算日：{{date}}{{badge}}",
+      "dividend_yield": "💰 配当利回り：{{dy}}% | 権利落ち日：{{ex_date}}",
       "tab": {
         "metrics": "📊 指標",
         "chips": "🐳 チップス",
@@ -722,7 +729,7 @@
         "alerts": "🔔 価格アラート"
       },
       "whalewisdom_button": "🐳 WhaleWisdomで機関投資家動向を確認",
-      "resonance_badge": "🏆 {count}名のグルーも保有：{gurus}",
+      "resonance_badge": "🏆 {{count}}名のグルーも保有：{{gurus}}",
       "whalewisdom_hint": "💡 投資の心得：ボタンで機関投資家保有を確認。バークシャー、ブリッジウォーター等の「New Buy/Add」（買い増し）か「Sold Out」（売却）かを重点的に観察。フォローするなら「新規」を、在庫ではなく。",
       "top_holders_title": "**📊 上位5機関投資家：**",
       "no_holders": "⚠️ 機関投資家データを取得できません。上のボタンからWhaleWisdomで13Fレポートを確認してください。",
@@ -733,10 +740,10 @@
         "category": "🔄 カテゴリ変更",
         "remove": "🗑️ 追跡を解除"
       },
-      "current_category": "現在のカテゴリ：**{category}**",
+      "current_category": "現在のカテゴリ：**{{category}}**",
       "new_category": "新カテゴリ",
       "tags_placeholder": "タグ（カンマ区切り）",
-      "current_category_label": "現在：{cat}",
+      "current_category_label": "現在：{{cat}}",
       "confirm_switch": "変更を確認",
       "removal_reason_label": "削除理由",
       "removal_placeholder": "この銘柄を削除する理由を記入...",
@@ -759,11 +766,11 @@
       "loaded": "✅ リバランス分析の読み込み完了",
       "error": "⚠️ 読み込み失敗",
       "error_hint": "リバランス分析の読み込みに失敗しました。しばらくして再試行するか、ネットワーク接続を確認してください。",
-      "data_time": "🕐 データ更新：{time}",
-      "total_value": "💰 ポートフォリオ総時価総額（{currency}）",
+      "data_time": "🕐 データ更新：{{time}}",
+      "total_value": "💰 ポートフォリオ総時価総額（{{currency}}）",
       "chart": {
-        "target": "🎯 目標配分（{currency}）",
-        "actual": "📊 実際の配分（{currency}）",
+        "target": "🎯 目標配分（{{currency}}）",
+        "actual": "📊 実際の配分（{{currency}}）",
         "weight_pct": "比率",
         "target_amount": "目標金額",
         "market_value": "時価総額"
@@ -771,7 +778,7 @@
       "drift_title": "ドリフト (%)",
       "drift_yaxis": "ドリフト (%)",
       "advice_title": "**💡 リバランス提案：**",
-      "holdings_title": "**📋 銘柄別保有明細（{currency}）：**",
+      "holdings_title": "**📋 銘柄別保有明細（{{currency}}）：**",
       "table": {
         "ticker": "コード",
         "category": "カテゴリ",
@@ -779,19 +786,19 @@
         "quantity": "数量",
         "current_price": "現在価格",
         "avg_cost": "平均コスト",
-        "market_value": "時価総額({currency})",
+        "market_value": "時価総額({{currency}})",
         "unrealized_pl": "未実現損益",
         "pl_pct": "損益%",
         "weight": "比率",
         "daily_change": "日次変動"
       },
-      "xray_title": "**🔬 透過保有 X-Ray（{currency}）：**",
+      "xray_title": "**🔬 透過保有 X-Ray（{{currency}}）：**",
       "xray_caption": "ETF成分銘柄を解析し、直接保有とETF間接リスクの実質比率を表示。",
-      "xray_warning": "⚠️ **{symbol}** 直接保有 {direct_pct:.1f}%、ETF間接リスク（{sources}）を加えると実質リスクは **{total_pct:.1f}%** に達し、推奨値 {threshold:.0f}% を超過しています。",
+      "xray_warning": "⚠️ **{{symbol}}** 直接保有 {{direct_pct}}%、ETF間接リスク（{{sources}}）を加えると実質リスクは **{{total_pct}}%** に達し、推奨値 {{threshold}}% を超過しています。",
       "xray": {
         "direct": "直接保有",
         "indirect": "ETF間接リスク",
-        "threshold": "リスク閾値 {threshold:.0f}%",
+        "threshold": "リスク閾値 {{threshold}}%",
         "xaxis": "比率 (%)",
         "table": {
           "symbol": "銘柄",
@@ -799,8 +806,8 @@
           "direct_pct": "直接 (%)",
           "indirect_pct": "間接 (%)",
           "total_pct": "実質リスク (%)",
-          "direct_value": "直接時価総額({currency})",
-          "indirect_value": "間接時価総額({currency})",
+          "direct_value": "直接時価総額({{currency}})",
+          "indirect_value": "間接時価総額({{currency}})",
           "sources": "間接ソース"
         }
       },
@@ -830,14 +837,14 @@
       "loading": "💱 為替リスク分析を読み込み中...",
       "loaded": "✅ 為替リスク分析の読み込み完了",
       "error": "⚠️ 為替リスク分析の読み込みに失敗",
-      "analysis_time": "🕐 分析時刻：{time}",
+      "analysis_time": "🕐 分析時刻：{{time}}",
       "home_currency": "🏠 基準通貨",
       "tab": {
         "cash": "💵 現金通貨リスク",
         "total": "📊 全資産通貨リスク"
       },
       "no_cash": "現金保有がありません。Step 2で現金保有を入力してください。",
-      "cash_total": "💰 現金総額（{currency}）",
+      "cash_total": "💰 現金総額（{{currency}}）",
       "cash_non_home_pct": "🌍 現金の非基準通貨比率",
       "risk_level": "リスクレベル",
       "risk": {
@@ -845,10 +852,10 @@
         "medium": "中リスク",
         "high": "高リスク"
       },
-      "cash_breakdown": "現金通貨内訳（{currency}）",
-      "total_value": "💰 ポートフォリオ総時価総額（{currency}）",
+      "cash_breakdown": "現金通貨内訳（{{currency}}）",
+      "total_value": "💰 ポートフォリオ総時価総額（{{currency}}）",
       "non_home_pct": "🌍 非基準通貨比率",
-      "total_breakdown": "全資産通貨内訳（{currency}）",
+      "total_breakdown": "全資産通貨内訳（{{currency}}）",
       "no_data": "データがありません。",
       "chart": {
         "weight_pct": "比率",
@@ -925,8 +932,8 @@
       },
       "privacy_hint": "🔒 プライバシーモード有効、オフにすると保有銘柄を編集できます。",
       "save_button": "💾 変更を保存",
-      "save_success": "✅ {count} 件の保有銘柄を更新しました",
-      "save_error": "❌ 更新失敗：{tickers}",
+      "save_success": "✅ {{count}} 件の保有銘柄を更新しました",
+      "save_error": "❌ 更新失敗：{{tickers}}",
       "no_changes": "ℹ️ 変更は検出されませんでした",
       "delete_label": "削除する保有銘柄を選択",
       "delete_button": "🗑️ 削除",
@@ -934,14 +941,14 @@
     },
     "target": {
       "select_template": "このテンプレートを選択",
-      "template_applied": "✅ 「{name}」を適用しました",
-      "current_profile": "✅ 現在の配分：**{name}** ｜ 🏠 基準通貨：{currency}",
+      "template_applied": "✅ 「{{name}}」を適用しました",
+      "current_profile": "✅ 現在の配分：**{{name}}** ｜ 🏠 基準通貨：{{currency}}",
       "switch_button": "🔄 スタイルを変更",
       "adjust_button": "✏️ 目標配分を調整",
       "switch_picker_title": "**🔄 新しい投資スタイルテンプレートを選択**",
-      "switched": "✅ 「{name}」に変更しました",
+      "switched": "✅ 「{{name}}」に変更しました",
       "no_templates": "⚠️ テンプレートを読み込めません。",
-      "total_warning": "⚠️ 配分合計 {total:.0f}%、100%である必要があります。",
+      "total_warning": "⚠️ 配分合計 {{total}}%、100%である必要があります。",
       "save_button": "💾 配分を保存",
       "save_success": "✅ 配分を更新しました",
       "initial_hint": "📋 ポートフォリオ目標が未設定です。投資ペルソナテンプレートを選択して開始してください：",
@@ -960,10 +967,10 @@
       "loss_help": "この暴落シナリオでのポートフォリオ予想損失（金額・比率）。",
       "pain_label": "痛みレベル",
       "pain": {
-        "panic": "🚨 **{label}** — このシナリオでポートフォリオは {loss:.1f}% 蒸発する可能性、極めて高リスク！",
-        "high": "⚠️ **{label}** — ポートフォリオは顕著な損失 ({loss:.1f}%) を被り、リスクに注目が必要。",
-        "moderate": "📊 **{label}** — ポートフォリオは一定の損失 ({loss:.1f}%)、正常な修正範囲内。",
-        "low": "✅ **{label}** — ポートフォリオは堅牢、軽微な影響 ({loss:.1f}%) のみ。"
+        "panic": "🚨 **{{label}}** — このシナリオでポートフォリオは {{loss}}% 蒸発する可能性、極めて高リスク！",
+        "high": "⚠️ **{{label}}** — ポートフォリオは顕著な損失 ({{loss}}%) を被り、リスクに注目が必要。",
+        "moderate": "📊 **{{label}}** — ポートフォリオは一定の損失 ({{loss}}%)、正常な修正範囲内。",
+        "low": "✅ **{{label}}** — ポートフォリオは堅牢、軽微な影響 ({{loss}}%) のみ。"
       },
       "breakdown_title": "#### 📋 銘柄別予想損失明細",
       "table": {
@@ -980,29 +987,32 @@
   },
   "api": {
     "telegram_test_sent": "✅ 送信済み",
-    "request_failed": "❌ リクエスト失敗：{detail}",
-    "xray_warnings_sent": "{count} 件の警告を送信済み",
-    "send_failed": "❌ 送信失敗：{detail}",
-    "fx_alerts_sent": "{count} 件のアラートを送信済み",
+    "request_failed": "❌ リクエスト失敗：{{detail}}",
+    "xray_warnings_sent": "{{count}} 件の警告を送信済み",
+    "send_failed": "❌ 送信失敗：{{detail}}",
+    "fx_alerts_sent": "{{count}} 件のアラートを送信済み",
     "telegram_saved": "✅ Telegram 設定を保存しました",
-    "save_failed": "❌ 保存失敗：{detail}",
+    "save_failed": "❌ 保存失敗：{{detail}}",
     "notification_saved": "✅ 通知設定を保存しました",
     "digest_started": "✅ 開始しました",
     "digest_in_progress": "週次ダイジェスト生成中です。しばらくお待ちください。",
-    "fx_watch_created": "✅ {pair} モニターを追加しました",
-    "create_failed": "❌ 追加失敗：{detail}",
+    "fx_watch_created": "✅ {{pair}} モニターを追加しました",
+    "create_failed": "❌ 追加失敗：{{detail}}",
     "updated": "✅ 更新しました",
-    "update_failed": "❌ 更新失敗：{detail}",
-    "fx_check_done": "✅ {count} 件のモニター分析完了",
-    "check_failed": "❌ チェック失敗：{detail}",
-    "fx_alert_result": "✅ {triggered} 件トリガー、{sent} 件送信済み",
-    "http_error": "❌ {detail}"
+    "update_failed": "❌ 更新失敗：{{detail}}",
+    "fx_check_done": "✅ {{count}} 件のモニター分析完了",
+    "check_failed": "❌ チェック失敗：{{detail}}",
+    "fx_alert_result": "✅ {{triggered}} 件トリガー、{{sent}} 件送信済み",
+    "http_error": "❌ {{detail}}"
   },
   "chart": {
     "gross_margin": "粗利率",
-    "gross_margin_hover": "粗利率: {value}%",
+    "gross_margin_hover": "粗利率: {{value}}%",
     "close_price": "終値",
-    "trend_period": "トレンド期間"
+    "ma200": "MA200",
+    "ma60": "MA60",
+    "trend_period": "トレンド期間",
+    "insufficient_data": "📉 データ不足のため、グラフを表示できません。"
   },
   "smart_money": {
     "title": "🏦 スマートマネー追跡",
@@ -1012,8 +1022,8 @@
       "content": "### スマートマネー追跡とは？\n\n**スマートマネー**は、バークシャー・ハサウェイ（Warren Buffett）、ブリッジウォーター（Ray Dalio）、ルネサンス・テクノロジーズなどトップ機関投資家が SEC に提出する **13F四半期報告**を追跡します。あなたのウォッチリスト・保有銘柄とグルーのポートフォリオの**重複銘柄**を自動で発見します。\n\n> ⚠️ **重要**：13Fは四半期スナップショットで、申告締切は四半期末後45日です。保有情報は現実より**45–90日**遅れる場合があります。リアルタイムの売買シグナルとしては使用しないでください。\n\n---\n\n### 使用フロー\n\n#### 1. グルーを追加\n\nサイドバーの「**➕ カスタムグルーを追加**」を展開し、以下を入力：\n- **機関正式名称**：SEC EDGARに登録された正式名（例：`Berkshire Hathaway Inc`）\n- **SEC CIKコード**：10桁の識別番号（SEC EDGARで検索可）\n- **表示名**：任意の表示名（例：`Warren Buffett`）\n\n主要なグルーは初期登録済みで、すぐに使用できます。\n\n#### 2. 最新13Fを同期\n\nグルーを選択し、「**🔄 最新13Fを同期**」をクリックしてSEC EDGARから最新申告を取得します。\n\n- ✅ **同期完了**：新データを取得・保存しました\n- ℹ️ **最新状態**：前回の同期から変更なし\n\n> 💡 申告シーズン（2月・5月・8月・11月）は自動的に毎日同期。オフシーズンは週1回 — 手動操作不要。\n\n#### 3. 保有変動（タブ1）\n\n| アクション | 意味 |\n|------------|------|\n| 🟢 **新規ポジション** | 今四半期に新規取得 |\n| 🔴 **全売却** | 今四半期に完全清算 |\n| 📈 **買い増し** | 今四半期に株数増加 |\n| 📉 **売り減らし** | 今四半期に株数減少 |\n\n> 💡 **新規ポジション**に注目 — 既存在庫の積み増しより、新規参入の方がより強いコンビクションシグナルです。\n\n#### 4. トップ10保有（タブ2）\n\n水平棒グラフでポートフォリオウェイトを表示。下部の明細テーブルにはランク・アクションバッジ・市場価値・株数が含まれます。\n\n#### 5. 英雄見略同（タブ3）\n\n**追跡中の全グルー**とあなたのウォッチリスト・保有を自動比較し、重複銘柄を発見。共鳴バッジ（🏆×N）は**投資レーダー**ページの銘柄カードタイトルにも表示され、日常のスキャン中にグルーの動向を瞬時に把握できます。"
     },
     "no_gurus_hint": "📭 追跡中のグルーはいません。サイドバーからCIKを追加してください。",
-    "no_filing": "📭 {guru} の13F申告データがありません。「最新13F同期」をクリックしてください。",
-    "lagging_banner": "⚠️ 保有スナップショット基準日：{report_date}　申告日：{filing_date}　13Fデータは四半期報告であり、リアルタイムではありません。",
+    "no_filing": "📭 {{guru}} の13F申告データがありません。「最新13F同期」をクリックしてください。",
+    "lagging_banner": "⚠️ 保有スナップショット基準日：{{report_date}}　申告日：{{filing_date}}　13Fデータは四半期報告であり、リアルタイムではありません。",
     "edgar_link": "📄 SEC EDGAR原文を見る",
     "edgar_link_help": "SEC EDGARの元の13F申告を開く",
     "metric": {
@@ -1046,7 +1056,7 @@
     },
     "changes": {
       "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。",
-      "top_20_note": "📌 上位 {shown} 件の重要な変動を表示（全 {total} 件）、変動幅とポートフォリオ比重でソート。"
+      "top_20_note": "📌 上位 {{shown}} 件の重要な変動を表示（全 {{total}} 件）、変動幅とポートフォリオ比重でソート。"
     },
     "top": {
       "no_data": "📭 保有データがありません。",
@@ -1068,7 +1078,7 @@
       "syncing": "同期中...",
       "sync_success": "✅ 同期完了",
       "sync_skipped": "ℹ️ 最新の状態です",
-      "sync_error": "❌ 同期失敗：{msg}",
+      "sync_error": "❌ 同期失敗：{{msg}}",
       "add_guru_title": "➕ カスタムグルーを追加",
       "add_name": "機関名（フル）",
       "add_name_placeholder": "例: Berkshire Hathaway Inc",
@@ -1077,7 +1087,7 @@
       "add_display_placeholder": "例: Warren Buffett",
       "add_button": "グルーを追加",
       "add_required": "⚠️ すべての欄を入力してください。",
-      "add_success": "✅ {display_name} を追加しました"
+      "add_success": "✅ {{display_name}} を追加しました"
     },
     "overview": {
       "tab": "📊 概要",
@@ -1087,7 +1097,7 @@
       "highlights_new_count": "新規ポジション数",
       "highlights_sold_count": "全売却数",
       "highlights_total_value": "新規総額",
-      "highlights_show_all": "すべて表示 +{count}",
+      "highlights_show_all": "すべて表示 +{{count}}",
       "new_positions_header": "新規ポジション",
       "sold_outs_header": "全売却",
       "highlights_empty": "📭 今季の新規ポジション・全売却はありません。",
@@ -1104,8 +1114,8 @@
       "filing_count_label": "申告件数",
       "report_date_label": "最新基準日",
       "sync_button": "🔄 同期",
-      "filing_history_expander": "📅 申告履歴 ({count} 件)",
-      "filing_history_row": "📄 {report_date}  ·  申告日：{filing_date}  ·  {total_value}  ·  {holdings_count} 件",
+      "filing_history_expander": "📅 申告履歴 ({{count}} 件)",
+      "filing_history_row": "📄 {{report_date}}  ·  申告日：{{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} 件",
       "sector_weight_axis": "配分比重 (%)"
     },
     "add_guru": {
@@ -1119,7 +1129,7 @@
       "display_placeholder": "例: Warren Buffett",
       "submit_button": "グルーを追加",
       "required_warning": "⚠️ すべての欄を入力してください。",
-      "success": "✅ {display_name} を追加しました。概要タブに切り替えて確認してください。"
+      "success": "✅ {{display_name}} を追加しました。概要タブに切り替えて確認してください。"
     }
   }
 }

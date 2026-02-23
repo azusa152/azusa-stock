@@ -4,10 +4,13 @@ import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
-import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory } from "@/api/hooks/useRadar"
+import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
+import { PriceChart } from "@/components/radar/PriceChart"
+import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
 
@@ -231,6 +234,10 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
 
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded)
+  const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
+  const showMoatChart = moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
+
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
   const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "⚪"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
@@ -344,18 +351,41 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
 
             <div className="pt-1">
               {activeTab === "metrics" && (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="space-y-3">
+                  {/* Text metrics row */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {enrichment?.signals?.price != null && (
-                      <span className="text-muted-foreground">Price: ${(enrichment.signals.price as number).toFixed(2)}</span>
+                      <span>Price: ${(enrichment.signals.price as number).toFixed(2)}</span>
                     )}
                     {enrichment?.signals?.ma200 != null && (
-                      <span className="text-muted-foreground">MA200: ${(enrichment.signals.ma200 as number).toFixed(2)}</span>
+                      <span>MA200: ${(enrichment.signals.ma200 as number).toFixed(2)}</span>
                     )}
                     {enrichment?.signals?.ma60 != null && (
-                      <span className="text-muted-foreground">MA60: ${(enrichment.signals.ma60 as number).toFixed(2)}</span>
+                      <span>MA60: ${(enrichment.signals.ma60 as number).toFixed(2)}</span>
                     )}
                   </div>
+
+                  {/* Price trend chart */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      {t("radar.stock_card.price_chart_title")}
+                    </p>
+                    {priceLoading ? (
+                      <Skeleton className="h-[200px] w-full" />
+                    ) : priceHistory && priceHistory.length >= 5 ? (
+                      <PriceChart data={priceHistory} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">{t("chart.insufficient_data")}</p>
+                    )}
+                  </div>
+
+                  {/* Gross margin chart — hidden when backend returns N/A (Bond/Cash) */}
+                  {moatLoading ? (
+                    <Skeleton className="h-[160px] w-full" />
+                  ) : showMoatChart ? (
+                    <GrossMarginChart data={moatData} />
+                  ) : null}
+
                   <ThesisHistorySection ticker={stock.ticker} />
                 </div>
               )}

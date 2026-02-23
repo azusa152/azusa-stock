@@ -117,6 +117,47 @@ export function useRemovalHistory(ticker: string, enabled: boolean) {
   })
 }
 
+export interface PricePoint {
+  date: string
+  close: number
+}
+
+export interface MoatMarginPoint {
+  date: string
+  value: number | null
+}
+
+export interface MoatAnalysis {
+  ticker: string
+  moat: string
+  details?: string
+  margin_trend?: MoatMarginPoint[]
+}
+
+export function usePriceHistory(ticker: string, enabled: boolean) {
+  return useQuery<PricePoint[]>({
+    queryKey: ["priceHistory", ticker],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PricePoint[]>(`/ticker/${ticker}/price-history`)
+      return data
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useMoatAnalysis(ticker: string, enabled: boolean) {
+  return useQuery<MoatAnalysis>({
+    queryKey: ["moat", ticker],
+    queryFn: async () => {
+      const { data } = await apiClient.get<MoatAnalysis>(`/ticker/${ticker}/moat`)
+      return data
+    },
+    enabled,
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Mutation hooks
 // ---------------------------------------------------------------------------
