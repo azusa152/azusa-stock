@@ -39,12 +39,23 @@ def _send(token: str, chat_id: str, text: str) -> None:
     """低層發送：透過指定的 token / chat_id 發送 Telegram 訊息。"""
     url = TELEGRAM_API_URL.format(token=token)
     try:
-        http_requests.post(
+        response = http_requests.post(
             url,
             json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
             timeout=TELEGRAM_REQUEST_TIMEOUT,
         )
-        logger.info("Telegram 通知已發送。")
+        if response.ok:
+            logger.info("Telegram 通知已發送。")
+        else:
+            try:
+                body = response.json() if response.content else {}
+            except ValueError:
+                body = {}
+            logger.error(
+                "Telegram 通知失敗（HTTP %s）：%s",
+                response.status_code,
+                body.get("description", response.text),
+            )
     except Exception as e:
         logger.error("Telegram 通知發送失敗：%s", e)
 

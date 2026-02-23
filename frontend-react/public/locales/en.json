@@ -116,6 +116,7 @@
     "price_updated": "💰 Price updated: {{timestamp}}",
     "last_scan": "🔍 Last scan: {{timestamp}}",
     "no_update_record": "⏳ No update record available",
+    "digest_tooltip": "Send Weekly Digest",
     "welcome": "👋 Welcome to Folio! Start setting up your portfolio.",
     "welcome_button_persona": "💼 Set Up Investment Persona",
     "welcome_button_track": "📡 Track Stocks",

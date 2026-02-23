@@ -116,6 +116,7 @@
     "price_updated": "💰 価格更新：{{timestamp}}",
     "last_scan": "🔍 前回スキャン：{{timestamp}}",
     "no_update_record": "⏳ 更新記録がありません",
+    "digest_tooltip": "週次レポートを送信",
     "welcome": "👋 Folioへようこそ！ポートフォリオの設定を始めましょう。",
     "welcome_button_persona": "💼 投資ペルソナを設定",
     "welcome_button_track": "📡 銘柄を追跡",

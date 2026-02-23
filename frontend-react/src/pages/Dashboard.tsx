@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { SendHorizonal } from "lucide-react"
 import { formatLocalTime } from "@/lib/utils"
 import {
   useStocks,
@@ -13,6 +15,7 @@ import {
   useTwr,
   useGreatMinds,
 } from "@/api/hooks/useDashboard"
+import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import {
   Select,
   SelectContent,
@@ -20,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { PortfolioPulse } from "@/components/dashboard/PortfolioPulse"
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
 import { SignalAlerts } from "@/components/dashboard/SignalAlerts"
@@ -33,6 +37,14 @@ const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 export default function Dashboard() {
   const { t } = useTranslation()
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const digestMutation = useTriggerDigest()
+
+  const handleDigest = () => {
+    digestMutation.mutate(undefined, {
+      onSuccess: () => toast.success(t("common.success")),
+      onError: () => toast.error(t("common.error")),
+    })
+  }
 
   const { data: stocks, isLoading: stocksLoading } = useStocks()
   const { data: enrichedStocks } = useEnrichedStocks()
@@ -70,6 +82,17 @@ export default function Dashboard() {
       {/* Header row */}
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-2xl font-bold flex-1">{t("dashboard.title")}</h1>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs gap-1.5"
+          onClick={handleDigest}
+          disabled={digestMutation.isPending}
+          title={t("dashboard.digest_tooltip")}
+        >
+          <SendHorizonal className="w-3.5 h-3.5" />
+          {t("dashboard.digest_tooltip")}
+        </Button>
         <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
           <SelectTrigger className="w-28 text-xs">
             <SelectValue />

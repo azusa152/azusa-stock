@@ -170,7 +170,7 @@ services:
         #       + weekly digest Sunday 18:00 UTC + FX alert every 6 hours
         #       + 13F sync daily 02:00 UTC (sync-13f.sh handles filing-season vs off-season logic)
         #       + daily portfolio snapshot 23:00 UTC (after markets close)
-        (echo "*/15 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "15 21 * * 1-5 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/scan > /dev/null 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest > /dev/null 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"; echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"; echo "0 23 * * * /usr/local/bin/take-snapshot.sh >> /proc/1/fd/1 2>&1") | crontab -
+        (echo "*/15 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"; echo "15 21 * * 1-5 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/scan > /dev/null 2>&1"; echo "0 18 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/digest >> /proc/1/fd/1 2>&1"; echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"; echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"; echo "0 23 * * * /usr/local/bin/take-snapshot.sh >> /proc/1/fd/1 2>&1") | crontab -
         crond -f -l 2
     restart: unless-stopped
 

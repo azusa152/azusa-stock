@@ -116,6 +116,7 @@
     "price_updated": "💰 价格资料更新：{{timestamp}}",
     "last_scan": "🔍 上次扫描：{{timestamp}}",
     "no_update_record": "⏳ 尚无资料更新记录",
+    "digest_tooltip": "发送每周摘要",
     "welcome": "👋 欢迎使用 Folio！开始设定你的投资组合。",
     "welcome_button_persona": "💼 设定投资人格",
     "welcome_button_track": "📡 追踪股票",
