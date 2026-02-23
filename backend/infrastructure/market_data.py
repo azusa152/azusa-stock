@@ -119,7 +119,9 @@ T = TypeVar("T")
 
 logger = get_logger(__name__)
 
-_BEARISH_TIERS: frozenset = frozenset({MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH})
+_BEARISH_TIERS: frozenset = frozenset(
+    {MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -560,7 +562,9 @@ def batch_download_history(
                     result[ticker] = df
                 else:
                     logger.debug(
-                        "%s 批次下載資料不足（%d 筆），將回退至個別呼叫。", ticker, len(df)
+                        "%s 批次下載資料不足（%d 筆），將回退至個別呼叫。",
+                        ticker,
+                        len(df),
                     )
             except (KeyError, Exception) as e:
                 logger.debug("批次下載 %s 資料擷取失敗（已略過）：%s", ticker, e)

@@ -81,7 +81,9 @@ DISK_DIVIDEND_TTL = 86400  # 24 hours
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-YFINANCE_RATE_LIMIT_CPS = 0.4  # calls per second — 2 req/5 sec (yfinance official recommendation)
+YFINANCE_RATE_LIMIT_CPS = (
+    0.4  # calls per second — 2 req/5 sec (yfinance official recommendation)
+)
 
 # ---------------------------------------------------------------------------
 # Scan & Alerts

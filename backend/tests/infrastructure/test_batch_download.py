@@ -47,7 +47,13 @@ def _make_hist(rows: int = _MIN_ROWS) -> pd.DataFrame:
     """Create a minimal OHLCV DataFrame with `rows` rows."""
     idx = pd.date_range("2024-01-01", periods=rows, freq="B")
     return pd.DataFrame(
-        {"Open": 100.0, "High": 105.0, "Low": 95.0, "Close": 102.0, "Volume": 1_000_000},
+        {
+            "Open": 100.0,
+            "High": 105.0,
+            "Low": 95.0,
+            "Close": 102.0,
+            "Volume": 1_000_000,
+        },
         index=idx,
     )
 
@@ -79,11 +85,12 @@ class TestBatchDownloadHistoryEmpty:
         # Assert
         assert result == {}
 
-    @patch("infrastructure.market_data.yf.download", side_effect=RuntimeError("network error"))
+    @patch(
+        "infrastructure.market_data.yf.download",
+        side_effect=RuntimeError("network error"),
+    )
     @patch("infrastructure.market_data._rate_limiter")
-    def test_should_return_empty_dict_when_yf_download_raises(
-        self, _mock_rl, _mock_dl
-    ):
+    def test_should_return_empty_dict_when_yf_download_raises(self, _mock_rl, _mock_dl):
         # Act — exception must be swallowed
         result = batch_download_history(["AAPL"])
 
@@ -199,9 +206,7 @@ class TestPrimeSignalsCacheBatchWrite:
 
     @patch("infrastructure.market_data._disk_set")
     @patch("infrastructure.market_data._fetch_signals_from_yf")
-    def test_should_write_success_result_to_l1_and_l2(
-        self, mock_fetch, mock_disk_set
-    ):
+    def test_should_write_success_result_to_l1_and_l2(self, mock_fetch, mock_disk_set):
         # Arrange — L1 empty, fetcher returns valid signals
         signals = {"ticker": "AAPL", "price": 200.0, "rsi": 55.0}
         mock_fetch.return_value = signals
