@@ -22,6 +22,13 @@ function infer_market_label(ticker: string): string {
   return "🇺🇸 US"
 }
 
+function infer_currency(ticker: string): string {
+  if (ticker.endsWith(".TW")) return "NT$"
+  if (ticker.endsWith(".T")) return "¥"
+  if (ticker.endsWith(".HK")) return "HK$"
+  return "$"
+}
+
 interface Props {
   stock: RadarStock
   enrichment?: RadarEnrichedStock
@@ -242,20 +249,31 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
   const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
-  const price = enrichment?.price
-  const changePct = enrichment?.change_pct
-  const rsi = enrichment?.rsi
-  const bias = enrichment?.bias
-  const marketLabel = infer_market_label(stock.ticker)
-  const resonanceBadge = resonance?.length ? ` 🏆×${resonance.length}` : ""
 
-  const headerParts = [
+  // Backend nests live data under enrichment.signals — fall back to top-level for compatibility
+  const sig = enrichment?.signals
+  const price = sig?.price ?? enrichment?.price
+  const prevClose = sig?.previous_close
+  const changePct = sig?.change_pct ?? enrichment?.change_pct
+  const changeAbs = price != null && prevClose != null ? price - prevClose : null
+  const rsi = sig?.rsi ?? enrichment?.rsi
+  const bias = sig?.bias ?? enrichment?.bias
+  const volumeRatio = sig?.volume_ratio ?? enrichment?.volume_ratio
+
+  const marketLabel = infer_market_label(stock.ticker)
+  const currency = infer_currency(stock.ticker)
+  const resonanceBadge = resonance?.length ? `🏆×${resonance.length}` : ""
+  const signalLabel =
+    signal !== "NORMAL"
+      ? t(`config.signal.${signal.toLowerCase()}`, { defaultValue: "" })
+      : ""
+
+  const identityParts = [
     `${signalIcon} ${stock.ticker}`,
     `${catIcon} ${stock.category.replace("_", " ")}`,
-    price != null ? `$${price.toFixed(2)}` : null,
-    changePct != null ? `(${changePct >= 0 ? "▲" : "▼"}${Math.abs(changePct).toFixed(2)}%)` : null,
     marketLabel,
     resonanceBadge || null,
+    signalLabel || null,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -267,6 +285,9 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
     { key: "remove", label: t("radar.stock_card.remove") },
   ]
 
+  const isUp = changePct != null ? changePct >= 0 : null
+  const changeColor = isUp === null ? "" : isUp ? "text-green-500" : "text-red-500"
+
   return (
     <Card className="border-border/70">
       <button
@@ -274,11 +295,30 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
         onClick={() => setExpanded((v) => !v)}
       >
         <span className="flex items-center justify-between gap-2">
-          <span className="flex-1 min-w-0 truncate">{headerParts}</span>
-          {!expanded && priceHistory && priceHistory.length >= 5 && (
-            <SparklineHeader data={priceHistory} />
-          )}
-          <span className="text-muted-foreground text-xs shrink-0">{expanded ? "▲" : "▼"}</span>
+          {/* Left: identity */}
+          <span className="flex-1 min-w-0 truncate text-sm">{identityParts}</span>
+
+          {/* Right: price block + sparkline + chevron */}
+          <span className="flex items-center gap-2 shrink-0">
+            {price != null && (
+              <span className="flex flex-col items-end leading-tight">
+                <span className="text-sm font-semibold tabular-nums">
+                  {currency}{price.toFixed(2)}
+                </span>
+                {changePct != null && (
+                  <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
+                    {isUp ? "▲" : "▼"}{" "}
+                    {changeAbs != null ? `${currency}${Math.abs(changeAbs).toFixed(2)} ` : ""}
+                    ({Math.abs(changePct).toFixed(2)}%)
+                  </span>
+                )}
+              </span>
+            )}
+            {!expanded && priceHistory && priceHistory.length >= 5 && (
+              <SparklineHeader data={priceHistory} />
+            )}
+            <span className="text-muted-foreground text-xs">{expanded ? "▲" : "▼"}</span>
+          </span>
         </span>
       </button>
 
@@ -288,8 +328,8 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
           <div className="flex flex-wrap gap-1.5 text-xs">
             <MetricChip label="RSI" value={rsi != null ? rsi.toFixed(1) : null} color={rsi != null && rsi < 35 ? "border-green-500 text-green-600" : rsi != null && rsi > 70 ? "border-red-500 text-red-600" : undefined} />
             <MetricChip label="Bias" value={bias != null ? `${bias.toFixed(1)}%` : null} color={bias != null && bias > 20 ? "border-red-500 text-red-600" : bias != null && bias < -5 ? "border-green-500 text-green-600" : undefined} />
-            {enrichment?.volume_ratio != null && (
-              <MetricChip label="Vol" value={`${enrichment.volume_ratio.toFixed(1)}x`} />
+            {volumeRatio != null && (
+              <MetricChip label="Vol" value={`${volumeRatio.toFixed(1)}x`} />
             )}
           </div>
 
@@ -359,13 +399,13 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
                   {/* Text metrics row */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {enrichment?.signals?.price != null && (
-                      <span>Price: ${(enrichment.signals.price as number).toFixed(2)}</span>
+                      <span>Price: {currency}{(enrichment.signals.price as number).toFixed(2)}</span>
                     )}
                     {enrichment?.signals?.ma200 != null && (
-                      <span>MA200: ${(enrichment.signals.ma200 as number).toFixed(2)}</span>
+                      <span>MA200: {currency}{(enrichment.signals.ma200 as number).toFixed(2)}</span>
                     )}
                     {enrichment?.signals?.ma60 != null && (
-                      <span>MA60: ${(enrichment.signals.ma60 as number).toFixed(2)}</span>
+                      <span>MA60: {currency}{(enrichment.signals.ma60 as number).toFixed(2)}</span>
                     )}
                   </div>
 

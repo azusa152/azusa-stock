@@ -67,11 +67,13 @@ export type ResonanceMap = Record<string, (ResonanceHolding & { guru_display_nam
 // Enriched stock signals (from /stocks/enriched)
 export interface RadarSignals {
   price?: number
+  previous_close?: number
   change_pct?: number
   rsi?: number
   ma200?: number
   ma60?: number
   bias?: number
+  bias_200?: number
   volume_ratio?: number
   institutional_holders?: Record<string, unknown>[]
 }
