@@ -11,6 +11,7 @@ import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, 
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
 import { PriceChart } from "@/components/radar/PriceChart"
 import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
+import { SparklineHeader } from "@/components/radar/SparklineHeader"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
 
@@ -272,9 +273,12 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
         className="w-full text-left p-3 font-medium text-sm hover:bg-muted/30 transition-colors rounded-t-lg"
         onClick={() => setExpanded((v) => !v)}
       >
-        <span className="flex items-center justify-between">
-          <span>{headerParts}</span>
-          <span className="text-muted-foreground text-xs ml-2">{expanded ? "▲" : "▼"}</span>
+        <span className="flex items-center justify-between gap-2">
+          <span className="flex-1 min-w-0 truncate">{headerParts}</span>
+          {!expanded && priceHistory && priceHistory.length >= 5 && (
+            <SparklineHeader data={priceHistory} />
+          )}
+          <span className="text-muted-foreground text-xs shrink-0">{expanded ? "▲" : "▼"}</span>
         </span>
       </button>
 

@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
+import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import {
   useGuruFiling,
   useGuruFilings,
@@ -47,7 +47,7 @@ const ACTION_ORDER = ["NEW_POSITION", "SOLD_OUT", "INCREASED", "DECREASED", "UNC
 
 export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
+  const theme = useRechartsTheme()
   const [historyOpen, setHistoryOpen] = useState(false)
   const [greatMindsOpen, setGreatMindsOpen] = useState(false)
 
@@ -265,35 +265,53 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
       ) : (
         <>
           {/* Horizontal bar chart */}
-          <Plot
-            data={[
-              {
-                type: "bar",
-                orientation: "h",
-                x: topHoldings.map((h) => h.weight_pct ?? 0),
-                y: topHoldings.map((h) => h.ticker ?? h.company_name),
-                marker: {
-                  color: topHoldings.map((h) => ACTION_COLORS[h.action] ?? ACTION_COLORS.UNCHANGED),
-                },
-                hovertemplate: "%{y}: %{x:.2f}%<extra></extra>",
-              },
-            ]}
-            layout={{
-              height: Math.max(180, topHoldings.length * 22 + 50),
-              margin: { l: 70, r: 10, t: 5, b: 30 },
-              xaxis: {
-                title: { text: t("smart_money.top.weight_axis") },
-                showgrid: true,
-                gridcolor: "rgba(128,128,128,0.1)",
-              },
-              yaxis: { showgrid: false, automargin: true },
-              ...plotlyTheme,
-              font: { ...plotlyTheme.font, size: 10 },
-            }}
-            config={{ displayModeBar: false, responsive: true }}
-            style={{ width: "100%" }}
-            useResizeHandler
-          />
+          {(() => {
+            const barData = topHoldings.map((h) => ({
+              name: h.ticker ?? h.company_name,
+              weight: h.weight_pct ?? 0,
+              fill: ACTION_COLORS[h.action] ?? ACTION_COLORS.UNCHANGED,
+            }))
+            const chartH = Math.max(180, topHoldings.length * 22 + 50)
+            return (
+              <ResponsiveContainer width="100%" height={chartH}>
+                <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 56, left: 8, bottom: 20 }}>
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 9, fill: theme.tickColor }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `${v}%`}
+                    label={{ value: t("smart_money.top.weight_axis"), position: "insideBottom", offset: -10, fontSize: 10, fill: theme.tickColor }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 9, fill: theme.tickColor }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={60}
+                  />
+                  <Tooltip
+                    contentStyle={theme.tooltipStyle}
+                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(2) : ""}%`, t("smart_money.top.weight_axis")]}
+                    labelStyle={{ color: theme.tooltipText }}
+                    cursor={{ fill: "rgba(128,128,128,0.08)" }}
+                  />
+                  <Bar dataKey="weight" radius={[0, 3, 3, 0]}>
+                    {barData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                    <LabelList
+                      dataKey="weight"
+                      position="right"
+                      formatter={(v: unknown) => typeof v === "number" ? `${v.toFixed(1)}%` : ""}
+                      style={{ fontSize: 9, fill: theme.tickColor }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )
+          })()}
 
           {/* Detail table */}
           <p className="text-xs font-semibold">{t("smart_money.top.table_title")}</p>

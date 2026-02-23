@@ -1,9 +1,16 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Treemap,
+  ResponsiveContainer,
+} from "recharts"
 import type { CategoryAllocation } from "@/api/types/allocation"
 import { CATEGORY_COLOR_MAP, CATEGORY_COLOR_FALLBACK } from "@/lib/constants"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
+import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
   categories: Record<string, CategoryAllocation>
@@ -13,25 +20,57 @@ function getCategoryColor(name: string): string {
   return CATEGORY_COLOR_MAP[name] ?? CATEGORY_COLOR_FALLBACK
 }
 
+interface TreemapContentProps {
+  x?: number; y?: number; width?: number; height?: number
+  name?: string; value?: number; fill?: string
+  payload?: { fill?: string }
+}
+
+function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill, payload }: TreemapContentProps) {
+  const cellFill = fill || payload?.fill || "#6b7280"
+  if (width < 30 || height < 20) return null
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={cellFill} rx={3} />
+      {width > 50 && height > 28 && (
+        <text x={x + width / 2} y={y + height / 2 - 6} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={500}>
+          {name}
+        </text>
+      )}
+      {width > 50 && height > 28 && (
+        <text x={x + width / 2} y={y + height / 2 + 8} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={9}>
+          {typeof value === "number" ? `${value.toFixed(1)}%` : ""}
+        </text>
+      )}
+    </g>
+  )
+}
+
 export function AllocationCharts({ categories }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
+  const theme = useRechartsTheme()
   const [chartType, setChartType] = useState<"pie" | "treemap">("pie")
 
   const entries = Object.entries(categories)
-  const labels = entries.map(([name]) => name)
-  const targetValues = entries.map(([, v]) => v.target_pct)
-  const actualValues = entries.map(([, v]) => v.current_pct)
-  const colors = labels.map(getCategoryColor)
+  const pieData = entries.map(([name, v]) => ({
+    name,
+    target: v.target_pct,
+    actual: v.current_pct,
+    color: getCategoryColor(name),
+  }))
 
-  const commonLayout = {
-    height: 260,
-    margin: { l: 0, r: 0, t: 30, b: 0 },
-    ...plotlyTheme,
-    font: { ...plotlyTheme.font, size: 11 },
-    showlegend: true,
-    legend: { orientation: "h" as const, y: -0.1 },
-  }
+  const treemapTargetData = entries.map(([name, v]) => ({
+    name,
+    size: v.target_pct,
+    fill: getCategoryColor(name),
+  }))
+  const treemapActualData = entries.map(([name, v]) => ({
+    name,
+    size: v.current_pct,
+    fill: getCategoryColor(name),
+  }))
+
+  const tooltipStyle = theme.tooltipStyle
 
   return (
     <div className="space-y-2">
@@ -62,36 +101,43 @@ export function AllocationCharts({ categories }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.charts.target")}</p>
           {chartType === "pie" ? (
-            <Plot
-              data={[{
-                type: "pie",
-                labels,
-                values: targetValues,
-                marker: { colors },
-                hole: 0.3,
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-                textinfo: "label+percent",
-              }]}
-              layout={{ ...commonLayout, showlegend: false }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="target"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="35%"
+                  outerRadius="70%"
+                  paddingAngle={1}
+                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.target")]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
-            <Plot
-              data={[{
-                type: "treemap",
-                labels,
-                values: targetValues,
-                parents: labels.map(() => ""),
-                marker: { colors },
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-              }]}
-              layout={{ ...commonLayout, showlegend: false }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <Treemap
+                data={treemapTargetData}
+                dataKey="size"
+                content={<TreemapContent />}
+              >
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.target")]}
+                />
+              </Treemap>
+            </ResponsiveContainer>
           )}
         </div>
 
@@ -99,36 +145,43 @@ export function AllocationCharts({ categories }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.charts.actual")}</p>
           {chartType === "pie" ? (
-            <Plot
-              data={[{
-                type: "pie",
-                labels,
-                values: actualValues,
-                marker: { colors },
-                hole: 0.3,
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-                textinfo: "label+percent",
-              }]}
-              layout={{ ...commonLayout, showlegend: false }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="actual"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="35%"
+                  outerRadius="70%"
+                  paddingAngle={1}
+                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.actual")]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
-            <Plot
-              data={[{
-                type: "treemap",
-                labels,
-                values: actualValues,
-                parents: labels.map(() => ""),
-                marker: { colors },
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-              }]}
-              layout={{ ...commonLayout, showlegend: false }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={260}>
+              <Treemap
+                data={treemapActualData}
+                dataKey="size"
+                content={<TreemapContent />}
+              >
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.actual")]}
+                />
+              </Treemap>
+            </ResponsiveContainer>
           )}
         </div>
       </div>

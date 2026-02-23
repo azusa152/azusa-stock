@@ -1,9 +1,10 @@
+import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
+import { AreaSeries, type IChartApi } from "lightweight-charts"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
+import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -15,11 +16,11 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#ef4444" },
-  { range: [25, 45] as [number, number], color: "#f97316" },
-  { range: [45, 55] as [number, number], color: "#eab308" },
-  { range: [55, 75] as [number, number], color: "#86efac" },
-  { range: [75, 100] as [number, number], color: "#22c55e" },
+  { range: [0, 25] as [number, number], color: "#ef4444", label: "EF" },
+  { range: [25, 45] as [number, number], color: "#f97316", label: "F" },
+  { range: [45, 55] as [number, number], color: "#eab308", label: "N" },
+  { range: [55, 75] as [number, number], color: "#86efac", label: "G" },
+  { range: [75, 100] as [number, number], color: "#22c55e", label: "EG" },
 ]
 
 function computeHealthScore(
@@ -36,11 +37,141 @@ function computeHealthScore(
   return { pct: (normal / total) * 100, normal, total }
 }
 
-
 function healthScoreColor(pct: number): string {
   if (pct >= 80) return "text-green-500"
   if (pct >= 50) return "text-yellow-500"
   return "text-red-500"
+}
+
+/** Semi-circle SVG gauge for Fear & Greed (0-100). */
+function FearGreedGauge({ score, level }: { score: number; level: string }) {
+  const cx = 100
+  const cy = 100
+  const r = 70
+  const strokeW = 16
+
+  // Arc helper: polar to cartesian on the semicircle (180° to 0°, left to right)
+  function polarToCartesian(angleDeg: number) {
+    const rad = (angleDeg * Math.PI) / 180
+    return {
+      x: cx + r * Math.cos(Math.PI - rad),
+      y: cy - r * Math.sin(Math.PI - rad),
+    }
+  }
+
+  // Draw arc segment from score pct1 to pct2 (0-100) along the semicircle
+  function arcPath(pct1: number, pct2: number) {
+    const a1 = (pct1 / 100) * 180
+    const a2 = (pct2 / 100) * 180
+    const p1 = polarToCartesian(a1)
+    const p2 = polarToCartesian(a2)
+    const largeArc = a2 - a1 > 180 ? 1 : 0
+    return `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${largeArc} 1 ${p2.x} ${p2.y}`
+  }
+
+  // Needle
+  const needleAngleDeg = (score / 100) * 180
+  const needleBase1 = polarToCartesian(needleAngleDeg - 5)
+  const needleBase2 = polarToCartesian(needleAngleDeg + 5)
+  // Tip stays within the arc radius
+  const tipX = cx + (r - strokeW / 2 - 4) * Math.cos(Math.PI - (needleAngleDeg * Math.PI) / 180)
+  const tipY = cy - (r - strokeW / 2 - 4) * Math.sin(Math.PI - (needleAngleDeg * Math.PI) / 180)
+
+  // Label display
+  const gaugeTitle = level.includes(" ") ? level.split(" ").slice(1).join(" ") : level
+
+  return (
+    <svg viewBox="0 0 200 110" className="w-full" style={{ maxHeight: 160 }}>
+      {/* Background arc */}
+      <path
+        d={arcPath(0, 100)}
+        fill="none"
+        stroke="rgba(128,128,128,0.15)"
+        strokeWidth={strokeW}
+        strokeLinecap="butt"
+      />
+
+      {/* Colored band arcs */}
+      {FEAR_GREED_BANDS.map((band) => (
+        <path
+          key={band.label}
+          d={arcPath(band.range[0], band.range[1])}
+          fill="none"
+          stroke={band.color}
+          strokeWidth={strokeW}
+          strokeLinecap="butt"
+          opacity={0.85}
+        />
+      ))}
+
+      {/* Needle */}
+      <polygon
+        points={`${tipX},${tipY} ${needleBase1.x},${needleBase1.y} ${cx},${cy} ${needleBase2.x},${needleBase2.y}`}
+        fill="currentColor"
+        opacity={0.7}
+      />
+      <circle cx={cx} cy={cy} r={5} fill="currentColor" opacity={0.7} />
+
+      {/* Score */}
+      <text x={cx} y={cy - 18} textAnchor="middle" fontSize={22} fontWeight="bold" fill="currentColor">
+        {score}
+      </text>
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.6}>
+        /100
+      </text>
+
+      {/* Level label */}
+      <text x={cx} y={cy + 16} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.75}>
+        {gaugeTitle}
+      </text>
+    </svg>
+  )
+}
+
+function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
+  const { recent, isUp } = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 30)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const r = snapshots.filter((s) => s.snapshot_date >= cutoffStr)
+    const vals = r.map((s) => s.total_value)
+    return { recent: r, isUp: vals.length >= 2 && vals[vals.length - 1] >= vals[0] }
+  }, [snapshots])
+
+  const onInit = useCallback(
+    (chart: IChartApi) => {
+      chart.applyOptions({
+        crosshair: { vertLine: { visible: false }, horzLine: { visible: false } },
+        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+        timeScale: { visible: false },
+        rightPriceScale: { visible: false },
+        handleScroll: false,
+        handleScale: false,
+      })
+
+      const series = chart.addSeries(AreaSeries, {
+        lineColor: isUp ? "#22c55e" : "#ef4444",
+        topColor: isUp ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)",
+        bottomColor: "rgba(0,0,0,0)",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      })
+
+      series.setData(
+        recent.map((s) => ({
+          time: s.snapshot_date as `${number}-${number}-${number}`,
+          value: s.total_value,
+        })),
+      )
+    },
+    [recent, isUp],
+  )
+
+  if (recent.length < 2) return null
+
+  return <LightweightChartWrapper height={60} onInit={onInit} />
 }
 
 interface Props {
@@ -55,51 +186,6 @@ interface Props {
   isLoading: boolean
 }
 
-function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
-  const plotlyTheme = usePlotlyTheme()
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 30)
-  const cutoffStr = cutoff.toISOString().slice(0, 10)
-  const recent = snapshots.filter((s) => s.snapshot_date >= cutoffStr)
-  if (recent.length < 2) return null
-
-  const dates = recent.map((s) => s.snapshot_date)
-  const values = recent.map((s) => s.total_value)
-  const isUp = values[values.length - 1] >= values[0]
-  const color = isUp ? "#22c55e" : "#ef4444"
-  const fill = isUp ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)"
-  const vMin = Math.min(...values)
-  const vMax = Math.max(...values)
-  const pad = (vMax - vMin) * 0.1 || vMax * 0.01
-
-  return (
-    <Plot
-      data={[
-        {
-          x: dates,
-          y: values,
-          type: "scatter",
-          mode: "lines",
-          line: { color, width: 1.5 },
-          fill: "tozeroy",
-          fillcolor: fill,
-          hoverinfo: "skip",
-        },
-      ]}
-      layout={{
-        height: 60,
-        margin: { l: 0, r: 0, t: 0, b: 0 },
-        xaxis: { visible: false },
-        yaxis: { visible: false, range: [vMin - pad, vMax + pad] },
-        showlegend: false,
-        ...plotlyTheme,
-      }}
-      config={{ displayModeBar: false, responsive: true }}
-      style={{ width: "100%" }}
-    />
-  )
-}
-
 export function PortfolioPulse({
   rebalance,
   fearGreed,
@@ -112,7 +198,6 @@ export function PortfolioPulse({
   isLoading,
 }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
 
   if (isLoading) {
@@ -154,20 +239,16 @@ export function PortfolioPulse({
         ? t("config.sentiment.caution")
         : marketStatus
 
-  // Left column data
   const totalVal = rebalance?.total_value
   const changePct = rebalance?.total_value_change_pct
   const changeAmt = rebalance?.total_value_change
   const ytdTwr = twr?.twr_pct
 
-  // Center column data
   const fgScore = fearGreed?.composite_score ?? 50
   const fgLevel = fearGreed?.composite_level ?? "N/A"
   const vixVal = fearGreed?.vix?.value
   const vixChange = fearGreed?.vix?.change_1d
   const cnnScore = fearGreed?.cnn?.score
-
-  const gaugeTitle = fgLevel.includes(" ") ? fgLevel.split(" ").slice(1).join(" ") : fgLevel
 
   return (
     <Card>
@@ -177,22 +258,16 @@ export function PortfolioPulse({
           <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
           {totalVal != null ? (
             <>
-              <p className="text-3xl font-bold tabular-nums">
-                {maskMoney(totalVal)}
-              </p>
+              <p className="text-3xl font-bold tabular-nums">{maskMoney(totalVal)}</p>
               {changePct != null && changeAmt != null && (
-                <p
-                  className={`text-sm font-medium ${changePct >= 0 ? "text-green-500" : "text-red-500"}`}
-                >
+                <p className={`text-sm font-medium ${changePct >= 0 ? "text-green-500" : "text-red-500"}`}>
                   {changePct >= 0 ? "▲" : "▼"}
                   {Math.abs(changePct).toFixed(2)}%
                   {!isPrivate && ` ($${Math.abs(changeAmt).toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
                 </p>
               )}
               {ytdTwr != null && (
-                <p
-                  className={`text-sm ${ytdTwr >= 0 ? "text-green-500" : "text-red-500"}`}
-                >
+                <p className={`text-sm ${ytdTwr >= 0 ? "text-green-500" : "text-red-500"}`}>
                   {t("dashboard.ytd_return")} {ytdTwr >= 0 ? "▲" : "▼"}
                   {Math.abs(ytdTwr).toFixed(2)}%
                 </p>
@@ -211,32 +286,7 @@ export function PortfolioPulse({
           <p className="text-xs text-muted-foreground text-center">{t("dashboard.fear_greed_title")}</p>
           {fearGreed ? (
             <>
-              <Plot
-                data={[
-                  {
-                    type: "indicator",
-                    mode: "gauge+number",
-                    value: fgScore,
-                    title: { text: gaugeTitle, font: { size: 14 } },
-                    number: { suffix: "/100", font: { size: 22 } },
-                    gauge: {
-                      axis: { range: [0, 100], tickwidth: 1 },
-                      bar: { color: "#333333" },
-                      steps: FEAR_GREED_BANDS.map((b) => ({
-                        range: b.range,
-                        color: b.color,
-                      })),
-                    },
-                  } as Plotly.Data,
-                ]}
-                layout={{
-                  height: 180,
-                  margin: { l: 10, r: 10, t: 30, b: 5 },
-                  ...plotlyTheme,
-                }}
-                config={{ displayModeBar: false, responsive: true }}
-                style={{ width: "100%" }}
-              />
+              <FearGreedGauge score={fgScore} level={fgLevel} />
               <p className="text-xs text-muted-foreground text-center">
                 {vixVal != null && (
                   <>

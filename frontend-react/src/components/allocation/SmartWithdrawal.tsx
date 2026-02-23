@@ -1,12 +1,12 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { useWithdraw } from "@/api/hooks/useAllocation"
 import type { WithdrawResponse } from "@/api/types/allocation"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
+import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
+import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
   privacyMode: boolean
@@ -19,7 +19,8 @@ function fmtCurrency(v: number, currency: string, privacyMode: boolean): string 
 
 export function SmartWithdrawal({ privacyMode }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
+  const theme = useRechartsTheme()
+  const DRIFT_COLORS = CHART_COLOR_PALETTE
   const [amount, setAmount] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [notify, setNotify] = useState(false)
@@ -140,25 +141,30 @@ export function SmartWithdrawal({ privacyMode }: Props) {
           {Object.keys(result.post_sell_drifts).length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-1">{t("allocation.withdraw.post_drift_title")}</p>
-              <Plot
-                data={[{
-                  type: "pie",
-                  labels: Object.keys(result.post_sell_drifts),
-                  values: Object.values(result.post_sell_drifts).map((d) => d.current_pct),
-                  hole: 0.3,
-                  textinfo: "label+percent",
-                }]}
-                layout={{
-                  height: 200,
-                  margin: { l: 0, r: 0, t: 5, b: 0 },
-                  showlegend: false,
-                  ...plotlyTheme,
-                  font: { ...plotlyTheme.font, size: 10 },
-                }}
-                config={{ displayModeBar: false, responsive: true }}
-                style={{ width: "100%" }}
-                useResizeHandler
-              />
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={Object.entries(result.post_sell_drifts).map(([name, v]) => ({ name, value: v.current_pct }))}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="30%"
+                    outerRadius="70%"
+                    paddingAngle={1}
+                    label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
+                    labelLine={false}
+                  >
+                    {Object.keys(result.post_sell_drifts).map((_, i) => (
+                      <Cell key={i} fill={DRIFT_COLORS[i % DRIFT_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={theme.tooltipStyle}
+                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>

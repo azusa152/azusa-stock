@@ -73,6 +73,11 @@ export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "H
 
 export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
 
+/** Shared chart color palette for pie/bar/treemap charts without category semantics. */
+export const CHART_COLOR_PALETTE = [
+  "#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308",
+] as const
+
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [
   { key: "US", labelKey: "config.market.us", suffix: "", currency: "USD" },

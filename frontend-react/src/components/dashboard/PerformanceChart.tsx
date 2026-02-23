@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
+import { AreaSeries, LineSeries, LineStyle, CrosshairMode, type IChartApi } from "lightweight-charts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import type { Snapshot } from "@/api/types/dashboard"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 const PERIOD_OPTIONS: { key: string; labelKey: string; days: number | "YTD" | "ALL" }[] = [
   { key: "1W", labelKey: "dashboard.performance_period_1w", days: 7 },
@@ -21,68 +21,84 @@ interface Props {
 
 export function PerformanceChart({ snapshots }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
   const [selectedKey, setSelectedKey] = useState("1M")
 
-  const today = new Date()
+  const filtered = useMemo(() => {
+    const opt = PERIOD_OPTIONS.find((p) => p.key === selectedKey)!
+    if (opt.days === "ALL") return snapshots
+    const now = new Date()
+    const cutoff =
+      opt.days === "YTD"
+        ? `${now.getFullYear()}-01-01`
+        : (() => {
+            const d = new Date(now)
+            d.setDate(d.getDate() - (opt.days as number))
+            return d.toISOString().slice(0, 10)
+          })()
+    return snapshots.filter((s) => s.snapshot_date >= cutoff)
+  }, [snapshots, selectedKey])
 
-  function getCutoff(key: string): string {
-    const opt = PERIOD_OPTIONS.find((p) => p.key === key)!
-    if (opt.days === "ALL") return ""
-    if (opt.days === "YTD") {
-      return `${today.getFullYear()}-01-01`
-    }
-    const d = new Date(today)
-    d.setDate(d.getDate() - (opt.days as number))
-    return d.toISOString().slice(0, 10)
-  }
-
-  const cutoff = getCutoff(selectedKey)
-  const filtered = cutoff ? snapshots.filter((s) => s.snapshot_date >= cutoff) : snapshots
-
-  let plotData: Plotly.Data[] = []
-  if (filtered.length >= 2) {
-    const dates = filtered.map((s) => s.snapshot_date)
-    const values = filtered.map((s) => s.total_value)
-    const baseVal = values[0] || 1
-    const pctReturns = values.map((v) => (v / baseVal - 1) * 100)
-
-    const isUp = pctReturns[pctReturns.length - 1] >= 0
-    const lineColor = isUp ? "#22c55e" : "#ef4444"
-    const fillColor = isUp ? "rgba(34,197,94,0.07)" : "rgba(239,68,68,0.07)"
-
-    plotData = [
-      {
-        x: dates,
-        y: pctReturns,
-        type: "scatter",
-        mode: "lines",
-        line: { color: lineColor, width: 2 },
-        fill: "tozeroy",
-        fillcolor: fillColor,
-        customdata: values,
-        hovertemplate: "%{x}<br>%{y:+.2f}%  ($%{customdata:,.0f})<extra></extra>",
-        name: t("dashboard.total_market_value"),
-      },
-    ]
-
-    const benchmarkPairs = filtered
-      .map((s, i) => ({ d: dates[i], b: s.benchmark_value }))
-      .filter((p): p is { d: string; b: number } => p.b != null)
-
-    if (benchmarkPairs.length >= 2) {
-      const baseB = benchmarkPairs[0].b || 1
-      plotData.push({
-        x: benchmarkPairs.map((p) => p.d),
-        y: benchmarkPairs.map((p) => (p.b / baseB - 1) * 100),
-        type: "scatter",
-        mode: "lines",
-        line: { color: "#888", width: 1, dash: "dot" },
-        name: t("dashboard.performance_benchmark_label"),
-        hovertemplate: "%{x}<br>S&P500 %{y:+.2f}%<extra></extra>",
+  const onInit = useCallback(
+    (chart: IChartApi) => {
+      chart.applyOptions({
+        crosshair: { mode: CrosshairMode.Normal },
+        grid: { vertLines: { visible: false } },
+        timeScale: { borderVisible: false, fixLeftEdge: true, fixRightEdge: true },
+        rightPriceScale: { borderVisible: false },
       })
-    }
-  }
+
+      if (filtered.length < 2) return
+
+      const values = filtered.map((s) => s.total_value)
+      const baseVal = values[0] || 1
+      const pctReturns = values.map((v) => (v / baseVal - 1) * 100)
+      const isUp = pctReturns[pctReturns.length - 1] >= 0
+
+      const areaSeries = chart.addSeries(AreaSeries, {
+        lineColor: isUp ? "#22c55e" : "#ef4444",
+        topColor: isUp ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)",
+        bottomColor: "rgba(0,0,0,0)",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: "percent", precision: 2, minMove: 0.01 },
+        title: t("dashboard.total_market_value"),
+      })
+
+      areaSeries.setData(
+        filtered.map((s, i) => ({
+          time: s.snapshot_date as `${number}-${number}-${number}`,
+          value: pctReturns[i],
+        })),
+      )
+
+      // Benchmark
+      const benchmarkPairs = filtered
+        .map((s) => ({ d: s.snapshot_date, b: s.benchmark_value }))
+        .filter((p): p is { d: string; b: number } => p.b != null)
+
+      if (benchmarkPairs.length >= 2) {
+        const baseB = benchmarkPairs[0].b || 1
+        const benchmarkSeries = chart.addSeries(LineSeries, {
+          color: "#9ca3af",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          priceFormat: { type: "percent", precision: 2, minMove: 0.01 },
+          title: t("dashboard.performance_benchmark_label"),
+        })
+        benchmarkSeries.setData(
+          benchmarkPairs.map((p) => ({
+            time: p.d as `${number}-${number}-${number}`,
+            value: (p.b / baseB - 1) * 100,
+          })),
+        )
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
+  )
 
   return (
     <Card>
@@ -106,31 +122,9 @@ export function PerformanceChart({ snapshots }: Props) {
       </CardHeader>
       <CardContent>
         {filtered.length >= 2 ? (
-          <Plot
-            data={plotData}
-            layout={{
-              height: 280,
-              margin: { l: 40, r: 10, t: 10, b: 30 },
-              yaxis: {
-                showgrid: true,
-                gridcolor: "rgba(128,128,128,0.15)",
-                ticksuffix: "%",
-                zeroline: true,
-                zerolinecolor: "rgba(128,128,128,0.3)",
-              },
-              xaxis: { showgrid: false },
-              showlegend: plotData.length > 1,
-              legend: { orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "right", x: 1 },
-              hovermode: "x unified",
-              ...plotlyTheme,
-            }}
-            config={{ displayModeBar: false, responsive: true }}
-            style={{ width: "100%" }}
-          />
+          <LightweightChartWrapper key={selectedKey} height={280} onInit={onInit} />
         ) : (
-          <p className="text-sm text-muted-foreground py-4">
-            {t("dashboard.performance_no_data")}
-          </p>
+          <p className="text-sm text-muted-foreground py-4">{t("dashboard.performance_no_data")}</p>
         )}
       </CardContent>
     </Card>

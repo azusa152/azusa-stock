@@ -1,12 +1,12 @@
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
 import { useCurrencyExposure, useFxExposureAlert, useUpdateProfile } from "@/api/hooks/useAllocation"
 import type { ProfileResponse } from "@/api/types/allocation"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
+import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
+import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
   privacyMode: boolean
@@ -22,7 +22,7 @@ const ALERT_COLORS: Record<string, string> = {
 
 export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
+  const theme = useRechartsTheme()
   const { data, isLoading } = useCurrencyExposure(enabled)
   const alertMutation = useFxExposureAlert()
   const updateProfileMutation = useUpdateProfile()
@@ -44,19 +44,11 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
     return <p className="text-sm text-muted-foreground">{t("common.error")}</p>
   }
 
-  const cashLabels = data.cash_breakdown.map((b) => b.currency)
-  const cashValues = data.cash_breakdown.map((b) => b.percentage)
-  const totalLabels = data.breakdown.map((b) => b.currency)
-  const totalValues = data.breakdown.map((b) => b.percentage)
+  const cashData = data.cash_breakdown.map((b) => ({ name: b.currency, value: b.percentage }))
+  const totalData = data.breakdown.map((b) => ({ name: b.currency, value: b.percentage }))
 
-  const donutLayout = {
-    height: 220,
-    margin: { l: 0, r: 0, t: 5, b: 0 },
-    showlegend: true,
-    legend: { orientation: "h" as const, y: -0.15 },
-    ...plotlyTheme,
-    font: { ...plotlyTheme.font, size: 10 },
-  }
+  const CURRENCY_COLORS = CHART_COLOR_PALETTE
+  const tooltipStyle = theme.tooltipStyle
 
   return (
     <div className="space-y-4">
@@ -86,20 +78,15 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.fx.cash_chart")}</p>
           {!privacyMode ? (
-            <Plot
-              data={[{
-                type: "pie",
-                labels: cashLabels,
-                values: cashValues,
-                hole: 0.4,
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-                textinfo: "label+percent",
-              }]}
-              layout={donutLayout}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={cashData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
+                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
+                  {cashData.map((_, i) => <Cell key={i} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
             <div className="h-52 flex items-center justify-center border border-border rounded text-xs text-muted-foreground">
               ***
@@ -109,20 +96,15 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.fx.total_chart")}</p>
           {!privacyMode ? (
-            <Plot
-              data={[{
-                type: "pie",
-                labels: totalLabels,
-                values: totalValues,
-                hole: 0.4,
-                hovertemplate: "%{label}: %{value:.1f}%<extra></extra>",
-                textinfo: "label+percent",
-              }]}
-              layout={donutLayout}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: "100%" }}
-              useResizeHandler
-            />
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={totalData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
+                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
+                  {totalData.map((_, i) => <Cell key={i} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
             <div className="h-52 flex items-center justify-center border border-border rounded text-xs text-muted-foreground">
               ***

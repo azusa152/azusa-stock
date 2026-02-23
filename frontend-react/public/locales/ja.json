@@ -622,6 +622,11 @@
       "hover_template": "%{x}<br>レート: %{y}",
       "high_annotation": "{{days}}日高値: {{high}}"
     },
+    "period": {
+      "1m": "1ヶ月",
+      "2m": "2ヶ月",
+      "3m": "3ヶ月"
+    },
     "settings": {
       "title": "⚙️ 監視設定",
       "recent_high": "• 直近高値: {{days}} 日",

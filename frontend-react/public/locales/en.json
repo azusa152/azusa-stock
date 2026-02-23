@@ -622,6 +622,11 @@
       "hover_template": "%{x}<br>Rate: %{y}",
       "high_annotation": "{{days}}-day high: {{high}}"
     },
+    "period": {
+      "1m": "1M",
+      "2m": "2M",
+      "3m": "3M"
+    },
     "settings": {
       "title": "⚙️ Monitor Settings",
       "recent_high": "• Recent high: {{days}} days",

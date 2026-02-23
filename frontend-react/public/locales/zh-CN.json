@@ -622,6 +622,11 @@
       "hover_template": "%{x}<br>汇率: %{y}",
       "high_annotation": "{{days}}日高点: {{high}}"
     },
+    "period": {
+      "1m": "1月",
+      "2m": "2月",
+      "3m": "3月"
+    },
     "settings": {
       "title": "⚙️ 监控设定",
       "recent_high": "• 近期高点: {{days}} 日",

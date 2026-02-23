@@ -1,6 +1,18 @@
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
-import { LazyPlot as Plot } from "@/components/LazyPlot"
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+  LabelList,
+  ResponsiveContainer,
+} from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,8 +20,8 @@ import {
   CATEGORY_COLOR_MAP,
   CATEGORY_COLOR_FALLBACK,
 } from "@/lib/constants"
+import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import type { RebalanceResponse, ProfileResponse } from "@/api/types/dashboard"
-import { usePlotlyTheme } from "@/hooks/usePlotlyTheme"
 
 interface Props {
   rebalance?: RebalanceResponse | null
@@ -18,7 +30,7 @@ interface Props {
 
 export function AllocationGlance({ rebalance, profile }: Props) {
   const { t } = useTranslation()
-  const plotlyTheme = usePlotlyTheme()
+  const theme = useRechartsTheme()
   const navigate = useNavigate()
 
   if (!rebalance || !profile || !rebalance.categories) {
@@ -43,17 +55,21 @@ export function AllocationGlance({ rebalance, profile }: Props) {
   const breakdown = rebalance.categories
 
   const catKeys = Object.keys(targetConfig)
-  const catLabels = catKeys.map((k) => {
-    const icon = CATEGORY_ICON_SHORT[k] ?? ""
-    return `${icon} ${k}`
-  })
-  const targetVals = catKeys.map((k) => targetConfig[k] ?? 0)
-  const actualVals = catKeys.map((k) => breakdown[k]?.current_pct ?? 0)
-  const colors = catKeys.map((k) => CATEGORY_COLOR_MAP[k] ?? CATEGORY_COLOR_FALLBACK)
 
-  const driftLabels = catKeys.map((k) => `${CATEGORY_ICON_SHORT[k] ?? ""} ${k}`)
-  const driftVals = catKeys.map((k) => breakdown[k]?.drift_pct ?? 0)
-  const driftColors = driftVals.map((d) => (Math.abs(d) > 5 ? "#ef4444" : "#9CA3AF"))
+  const pieData = catKeys.map((k) => ({
+    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${k}`,
+    target: targetConfig[k] ?? 0,
+    actual: breakdown[k]?.current_pct ?? 0,
+    color: CATEGORY_COLOR_MAP[k] ?? CATEGORY_COLOR_FALLBACK,
+  }))
+
+  const driftData = catKeys.map((k) => ({
+    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${k}`,
+    drift: breakdown[k]?.drift_pct ?? 0,
+    fill: Math.abs(breakdown[k]?.drift_pct ?? 0) > 5 ? "#ef4444" : "#9ca3af",
+  }))
+
+  const tooltipStyle = theme.tooltipStyle
 
   return (
     <Card>
@@ -61,78 +77,111 @@ export function AllocationGlance({ rebalance, profile }: Props) {
         <CardTitle className="text-base">{t("dashboard.allocation_title")}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Dual donut */}
-        <Plot
-          data={[
-            {
-              type: "pie",
-              labels: catLabels,
-              values: targetVals,
-              hole: 0.4,
-              marker: { colors },
-              textinfo: "percent",
-              domain: { column: 0 },
-              hovertemplate: "<b>%{label}</b><br>" + t("dashboard.chart.target_pct") + ": %{percent}<extra></extra>",
-              name: t("dashboard.chart.target"),
-            },
-            {
-              type: "pie",
-              labels: catLabels,
-              values: actualVals,
-              hole: 0.4,
-              marker: { colors },
-              textinfo: "percent",
-              domain: { column: 1 },
-              hovertemplate: "<b>%{label}</b><br>" + t("dashboard.chart.actual_pct") + ": %{percent}<extra></extra>",
-              name: t("dashboard.chart.actual"),
-            },
-          ]}
-          layout={{
-            height: 260,
-            margin: { l: 20, r: 20, t: 40, b: 20 },
-            showlegend: false,
-            grid: { rows: 1, columns: 2 },
-            annotations: [
-              { text: t("dashboard.chart.target"), x: 0.18, y: 1.08, xref: "paper", yref: "paper", showarrow: false, font: { size: 12 } },
-              { text: t("dashboard.chart.actual"), x: 0.82, y: 1.08, xref: "paper", yref: "paper", showarrow: false, font: { size: 12 } },
-            ],
-            ...plotlyTheme,
-          }}
-          config={{ displayModeBar: false, responsive: true }}
-          style={{ width: "100%" }}
-        />
+        {/* Dual donut side by side */}
+        <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-1">
+            <div>
+              <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.chart.target")}</p>
+              <ResponsiveContainer width="100%" height={130}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="target"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={1}
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("dashboard.chart.target_pct")]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div>
+              <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.chart.actual")}</p>
+              <ResponsiveContainer width="100%" height={130}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="actual"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={1}
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("dashboard.chart.actual_pct")]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+            {pieData.map((entry) => (
+              <span key={entry.name} className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                {entry.name}
+              </span>
+            ))}
+          </div>
+        </div>
 
-        {/* Drift bar */}
-        <Plot
-          data={[
-            {
-              type: "bar",
-              x: driftLabels,
-              y: driftVals,
-              marker: { color: driftColors },
-              text: driftVals.map((d) => `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`),
-              textposition: "outside",
-            },
-          ]}
-          layout={{
-            height: 260,
-            margin: { l: 30, r: 10, t: 40, b: 30 },
-            title: { text: t("dashboard.drift_title"), font: { size: 13 }, x: 0.5, xanchor: "center" } as Partial<Plotly.Layout["title"]>,
-            yaxis: { title: { text: t("dashboard.chart.drift_yaxis") } },
-            showlegend: false,
-            shapes: [
-              { type: "line", x0: -0.5, x1: catKeys.length - 0.5, y0: 5, y1: 5, line: { color: "orange", dash: "dash", width: 1 } },
-              { type: "line", x0: -0.5, x1: catKeys.length - 0.5, y0: -5, y1: -5, line: { color: "orange", dash: "dash", width: 1 } },
-            ],
-            annotations: [
-              { x: catKeys.length - 0.5, y: 5, text: "+5%", xref: "x", yref: "y", showarrow: false, font: { size: 10, color: "orange" } },
-              { x: catKeys.length - 0.5, y: -5, text: "-5%", xref: "x", yref: "y", showarrow: false, font: { size: 10, color: "orange" } },
-            ],
-            ...plotlyTheme,
-          }}
-          config={{ displayModeBar: false, responsive: true }}
-          style={{ width: "100%" }}
-        />
+        {/* Drift bar chart */}
+        <div>
+          <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.drift_title")}</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={driftData} margin={{ top: 14, right: 8, left: -16, bottom: 0 }}>
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 9, fill: theme.tickColor }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 9, fill: theme.tickColor }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `${v}%`}
+                width={36}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(v: number | undefined) => [`${v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : ""}%`, t("dashboard.chart.drift_yaxis")]}
+                labelStyle={{ color: theme.tooltipText }}
+                cursor={{ fill: "rgba(128,128,128,0.08)" }}
+              />
+              <ReferenceLine y={5} stroke="#f97316" strokeDasharray="3 3" strokeWidth={1} />
+              <ReferenceLine y={-5} stroke="#f97316" strokeDasharray="3 3" strokeWidth={1} />
+              <Bar dataKey="drift" radius={[3, 3, 0, 0]}>
+                {driftData.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
+                ))}
+                <LabelList
+                  dataKey="drift"
+                  position="top"
+                  formatter={(v: unknown) => typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : ""}
+                  style={{ fontSize: 9, fill: theme.tickColor }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   )
