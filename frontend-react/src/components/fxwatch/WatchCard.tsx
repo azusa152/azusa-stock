@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToggleFxWatch, useDeleteFxWatch, useFxHistory } from "@/api/hooks/useFxWatch"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { FxChart } from "./FxChart"
@@ -11,9 +12,10 @@ import type { FxWatch, FxAnalysis } from "@/api/types/fxWatch"
 interface Props {
   watch: FxWatch
   analysis: FxAnalysis | undefined
+  analysisLoading?: boolean
 }
 
-export function WatchCard({ watch, analysis }: Props) {
+export function WatchCard({ watch, analysis, analysisLoading = false }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
@@ -34,7 +36,9 @@ export function WatchCard({ watch, analysis }: Props) {
     ? analysis.should_alert
       ? `🟢 ${analysis.recommendation}`
       : `⚪ ${analysis.recommendation}`
-    : t("fx_watch.analysis.waiting")
+    : analysisLoading
+      ? "⏳ …"
+      : t("fx_watch.analysis.waiting")
 
   const statusIcon = watch.is_active ? "🟢" : "🔴"
 
@@ -140,9 +144,16 @@ export function WatchCard({ watch, analysis }: Props) {
                   {/* Analysis */}
                   <div>
                     <p className="font-medium text-muted-foreground">{t("fx_watch.analysis.title")}</p>
-                    <p className="mt-0.5">
-                      {analysis?.reasoning ?? t("fx_watch.analysis.waiting")}
-                    </p>
+                    {analysisLoading && !analysis ? (
+                      <div className="mt-1 space-y-1">
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-4/5" />
+                      </div>
+                    ) : (
+                      <p className="mt-0.5">
+                        {analysis?.reasoning ?? t("fx_watch.analysis.waiting")}
+                      </p>
+                    )}
                   </div>
 
                   <hr className="border-border" />

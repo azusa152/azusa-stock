@@ -4,22 +4,23 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   useFxWatches,
+  useFxAnalysis,
   useCheckFxWatches,
   useAlertFxWatches,
 } from "@/api/hooks/useFxWatch"
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
-import type { FxAnalysisMap } from "@/api/types/fxWatch"
 
 export default function FxWatch() {
   const { t } = useTranslation()
   const [sopOpen, setSopOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [analysisMap, setAnalysisMap] = useState<FxAnalysisMap>({})
   const [checkFeedback, setCheckFeedback] = useState<string | null>(null)
   const [alertFeedback, setAlertFeedback] = useState<string | null>(null)
 
   const { data: watches, isLoading, isError } = useFxWatches()
+  const hasWatches = (watches?.length ?? 0) > 0
+  const { data: analysisMap = {}, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
   const checkMutation = useCheckFxWatches()
   const alertMutation = useAlertFxWatches()
 
@@ -35,10 +36,7 @@ export default function FxWatch() {
   const handleCheck = () => {
     setCheckFeedback(null)
     checkMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        setAnalysisMap(data ?? {})
-        setCheckFeedback(t("common.success"))
-      },
+      onSuccess: () => setCheckFeedback(t("common.success")),
       onError: () => setCheckFeedback(t("common.error")),
     })
   }
@@ -164,6 +162,7 @@ export default function FxWatch() {
               key={watch.id}
               watch={watch}
               analysis={analysisMap[watch.id]}
+              analysisLoading={analysisLoading}
             />
           ))}
         </div>

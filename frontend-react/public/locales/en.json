@@ -614,7 +614,8 @@
     },
     "analysis": {
       "title": "📊 Analysis Reason",
-      "waiting": "⏳ Waiting for analysis..."
+      "waiting": "⏳ Waiting for analysis...",
+      "loading": "⏳ Analyzing..."
     },
     "chart": {
       "insufficient_data": "📉 Insufficient FX history (need at least 5 trading days).",

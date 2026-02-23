@@ -92,24 +92,38 @@ export function useToggleFxWatch() {
   })
 }
 
+async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
+  const { data } = await apiClient.post<FxCheckResponse>("/fx-watch/check")
+  const map: FxAnalysisMap = {}
+  for (const r of data.results) {
+    const entry: FxAnalysis = {
+      current_rate: r.result.current_rate,
+      should_alert: r.result.should_alert,
+      recommendation: r.result.recommendation_zh,
+      reasoning: r.result.reasoning_zh,
+    }
+    map[r.watch_id] = entry
+  }
+  return map
+}
+
+/** Auto-fetches analysis for all active FX watches. Enabled only when watches exist. */
+export function useFxAnalysis(hasWatches: boolean) {
+  return useQuery<FxAnalysisMap>({
+    queryKey: ["fxAnalysis"],
+    queryFn: fetchFxAnalysis,
+    enabled: hasWatches,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+}
+
 export function useCheckFxWatches() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (): Promise<FxAnalysisMap> => {
-      const { data } = await apiClient.post<FxCheckResponse>("/fx-watch/check")
-      const map: FxAnalysisMap = {}
-      for (const r of data.results) {
-        const entry: FxAnalysis = {
-          current_rate: r.result.current_rate,
-          should_alert: r.result.should_alert,
-          recommendation: r.result.recommendation_zh,
-          reasoning: r.result.reasoning_zh,
-        }
-        map[r.watch_id] = entry
-      }
-      return map
-    },
-    onSuccess: () => {
+    mutationFn: fetchFxAnalysis,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["fxAnalysis"], data)
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
     },
   })
