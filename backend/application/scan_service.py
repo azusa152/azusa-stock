@@ -57,6 +57,27 @@ logger = get_logger(__name__)
 
 
 # ===========================================================================
+# Helpers
+# ===========================================================================
+
+
+def _insert_volume_qualifier(alert: str, qualifier: str) -> str:
+    """Insert volume qualifier on the metrics line (line 1) of a signal alert.
+
+    Multi-line alerts have the format:
+        <emoji> <b>TICKER</b>  SIGNAL  Bias X% · RSI Y
+           → action hint
+
+    The qualifier should sit on line 1 alongside the metrics, not after the
+    action hint.  For single-line alerts the qualifier is appended as before.
+    """
+    if "\n" in alert:
+        line1, rest = alert.split("\n", 1)
+        return f"{line1} {qualifier}\n{rest}"
+    return f"{alert} {qualifier}"
+
+
+# ===========================================================================
 # Scan Service
 # ===========================================================================
 
@@ -208,6 +229,7 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     bias=round(bias, 1),
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.CONTRARIAN_BUY:
@@ -217,6 +239,7 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     rsi=round(rsi, 1),
+                    bias=round(bias, 1) if bias is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.APPROACHING_BUY:
@@ -237,6 +260,7 @@ def run_scan(session: Session) -> dict:
                     lang=lang,
                     ticker=ticker,
                     bias=round(bias, 1),
+                    rsi=round(rsi, 1) if rsi is not None else "N/A",
                 )
             )
         elif signal == ScanSignal.CAUTION_HIGH:
@@ -260,8 +284,8 @@ def run_scan(session: Session) -> dict:
                 )
             )
 
-        # Volume confidence qualifier: append to the last signal alert (if any).
-        # Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal, volume irrelevant).
+        # Volume confidence qualifier: insert on the metrics line (line 1) of the last
+        # signal alert. Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal).
         if (
             alerts
             and volume_ratio is not None
@@ -271,10 +295,13 @@ def run_scan(session: Session) -> dict:
                 ScanSignal.THESIS_BROKEN,
             )
         ):
+            qualifier: str | None = None
             if volume_ratio >= VOLUME_SURGE_THRESHOLD:
-                alerts[-1] += " " + t("scan.volume_surge", lang=lang)
+                qualifier = t("scan.volume_surge", lang=lang)
             elif volume_ratio <= VOLUME_THIN_THRESHOLD:
-                alerts[-1] += " " + t("scan.volume_thin", lang=lang)
+                qualifier = t("scan.volume_thin", lang=lang)
+            if qualifier:
+                alerts[-1] = _insert_volume_qualifier(alerts[-1], qualifier)
 
         if moat_value == MoatStatus.STABLE.value and moat_details:
             alerts.append(

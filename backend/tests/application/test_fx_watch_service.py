@@ -43,9 +43,11 @@ def _make_watch(
 
 def _make_timing_result(should_alert=True, **overrides):
     """Build a FXTimingResult with sensible defaults."""
+    base = overrides.get("base_currency", "USD")
+    quote = overrides.get("quote_currency", "TWD")
     defaults = dict(
-        base_currency="USD",
-        quote_currency="TWD",
+        base_currency=base,
+        quote_currency=quote,
         current_rate=32.0,
         is_recent_high=True,
         lookback_high=32.0,
@@ -57,6 +59,16 @@ def _make_timing_result(should_alert=True, **overrides):
         should_alert=should_alert,
         recommendation_zh="建議考慮換匯：USD → TWD（近期高點 + 連續上漲）",
         reasoning_zh="USD/TWD 已接近 30 日高點 (32.0000)，且連續上漲 3 日。",
+        scenario="should_alert_both",
+        scenario_vars={
+            "base": base,
+            "quote": quote,
+            "pair": f"{base}/{quote}",
+            "high_days": 30,
+            "high": 32.0,
+            "consec": 3,
+            "consec_threshold": 3,
+        },
     )
     defaults.update(overrides)
     return FXTimingResult(**defaults)
@@ -638,17 +650,24 @@ class TestSendFXWatchAlerts:
         mock_history.return_value = MOCK_HISTORY
         mock_assess.return_value = _make_timing_result(
             should_alert=True,
-            recommendation_zh="建議考慮換匯",
-            reasoning_zh="接近高點",
             current_rate=32.1234,
+            scenario_vars={
+                "base": "USD",
+                "quote": "TWD",
+                "pair": "USD/TWD",
+                "high_days": 30,
+                "high": 32.0,
+                "consec": 3,
+                "consec_threshold": 3,
+            },
         )
 
         send_fx_watch_alerts(MagicMock())
 
         msg = mock_telegram.call_args[0][0]
         assert "USD/TWD" in msg
-        assert "建議考慮換匯" in msg
-        assert "接近高點" in msg
+        assert "USD" in msg  # currency present in i18n'd recommendation
+        assert "TWD" in msg
         assert "32.1234" in msg
 
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
@@ -680,17 +699,31 @@ class TestSendFXWatchAlerts:
                 should_alert=True,
                 base_currency="USD",
                 quote_currency="TWD",
-                recommendation_zh="建議換匯 USD",
-                reasoning_zh="USD 接近高點",
                 current_rate=32.0,
+                scenario_vars={
+                    "base": "USD",
+                    "quote": "TWD",
+                    "pair": "USD/TWD",
+                    "high_days": 30,
+                    "high": 32.0,
+                    "consec": 3,
+                    "consec_threshold": 3,
+                },
             ),
             _make_timing_result(
                 should_alert=True,
                 base_currency="EUR",
                 quote_currency="TWD",
-                recommendation_zh="建議換匯 EUR",
-                reasoning_zh="EUR 連續上漲",
                 current_rate=35.0,
+                scenario_vars={
+                    "base": "EUR",
+                    "quote": "TWD",
+                    "pair": "EUR/TWD",
+                    "high_days": 30,
+                    "high": 35.0,
+                    "consec": 4,
+                    "consec_threshold": 3,
+                },
             ),
         ]
 
@@ -703,8 +736,8 @@ class TestSendFXWatchAlerts:
         msg = mock_telegram.call_args[0][0]
         # Header appears exactly once
         assert msg.count("外匯換匯時機警報") == 1
-        # Both pairs present
+        # Both pairs present with their currencies in the recommendation
         assert "USD/TWD" in msg
         assert "EUR/TWD" in msg
-        assert "建議換匯 USD" in msg
-        assert "建議換匯 EUR" in msg
+        assert "USD → TWD" in msg  # i18n'd recommendation contains currency pair
+        assert "EUR → TWD" in msg

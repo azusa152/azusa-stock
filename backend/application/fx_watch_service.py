@@ -10,6 +10,7 @@ from sqlmodel import Session
 from domain.constants import DEFAULT_USER_ID
 from domain.entities import FXWatchConfig
 from domain.fx_analysis import FXTimingResult, assess_exchange_timing
+from i18n import get_user_language, t
 from infrastructure.market_data import get_forex_history_long
 from infrastructure.notification import (
     is_notification_enabled,
@@ -371,17 +372,28 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
     sent_alerts = 0
     if triggered_alerts:
         if is_notification_enabled(session, "fx_watch_alerts"):
+            lang = get_user_language(session)
             alert_lines = []
             for alert in triggered_alerts:
                 res: FXTimingResult = alert["result"]
+                rec = t(
+                    f"fx_watch.rec_{res.scenario}",
+                    lang=lang,
+                    **res.scenario_vars,
+                )
+                rea = t(
+                    f"fx_watch.rea_{res.scenario}",
+                    lang=lang,
+                    **res.scenario_vars,
+                )
                 alert_lines.append(
-                    f"📈 {alert['pair']}\n"
-                    f"💡 {res.recommendation_zh}\n"
-                    f"📊 {res.reasoning_zh}\n"
-                    f"💱 現價：{res.current_rate:.4f}"
+                    f"{t('fx_watch.pair_line', lang=lang, pair=alert['pair'])}\n"
+                    f"{rec}\n"
+                    f"{rea}\n"
+                    f"{t('fx_watch.current_rate', lang=lang, rate=res.current_rate)}"
                 )
 
-            full_msg = "💱 外匯換匯時機警報\n\n" + "\n\n".join(alert_lines)
+            full_msg = t("fx_watch.alert_header", lang=lang) + "\n\n".join(alert_lines)
             try:
                 send_telegram_message_dual(full_msg, session)
                 sent_alerts = len(triggered_alerts)

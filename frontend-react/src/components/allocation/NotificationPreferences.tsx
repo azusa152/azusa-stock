@@ -4,7 +4,15 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 
-const PREF_KEYS = ["scan_alerts", "price_alerts", "weekly_digest", "xray_alerts", "fx_alerts"]
+const PREF_KEYS = [
+  "scan_alerts",
+  "price_alerts",
+  "weekly_digest",
+  "xray_alerts",
+  "fx_alerts",
+  "fx_watch_alerts",
+  "guru_alerts",
+]
 
 export function NotificationPreferences() {
   const { t } = useTranslation()
