@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { formatLocalTime } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -169,7 +170,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false }: Props) {
                     {watch.last_alerted_at ? (
                       <p>
                         {t("fx_watch.settings.last_alert_time", {
-                          time: new Date(watch.last_alerted_at).toLocaleString(),
+                          time: formatLocalTime(watch.last_alerted_at),
                         })}
                       </p>
                     ) : (

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { formatLocalTime, parseUtc } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -30,7 +31,9 @@ export default function FxWatch() {
     .filter((ts): ts is string => ts !== null)
   const lastAlert =
     lastAlertTimes.length > 0
-      ? new Date(Math.max(...lastAlertTimes.map((s) => new Date(s).getTime()))).toLocaleString()
+      ? formatLocalTime(
+          lastAlertTimes.reduce((a, b) => (parseUtc(a) > parseUtc(b) ? a : b)),
+        )
       : null
 
   const handleCheck = () => {

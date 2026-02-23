@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { formatLocalTime } from "@/lib/utils"
 import {
   useStocks,
   useEnrichedStocks,
@@ -58,10 +59,10 @@ export default function Dashboard() {
 
   // Timestamps
   const priceTs = rebalance?.calculated_at
-    ? new Date(rebalance.calculated_at).toLocaleString()
+    ? formatLocalTime(rebalance.calculated_at)
     : null
   const scanTs = lastScan?.last_scanned_at
-    ? new Date(lastScan.last_scanned_at).toLocaleString()
+    ? formatLocalTime(lastScan.last_scanned_at)
     : null
 
   return (

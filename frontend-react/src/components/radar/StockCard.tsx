@@ -235,7 +235,7 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
 
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded)
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, true)
   const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
   const showMoatChart = moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 

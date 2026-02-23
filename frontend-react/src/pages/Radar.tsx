@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { formatLocalTime } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useLastScan } from "@/api/hooks/useDashboard"
 import {
@@ -63,7 +64,7 @@ export default function Radar() {
   }
 
   const scanTs = lastScan?.last_scanned_at
-    ? new Date(lastScan.last_scanned_at).toLocaleString()
+    ? formatLocalTime(lastScan.last_scanned_at)
     : null
 
   return (

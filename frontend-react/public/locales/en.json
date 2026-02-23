@@ -320,8 +320,14 @@
       "reorder_hint": "Drag tickers to adjust display order.",
       "save_order": "💾 Save Order",
       "success_order": "✅ Order saved",
-      "price_chart_title": "📈 Price Trend (1Y)",
+      "price_chart_title": "📈 Price Trend",
       "moat_chart_title": "🏰 Gross Margin Trend",
+      "period": {
+        "1m": "1M",
+        "3m": "3M",
+        "6m": "6M",
+        "1y": "1Y"
+      },
       "remove_warning": "⚠️ This will remove the stock from tracking.",
       "remove_reason_required": "⚠️ Please enter a removal reason.",
       "current_category_label": "Current: {{cat}}",

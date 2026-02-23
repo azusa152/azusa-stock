@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { formatLocalTime } from "@/lib/utils"
 
 interface Props {
   score: number
@@ -14,7 +15,7 @@ function scoreColor(level: string): string {
 
 export function HealthScore({ score, level, calculatedAt }: Props) {
   const { t } = useTranslation()
-  const ts = calculatedAt ? new Date(calculatedAt).toLocaleString() : null
+  const ts = calculatedAt ? formatLocalTime(calculatedAt) : null
 
   return (
     <div className="flex items-center gap-4">
