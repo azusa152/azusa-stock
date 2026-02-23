@@ -31,7 +31,7 @@ export function SmartWithdrawal({ privacyMode }: Props) {
   const handleCalculate = () => {
     if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) return
     withdrawMutation.mutate(
-      { amount: Number(amount), currency, notify },
+      { target_amount: Number(amount), display_currency: currency, notify },
       {
         onSuccess: (data) => setResult(data),
       },

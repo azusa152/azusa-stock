@@ -345,7 +345,24 @@ docker compose up --build
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
 
-### 5. 執行測試
+### 5. API 型別產生（OpenAPI Codegen）
+
+前端 TypeScript 型別由後端 OpenAPI 規格自動產生，避免手動維護導致型別不一致。
+
+```bash
+# 首次完整設定（安裝後端 + 前端依賴，並產生型別）
+make setup
+
+# 修改 backend/api/schemas.py 後重新產生型別
+make generate-api
+```
+
+- `frontend-react/src/api/openapi.json`（已提交）— API 契約，可在 PR 中審查
+- `frontend-react/src/api/types/generated.d.ts`（gitignored）— 建構時自動產生，不提交至版本控制
+
+CI 流程（GitHub Actions）會自動驗證 `openapi.json` 是否與後端保持同步，並確認前端可正常編譯。
+
+### 6. 執行測試
 
 ```bash
 # 首次安裝依賴
@@ -887,7 +904,7 @@ azusa-stock/
 │   ├── Dockerfile                    # Multi-stage：Node build → nginx serve
 │   ├── package.json
 │   ├── src/
-│   │   ├── api/                      # TanStack Query hooks + axios client + types
+│   │   ├── api/                      # TanStack Query hooks + axios client + types（generated + hand-written）
 │   │   ├── components/               # 頁面元件（allocation/, dashboard/, radar/, fxwatch/, smartmoney/）
 │   │   ├── hooks/                    # useTheme, usePrivacyMode, useLanguage, usePlotlyTheme
 │   │   ├── lib/                      # constants.ts、i18n.ts
@@ -895,6 +912,7 @@ azusa-stock/
 │   └── public/locales/               # i18n JSON（en, zh-TW, ja, zh-CN）
 │
 ├── scripts/
+│   ├── export_openapi.py             # 匯出 FastAPI OpenAPI 規格供前端 codegen 使用
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
 │   ├── data/
 │   │   └── folio_watchlist.json      # 預設觀察名單

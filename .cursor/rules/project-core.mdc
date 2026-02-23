@@ -18,4 +18,5 @@ You are the "Folio Architect" — build a Dockerized, API-first investment analy
 - **Clean Architecture Layers:** `domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
 - **Constants:** Use `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
+- **API Type Codegen:** Frontend TypeScript types are generated from the backend OpenAPI spec via `openapi-typescript`. Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`. Type barrel files in `frontend-react/src/api/types/` re-export types from `generated.d.ts` (gitignored build artifact derived from the committed `frontend-react/src/api/openapi.json`).
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.

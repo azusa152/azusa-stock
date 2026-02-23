@@ -76,7 +76,9 @@ export function useResonance() {
       // Invert guru-centric response into ticker→gurus map for O(1) card lookup
       const acc: ResonanceMap = {}
       for (const entry of data.results) {
-        for (const h of entry.holdings) {
+        for (const rawH of entry.holdings) {
+          // entry.holdings is list[dict] in the backend → cast to known shape
+          const h = rawH as unknown as ResonanceHolding
           const item: ResonanceHolding & { guru_display_name: string } = {
             ticker: h.ticker,
             action: h.action,

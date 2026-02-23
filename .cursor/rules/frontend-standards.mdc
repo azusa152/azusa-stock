@@ -5,6 +5,13 @@ globs: ["frontend-react/**"]
 
 # Frontend Standards (React + TypeScript)
 
+## API Types (OpenAPI Codegen)
+- Frontend types are generated from the backend OpenAPI spec. Do NOT manually define types that have a corresponding Pydantic `response_model` schema in the backend.
+- Type files in `src/api/types/` are barrel modules: they re-export generated types from `./generated` and define hand-written types only for untyped endpoints (those returning `dict`/`list[dict]`).
+- After changing any Pydantic schema in `backend/api/schemas.py`, run `make generate-api` to regenerate.
+- `generated.d.ts` is gitignored. It is regenerated automatically by `npm run build` (via `prebuild`) and `npm run dev` (via `predev`).
+- Access pattern: `import type { components } from "./generated"` then `type Foo = components["schemas"]["FooModel"]`.
+
 ## Data Fetching
 - Use TanStack Query for all API calls. Never use raw `fetch` or `axios` directly in components.
 - Set appropriate `staleTime` per query (match backend cache TTLs).

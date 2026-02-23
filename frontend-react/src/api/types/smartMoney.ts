@@ -1,101 +1,26 @@
-export interface Guru {
-  id: number
-  name: string
-  cik: string
-  display_name: string
-  is_active: boolean
-  is_default: boolean
-}
+import type { components } from "./generated"
 
-export interface GuruSummaryItem {
-  id: number
-  display_name: string
-  latest_report_date: string | null
-  latest_filing_date: string | null
-  total_value: number | null
-  holdings_count: number
-  filing_count: number
-}
+// ---------------------------------------------------------------------------
+// Generated from backend Pydantic schemas (single source of truth)
+// Do NOT manually edit types that correspond to backend response_model schemas.
+// Run `make generate-api` after changing backend/api/schemas.py.
+// ---------------------------------------------------------------------------
 
-export interface SeasonHighlightItem {
-  ticker: string | null
-  company_name: string
-  guru_id: number
-  guru_display_name: string
-  value: number
-  weight_pct: number | null
-  change_pct: number | null
-}
+export type Guru = components["schemas"]["GuruResponse"]
+export type GuruSummaryItem = components["schemas"]["GuruSummaryItem"]
+export type SeasonHighlightItem = components["schemas"]["SeasonHighlightItem"]
+export type SeasonHighlights = components["schemas"]["SeasonHighlights"]
+export type ConsensusStockItem = components["schemas"]["ConsensusStockItem"]
+export type SectorBreakdownItem = components["schemas"]["SectorBreakdownItem"]
+export type DashboardResponse = components["schemas"]["DashboardResponse"]
 
-export interface SeasonHighlights {
-  new_positions: SeasonHighlightItem[]
-  sold_outs: SeasonHighlightItem[]
-}
+export type GuruFiling = components["schemas"]["GuruFilingResponse"]
+export type GuruHolding = components["schemas"]["GuruHoldingResponse"]
+export type FilingHistoryItem = components["schemas"]["FilingHistoryItem"]
+export type FilingHistoryResponse = components["schemas"]["FilingHistoryResponse"]
 
-export interface ConsensusStockItem {
-  ticker: string
-  guru_count: number
-  gurus: string[]
-  total_value: number
-}
-
-export interface SectorBreakdownItem {
-  sector: string
-  total_value: number
-  holding_count: number
-  weight_pct: number
-}
-
-export interface DashboardResponse {
-  gurus: GuruSummaryItem[]
-  season_highlights: SeasonHighlights
-  consensus: ConsensusStockItem[]
-  sector_breakdown: SectorBreakdownItem[]
-}
-
-export interface GuruFiling {
-  guru_id: number
-  guru_display_name: string
-  report_date: string | null
-  filing_date: string | null
-  total_value: number | null
-  holdings_count: number
-  filing_url: string
-  new_positions: number
-  sold_out: number
-  increased: number
-  decreased: number
-  top_holdings: Record<string, unknown>[]
-}
-
-export interface GuruHolding {
-  guru_id: number
-  cusip: string
-  ticker: string | null
-  company_name: string
-  value: number
-  shares: number
-  action: string
-  change_pct: number | null
-  weight_pct: number | null
-  report_date: string | null
-  filing_date: string | null
-}
-
-export interface FilingHistoryItem {
-  id: number
-  report_date: string
-  filing_date: string
-  total_value: number | null
-  holdings_count: number
-  filing_url: string
-}
-
-export interface FilingHistoryResponse {
-  filings: FilingHistoryItem[]
-}
-
-// guru with action detail (for great-minds gurus field)
+// GreatMindsEntryResponse.gurus is list[dict] in the backend → typed as unknown[] in the generated type.
+// Provide a properly typed override for frontend rendering.
 export interface GreatMindsGuruDetail {
   guru_id: number
   guru_display_name: string
@@ -114,8 +39,5 @@ export interface GreatMindsResponse {
   total_count: number
 }
 
-export interface AddGuruRequest {
-  name: string
-  cik: string
-  display_name: string
-}
+// Request types
+export type AddGuruRequest = components["schemas"]["GuruCreate"]

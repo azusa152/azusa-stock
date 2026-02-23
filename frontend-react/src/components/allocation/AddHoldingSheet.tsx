@@ -13,6 +13,7 @@ import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks
 import { useHoldings } from "@/api/hooks/useDashboard"
 import apiClient from "@/api/client"
 import { STOCK_CATEGORIES, MARKET_OPTIONS, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
+import type { StockCategory } from "@/api/types/allocation"
 
 interface Props {
   open: boolean
@@ -28,7 +29,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const [assetType, setAssetType] = useState<AssetType>("stock")
   const [market, setMarket] = useState("US")
   const [ticker, setTicker] = useState("")
-  const [category, setCategory] = useState("Growth")
+  const [category, setCategory] = useState<StockCategory>("Growth")
   const [quantity, setQuantity] = useState("")
   const [avgCost, setAvgCost] = useState("")
   const [broker, setBroker] = useState("")
@@ -75,7 +76,6 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
         currency,
-        market,
       },
       {
         onSuccess: () => {
@@ -134,7 +134,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         currency,
         amount: Number(cashAmount),
-        bank: cashBank || undefined,
+        broker: cashBank || undefined,
         account_type: cashAccountType || undefined,
       },
       {
@@ -265,7 +265,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
                 <p className="text-xs font-medium">{t("allocation.sidebar.category")}</p>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={(e) => setCategory(e.target.value as StockCategory)}
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
                 >
                   {STOCK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}

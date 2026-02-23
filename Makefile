@@ -2,12 +2,15 @@
 # Folio — Development Shortcuts
 # ---------------------------------------------------------------------------
 # Usage:
-#   make install          # 首次安裝依賴（建立 venv + pip install）
+#   make setup            # 首次完整設定（後端 venv + 前端 npm + 型別產生）
+#   make install          # 安裝後端依賴（建立 venv + pip install）
+#   make generate-api     # 匯出 OpenAPI 規格並產生前端 TypeScript 型別
 #   make test             # 執行所有後端測試
 #   make lint             # Ruff 靜態分析（自動修正）
 #   make format           # Ruff 程式碼格式化
-#   make frontend-dev     # 啟動前端開發伺服器（http://localhost:3000）
-#   make frontend-build   # 建構前端生產版本
+#   make frontend-install # 安裝前端依賴（npm ci）
+#   make frontend-dev     # 啟動前端開發伺服器（自動產生型別，http://localhost:3000）
+#   make frontend-build   # 建構前端生產版本（自動產生型別）
 #   make frontend-lint    # 執行前端 ESLint
 #   make up               # 啟動所有服務（背景執行）
 #   make down             # 停止並移除所有容器
@@ -26,7 +29,7 @@ export DATABASE_URL  ?= sqlite://
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install test lint format generate-key backup restore up down restart security frontend-dev frontend-build frontend-lint
+.PHONY: help install test lint format generate-key backup restore up down restart security frontend-install frontend-dev frontend-build frontend-lint generate-api setup
 
 # Dynamic volume name detection (project directory name may vary)
 VOLUME_NAME := $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -80,10 +83,20 @@ down: ## 停止並移除所有容器
 restart: ## 重新建構並重啟所有服務（保留資料）
 	docker compose up --build -d
 
-frontend-dev: ## 啟動前端開發伺服器（http://localhost:3000）
+frontend-install: ## 安裝前端依賴（npm ci）
+	cd frontend-react && npm ci
+
+generate-api: ## 匯出 OpenAPI 規格並產生 TypeScript 型別
+	$(PYTHON) scripts/export_openapi.py
+	cd frontend-react && npx openapi-typescript src/api/openapi.json -o src/api/types/generated.d.ts
+
+setup: install frontend-install generate-api ## 首次完整設定（後端 + 前端 + 型別產生）
+	@echo "Setup complete."
+
+frontend-dev: generate-api ## 啟動前端開發伺服器（http://localhost:3000）
 	cd frontend-react && npm run dev
 
-frontend-build: ## 建構前端生產版本
+frontend-build: generate-api ## 建構前端生產版本
 	cd frontend-react && npm run build
 
 frontend-lint: ## 執行前端 ESLint

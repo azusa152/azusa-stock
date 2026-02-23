@@ -27,7 +27,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
   for (const h of rebalance.holdings_detail) {
     const ytdDps = divLookup[h.ticker]
     if (ytdDps) {
-      ytdDivIncome += h.quantity * ytdDps * (h.fx ?? 1)
+      ytdDivIncome += h.quantity * ytdDps
     }
   }
 

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# OpenAPI codegen output (build artifact — regenerated from committed openapi.json)
+src/api/types/generated.d.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

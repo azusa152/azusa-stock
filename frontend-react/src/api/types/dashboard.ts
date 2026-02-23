@@ -1,32 +1,41 @@
-export type StockCategory =
-  | "Trend_Setter"
-  | "Moat"
-  | "Growth"
-  | "Bond"
-  | "Cash"
+import type { components } from "./generated"
 
-export type ScanSignal =
-  | "NORMAL"
-  | "DEEP_VALUE"
-  | "OVERSOLD"
-  | "CONTRARIAN_BUY"
-  | "APPROACHING_BUY"
-  | "OVERHEATED"
-  | "CAUTION_HIGH"
-  | "WEAKENING"
-  | "THESIS_BROKEN"
+// ---------------------------------------------------------------------------
+// Generated from backend Pydantic schemas (single source of truth)
+// Do NOT manually edit types that correspond to backend response_model schemas.
+// Run `make generate-api` after changing backend/api/schemas.py.
+// ---------------------------------------------------------------------------
 
-export interface Stock {
-  ticker: string
-  category: StockCategory
-  current_thesis: string
-  current_tags: string[]
-  display_order: number
-  last_scan_signal: ScanSignal
-  is_active: boolean
-  is_etf: boolean
-  signals?: Record<string, unknown>
-}
+export type StockCategory = components["schemas"]["StockCategory"]
+export type ScanSignal = components["schemas"]["ScanSignal"]
+
+// Stock (mapped from StockResponse)
+export type Stock = components["schemas"]["StockResponse"]
+
+export type CategoryAllocation = components["schemas"]["CategoryAllocation"]
+export type HoldingDetail = components["schemas"]["HoldingDetail"]
+export type RebalanceResponse = components["schemas"]["RebalanceResponse"]
+
+export type VIXData = components["schemas"]["VIXData"]
+export type CNNFearGreedData = components["schemas"]["CNNFearGreedData"]
+export type FearGreedResponse = components["schemas"]["FearGreedResponse"]
+
+// Snapshot (mapped from SnapshotResponse)
+export type Snapshot = components["schemas"]["SnapshotResponse"]
+export type TwrResponse = components["schemas"]["TwrResponse"]
+
+// GreatMindsResponse: gurus field is list[dict] in backend → properly typed via hand-written types
+export type { GreatMindsResponse, GreatMindsEntryResponse, GreatMindsGuruDetail } from "./smartMoney"
+export type LastScanResponse = components["schemas"]["LastScanResponse"]
+
+// Holding (mapped from HoldingResponse)
+export type Holding = components["schemas"]["HoldingResponse"]
+
+export type ProfileResponse = components["schemas"]["ProfileResponse"]
+
+// ---------------------------------------------------------------------------
+// Hand-written types: backend endpoints return untyped dict for these
+// ---------------------------------------------------------------------------
 
 export interface DividendInfo {
   dividend_yield?: number
@@ -41,6 +50,7 @@ export interface EarningsInfo {
   error?: string
 }
 
+// GET /stocks/enriched returns list[dict] — no Pydantic response_model
 export interface EnrichedStock {
   ticker: string
   category?: StockCategory
@@ -54,122 +64,3 @@ export interface EnrichedStock {
   earnings?: EarningsInfo
 }
 
-export interface CategoryAllocation {
-  target_pct: number
-  current_pct: number
-  drift_pct: number
-  current_value: number
-}
-
-export interface HoldingDetail {
-  ticker: string
-  category: StockCategory
-  quantity: number
-  cost_basis?: number
-  cost_total?: number
-  market_value: number
-  weight_pct: number
-  change_pct?: number
-  fx?: number
-  currency?: string
-}
-
-export interface RebalanceResponse {
-  total_value: number
-  previous_total_value?: number
-  total_value_change?: number
-  total_value_change_pct?: number
-  display_currency: string
-  categories: Record<string, CategoryAllocation>
-  advice: string[]
-  holdings_detail: HoldingDetail[]
-  health_score: number
-  health_level: string
-  calculated_at: string
-}
-
-export interface VIXData {
-  value?: number
-  change_1d?: number
-}
-
-export interface CNNFearGreedData {
-  score?: number
-  rating?: string
-}
-
-export interface FearGreedResponse {
-  composite_score: number
-  composite_level: string
-  composite_label: string
-  vix?: VIXData
-  cnn?: CNNFearGreedData
-  fetched_at: string
-}
-
-export interface Snapshot {
-  snapshot_date: string
-  total_value: number
-  category_values?: Record<string, number>
-  display_currency?: string
-  benchmark_value?: number
-}
-
-export interface TwrResponse {
-  twr_pct?: number
-  start_date?: string
-  end_date?: string
-  snapshot_count: number
-}
-
-export interface GreatMindsGuru {
-  guru_id: string
-  guru_display_name: string
-  action: string
-  weight_pct?: number
-}
-
-export interface GreatMindsEntry {
-  ticker: string
-  guru_count: number
-  gurus: GreatMindsGuru[]
-}
-
-export interface GreatMindsResponse {
-  stocks: GreatMindsEntry[]
-  total_count: number
-}
-
-export interface LastScanResponse {
-  last_scanned_at?: string
-  epoch?: number
-  market_status?: string
-  market_status_details?: string
-  fear_greed_level?: string
-  fear_greed_score?: number
-}
-
-export interface Holding {
-  id: number
-  ticker: string
-  category: StockCategory
-  quantity: number
-  cost_basis?: number
-  broker?: string
-  currency: string
-  account_type?: string
-  is_cash: boolean
-  updated_at: string
-}
-
-export interface ProfileResponse {
-  id: number
-  user_id: string
-  name: string
-  source_template_id?: string
-  home_currency: string
-  config: Record<string, number>
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}

@@ -19,9 +19,10 @@ All user-facing strings MUST use the `t()` translation function — never hardco
 
 ## Documentation Sync
 
-**Triggers:** New endpoint, removed/renamed endpoint, schema change, new category/enum value, error code change.
+**Triggers:** New endpoint, removed/renamed endpoint, schema change, new category/enum value, error code change, Pydantic request/response model change in `backend/api/schemas.py`.
 
 **Files to update:**
+- `frontend-react/src/api/openapi.json` — Regenerate via `make generate-api` after any Pydantic schema change; this is the committed API contract
 - `README.md` — Feature list, API reference, architecture diagrams, examples
 - Frontend SOP (collapsible section in React pages via `allocation.sop.content`, `radar.sop.content`, etc.) — In-app user guide
 - `docs/agents/folio/SKILL.md` — Webhook actions table, direct API endpoint table, categories, response format

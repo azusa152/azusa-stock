@@ -25,7 +25,7 @@ export function NotificationPreferences() {
   const handleSave = () => {
     setFeedback(null)
     saveMutation.mutate(
-      { notification_preferences: prefs },
+      { privacy_mode: data?.privacy_mode ?? false, notification_preferences: prefs },
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
