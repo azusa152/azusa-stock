@@ -59,7 +59,7 @@ _MOCK_FG = {
 }
 
 _MOCK_MARKET_SENTIMENT = {
-    "status": "POSITIVE",
+    "status": "BULLISH",
     "details": "ok",
     "below_60ma_pct": 20.0,
 }

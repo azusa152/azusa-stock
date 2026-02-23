@@ -60,7 +60,7 @@
     "thesis_broken_alert": "🚨 {ticker} モートが弱体化！{details}",
     "contrarian_buy_alert": "🟢 {ticker} 逆張り買いシグナル（RSI={rsi}）",
     "approaching_buy_alert": "🎯 {ticker} 買い場接近（RSI={rsi}，Bias={bias}%，MA200乖離={bias_200}%）",
-    "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
+    "overheated_alert": "🔥 {ticker} 乖離率過熱（Bias={bias}%）",
     "deep_value_alert": "💎 {ticker} 深度バリュー（Bias={bias}%、RSI={rsi}）",
     "oversold_alert": "📉 {ticker} 売られすぎ（Bias={bias}%）",
     "caution_high_alert": "⚠️ {ticker} 警戒高（Bias={bias}%、RSI={rsi}）",
@@ -180,16 +180,15 @@
   },
   "market": {
     "no_trend_stocks": "分析可能なトレンドセッター銘柄がありません",
-    "sentiment_caution": "市場センチメント: 警戒 — トレンドセッターの{pct}%が60MAを下回っています（{below}/{total}）",
-    "sentiment_caution_detail": "トレンドセッターの大半が弱含み（{below}/{total} が60MAを下回る）",
-    "sentiment_positive": "市場センチメント: ポジティブ — トレンドセッターの{pct}%が60MAを下回っています（{below}/{total}）",
-    "sentiment_positive_detail": "トレンドセッターは全体的に安定（{below}/{total} が60MAを下回る）",
     "sentiment_default": "判断不能、ポジティブとみなします",
-    "caution_details": "大半のトレンドセッターが軟調（{below}/{total} が60MA割れ）",
-    "positive_details": "トレンドセッター全体は堅調（{below}/{total} が60MA割れ）",
     "fallback_optimistic": "判定不能、デフォルトで楽観的",
     "insufficient_history": "⚠️ {ticker} テクニカル指標の計算に十分な履歴データがありません。",
-    "signals_fetch_error": "⚠️ {ticker} のテクニカルシグナル取得に失敗：{error}"
+    "signals_fetch_error": "⚠️ {ticker} のテクニカルシグナル取得に失敗：{error}",
+    "strong_bullish_details": "ほぼ全てのトレンドセッターが60MA上 — 強い市場幅（{below}/{total} 60MA割れ）",
+    "bullish_details": "トレンドセッター全体は堅調（{below}/{total} 60MA割れ）",
+    "neutral_details": "市場幅は混合 — 移行ゾーン（{below}/{total} 60MA割れ）",
+    "bearish_details": "過半数のトレンドセッターが軟化（{below}/{total} 60MA割れ）",
+    "strong_bearish_details": "極端な市場幅の弱体化（{below}/{total} 60MA割れ）"
   },
   "holding": {
     "not_found": "保有が見つかりません。",

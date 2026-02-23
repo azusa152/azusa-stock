@@ -206,17 +206,31 @@ Both fields use the same 9-state taxonomy. RSI thresholds are category-aware: Gr
 
 | Signal | Icon | Condition (default offset=0) | What to tell the user |
 |--------|------|------------------------------|----------------------|
-| `THESIS_BROKEN` | 🔴 | Gross margin YoY deteriorated >2pp | Fundamental thesis broken — recommend re-evaluating the holding |
-| `DEEP_VALUE` | 🔵 | Bias < −20% AND RSI < 35 | Both price and momentum confirm deep discount — high-conviction entry zone |
-| `OVERSOLD` | 🟣 | Bias < −20% (RSI ≥ 35) | Price at extreme low; RSI not yet confirming — watch for further confirmation |
+| `THESIS_BROKEN` | 🚨 | Gross margin YoY deteriorated >2pp | Fundamental thesis broken — recommend re-evaluating the holding |
+| `DEEP_VALUE` | 💎 | Bias < −20% AND RSI < 35 | Both price and momentum confirm deep discount — high-conviction entry zone |
+| `OVERSOLD` | 📉 | Bias < −20% (RSI ≥ 35) | Price at extreme low; RSI not yet confirming — watch for further confirmation |
 | `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold, price not overheated — potential contrarian entry |
-| `APPROACHING_BUY` | 🟡 | RSI < 37 AND Bias < −15% | Accumulation zone — approaching buy range; monitor for further RSI confirmation |
-| `OVERHEATED` | 🟠 | Bias > 20% AND RSI > 70 | Both indicators overheated — sell warning, avoid chasing |
+| `APPROACHING_BUY` | 🎯 | RSI < 37 AND Bias < −15% | Accumulation zone — approaching buy range; monitor for further RSI confirmation |
+| `OVERHEATED` | 🔥 | Bias > 20% AND RSI > 70 | Both indicators overheated — sell warning, avoid chasing |
 | `CAUTION_HIGH` | ⚠️ | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions |
-| `WEAKENING` | 🟤 | Bias < −15% AND RSI < 38 | Early weakness, not yet extreme — monitor closely |
-| `NORMAL` | ⚪ | Everything else | No notable signal |
+| `WEAKENING` | 🔻 | Bias < −15% AND RSI < 38 | Early weakness, not yet extreme — monitor closely |
+| `NORMAL` | ➖ | Everything else | No notable signal |
 
 Telegram notifications may append volume context: **📈 volume surge** (`volume_ratio ≥ 1.5`) strengthens conviction; **📉 thin volume** (`volume_ratio ≤ 0.5`) weakens it. These qualifiers do not change the signal enum.
+
+## Market Sentiment (5-Tier)
+
+Market sentiment is determined by the percentage of **Trend Setter** stocks trading below their 60-day moving average. It serves as a contextual backdrop — it does NOT gate signal logic.
+
+| % Below 60MA | Sentiment | Icon | Guidance |
+|--------------|-----------|------|----------|
+| 0–10% | `STRONG_BULLISH` | ☀️ | Nearly all trend setters healthy — strong breadth, full risk-on |
+| 10–30% | `BULLISH` | 🌤️ | Mostly healthy — normal accumulation conditions |
+| 30–50% | `NEUTRAL` | ⛅ | Mixed breadth — transition zone, be selective |
+| 50–70% | `BEARISH` | 🌧️ | Majority weakening — reduce exposure, tighten stops |
+| >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
+
+The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
 
 ## Categories
 

@@ -60,7 +60,7 @@
     "thesis_broken_alert": "🚨 {ticker} 护城河松动！{details}",
     "contrarian_buy_alert": "🟢 {ticker} 逆势买入信号（RSI={rsi}）",
     "approaching_buy_alert": "🎯 {ticker} 接近买入区（RSI={rsi}，Bias={bias}%，MA200偏离={bias_200}%）",
-    "overheated_alert": "🟠 {ticker} 乖离率过热（Bias={bias}%）",
+    "overheated_alert": "🔥 {ticker} 乖离率过热（Bias={bias}%）",
     "deep_value_alert": "💎 {ticker} 深度价值（Bias={bias}%，RSI={rsi}）",
     "oversold_alert": "📉 {ticker} 超卖（Bias={bias}%）",
     "caution_high_alert": "⚠️ {ticker} 偏高警示（Bias={bias}%，RSI={rsi}）",
@@ -180,16 +180,15 @@
   },
   "market": {
     "no_trend_stocks": "无风向球股票可供分析",
-    "sentiment_caution": "市场情绪：CAUTION — {pct}% 的风向球跌破 60MA（{below}/{total}）",
-    "sentiment_caution_detail": "多数风向球股价转弱（{below}/{total} 跌破 60MA）",
-    "sentiment_positive": "市场情绪：POSITIVE — {pct}% 的风向球跌破 60MA（{below}/{total}）",
-    "sentiment_positive_detail": "风向球整体稳健（{below}/{total} 跌破 60MA）",
     "sentiment_default": "无法判断，预设乐观",
-    "caution_details": "多数风向球股价转弱（{below}/{total} 跌破 60MA）",
-    "positive_details": "风向球整体稳健（{below}/{total} 跌破 60MA）",
     "fallback_optimistic": "无法判断，默认乐观",
     "insufficient_history": "⚠️ {ticker} 历史数据不足，无法计算技术指标。",
-    "signals_fetch_error": "⚠️ 无法获取 {ticker} 技术信号：{error}"
+    "signals_fetch_error": "⚠️ 无法获取 {ticker} 技术信号：{error}",
+    "strong_bullish_details": "几乎所有风向球均站稳60MA — 市场宽度强劲（{below}/{total} 跌破60MA）",
+    "bullish_details": "风向球整体稳健（{below}/{total} 跌破60MA）",
+    "neutral_details": "市场宽度混合 — 过渡区间（{below}/{total} 跌破60MA）",
+    "bearish_details": "多数风向球转弱（{below}/{total} 跌破60MA）",
+    "strong_bearish_details": "极端市场宽度弱势（{below}/{total} 跌破60MA）"
   },
   "holding": {
     "not_found": "持仓不存在。",

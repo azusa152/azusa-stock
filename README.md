@@ -30,7 +30,7 @@
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號
 - **恐懼與貪婪指數** — 結合 VIX 與 CNN Fear & Greed 的綜合市場情緒指標（五級）
 - **護城河健檢** — 毛利率 5 季走勢圖 + YoY 五級診斷
-- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🔴🔵🟣🟢🟡🟠⚠️🟤⚪），9 級分類感知 RSI 閾值（Growth/Moat/Bond 依 beta 動態調整），MA200 放大器自動升級邊緣訊號
+- **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🚨💎📉🟢🎯🔥⚠️🔻➖），9 級分類感知 RSI 閾值（Growth/Moat/Bond 依 beta 動態調整），MA200 放大器自動升級邊緣訊號
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
 - **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
 
@@ -95,23 +95,26 @@
 
 ```mermaid
 flowchart TD
-    L1["Layer 1: 市場情緒"] -->|"風向球跌破 60MA 比例"| Decision{">50%?"}
-    Decision -->|"是"| CAUTION["CAUTION 雨天（顯示用，不影響訊號）"]
-    Decision -->|"否"| POSITIVE["POSITIVE 晴天（顯示用，不影響訊號）"]
+    L1["Layer 1: 市場情緒（5 階段）"] -->|"風向球跌破 60MA 比例"| SentCheck
+    SentCheck -->|"0–10%"| SB["☀️ STRONG_BULLISH（晴天）"]
+    SentCheck -->|"10–30%"| BL["🌤️ BULLISH（晴時多雲）"]
+    SentCheck -->|"30–50%"| NT["⛅ NEUTRAL（多雲）"]
+    SentCheck -->|"50–70%"| BR["🌧️ BEARISH（雨天）"]
+    SentCheck -->|">70%"| SBR["⛈️ STRONG_BEARISH（暴風雨）"]
 
     L2["Layer 2: 護城河趨勢"] -->|"毛利率 YoY"| MoatCheck{"衰退 >2pp?"}
-    MoatCheck -->|"是"| BROKEN["🔴 THESIS_BROKEN（P1）"]
+    MoatCheck -->|"是"| BROKEN["🚨 THESIS_BROKEN（P1）"]
     MoatCheck -->|"否"| L3
 
     L3["Layer 3: 技術面 9 級決策引擎（分類感知 RSI + MA200 放大器）"] -->|"RSI, Bias, Bias200, Category"| TechCheck
-    TechCheck -->|"Bias<-20% AND RSI<35+offset"| DV["🔵 DEEP_VALUE（P2）"]
-    TechCheck -->|"Bias<-20%"| OS["🟣 OVERSOLD（P3）"]
+    TechCheck -->|"Bias<-20% AND RSI<35+offset"| DV["💎 DEEP_VALUE（P2）"]
+    TechCheck -->|"Bias<-20%"| OS["📉 OVERSOLD（P3）"]
     TechCheck -->|"RSI<35+offset AND Bias<20%"| BUY["🟢 CONTRARIAN_BUY（P4）"]
-    TechCheck -->|"RSI<37+offset AND Bias<-15%"| AB["🟡 APPROACHING_BUY（P4.5）"]
-    TechCheck -->|"Bias>20% AND RSI>70+offset"| HOT["🟠 OVERHEATED（P5）"]
+    TechCheck -->|"RSI<37+offset AND Bias<-15%"| AB["🎯 APPROACHING_BUY（P4.5）"]
+    TechCheck -->|"Bias>20% AND RSI>70+offset"| HOT["🔥 OVERHEATED（P5）"]
     TechCheck -->|"Bias>20% OR RSI>70+offset"| CH["⚠️ CAUTION_HIGH（P6）"]
-    TechCheck -->|"Bias<-15% AND RSI<38+offset"| WK["🟤 WEAKENING（P7）"]
-    TechCheck -->|"其他"| NORMAL["⚪ NORMAL（P8）"]
+    TechCheck -->|"Bias<-15% AND RSI<38+offset"| WK["🔻 WEAKENING（P7）"]
+    TechCheck -->|"其他"| NORMAL["➖ NORMAL（P8）"]
     TechCheck -->|"MA200偏離<-15%放大"| MA200B["買側 MA200 放大器"]
     TechCheck -->|"MA200偏離>+20%放大"| MA200S["賣側 MA200 放大器"]
 

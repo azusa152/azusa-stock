@@ -60,7 +60,7 @@
     "thesis_broken_alert": "🚨 {ticker} 護城河鬆動！{details}",
     "contrarian_buy_alert": "🟢 {ticker} 逆勢買入訊號（RSI={rsi}）",
     "approaching_buy_alert": "🎯 {ticker} 接近買入區（RSI={rsi}，Bias={bias}%，MA200偏離={bias_200}%）",
-    "overheated_alert": "🟠 {ticker} 乖離率過熱（Bias={bias}%）",
+    "overheated_alert": "🔥 {ticker} 乖離率過熱（Bias={bias}%）",
     "deep_value_alert": "💎 {ticker} 深度價值（Bias={bias}%，RSI={rsi}）",
     "oversold_alert": "📉 {ticker} 超賣（Bias={bias}%）",
     "caution_high_alert": "⚠️ {ticker} 偏高警示（Bias={bias}%，RSI={rsi}）",
@@ -180,16 +180,15 @@
   },
   "market": {
     "no_trend_stocks": "無風向球股票可供分析",
-    "sentiment_caution": "市場情緒：CAUTION — {pct}% 的風向球跌破 60MA（{below}/{total}）",
-    "sentiment_caution_detail": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
-    "sentiment_positive": "市場情緒：POSITIVE — {pct}% 的風向球跌破 60MA（{below}/{total}）",
-    "sentiment_positive_detail": "風向球整體穩健（{below}/{total} 跌破 60MA）",
     "sentiment_default": "無法判斷，預設樂觀",
-    "caution_details": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
-    "positive_details": "風向球整體穩健（{below}/{total} 跌破 60MA）",
     "fallback_optimistic": "無法判斷，預設樂觀",
     "insufficient_history": "⚠️ {ticker} 歷史資料不足，無法計算技術指標。",
-    "signals_fetch_error": "⚠️ 無法取得 {ticker} 技術訊號：{error}"
+    "signals_fetch_error": "⚠️ 無法取得 {ticker} 技術訊號：{error}",
+    "strong_bullish_details": "幾乎所有風向球均站穩60MA — 市場寬度強勁（{below}/{total} 跌破60MA）",
+    "bullish_details": "風向球整體穩健（{below}/{total} 跌破60MA）",
+    "neutral_details": "市場寬度混合 — 過渡區間（{below}/{total} 跌破60MA）",
+    "bearish_details": "多數風向球轉弱（{below}/{total} 跌破60MA）",
+    "strong_bearish_details": "極端市場寬度弱勢（{below}/{total} 跌破60MA）"
   },
   "holding": {
     "not_found": "持倉不存在。",

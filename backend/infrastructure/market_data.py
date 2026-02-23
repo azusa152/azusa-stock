@@ -119,6 +119,8 @@ T = TypeVar("T")
 
 logger = get_logger(__name__)
 
+_BEARISH_TIERS: frozenset = frozenset({MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH})
+
 
 # ---------------------------------------------------------------------------
 # Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
@@ -774,12 +776,12 @@ def prewarm_moat_batch(
 
 def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     """
-    分析風向球股票的整體市場情緒。
+    分析風向球股票的整體市場情緒（5 階段）。
     接受動態的 ticker_list，計算跌破 60MA 的比例。
     """
     if not ticker_list:
         return {
-            "status": MarketSentiment.POSITIVE.value,
+            "status": MarketSentiment.BULLISH.value,
             "details": t("market.no_trend_stocks", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }
@@ -797,37 +799,30 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
                 if price is not None and ma60 is not None and price < ma60:
                     below_count += 1
 
-        # 使用 domain 層的純判定函式
         sentiment, pct = determine_market_sentiment(below_count, valid_count)
 
-        if sentiment == MarketSentiment.CAUTION:
+        if sentiment in _BEARISH_TIERS:
             logger.warning(
-                "市場情緒：CAUTION — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                "市場情緒：%s — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                sentiment.value,
                 pct,
                 below_count,
                 valid_count,
             )
-            return {
-                "status": sentiment.value,
-                "details": t(
-                    "market.caution_details",
-                    lang=DEFAULT_LANGUAGE,
-                    below=below_count,
-                    total=valid_count,
-                ),
-                "below_60ma_pct": pct,
-            }
+        else:
+            logger.info(
+                "市場情緒：%s — %.1f%% 的風向球跌破 60MA（%d/%d）",
+                sentiment.value,
+                pct,
+                below_count,
+                valid_count,
+            )
 
-        logger.info(
-            "市場情緒：POSITIVE — %.1f%% 的風向球跌破 60MA（%d/%d）",
-            pct,
-            below_count,
-            valid_count,
-        )
+        detail_key = f"market.{sentiment.value.lower()}_details"
         return {
             "status": sentiment.value,
             "details": t(
-                "market.positive_details",
+                detail_key,
                 lang=DEFAULT_LANGUAGE,
                 below=below_count,
                 total=valid_count,
@@ -838,7 +833,7 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     except Exception as e:
         logger.error("市場情緒分析失敗：%s", e, exc_info=True)
         return {
-            "status": MarketSentiment.POSITIVE.value,
+            "status": MarketSentiment.BULLISH.value,
             "details": t("market.fallback_optimistic", lang=DEFAULT_LANGUAGE),
             "below_60ma_pct": 0.0,
         }

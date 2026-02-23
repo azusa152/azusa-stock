@@ -240,7 +240,7 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
   const showMoatChart = moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
-  const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "⚪"
+  const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
   const price = enrichment?.price
   const changePct = enrichment?.change_pct

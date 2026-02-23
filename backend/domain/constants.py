@@ -42,7 +42,12 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Bond": -3,  # beta ~0.3
     "Cash": 0,
 }
-MARKET_CAUTION_BELOW_60MA_PCT = 50  # % of trend stocks below 60MA
+# Market sentiment thresholds — % of Trend Setter stocks below 60MA
+MARKET_STRONG_BULLISH_MAX_PCT = 10  # ≤10%  → ☀️ Strong Bullish
+MARKET_BULLISH_MAX_PCT = 30  # ≤30%  → 🌤️ Bullish
+MARKET_NEUTRAL_MAX_PCT = 50  # ≤50%  → ⛅ Neutral
+MARKET_BEARISH_MAX_PCT = 70  # ≤70%  → 🌧️ Bearish
+# >70% → ⛈️ Strong Bearish
 
 # ---------------------------------------------------------------------------
 # Cache Configuration

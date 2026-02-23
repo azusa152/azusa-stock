@@ -60,7 +60,7 @@
     "thesis_broken_alert": "🚨 {ticker} moat deteriorating! {details}",
     "contrarian_buy_alert": "🟢 {ticker} contrarian buy signal (RSI={rsi})",
     "approaching_buy_alert": "🎯 {ticker} approaching buy zone (RSI={rsi}, Bias={bias}%, MA200 dev={bias_200}%)",
-    "overheated_alert": "🟠 {ticker} overheated (Bias={bias}%)",
+    "overheated_alert": "🔥 {ticker} overheated (Bias={bias}%)",
     "deep_value_alert": "💎 {ticker} deep value (Bias={bias}%, RSI={rsi})",
     "oversold_alert": "📉 {ticker} oversold (Bias={bias}%)",
     "caution_high_alert": "⚠️ {ticker} caution — overheating signal (Bias={bias}%, RSI={rsi})",
@@ -180,16 +180,15 @@
   },
   "market": {
     "no_trend_stocks": "No trend setter stocks available for analysis",
-    "sentiment_caution": "Market Sentiment: CAUTION — {pct}% of trend setters below 60MA ({below}/{total})",
-    "sentiment_caution_detail": "Majority of trend setters weakening ({below}/{total} below 60MA)",
-    "sentiment_positive": "Market Sentiment: POSITIVE — {pct}% of trend setters below 60MA ({below}/{total})",
-    "sentiment_positive_detail": "Trend setters overall stable ({below}/{total} below 60MA)",
     "sentiment_default": "Unable to determine, defaulting to positive",
-    "caution_details": "Most trend setters weakening ({below}/{total} below 60MA)",
-    "positive_details": "Trend setters overall healthy ({below}/{total} below 60MA)",
     "fallback_optimistic": "Unable to determine, defaulting to optimistic",
     "insufficient_history": "⚠️ {ticker} insufficient history data for technical indicators.",
-    "signals_fetch_error": "⚠️ Failed to fetch {ticker} technical signals: {error}"
+    "signals_fetch_error": "⚠️ Failed to fetch {ticker} technical signals: {error}",
+    "strong_bullish_details": "Nearly all trend setters above 60MA — strong breadth ({below}/{total} below)",
+    "bullish_details": "Trend setters overall healthy ({below}/{total} below 60MA)",
+    "neutral_details": "Mixed breadth — transition zone ({below}/{total} below 60MA)",
+    "bearish_details": "Majority of trend setters weakening ({below}/{total} below 60MA)",
+    "strong_bearish_details": "Extreme breadth weakness ({below}/{total} below 60MA)"
   },
   "holding": {
     "not_found": "Holding not found.",

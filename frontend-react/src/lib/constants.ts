@@ -25,7 +25,7 @@ export const SCAN_SIGNAL_ICONS: Record<string, string> = {
   OVERHEATED: "🔥",
   CAUTION_HIGH: "⚠️",
   WEAKENING: "🔻",
-  NORMAL: "✅",
+  NORMAL: "➖",
 }
 
 export const BUY_OPPORTUNITY_SIGNALS = new Set([

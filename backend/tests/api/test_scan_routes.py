@@ -39,7 +39,7 @@ class TestGetLastScan:
         scan_log = ScanLog(
             stock_ticker="AAPL",
             signal="NORMAL",
-            market_status="POSITIVE",
+            market_status="BULLISH",
             market_status_details="風向球整體穩健（0/4 跌破 60MA）",
             details="",
             scanned_at=scan_time,
@@ -55,7 +55,7 @@ class TestGetLastScan:
         assert resp.status_code == 200
         data = resp.json()
         assert data["last_scanned_at"] is not None
-        assert data["market_status"] == "POSITIVE"
+        assert data["market_status"] == "BULLISH"
         assert data["market_status_details"] == "風向球整體穩健（0/4 跌破 60MA）"
         assert data["epoch"] is not None
 
@@ -75,7 +75,7 @@ class TestGetLastScan:
         older_scan = ScanLog(
             stock_ticker="MSFT",
             signal="NORMAL",
-            market_status="POSITIVE",
+            market_status="BULLISH",
             market_status_details="風向球整體穩健（0/4 跌破 60MA）",
             details="",
             scanned_at=datetime(2025, 6, 14, 10, 0, 0, tzinfo=timezone.utc),
@@ -83,7 +83,7 @@ class TestGetLastScan:
         newer_scan = ScanLog(
             stock_ticker="MSFT",
             signal="THESIS_BROKEN",
-            market_status="CAUTION",
+            market_status="BEARISH",
             market_status_details="風向球偏空（3/4 跌破 60MA）",
             details="",
             scanned_at=datetime(2025, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
@@ -99,7 +99,7 @@ class TestGetLastScan:
         # Assert — should return the newest scan's market_status and details
         assert resp.status_code == 200
         data = resp.json()
-        assert data["market_status"] == "CAUTION"
+        assert data["market_status"] == "BEARISH"
         assert data["market_status_details"] == "風向球偏空（3/4 跌破 60MA）"
 
 

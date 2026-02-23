@@ -4,6 +4,7 @@ from domain.analysis import (
     compute_bias_percentile,
     compute_twr,
     detect_rogue_wave,
+    determine_market_sentiment,
     determine_scan_signal,
 )
 from domain.constants import (
@@ -11,7 +12,7 @@ from domain.constants import (
     ROGUE_WAVE_MIN_HISTORY_DAYS,
     ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
 )
-from domain.enums import MoatStatus, ScanSignal
+from domain.enums import MarketSentiment, MoatStatus, ScanSignal
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -735,3 +736,96 @@ class TestComputeTwr:
         result = compute_twr(snaps)
         # product = 0/100000 = 0, TWR = -100%
         assert result == -100.0
+
+
+# ---------------------------------------------------------------------------
+# determine_market_sentiment — 5-tier breadth classification
+# ---------------------------------------------------------------------------
+
+
+class TestDetermineMarketSentiment:
+    """Tests for the 5-tier determine_market_sentiment() function."""
+
+    # --- Edge case: no valid stocks ---
+
+    def test_no_valid_stocks_returns_bullish(self):
+        sentiment, pct = determine_market_sentiment(0, 0)
+        assert sentiment == MarketSentiment.BULLISH
+        assert pct == 0.0
+
+    # --- STRONG_BULLISH: 0–10% ---
+
+    def test_zero_below_returns_strong_bullish(self):
+        sentiment, pct = determine_market_sentiment(0, 10)
+        assert sentiment == MarketSentiment.STRONG_BULLISH
+        assert pct == 0.0
+
+    def test_exactly_10_pct_returns_strong_bullish(self):
+        sentiment, pct = determine_market_sentiment(1, 10)
+        assert sentiment == MarketSentiment.STRONG_BULLISH
+        assert pct == 10.0
+
+    # --- BULLISH: 10–30% ---
+
+    def test_just_above_10_pct_returns_bullish(self):
+        # 2/10 = 20%
+        sentiment, pct = determine_market_sentiment(2, 10)
+        assert sentiment == MarketSentiment.BULLISH
+        assert pct == 20.0
+
+    def test_exactly_30_pct_returns_bullish(self):
+        sentiment, pct = determine_market_sentiment(3, 10)
+        assert sentiment == MarketSentiment.BULLISH
+        assert pct == 30.0
+
+    # --- NEUTRAL: 30–50% ---
+
+    def test_just_above_30_pct_returns_neutral(self):
+        # 4/10 = 40%
+        sentiment, pct = determine_market_sentiment(4, 10)
+        assert sentiment == MarketSentiment.NEUTRAL
+        assert pct == 40.0
+
+    def test_exactly_50_pct_returns_neutral(self):
+        sentiment, pct = determine_market_sentiment(5, 10)
+        assert sentiment == MarketSentiment.NEUTRAL
+        assert pct == 50.0
+
+    # --- BEARISH: 50–70% ---
+
+    def test_just_above_50_pct_returns_bearish(self):
+        # 6/10 = 60%
+        sentiment, pct = determine_market_sentiment(6, 10)
+        assert sentiment == MarketSentiment.BEARISH
+        assert pct == 60.0
+
+    def test_exactly_70_pct_returns_bearish(self):
+        sentiment, pct = determine_market_sentiment(7, 10)
+        assert sentiment == MarketSentiment.BEARISH
+        assert pct == 70.0
+
+    # --- STRONG_BEARISH: >70% ---
+
+    def test_just_above_70_pct_returns_strong_bearish(self):
+        # 8/10 = 80%
+        sentiment, pct = determine_market_sentiment(8, 10)
+        assert sentiment == MarketSentiment.STRONG_BEARISH
+        assert pct == 80.0
+
+    def test_all_below_returns_strong_bearish(self):
+        sentiment, pct = determine_market_sentiment(10, 10)
+        assert sentiment == MarketSentiment.STRONG_BEARISH
+        assert pct == 100.0
+
+    # --- Fractional edge cases ---
+
+    def test_boundary_10_1_pct(self):
+        # 10.7% → BULLISH (just above 10% boundary)
+        sentiment, pct = determine_market_sentiment(3, 28)
+        assert sentiment == MarketSentiment.BULLISH
+
+    def test_boundary_30_pct_exact(self):
+        # 3/10 = 30.0% → exactly at boundary → BULLISH (≤30)
+        sentiment, pct = determine_market_sentiment(3, 10)
+        assert sentiment == MarketSentiment.BULLISH
+        assert pct == 30.0

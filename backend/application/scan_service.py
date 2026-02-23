@@ -82,7 +82,7 @@ def run_scan(session: Session) -> dict:
     logger.info("Layer 1 — 風向球股票（情緒計算用）：%s", trend_tickers)
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
-    market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)
+    market_status_value = market_sentiment.get("status", MarketSentiment.BULLISH.value)
     market_status_details_value = market_sentiment.get("details", "")
     logger.info(
         "Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value

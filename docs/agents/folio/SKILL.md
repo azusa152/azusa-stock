@@ -330,15 +330,15 @@ Both fields share the same 9-state cascade. Higher priority (lower P number) tru
 
 | Priority | Signal | Icon | Condition (default offset=0) | Meaning |
 |----------|--------|------|------------------------------|---------|
-| P1 | `THESIS_BROKEN` | 🔴 | Gross margin YoY deteriorated >2pp | Fundamental thesis is broken — re-evaluate holding |
-| P2 | `DEEP_VALUE` | 🔵 | Bias < −20% AND RSI < 35 | Both indicators confirm deep discount — highest-conviction entry opportunity |
-| P3 | `OVERSOLD` | 🟣 | Bias < −20% (RSI ≥ 35) | Price at extreme discount (bias-only); watch for RSI confirmation before acting |
+| P1 | `THESIS_BROKEN` | 🚨 | Gross margin YoY deteriorated >2pp | Fundamental thesis is broken — re-evaluate holding |
+| P2 | `DEEP_VALUE` | 💎 | Bias < −20% AND RSI < 35 | Both indicators confirm deep discount — highest-conviction entry opportunity |
+| P3 | `OVERSOLD` | 📉 | Bias < −20% (RSI ≥ 35) | Price at extreme discount (bias-only); watch for RSI confirmation before acting |
 | P4 | `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold but price not overheated — potential contrarian entry |
-| P4.5 | `APPROACHING_BUY` | 🟡 | RSI < 37 AND Bias < −15% | Accumulation zone — entering buy range; monitor for RSI confirmation |
-| P5 | `OVERHEATED` | 🟠 | Bias > 20% AND RSI > 70 | Both indicators confirm overheating — highest-conviction sell warning |
+| P4.5 | `APPROACHING_BUY` | 🎯 | RSI < 37 AND Bias < −15% | Accumulation zone — entering buy range; monitor for RSI confirmation |
+| P5 | `OVERHEATED` | 🔥 | Bias > 20% AND RSI > 70 | Both indicators confirm overheating — highest-conviction sell warning |
 | P6 | `CAUTION_HIGH` | ⚠️ | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions, tighten stops |
-| P7 | `WEAKENING` | 🟤 | Bias < −15% AND RSI < 38 | Early weakness — monitor closely, not yet at extreme levels |
-| P8 | `NORMAL` | ⚪ | Everything else | No notable technical signal |
+| P7 | `WEAKENING` | 🔻 | Bias < −15% AND RSI < 38 | Early weakness — monitor closely, not yet at extreme levels |
+| P8 | `NORMAL` | ➖ | Everything else | No notable technical signal |
 
 ### Volume Confidence Qualifiers
 
@@ -358,6 +358,20 @@ When technical data is unavailable (e.g., Cash category stocks skip yfinance sig
 - Bias = None: P2, P3, P4.5, P5, P6 (bias part), P7 conditions are skipped
 - bias_200 = None: Phase 2 MA200 amplifier is skipped entirely
 - Both None: only `THESIS_BROKEN` (P1) or `NORMAL` (P8) are reachable
+
+## Market Sentiment (5-Tier)
+
+Market sentiment is determined by the percentage of **Trend Setter** stocks trading below their 60-day moving average. It serves as a contextual backdrop — it does NOT gate signal logic.
+
+| % Below 60MA | Sentiment | Icon | Guidance |
+|--------------|-----------|------|----------|
+| 0–10% | `STRONG_BULLISH` | ☀️ | Nearly all trend setters healthy — strong breadth, full risk-on |
+| 10–30% | `BULLISH` | 🌤️ | Mostly healthy — normal accumulation conditions |
+| 30–50% | `NEUTRAL` | ⛅ | Mixed breadth — transition zone, be selective |
+| 50–70% | `BEARISH` | 🌧️ | Majority weakening — reduce exposure, tighten stops |
+| >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
+
+The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
 
 ## Service Operations
 

@@ -18,7 +18,10 @@ from domain.constants import (
     CNN_FG_NEUTRAL_HIGH,
     MA200_DEEP_DEVIATION_THRESHOLD,
     MA200_HIGH_DEVIATION_THRESHOLD,
-    MARKET_CAUTION_BELOW_60MA_PCT,
+    MARKET_BEARISH_MAX_PCT,
+    MARKET_BULLISH_MAX_PCT,
+    MARKET_NEUTRAL_MAX_PCT,
+    MARKET_STRONG_BULLISH_MAX_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     ROGUE_WAVE_BIAS_PERCENTILE,
     ROGUE_WAVE_MIN_HISTORY_DAYS,
@@ -190,18 +193,33 @@ def determine_market_sentiment(
     valid_count: int,
 ) -> tuple[MarketSentiment, float]:
     """
-    根據跌破 60MA 的風向球比例判定市場情緒。
+    根據跌破 60MA 的風向球比例判定市場情緒（5 階段）。
     回傳 (情緒, 跌破百分比)。
+
+    | 階段            | 跌破 60MA %       | 天氣   |
+    |-----------------|-------------------|--------|
+    | STRONG_BULLISH  | 0–10%             | ☀️ 晴  |
+    | BULLISH         | 10–30%            | 🌤️ 晴時多雲 |
+    | NEUTRAL         | 30–50%            | ⛅ 多雲 |
+    | BEARISH         | 50–70%            | 🌧️ 雨  |
+    | STRONG_BEARISH  | >70%              | ⛈️ 暴風雨 |
+
+    valid_count == 0 → BULLISH（無資料時預設樂觀，避免空持倉時觸發警報）。
     """
     if valid_count == 0:
-        return MarketSentiment.POSITIVE, 0.0
+        return MarketSentiment.BULLISH, 0.0
 
     pct = round(below_count / valid_count * 100, 1)
 
-    if pct > MARKET_CAUTION_BELOW_60MA_PCT:
-        return MarketSentiment.CAUTION, pct
-
-    return MarketSentiment.POSITIVE, pct
+    if pct <= MARKET_STRONG_BULLISH_MAX_PCT:
+        return MarketSentiment.STRONG_BULLISH, pct
+    if pct <= MARKET_BULLISH_MAX_PCT:
+        return MarketSentiment.BULLISH, pct
+    if pct <= MARKET_NEUTRAL_MAX_PCT:
+        return MarketSentiment.NEUTRAL, pct
+    if pct <= MARKET_BEARISH_MAX_PCT:
+        return MarketSentiment.BEARISH, pct
+    return MarketSentiment.STRONG_BEARISH, pct
 
 
 # ---------------------------------------------------------------------------

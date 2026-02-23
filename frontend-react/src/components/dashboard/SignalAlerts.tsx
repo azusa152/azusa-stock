@@ -17,7 +17,7 @@ interface SignalRowProps {
 
 function SignalRow({ stock, signal }: SignalRowProps) {
   const { t } = useTranslation()
-  const icon = SCAN_SIGNAL_ICONS[signal] ?? "⚪"
+  const icon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
   const signalKey = signal.toLowerCase()
   const signalLabel = t(`config.signal.${signalKey}`, { defaultValue: signal })

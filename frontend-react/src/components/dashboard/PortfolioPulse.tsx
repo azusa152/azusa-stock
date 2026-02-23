@@ -23,6 +23,11 @@ const FEAR_GREED_BANDS = [
   { range: [75, 100] as [number, number], color: "#22c55e", label: "EG" },
 ]
 
+const LEGACY_SENTIMENT_MAP: Record<string, string> = {
+  positive: "bullish",
+  caution: "bearish",
+}
+
 function computeHealthScore(
   stocks: Stock[],
   enrichedSignalMap: Record<string, string>,
@@ -230,14 +235,13 @@ export function PortfolioPulse({
 
   const stockCount = stocks.filter((s) => s.is_active).length
   const holdingCount = holdings.length
+
   const marketStatus = lastScan?.market_status
+  const rawKey = marketStatus?.toLowerCase() ?? ""
+  const sentimentKey = LEGACY_SENTIMENT_MAP[rawKey] ?? rawKey
   const sentimentLabel = !marketStatus
     ? t("config.sentiment.not_scanned")
-    : marketStatus === "POSITIVE"
-      ? t("config.sentiment.positive")
-      : marketStatus === "CAUTION"
-        ? t("config.sentiment.caution")
-        : marketStatus
+    : t(`config.sentiment.${sentimentKey}`, { defaultValue: marketStatus })
 
   const totalVal = rebalance?.total_value
   const changePct = rebalance?.total_value_change_pct

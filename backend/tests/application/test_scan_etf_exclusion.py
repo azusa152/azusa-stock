@@ -47,7 +47,7 @@ class TestETFExclusionFromSentiment:
         db_session.commit()
 
         mock_sentiment.return_value = {
-            "status": "POSITIVE",
+            "status": "BULLISH",
             "details": "test",
             "below_60ma_pct": 0.0,
         }
@@ -114,7 +114,7 @@ class TestETFExclusionFromSentiment:
         db_session.commit()
 
         mock_sentiment.return_value = {
-            "status": "POSITIVE",
+            "status": "BULLISH",
             "details": "test",
             "below_60ma_pct": 0.0,
         }
