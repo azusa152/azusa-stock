@@ -43,7 +43,6 @@ export type AllocPreferencesResponse = components["schemas"]["PreferencesRespons
 // is_cash has @default false in backend — frontend never sets it for equity/bond holdings
 export type AddHoldingRequest = Omit<components["schemas"]["HoldingRequest"], "is_cash"> & { is_cash?: boolean }
 export type AddCashRequest = components["schemas"]["CashHoldingRequest"]
-export type WithdrawRequestType = components["schemas"]["WithdrawRequest"]
 export type CreateProfileRequest = components["schemas"]["ProfileCreateRequest"]
 export type UpdateProfileRequest = components["schemas"]["ProfileUpdateRequest"]
 export type SaveTelegramRequest = components["schemas"]["TelegramSettingsRequest"]

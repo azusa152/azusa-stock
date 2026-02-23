@@ -9,8 +9,8 @@
 #   make lint             # Ruff 靜態分析（自動修正）
 #   make format           # Ruff 程式碼格式化
 #   make frontend-install # 安裝前端依賴（npm ci）
-#   make frontend-dev     # 啟動前端開發伺服器（自動產生型別，http://localhost:3000）
-#   make frontend-build   # 建構前端生產版本（自動產生型別）
+#   make frontend-dev     # 啟動前端開發伺服器（需後端 venv；純前端請用 npm run dev）
+#   make frontend-build   # 建構前端生產版本（需後端 venv；純前端請用 npm run build）
 #   make frontend-lint    # 執行前端 ESLint
 #   make up               # 啟動所有服務（背景執行）
 #   make down             # 停止並移除所有容器
@@ -93,10 +93,10 @@ generate-api: ## 匯出 OpenAPI 規格並產生 TypeScript 型別
 setup: install frontend-install generate-api ## 首次完整設定（後端 + 前端 + 型別產生）
 	@echo "Setup complete."
 
-frontend-dev: generate-api ## 啟動前端開發伺服器（http://localhost:3000）
+frontend-dev: generate-api ## 啟動前端開發伺服器（需後端 venv — 純前端請用 npm run dev）
 	cd frontend-react && npm run dev
 
-frontend-build: generate-api ## 建構前端生產版本
+frontend-build: generate-api ## 建構前端生產版本（需後端 venv — 純前端請用 npm run build）
 	cd frontend-react && npm run build
 
 frontend-lint: ## 執行前端 ESLint

@@ -23,6 +23,11 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
     }
   }
 
+  // TODO: ytd_dividend_per_share is sourced from yfinance in the stock's native currency.
+  // Without FX conversion the total mixes currencies (e.g. USD + JPY + HKD).
+  // A proper fix requires the backend to provide per-holding FX rates or pre-convert to
+  // display_currency. For now this is a best-effort estimate valid only for single-currency
+  // portfolios or portfolios where most dividends are in the same currency.
   let ytdDivIncome = 0
   for (const h of rebalance.holdings_detail) {
     const ytdDps = divLookup[h.ticker]

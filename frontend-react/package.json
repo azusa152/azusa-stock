@@ -9,6 +9,7 @@
     "dev": "vite",
     "prebuild": "npm run generate:api",
     "build": "tsc -b && vite build",
+    "prelint": "npm run generate:api",
     "lint": "eslint .",
     "preview": "vite preview"
   },

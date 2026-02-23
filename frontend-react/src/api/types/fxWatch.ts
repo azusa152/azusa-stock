@@ -20,8 +20,10 @@ export type UpdateFxWatchRequest = components["schemas"]["FXWatchUpdateRequest"]
 // Hand-written types: derived/transformed shapes used in the frontend
 // ---------------------------------------------------------------------------
 
-// FXTimingResultResponse nested inside FXWatchCheckResultItem
-// Kept hand-written to expose the flattened analysis shape used by components
+// FXTimingResultResponse nested inside FXWatchCheckResultItem.
+// Kept hand-written because useFxWatch maps it into a flattened, frontend-facing shape
+// and renames two fields: recommendation_zh → recommendation, reasoning_zh → reasoning,
+// dropping the language suffix so components stay language-agnostic.
 export interface FxAnalysis {
   current_rate: number
   should_alert: boolean

@@ -12,7 +12,7 @@ import {
 import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import apiClient from "@/api/client"
-import { STOCK_CATEGORIES, MARKET_OPTIONS, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
+import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
 import type { StockCategory } from "@/api/types/allocation"
 
 interface Props {
@@ -27,7 +27,6 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [assetType, setAssetType] = useState<AssetType>("stock")
-  const [market, setMarket] = useState("US")
   const [ticker, setTicker] = useState("")
   const [category, setCategory] = useState<StockCategory>("Growth")
   const [quantity, setQuantity] = useState("")
@@ -235,16 +234,6 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           {/* Stock form */}
           {assetType === "stock" && (
             <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-xs font-medium">{t("allocation.sidebar.market")}</p>
-                <select
-                  value={market}
-                  onChange={(e) => setMarket(e.target.value)}
-                  className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-                >
-                  {MARKET_OPTIONS.map((m) => <option key={m.key} value={m.key}>{m.key}</option>)}
-                </select>
-              </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("allocation.sidebar.stock_ticker")}</p>
                 <Input
