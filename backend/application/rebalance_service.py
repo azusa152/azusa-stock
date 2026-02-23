@@ -33,7 +33,7 @@ from infrastructure.market_data import (
     get_forex_history,
     get_forex_history_long,
     get_technical_signals,
-    get_ticker_sector_cached,
+    get_ticker_sector,
     prewarm_etf_holdings_batch,
     prewarm_signals_batch,
 )
@@ -358,13 +358,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     logger.info("投資組合健康分數：%d (%s)", health_score, health_level)
 
     # 10) 行業板塊曝險（僅股票持倉，Bond/Cash 排除）
-    # 使用快取專用版本（get_ticker_sector_cached），僅讀磁碟快取，不發起 yfinance 請求。
-    # 若快取未命中（首次啟動），歸類為 "Unknown"；背景預熱會在啟動後填充快取。
+    # 使用 get_ticker_sector()：優先讀磁碟快取（30 天 TTL），快取未命中時才發起 yfinance 請求。
+    # 此函式保證回傳真實板塊名稱，避免顯示 "Unknown"。
     sector_values: dict[str, float] = {}
     for ticker, agg in ticker_agg.items():
         if agg["category"] not in EQUITY_CATEGORIES or agg["mv"] <= 0:
             continue
-        sector = get_ticker_sector_cached(ticker) or "Unknown"
+        sector = get_ticker_sector(ticker) or "Unknown"
         sector_values[sector] = sector_values.get(sector, 0.0) + agg["mv"]
 
     equity_total = sum(sector_values.values())

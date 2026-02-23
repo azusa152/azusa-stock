@@ -9,6 +9,7 @@ import time
 from sqlmodel import Session, select
 
 from domain.constants import (
+    EQUITY_CATEGORIES,
     GURU_BACKFILL_YEARS,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
@@ -60,10 +61,11 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, etf=%d, beta=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, equity=%d, etf=%d, beta=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
+        len(tickers["equity"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
     )
@@ -91,9 +93,9 @@ def prewarm_all_caches() -> None:
     _prewarm_phase("guru_backfill", _backfill_all_gurus)
 
     # Phase 7: 行業板塊（sector）— 供 rebalance 端點快取讀取使用
-    # 使用 moat 名單（排除 Bond/Cash）填充磁碟快取，讓首次 rebalance 呼叫可命中快取。
-    if tickers["moat"]:
-        _prewarm_phase("sector", lambda: _prewarm_sectors(tickers["moat"]))
+    # 使用 equity 名單（EQUITY_CATEGORIES）填充磁碟快取，與 sector_exposure 邏輯完全對齊。
+    if tickers["equity"]:
+        _prewarm_phase("sector", lambda: _prewarm_sectors(tickers["equity"]))
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
@@ -157,12 +159,21 @@ def _collect_tickers() -> dict[str, list[str]]:
     # 若未來需要不同過濾邏輯（如包含 Bond），再拆分
     beta_tickers = signals_tickers
 
+    # Equity: 與 rebalance 端點 sector_exposure 使用相同範圍（EQUITY_CATEGORIES）
+    # 確保預熱涵蓋所有需要板塊資訊的標的，避免首次請求顯示 "Unknown"
+    equity_tickers = [
+        t
+        for t in all_tickers
+        if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
+    ]
+
     return {
         "all": sorted(all_tickers),
         "signals": sorted(signals_tickers),
         "moat": sorted(moat_tickers),
         "etf": sorted(etf_tickers),
         "beta": sorted(beta_tickers),
+        "equity": sorted(equity_tickers),
     }
 
 
