@@ -19,14 +19,13 @@ from api.schemas import (
     ScanStatusResponse,
     VIXData,
 )
+from application import scan_service
 from application.formatters import format_fear_greed_label
 from application.prewarm_service import is_prewarm_ready
 from application.services import run_scan, send_weekly_digest
 from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
 from i18n import get_user_language, t
-from infrastructure import repositories as repo
 from infrastructure.database import engine, get_session
-from infrastructure.market_data import get_fear_greed_index
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -61,25 +60,8 @@ def _run_digest_background() -> None:
 )
 def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanResponse:
     """取得最近一次掃描的時間戳與市場情緒，用於判斷資料新鮮度。"""
-    logs = repo.find_latest_scan_logs(session, limit=1)
-    if not logs:
-        return LastScanResponse(last_scanned_at=None, epoch=None)
-    log = logs[0]
-    ts = log.scanned_at
-
-    # 取得最新 Fear & Greed 資料（快取，不額外呼叫 yfinance）
-    fg = get_fear_greed_index()
-    fg_level = fg.get("composite_level")
-    fg_score = fg.get("composite_score")
-
-    return LastScanResponse(
-        last_scanned_at=ts.isoformat(),
-        epoch=int(ts.timestamp()),
-        market_status=log.market_status,
-        market_status_details=getattr(log, "market_status_details", ""),
-        fear_greed_level=fg_level,
-        fear_greed_score=fg_score,
-    )
+    data = scan_service.get_last_scan_status(session)
+    return LastScanResponse(**data)
 
 
 @router.get(
@@ -107,7 +89,7 @@ def get_prewarm_status() -> PrewarmStatusResponse:
 )
 def get_fear_greed(session: Session = Depends(get_session)) -> FearGreedResponse:
     """取得恐懼與貪婪指數（VIX + CNN Fear & Greed 綜合分析）。"""
-    fg = get_fear_greed_index()
+    fg = scan_service.get_fear_greed() or {}
     composite_level = fg.get("composite_level", "N/A")
     composite_score = fg.get("composite_score", 50)
 
