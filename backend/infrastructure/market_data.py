@@ -765,6 +765,20 @@ def get_price_history(ticker: str) -> list[dict] | None:
 # ===========================================================================
 
 
+def _safe_loc(df, row_labels: list[str], col) -> Optional[float]:
+    """Try multiple row labels and return the first non-null value."""
+    import math
+
+    for label in row_labels:
+        try:
+            val = df.loc[label, col]
+            if val is not None and not (isinstance(val, float) and math.isnan(val)):
+                return float(val)
+        except KeyError:
+            continue
+    return None
+
+
 def _fetch_moat_from_yf(ticker: str) -> dict:
     """實際從 yfinance 分析護城河趨勢（供 _cached_fetch 使用）。"""
     try:
@@ -789,13 +803,14 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
             }
 
         def _get_gross_margin(col) -> Optional[float]:
-            try:
-                gross_profit = financials.loc["Gross Profit", col]
-                revenue = financials.loc["Total Revenue", col]
-                if revenue and revenue != 0:
-                    return round(float(gross_profit) / float(revenue) * 100, 2)
-            except KeyError:
-                pass
+            gross_profit = _safe_loc(financials, ["Gross Profit"], col)
+            revenue = _safe_loc(
+                financials,
+                ["Total Revenue", "Operating Revenue", "Revenue"],
+                col,
+            )
+            if gross_profit is not None and revenue and revenue != 0:
+                return round(float(gross_profit) / float(revenue) * 100, 2)
             return None
 
         def _quarter_label(col) -> str:
