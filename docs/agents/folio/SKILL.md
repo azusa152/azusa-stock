@@ -1,12 +1,12 @@
 ---
 name: folio
-description: Folio 智能資產配置 — 股票追蹤、掃描、警報與外匯監控系統
-version: 1.1.0
+description: Folio 智能資產配置 — 股票追蹤、掃描、警報與外匯監控系統（多市場支援：US / JP / TW / HK）
+version: 1.2.0
 ---
 
 # Folio Skill
 
-Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、外匯換匯時機監控、以及 Telegram 通知。
+Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、外匯換匯時機監控、以及 Telegram 通知。支援美股、台股、日股、港股多市場，持倉匯率快照與 FX 報酬拆解，以及 JP Nikkei VI 市場情緒指標。
 
 ## Prerequisites
 
@@ -213,7 +213,7 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/holdings` | 所有持倉 |
 | `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位，currency 預設 USD） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
-| `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD`。回傳含 `xray` 陣列、`total_value_change_pct`（日漲跌）、`holdings_detail[].cost_total`（總成本） |
+| `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD`。回傳含 `xray` 陣列、`total_value_change_pct`（日漲跌）、`holdings_detail[].cost_total`（總成本）、`holdings_detail[].purchase_fx_rate`（購入時匯率快照）、`holdings_detail[].current_fx_rate`（當前匯率，前端用於計算 FX 報酬） |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `GET` | `/stress-test` | 壓力測試分析：模擬大盤崩盤情境，支援 `?scenario_drop_pct=-20&display_currency=USD`。回傳組合 Beta、預期損失金額與百分比、痛苦等級（微風輕拂/有感修正/傷筋動骨/睡不著覺）、各持倉明細與建議 |
 | `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`fx_rate_alerts`（三層級警報）、匯率變動、建議 |
@@ -282,6 +282,8 @@ The following endpoints now include daily change fields calculated from yfinance
 | `total_value_change` | float? | Portfolio total value daily change amount |
 | `total_value_change_pct` | float? | Portfolio daily change percentage |
 | `holdings_detail[].change_pct` | float? | Per-holding daily change percentage |
+| `holdings_detail[].purchase_fx_rate` | float? | FX rate snapshot at time of purchase (1 unit holding currency = ? USD); auto-captured when holding is created |
+| `holdings_detail[].current_fx_rate` | float? | Current FX rate; combine with `purchase_fx_rate` to compute FX return: `(current / purchase - 1) × 100` |
 
 **Edge Cases:**
 - `previous_close` and `change_pct` will be `null` for newly added stocks with insufficient history (< 2 days)
@@ -290,7 +292,7 @@ The following endpoints now include daily change fields calculated from yfinance
 
 ## Usage Tips
 
-- Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful")
+- Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful"). For JP market users (holding `.T` tickers), the system also returns a `"JP"` key with Nikkei VI data — interpret using JP thresholds: ≥35 Extreme Fear, 25–35 Fear, 18–25 Neutral, 14–18 Greed, <14 Extreme Greed
 - Use `summary` first to get a rich plain-text overview: portfolio value + daily change, category groups, active signals, top movers, allocation drift warnings, and Smart Money highlights
 - Use `signals` to check a stock's technical indicators; interpret the scan signal using the **Signal Taxonomy** section below
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
@@ -298,7 +300,9 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `rebalance` to check if portfolio allocation drifts from target. The response includes an `xray` array showing true exposure per stock (direct + indirect via ETFs)
 - Add `?display_currency=TWD` to `/rebalance` to see all values in TWD (supports USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
 - Use `POST /rebalance/xray-alert` to trigger Telegram warnings for stocks whose true exposure (direct + ETF indirect) exceeds 15%
-- When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)
+- When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks). The system automatically snapshots the FX rate at creation time as `purchase_fx_rate` — this is used to show FX return breakdown in the Holdings Detail table
+- Use `GET /rebalance` to view FX return breakdown per non-USD holding: `purchase_fx_rate` (at purchase) and `current_fx_rate` (today) are both returned. Frontend computes: local price return + FX return = home-currency return. Useful for understanding how much of your gain/loss came from price vs. currency movement
+- When the user holds multi-market stocks (US + JP + TW + HK), the Radar page shows **market filter pills** — users can click to filter the watchlist by market. This is derived from ticker suffix (`.T` = JP, `.TW` = TW, `.HK` = HK, else = US)
 - Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only), `breakdown` (full portfolio), and `fx_rate_alerts` (three-tier rate-change alerts) for separate analysis
 - Use `POST /currency-exposure/alert` to trigger Telegram alerts for three-tier FX rate changes (daily spike >1.5%, 5-day swing >2%, 3-month trend >8%), alerts include cash exposure amounts
 - Use `POST /fx-watch` to set up FX timing monitors — supports 9 currencies (USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB) in any pair combination
@@ -372,6 +376,18 @@ Market sentiment is determined by the percentage of **Trend Setter** stocks trad
 | >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
 
 The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
+
+### JP Market Sentiment (Nikkei VI)
+
+When the user holds `.T` (Japan) tickers, multi-market sentiment returns a `"JP"` key using the **Nikkei Volatility Index** (`^JNV`) as the JP fear indicator:
+
+| Nikkei VI | Level | Guidance |
+|-----------|-------|----------|
+| ≥ 35 | Extreme Fear | JP market panic — contrarian opportunity zone |
+| 25–35 | Fear | JP market cautious — selective accumulation |
+| 18–25 | Neutral | JP market balanced — normal positioning |
+| 14–18 | Greed | JP market confident — watch for overheating |
+| < 14 | Extreme Greed | JP market euphoric — reduce exposure |
 
 ## Service Operations
 

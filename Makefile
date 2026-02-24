@@ -26,6 +26,8 @@
 #    make frontend-install Install frontend deps (npm ci)
 #    make generate-api     Export OpenAPI spec + regenerate TS types
 #    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff)
+#    make lock             Resolve deps: requirements.in → requirements.txt
+#    make upgrade           Re-lock all deps to latest compatible versions
 #
 #  Docker:
 #    make up               Start all services (background)
@@ -80,6 +82,7 @@ setup: install frontend-install generate-api setup-hooks ## Full first-time setu
 
 install: ## Create backend venv and install dependencies
 	cd $(BACKEND_DIR) && python3 -m venv .venv
+	$(PIP) install pip-tools
 	$(PIP) install -r $(BACKEND_DIR)/requirements.txt
 
 frontend-install: ## Install frontend dependencies (npm ci)
@@ -88,6 +91,14 @@ frontend-install: ## Install frontend dependencies (npm ci)
 setup-hooks: .venv-check ## Install pre-commit hooks (auto-runs architecture boundary + ruff on every commit)
 	$(PIP) install pre-commit
 	$(BACKEND_DIR)/.venv/bin/pre-commit install
+
+lock: .venv-check ## Resolve deps: requirements.in → requirements.txt (run after editing .in)
+	$(BACKEND_DIR)/.venv/bin/pip-compile $(BACKEND_DIR)/requirements.in \
+		--output-file=$(BACKEND_DIR)/requirements.txt --strip-extras
+
+upgrade: .venv-check ## Re-lock all deps to latest compatible versions
+	$(BACKEND_DIR)/.venv/bin/pip-compile $(BACKEND_DIR)/requirements.in \
+		--output-file=$(BACKEND_DIR)/requirements.txt --strip-extras --upgrade
 
 # ---------------------------------------------------------------------------
 #  Backend (granular)

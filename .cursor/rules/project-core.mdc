@@ -17,6 +17,7 @@ FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) +
 - **Constants:** `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
 - **API Type Codegen:** Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`.
+- **Dependency Management:** Backend uses pip-tools. Edit `backend/requirements.in` (loose constraints), then run `make lock` to regenerate the pinned `backend/requirements.txt`. Never edit `requirements.txt` by hand.
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.
 - **Architecture Boundaries:** See `.cursor/rules/architecture-boundaries.mdc`. API routes delegate to `application/` services — never import directly from `infrastructure/` (except `infrastructure.database`).
 - **New Features:** Follow Research → Plan → Implement → Verify (`make ci`) workflow. Check existing patterns in the same layer before writing new code.

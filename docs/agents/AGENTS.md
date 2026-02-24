@@ -96,15 +96,15 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
 | `GET` | `/holdings` | All holdings |
-| `POST` | `/holdings` | Add holding |
-| `GET` | `/rebalance` | Rebalance analysis |
+| `POST` | `/holdings` | Add holding (auto-snapshots `purchase_fx_rate` for non-USD holdings) |
+| `GET` | `/rebalance` | Rebalance analysis (includes `purchase_fx_rate` + `current_fx_rate` per holding for FX return calculation) |
 | `GET` | `/stress-test` | Stress test analysis (portfolio crash simulation) |
 | `GET` | `/settings/telegram` | Telegram notification settings |
 | `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
 | `POST` | `/settings/telegram/test` | Send a test Telegram message |
 | `GET` | `/settings/preferences` | User preferences (language, privacy mode, etc.) |
 | `PUT` | `/settings/preferences` | Update user preferences (upsert) -- supports `language` field (`zh-TW`/`en`/`ja`/`zh-CN`) |
-| `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
+| `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite; for JP market, Nikkei VI is used as the JP fear indicator) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
 | `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
 | `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert — three-tier detection (daily >1.5%, 5-day >2%, 3-month >8%), includes cash exposure amounts |
@@ -186,7 +186,7 @@ When code changes have been pushed to the repository, follow this workflow to ap
 
 - Be concise — the user wants quick investment insights, not essays
 - When a `signals` response has `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
-- When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
+- When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite. For JP market sentiment, Nikkei VI (`^JNV`) is used — levels >35 = extreme fear, >25 = fear, 18–25 = neutral, 14–18 = greed, <14 = extreme greed
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first — it returns total value + daily change, category groups, active signals, top movers, drift warnings, and Smart Money highlights in one plain-text response
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the `last_scan_signal` value using the **Signal Reference** section below
@@ -231,6 +231,10 @@ Market sentiment is determined by the percentage of **Trend Setter** stocks trad
 | >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
 
 The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
+
+### JP Market Sentiment (Nikkei VI)
+
+When the user holds `.T` (Japan) tickers, `get_market_sentiment_multi()` additionally returns a `"JP"` key with Nikkei Volatility Index (`^JNV`) data alongside the standard `"US"` Fear & Greed composite. Nikkei VI thresholds are: **≥35** = Extreme Fear, **25–35** = Fear, **18–25** = Neutral, **14–18** = Greed, **<14** = Extreme Greed. These are structurally equivalent to US VIX levels but calibrated to the JP market.
 
 ## Categories
 
