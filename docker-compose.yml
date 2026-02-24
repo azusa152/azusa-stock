@@ -12,6 +12,7 @@ services:
       - DATABASE_URL=sqlite:///data/radar.db
       - FOLIO_API_KEY=${FOLIO_API_KEY:-}
       # - JQUANTS_API_KEY=  # Optional: J-Quants API key for enhanced JP financial data
+      # - FINMIND_API_TOKEN=  # Optional: FinMind API token for enhanced TW financial data (free registration at finmindtrade.com)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s

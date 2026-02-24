@@ -48,6 +48,17 @@ class MarketDataResolver:
         except ImportError:
             self._jquants = None
 
+        try:
+            from infrastructure import finmind_adapter
+
+            if finmind_adapter.is_available():
+                self._finmind = finmind_adapter
+                logger.info("FinMind adapter 已啟用 (source=finmind, market=TW)")
+            else:
+                self._finmind = None
+        except ImportError:
+            self._finmind = None
+
     def get_technical_signals(self, ticker: str) -> Optional[dict]:
         return self._yf.get_technical_signals(ticker)
 
@@ -82,6 +93,28 @@ class MarketDataResolver:
                 result["moat"] = "STABLE"  # Have data = at least stable
                 result["details"] = f"Margin {margin:.1f}% (via J-Quants)"
                 result["source"] = "jquants"
+
+        # If yfinance returned NOT_AVAILABLE for a TW ticker, try FinMind
+        if (
+            _is_tw_ticker(ticker)
+            and result.get("moat") == _MOAT_NOT_AVAILABLE
+            and self._finmind is not None
+            and self._finmind.is_available()
+        ):
+            logger.info(
+                "%s yfinance 護城河資料不足，嘗試 FinMind 補充 (source=finmind, market=TW)",
+                ticker,
+            )
+            fm_data = self._finmind.get_financials(ticker)
+            if fm_data and fm_data.get("gross_profit") and fm_data.get("revenue"):
+                margin = round(
+                    float(fm_data["gross_profit"]) / float(fm_data["revenue"]) * 100,
+                    2,
+                )
+                result["current_margin"] = margin
+                result["moat"] = "STABLE"  # Have data = at least stable
+                result["details"] = f"Margin {margin:.1f}% (via FinMind)"
+                result["source"] = "finmind"
 
         return result
 
