@@ -23,6 +23,7 @@ from application.services import (
     update_display_order,
     update_stock_category,
 )
+from application import stock_service
 from application.stock_service import get_enriched_stocks
 from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
@@ -41,13 +42,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from i18n import get_user_language, t
 from infrastructure.database import get_session
-from infrastructure.market_data import (
-    get_bias_distribution,
-    get_dividend_info,
-    get_earnings_date,
-    get_price_history,
-    get_technical_signals,
-)
 from logging_config import get_logger
 from sqlmodel import Session
 
@@ -144,11 +138,11 @@ def reorder_stocks_route(
 def get_signals_route(ticker: str) -> dict:
     """取得指定股票的技術訊號（yfinance，含快取）。"""
     ticker_upper = ticker.upper()
-    signals = get_technical_signals(ticker_upper) or {}
+    signals = stock_service.get_signals_for_ticker(ticker_upper) or {}
     if signals and "error" not in signals:
         bias = signals.get("bias")
         volume_ratio = signals.get("volume_ratio")
-        dist = get_bias_distribution(ticker_upper)
+        dist = signals.get("bias_distribution")
         bias_percentile: float | None = None
         if dist and bias is not None:
             bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
@@ -162,7 +156,7 @@ def get_signals_route(ticker: str) -> dict:
 )
 def get_price_history_route(ticker: str) -> list[dict]:
     """取得指定股票的收盤價歷史（1 年），用於價格趨勢圖。"""
-    return get_price_history(ticker.upper()) or []
+    return stock_service.get_price_history(ticker.upper()) or []
 
 
 @router.get("/stocks/export", summary="Export watchlist as JSON")
@@ -285,13 +279,13 @@ def reactivate_ticker_route(
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
 def get_earnings_route(ticker: str) -> dict:
     """取得指定股票的下次財報日期。"""
-    return get_earnings_date(ticker.upper())
+    return stock_service.get_earnings_for_ticker(ticker.upper())
 
 
 @router.get("/ticker/{ticker}/dividend", summary="Get dividend info for a stock")
 def get_dividend_route(ticker: str) -> dict:
     """取得指定股票的股息資訊。"""
-    return get_dividend_info(ticker.upper())
+    return stock_service.get_dividend_for_ticker(ticker.upper())
 
 
 @router.get("/ticker/{ticker}/scan-history", summary="Get scan history for a stock")
