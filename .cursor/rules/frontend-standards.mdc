@@ -33,3 +33,60 @@ globs: ["frontend-react/**"]
 ## Components & Styling
 - Base: shadcn/ui. Loading: `<Skeleton>`. Empty: `<EmptyState>`. Errors: `<ErrorBoundary>` via `PageShell`. Toast: `sonner`.
 - Tailwind only (no inline styles). Dark: `dark:` variants. Responsive: `sm:`/`md:`/`lg:` with mobile-first grids.
+
+## Testing (Vitest + React Testing Library)
+
+Every new utility function, hook, and component MUST ship with tests. Run `make frontend-test` or `npm test` to verify.
+
+### File placement and naming
+- Co-locate tests in a `__tests__/` subdirectory next to the source file.
+- Name: `<ModuleName>.test.ts` (pure functions/hooks) or `<ModuleName>.test.tsx` (components).
+- Examples: `src/lib/__tests__/utils.test.ts`, `src/hooks/__tests__/usePrivacyMode.test.ts`, `src/components/__tests__/EmptyState.test.tsx`.
+
+### What to test per type
+
+| Type | What to test |
+|---|---|
+| Utility functions (`lib/`) | All branches of pure logic; edge cases |
+| Zustand hooks (`hooks/`) | Initial state, mutations, and side effects (e.g., DOM class changes) |
+| API query hooks (`api/hooks/`) | Loading state, endpoint called, response shape |
+| API mutation hooks (`api/hooks/`) | Endpoint called with correct payload, success state |
+| UI components (`components/`) | Renders key content, user interactions, conditional rendering |
+| Constants (`lib/constants.ts`) | Entry counts, set non-overlap, key presence |
+
+### Canonical patterns
+
+**Component test** (`src/components/__tests__/EmptyState.test.tsx`):
+```tsx
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
+
+it("calls handler on click", async () => {
+  const handler = vi.fn();
+  render(<MyComponent onClick={handler} />);
+  await userEvent.setup().click(screen.getByRole("button"));
+  expect(handler).toHaveBeenCalledOnce();
+});
+```
+
+**API hook test** (`src/api/hooks/__tests__/useRadar.test.ts`):
+```ts
+vi.mock("@/api/client", () => ({ default: { get: vi.fn(), interceptors: { request: { use: vi.fn() } } } }));
+
+function createWrapper() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: React.ReactNode }) =>
+    createElement(QueryClientProvider, { client: qc }, children);
+}
+```
+
+**Zustand store test** (`src/hooks/__tests__/usePrivacyMode.test.ts`):
+```ts
+beforeEach(() => { usePrivacyMode.setState({ isPrivate: false }); }); // reset between tests
+```
+
+### Do NOT
+- Hit real APIs or network in tests — always mock `@/api/client`.
+- Use `setTimeout` or `sleep` — use `waitFor()` from `@testing-library/react`.
+- Import `describe`/`it`/`expect` explicitly — `globals: true` is set in `vitest.config.ts`.

@@ -33,3 +33,17 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend-react && npm run lint'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
+
+      - id: vitest
+        name: vitest (frontend)
+        entry: bash -c 'cd frontend-react && npm test'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/
