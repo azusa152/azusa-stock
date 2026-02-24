@@ -533,3 +533,21 @@ DISK_KEY_SECTOR = "sector"
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
 EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})
+
+# ---------------------------------------------------------------------------
+# J-Quants API (optional JP data supplement)
+# ---------------------------------------------------------------------------
+JQUANTS_CACHE_TTL = 86400  # 24 hours (financial data changes quarterly)
+DISK_KEY_JQUANTS_FINANCIALS = "jquants_financials"
+DISK_JQUANTS_FINANCIALS_TTL = 604800  # 7 days
+
+# ---------------------------------------------------------------------------
+# JP Market Sentiment (Nikkei VI)
+# ---------------------------------------------------------------------------
+NIKKEI_VI_TICKER = "^JNV"  # Nikkei Volatility Index on yfinance
+NIKKEI_VI_EXTREME_FEAR = 35  # Nikkei VI > 35 → 極度恐懼
+NIKKEI_VI_FEAR = 25  # Nikkei VI 25–35 → 恐懼
+NIKKEI_VI_NEUTRAL_HIGH = 25  # Nikkei VI 18–25 → 中性
+NIKKEI_VI_NEUTRAL_LOW = 18
+NIKKEI_VI_GREED = 14  # Nikkei VI 14–18 → 貪婪
+# Nikkei VI < 14 → 極度貪婪

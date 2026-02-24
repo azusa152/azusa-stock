@@ -126,6 +126,7 @@ def _compute_holding_market_values(
                 "price": price,
                 "fx": fx,
                 "has_prev_close": False,
+                "purchase_fx_rate": getattr(h, "purchase_fx_rate", None),
             }
         ticker_agg[key]["qty"] += h.quantity
         ticker_agg[key]["mv"] += market_value
@@ -267,6 +268,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
                 ),
                 "fx": round(agg["fx"], 6),
                 "change_pct": holding_change_pct,
+                "purchase_fx_rate": agg.get("purchase_fx_rate"),
+                "current_fx_rate": round(agg["fx"], 6),
             }
         )
 

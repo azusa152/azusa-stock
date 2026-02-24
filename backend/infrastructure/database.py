@@ -63,6 +63,8 @@ def _run_migrations() -> None:
         "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
         # GuruHolding: 新增 sector 欄位（GICS 行業板塊）
         "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
+        # Holding: 新增購入時匯率欄位（Phase 6 FX return tracking）
+        "ALTER TABLE holding ADD COLUMN purchase_fx_rate REAL;",
     ]
 
     with engine.connect() as conn:

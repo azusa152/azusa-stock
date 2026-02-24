@@ -56,16 +56,15 @@ export const RADAR_CATEGORIES = [
   "Bond",
 ] as const
 
-export const DEFAULT_TAG_OPTIONS = [
-  "AI",
-  "Cloud",
-  "SaaS",
-  "Semi",
-  "Infra",
-  "Pharma",
-  "Energy",
-  "Finance",
-]
+export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
+  US: ["AI", "Cloud", "SaaS", "Semi", "Infra", "Pharma", "Energy", "Finance"],
+  JP: ["Auto", "Electronics", "Trading", "Pharma", "Finance", "REIT", "Semi", "Robotics"],
+  TW: ["Semi", "TSMC Supply", "Finance", "Telecom", "Biotech", "ETF"],
+  HK: ["Tech", "Finance", "Property", "Telecom", "Energy", "Consumer"],
+}
+
+// Keep for backward compatibility
+export const DEFAULT_TAG_OPTIONS = MARKET_TAG_OPTIONS.US
 
 export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -79,6 +78,13 @@ export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"
 export const CHART_COLOR_PALETTE = [
   "#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308",
 ] as const
+
+export const MARKET_HOURS: Record<string, { tz: string; open: string; close: string; lunch?: [string, string] }> = {
+  US: { tz: "America/New_York", open: "09:30", close: "16:00" },
+  JP: { tz: "Asia/Tokyo", open: "09:00", close: "15:30", lunch: ["11:30", "12:30"] },
+  TW: { tz: "Asia/Taipei", open: "09:00", close: "13:30" },
+  HK: { tz: "Asia/Hong_Kong", open: "09:30", close: "16:00", lunch: ["12:00", "13:00"] },
+}
 
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [

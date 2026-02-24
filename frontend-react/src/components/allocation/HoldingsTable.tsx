@@ -16,6 +16,17 @@ function fmtMasked(v: number | null | undefined, privacyMode: boolean, decimals 
   return fmt(v, decimals)
 }
 
+function fmtPct(v: number, showSign = true): string {
+  const sign = showSign && v >= 0 ? "+" : ""
+  return `${sign}${v.toFixed(2)}%`
+}
+
+/** Compute FX return % given purchase and current FX rate */
+function computeFxReturn(purchaseFx: number | null | undefined, currentFx: number | null | undefined): number | null {
+  if (purchaseFx == null || currentFx == null || purchaseFx === 0) return null
+  return (currentFx / purchaseFx - 1) * 100
+}
+
 export function HoldingsTable({ holdings, privacyMode }: Props) {
   const { t } = useTranslation()
 
@@ -40,24 +51,48 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
             </tr>
           </thead>
           <tbody>
-            {holdings.map((h, i) => (
-              <tr key={i} className="border-b border-border/50">
-                <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
-                <td className="py-0.5 pr-2 text-right">{fmtMasked(h.quantity, privacyMode, 2)}</td>
-                <td className="py-0.5 pr-2 text-right">{fmtMasked(h.market_value, privacyMode)}</td>
-                <td className="py-0.5 pr-2 text-right">
-                  {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
-                </td>
-                <td className="py-0.5 pr-2 text-right">{fmtMasked(h.cost_total, privacyMode)}</td>
-                <td
-                  className="py-0.5 text-right"
-                  style={{ color: h.change_pct != null ? (h.change_pct >= 0 ? "#22c55e" : "#ef4444") : undefined }}
-                >
-                  {h.change_pct != null ? `${h.change_pct >= 0 ? "+" : ""}${h.change_pct.toFixed(2)}%` : "—"}
-                </td>
-              </tr>
-            ))}
+            {holdings.map((h, i) => {
+              const fxReturn = computeFxReturn(h.purchase_fx_rate, h.current_fx_rate)
+              const showFxBreakdown = h.purchase_fx_rate != null && fxReturn != null && h.currency !== "USD"
+
+              // Home return = local price return + FX impact (approximate additive)
+              const homeReturn =
+                showFxBreakdown && h.change_pct != null
+                  ? h.change_pct + fxReturn
+                  : null
+
+              return (
+                <tr key={i} className="border-b border-border/50">
+                  <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
+                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.quantity, privacyMode, 2)}</td>
+                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.market_value, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
+                  </td>
+                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.cost_total, privacyMode)}</td>
+                  <td className="py-0.5 text-right">
+                    <div
+                      style={{ color: h.change_pct != null ? (h.change_pct >= 0 ? "#22c55e" : "#ef4444") : undefined }}
+                    >
+                      {h.change_pct != null ? fmtPct(h.change_pct) : "—"}
+                    </div>
+                    {showFxBreakdown && (
+                      <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
+                        {homeReturn != null && (
+                          <div style={{ color: homeReturn >= 0 ? "#22c55e" : "#ef4444" }}>
+                            {t("allocation.col.home_return", { pct: fmtPct(homeReturn) })}
+                          </div>
+                        )}
+                        <div style={{ color: fxReturn >= 0 ? "#22c55e" : "#ef4444" }}>
+                          {t("allocation.col.fx_return", { pct: fmtPct(fxReturn) })}
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

@@ -13,6 +13,20 @@ make format        # Format code
 make clean         # Remove build caches
 ```
 
+## Dependency Management (pip-tools)
+
+Backend dependencies use [pip-tools](https://pip-tools.readthedocs.io/) for reproducible builds:
+
+- **`backend/requirements.in`** — direct dependencies with loose version constraints (edit this)
+- **`backend/requirements.txt`** — auto-generated lock file with all transitive deps pinned (do NOT edit by hand)
+
+```bash
+make lock          # Resolve requirements.in → requirements.txt (after editing .in)
+make upgrade       # Re-lock all deps to latest compatible versions
+```
+
+**Workflow:** To add or change a dependency, edit `requirements.in`, then run `make lock`. Both files are committed to git. Docker builds install from the lock file for reproducibility.
+
 ## Frontend Development
 
 ```bash

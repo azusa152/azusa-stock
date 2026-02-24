@@ -20,6 +20,7 @@ from domain.entities import Holding
 from domain.enums import StockCategory
 from i18n import t
 from infrastructure import repositories as repo
+from infrastructure.market_data import get_exchange_rate
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -41,6 +42,7 @@ def _holding_to_dict(h: Holding) -> dict:
         "currency": h.currency,
         "account_type": h.account_type,
         "is_cash": h.is_cash,
+        "purchase_fx_rate": h.purchase_fx_rate,
         "updated_at": h.updated_at.isoformat(),
     }
 
@@ -71,6 +73,11 @@ def list_holdings(session: Session) -> list[dict]:
 
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a new holding. Returns the created holding dict."""
+    currency = payload["currency"].strip().upper()
+    if currency != "USD":
+        purchase_fx_rate = get_exchange_rate("USD", currency)
+    else:
+        purchase_fx_rate = 1.0
     holding = Holding(
         user_id=DEFAULT_USER_ID,
         ticker=payload["ticker"].strip().upper(),
@@ -78,9 +85,10 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
         quantity=payload["quantity"],
         cost_basis=payload.get("cost_basis"),
         broker=payload.get("broker"),
-        currency=payload["currency"].strip().upper(),
+        currency=currency,
         account_type=payload.get("account_type"),
         is_cash=payload.get("is_cash", False),
+        purchase_fx_rate=purchase_fx_rate,
     )
     saved = repo.save_holding(session, holding)
     logger.info("新增持倉：%s（%s）", saved.ticker, saved.category)

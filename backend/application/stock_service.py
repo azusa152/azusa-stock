@@ -25,6 +25,8 @@ from infrastructure.market_data import (
     get_bias_distribution,
     get_dividend_info,
     get_earnings_date,
+    get_fear_greed_index,
+    get_jp_volatility_index,
     get_price_history as _get_price_history,
     get_technical_signals,
 )
@@ -683,3 +685,16 @@ def get_earnings_for_ticker(ticker: str) -> dict | None:
 def get_dividend_for_ticker(ticker: str) -> dict | None:
     """Fetch dividend info for a ticker."""
     return get_dividend_info(ticker)
+
+
+def get_market_sentiment_multi(session: Session) -> dict:
+    """Return sentiment for each market the user has stocks in."""
+    result: dict = {"US": get_fear_greed_index()}
+
+    # Check if user has JP stocks
+    stocks = repo.find_active_stocks(session)
+    has_jp = any(s.ticker.endswith(".T") for s in stocks)
+    if has_jp:
+        result["JP"] = get_jp_volatility_index()
+
+    return result
