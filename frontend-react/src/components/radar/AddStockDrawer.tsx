@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   CATEGORY_ICON_SHORT,
   STOCK_CATEGORIES,
-  DEFAULT_TAG_OPTIONS,
+  MARKET_TAG_OPTIONS,
   CASH_CURRENCY_OPTIONS,
   MARKET_OPTIONS,
 } from "@/lib/constants"
@@ -60,9 +60,19 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
   const marketInfo = MARKET_OPTIONS.find((m) => m.key === market) ?? MARKET_OPTIONS[0]
 
+  const tagOptions = MARKET_TAG_OPTIONS[market] ?? MARKET_TAG_OPTIONS.US
+
   const handleAddStock = () => {
     if (!ticker.trim()) {
       setAddFeedback(t("radar.form.error_no_ticker"))
+      return
+    }
+    if (market === "JP" && !/^\d{4}$/.test(ticker.trim())) {
+      setAddFeedback(t("radar.form.error_jp_ticker_format"))
+      return
+    }
+    if (market === "TW" && !/^\d{4,6}$/.test(ticker.trim())) {
+      setAddFeedback(t("radar.form.error_tw_ticker_format"))
       return
     }
     if (!thesis.trim()) {
@@ -238,7 +248,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                 {/* Market */}
                 <div>
                   <label className="text-xs text-muted-foreground">{t("radar.form.market")}</label>
-                  <Select value={market} onValueChange={setMarket}>
+                  <Select value={market} onValueChange={(v) => { setMarket(v); setSelectedTags([]) }}>
                     <SelectTrigger className="text-xs h-8 mt-0.5">
                       <SelectValue />
                     </SelectTrigger>
@@ -299,7 +309,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                 <div>
                   <label className="text-xs text-muted-foreground">{t("radar.form.tags")}</label>
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {DEFAULT_TAG_OPTIONS.map((tag) => (
+                    {tagOptions.map((tag) => (
                       <button
                         key={tag}
                         onClick={() => toggleTag(tag)}
@@ -365,7 +375,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                 <div>
                   <label className="text-xs text-muted-foreground">{t("radar.form.tags")}</label>
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {DEFAULT_TAG_OPTIONS.map((tag) => (
+                    {tagOptions.map((tag) => (
                       <button
                         key={tag}
                         onClick={() => toggleTag(tag)}

@@ -223,6 +223,8 @@
       "error_no_ticker": "⚠️ Please enter ticker symbol.",
       "error_no_bond_ticker": "⚠️ Please enter bond ticker.",
       "error_no_thesis": "⚠️ Please enter initial thesis.",
+      "error_jp_ticker_format": "⚠️ JP tickers must be a 4-digit code (e.g. 7203)",
+      "error_tw_ticker_format": "⚠️ TW tickers must be a 4-6 digit code (e.g. 2330)",
       "success_added": "✅ Added {{ticker}} to watchlist!"
     },
     "scan": {

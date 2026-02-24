@@ -223,6 +223,8 @@
       "error_no_ticker": "⚠️ 请输入股票代号。",
       "error_no_bond_ticker": "⚠️ 请输入债券代号。",
       "error_no_thesis": "⚠️ 请输入初始观点。",
+      "error_jp_ticker_format": "⚠️ 日本股票代号必须为4位数字（例：7203）",
+      "error_tw_ticker_format": "⚠️ 台湾股票代号必须为4至6位数字（例：2330）",
       "success_added": "✅ 已新增 {{ticker}} 到追踪清单！"
     },
     "scan": {

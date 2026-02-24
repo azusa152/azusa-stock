@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
-import { formatPrice } from "@/lib/format"
+import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES, MARKET_OPTIONS } from "@/lib/constants"
+import { formatPrice, isMarketOpen } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
 import { PriceChart } from "@/components/radar/PriceChart"
@@ -263,6 +263,8 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
 
   const marketLabel = infer_market_label(stock.ticker)
   const currency = infer_currency(stock.ticker)
+  const marketKey = MARKET_OPTIONS.find((m) => m.suffix && stock.ticker.endsWith(m.suffix))?.key ?? "US"
+  const marketOpen = isMarketOpen(marketKey)
   const resonanceBadge = resonance?.length ? `🏆×${resonance.length}` : ""
   const signalLabel =
     signal !== "NORMAL"
@@ -318,6 +320,9 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
             {!expanded && priceHistory && priceHistory.length >= 5 && (
               <SparklineHeader data={priceHistory} />
             )}
+            <span className={`text-[10px] ${marketOpen ? "text-green-500" : "text-muted-foreground"}`}>
+              {marketOpen ? "●" : "○"}
+            </span>
             <span className="text-muted-foreground text-xs">{expanded ? "▲" : "▼"}</span>
           </span>
         </span>

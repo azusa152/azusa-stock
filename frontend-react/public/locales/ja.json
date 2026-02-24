@@ -223,6 +223,8 @@
       "error_no_ticker": "⚠️ 銘柄コードを入力してください。",
       "error_no_bond_ticker": "⚠️ 債券コードを入力してください。",
       "error_no_thesis": "⚠️ 初期投資テーゼを入力してください。",
+      "error_jp_ticker_format": "⚠️ 日本株の銘柄コードは4桁の数字です（例：7203）",
+      "error_tw_ticker_format": "⚠️ 台湾株の銘柄コードは4〜6桁の数字です（例：2330）",
       "success_added": "✅ {{ticker}} を追跡リストに追加しました！"
     },
     "scan": {
