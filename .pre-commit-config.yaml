@@ -1,0 +1,68 @@
+# Pre-commit hooks for Folio — enforces architecture boundaries and code style at commit time.
+#
+# Setup (done automatically by `make setup`):
+#   make setup-hooks
+#
+# Run manually against all files:
+#   backend/.venv/bin/pre-commit run --all-files
+#
+# Update remote hook versions:
+#   backend/.venv/bin/pre-commit autoupdate
+#
+# Skip (emergency only — CI will still catch violations):
+#   git commit --no-verify
+
+# ---------------------------------------------------------------------------
+# 1. Standard hygiene hooks (remote — pre-commit/pre-commit-hooks v5.0.0)
+# ---------------------------------------------------------------------------
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml           # Validates YAML syntax (docker-compose, CI, this config)
+      - id: check-merge-conflict # Prevents committing unresolved conflict markers
+      - id: trailing-whitespace  # Removes trailing whitespace for clean diffs
+      - id: end-of-file-fixer    # Ensures newline at EOF (POSIX standard)
+      - id: check-added-large-files
+        args: [--maxkb=500]      # Prevents accidental binary blobs / DB files
+
+# ---------------------------------------------------------------------------
+# 2. Python linting and formatting (remote — astral-sh/ruff-pre-commit v0.8.5)
+#    Replaces local venv-dependent ruff hooks. ruff-pre-commit ships its own
+#    prebuilt binary — works on any machine after `pre-commit install`,
+#    no venv required.
+# ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.5
+    hooks:
+      - id: ruff                 # Lint with auto-fix; fails if fixes were applied
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      - id: ruff-format          # Format check (read-only — format explicitly with `make format`)
+        files: ^backend/
+
+# ---------------------------------------------------------------------------
+# 3. Project-specific hooks (local — no remote equivalent)
+# ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: architecture-boundary
+        name: architecture boundary check
+        entry: bash -c 'cd backend && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// .venv/bin/python -m pytest tests/test_architecture.py -q --tb=short --no-header'
+        language: system
+        pass_filenames: false
+        files: ^backend/
+
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend-react && npx eslint .'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
+
+      - id: vitest
+        name: vitest (frontend)
+        entry: bash -c 'cd frontend-react && npm test'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/

@@ -30,3 +30,9 @@ alwaysApply: false
 - Log messages in Traditional Chinese (developer-facing, intentionally not translated via i18n).
 - User-facing messages (API responses, Telegram notifications) MUST use `t()` for i18n.
 - Log levels: DEBUG for tracing, INFO for business events, WARNING for recoverable issues, ERROR for failures.
+
+## i18n (Backend)
+- All user-facing API responses MUST use `t()`: `from i18n import t`
+- Resolve language at API layer: `lang=get_user_language(session)`
+- Locale files: `backend/i18n/locales/{en,ja,zh-CN,zh-TW}.json`
+- Default: `zh-TW`. Fallback: requested lang → `zh-TW` → raw key

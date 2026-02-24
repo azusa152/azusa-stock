@@ -22,8 +22,10 @@ from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_moat_trend,
     detect_is_etf,
+    get_bias_distribution,
     get_dividend_info,
     get_earnings_date,
+    get_price_history as _get_price_history,
     get_technical_signals,
 )
 from logging_config import get_logger
@@ -653,3 +655,31 @@ def get_enriched_stocks(session: Session) -> list[dict]:
 
     logger.info("批次豐富資料取得完成。")
     return list(enriched.values())
+
+
+# ---------------------------------------------------------------------------
+# Market Data Wrappers
+# ---------------------------------------------------------------------------
+
+
+def get_signals_for_ticker(ticker: str) -> dict:
+    """Fetch technical signals and bias distribution for a ticker."""
+    signals = get_technical_signals(ticker)
+    if signals:
+        signals["bias_distribution"] = get_bias_distribution(ticker)
+    return signals
+
+
+def get_price_history(ticker: str) -> list[dict] | None:
+    """Fetch price history for charting."""
+    return _get_price_history(ticker)
+
+
+def get_earnings_for_ticker(ticker: str) -> dict | None:
+    """Fetch next earnings date for a ticker."""
+    return get_earnings_date(ticker)
+
+
+def get_dividend_for_ticker(ticker: str) -> dict | None:
+    """Fetch dividend info for a ticker."""
+    return get_dividend_info(ticker)

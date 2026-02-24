@@ -63,4 +63,3 @@ export interface EnrichedStock {
   dividend?: DividendInfo
   earnings?: EarningsInfo
 }
-

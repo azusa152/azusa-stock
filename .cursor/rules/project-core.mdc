@@ -1,22 +1,23 @@
 ---
-description: Project role, investment philosophy, architecture, and technical stack
+description: Project identity, architecture, and technical stack
 alwaysApply: true
 ---
 
-# Role
-You are the "Folio Architect" — build a Dockerized, API-first investment analysis system for thesis-driven stock tracking.
+# Folio — Investment Analysis System
 
-# Investment Logic (Core Philosophy)
-1. **Follow the Money (Capex):** Tier 1 "Trend Setters" (Hyperscalers, Berkshire) signal market direction via MA200 and RSI.
-2. **Moat Validation (Gross Margin):** Tier 2 stocks MUST maintain Gross Margin. If Gross Margin declines YoY while price drops → "Thesis Broken" (Red Alert).
-3. **Gray-Scale Thinking (Thesis Versioning):** Track the evolution of user's investment thesis to avoid hindsight bias.
-4. **9-State Signal Taxonomy:** `determine_scan_signal()` in `backend/domain/analysis.py` uses a two-phase architecture. Phase 1 priority order (category-aware RSI thresholds — Growth +2, Moat +1, Bond -3 offsets applied to all RSI thresholds): `THESIS_BROKEN` → `DEEP_VALUE` → `OVERSOLD` → `CONTRARIAN_BUY` → `APPROACHING_BUY` → `OVERHEATED` → `CAUTION_HIGH` → `WEAKENING` → `NORMAL`. Phase 2 MA200 amplifier: buy-side (bias_200 < -15%) upgrades WEAKENING→APPROACHING_BUY→CONTRARIAN_BUY; sell-side (bias_200 > +20%, asymmetric) upgrades CAUTION_HIGH→OVERHEATED. Volume ratio is a notification-layer qualifier.
-5. **5-Tier Market Sentiment:** `determine_market_sentiment()` in `backend/domain/analysis.py` classifies market breadth by the percentage of Trend Setter stocks below 60MA: `STRONG_BULLISH` (≤10%) → `BULLISH` (≤30%) → `NEUTRAL` (≤50%) → `BEARISH` (≤70%) → `STRONG_BEARISH` (>70%). Sentiment is context only — does NOT gate signal logic.
+**Role:** Folio Architect — Dockerized, API-first, thesis-driven stock tracking system.
 
-# Architecture & Stack
-- **Stack:** FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
-- **Clean Architecture Layers:** `domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
-- **Constants:** Use `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
+## Stack
+FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) + Docker Compose + yfinance + Telegram Bot.
+
+## Architecture (Clean Architecture)
+`domain/` (business rules, no framework imports) → `application/` (use-case orchestration) → `infrastructure/` (adapters: yfinance, Telegram, DB) → `api/` (FastAPI routes, thin controllers).
+
+## Key Conventions
+- **Constants:** `backend/domain/constants.py` and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
-- **API Type Codegen:** Frontend TypeScript types are generated from the backend OpenAPI spec via `openapi-typescript`. Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`. Type barrel files in `frontend-react/src/api/types/` re-export types from `generated.d.ts` (gitignored build artifact derived from the committed `frontend-react/src/api/openapi.json`).
+- **API Type Codegen:** Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`.
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.
+- **Architecture Boundaries:** See `.cursor/rules/architecture-boundaries.mdc`. API routes delegate to `application/` services — never import directly from `infrastructure/` (except `infrastructure.database`).
+- **New Features:** Follow Research → Plan → Implement → Verify (`make ci`) workflow. Check existing patterns in the same layer before writing new code.
+- **Documentation Sync:** When adding or changing any feature, update: (1) `README.md` feature list/API reference, (2) in-page instructions (SOP collapsible sections, help tooltips) in affected frontend pages, (3) `docs/agents/folio/SKILL.md` and `docs/agents/AGENTS.md` if endpoints/webhook actions changed, (4) run `make generate-api` if schemas changed.

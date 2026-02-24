@@ -31,10 +31,12 @@ from api.stock_routes import router as stock_router
 from api.telegram_routes import router as telegram_router
 from api.thesis_routes import router as thesis_router
 from infrastructure.database import create_db_and_tables
+from config.settings import init_settings
 from logging_config import get_logger
 
 # Load environment variables from .env file
 load_dotenv()
+init_settings()
 
 logger = get_logger(__name__)
 

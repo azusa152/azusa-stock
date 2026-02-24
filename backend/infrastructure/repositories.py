@@ -7,17 +7,26 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, func, select
 
-from domain.constants import LATEST_SCAN_LOGS_DEFAULT_LIMIT, SCAN_HISTORY_DEFAULT_LIMIT
+from domain.constants import (
+    DEFAULT_USER_ID,
+    LATEST_SCAN_LOGS_DEFAULT_LIMIT,
+    SCAN_HISTORY_DEFAULT_LIMIT,
+)
 from domain.entities import (
     FXWatchConfig,
     Guru,
     GuruFiling,
     GuruHolding,
+    Holding,
     PriceAlert,
     RemovalLog,
     ScanLog,
     Stock,
+    SystemTemplate,
     ThesisLog,
+    UserInvestmentProfile,
+    UserPreferences,
+    UserTelegramSettings,
 )
 from domain.enums import StockCategory
 
@@ -745,3 +754,122 @@ def find_sector_breakdown(session: Session) -> list[dict]:
         )
     result.sort(key=lambda x: x["weight_pct"], reverse=True)
     return result
+
+
+# ===========================================================================
+# Holding Repository
+# ===========================================================================
+
+
+def find_all_holdings(session: Session) -> list[Holding]:
+    """查詢所有持倉（依 ID 排序）。"""
+    return list(session.exec(select(Holding).order_by(Holding.id)).all())
+
+
+def find_holding_by_id(session: Session, holding_id: int) -> Holding | None:
+    """根據 ID 查詢單一持倉。"""
+    return session.get(Holding, holding_id)
+
+
+def save_holding(session: Session, holding: Holding) -> Holding:
+    """新增或更新持倉（含 refresh）。"""
+    session.add(holding)
+    session.commit()
+    session.refresh(holding)
+    return holding
+
+
+def delete_holding(session: Session, holding: Holding) -> None:
+    """刪除一筆持倉。"""
+    session.delete(holding)
+    session.commit()
+
+
+def delete_all_holdings(session: Session) -> int:
+    """刪除所有持倉，回傳刪除筆數。"""
+    holdings = find_all_holdings(session)
+    count = len(holdings)
+    for h in holdings:
+        session.delete(h)
+    session.commit()
+    return count
+
+
+# ===========================================================================
+# UserPreferences Repository
+# ===========================================================================
+
+
+def find_user_preferences(
+    session: Session, user_id: str = DEFAULT_USER_ID
+) -> UserPreferences | None:
+    """查詢使用者偏好設定。"""
+    return session.get(UserPreferences, user_id)
+
+
+def save_user_preferences(session: Session, prefs: UserPreferences) -> UserPreferences:
+    """新增或更新使用者偏好設定（含 refresh）。"""
+    session.add(prefs)
+    session.commit()
+    session.refresh(prefs)
+    return prefs
+
+
+# ===========================================================================
+# UserTelegramSettings Repository
+# ===========================================================================
+
+
+def find_telegram_settings(
+    session: Session, user_id: str = DEFAULT_USER_ID
+) -> UserTelegramSettings | None:
+    """查詢使用者 Telegram 通知設定。"""
+    return session.get(UserTelegramSettings, user_id)
+
+
+def save_telegram_settings(
+    session: Session, settings: UserTelegramSettings
+) -> UserTelegramSettings:
+    """新增或更新 Telegram 通知設定（含 refresh）。"""
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings
+
+
+# ===========================================================================
+# UserInvestmentProfile / SystemTemplate Repository
+# ===========================================================================
+
+
+def find_system_templates(session: Session) -> list[SystemTemplate]:
+    """查詢所有系統範本。"""
+    return list(session.exec(select(SystemTemplate)).all())
+
+
+def find_active_profile(
+    session: Session, user_id: str = DEFAULT_USER_ID
+) -> UserInvestmentProfile | None:
+    """查詢指定使用者目前啟用中的投資組合設定檔。"""
+    stmt = select(UserInvestmentProfile).where(
+        UserInvestmentProfile.user_id == user_id,
+        UserInvestmentProfile.is_active == True,  # noqa: E712
+    )
+    return session.exec(stmt).first()
+
+
+def find_profile_by_id(
+    session: Session, profile_id: int
+) -> UserInvestmentProfile | None:
+    """根據 ID 查詢投資組合設定檔。"""
+    return session.get(UserInvestmentProfile, profile_id)
+
+
+def save_profile(
+    session: Session, profile: UserInvestmentProfile
+) -> UserInvestmentProfile:
+    """新增或更新投資組合設定檔（含 refresh）。"""
+    session.add(profile)
+    session.commit()
+    session.refresh(profile)
+    return profile

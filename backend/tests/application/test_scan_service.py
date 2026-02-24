@@ -304,3 +304,61 @@ class TestScanRogueWaveSkippedForCash:
         assert r["is_rogue_wave"] is False
         assert r["bias_percentile"] is None
         mock_bias_dist.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestGetLastScanStatus
+# ---------------------------------------------------------------------------
+
+
+class TestGetLastScanStatus:
+    def test_returns_none_timestamps_when_no_logs(self, db_session: Session) -> None:
+        from application.scan_service import get_last_scan_status
+
+        result = get_last_scan_status(db_session)
+        assert result["last_scanned_at"] is None
+        assert result["epoch"] is None
+
+    def test_returns_scan_metadata_when_logs_exist(self, db_session: Session) -> None:
+        from application.scan_service import get_last_scan_status
+        from domain.entities import ScanLog
+
+        log = ScanLog(
+            stock_ticker="AAPL",
+            signal="NORMAL",
+            market_status="BULLISH",
+            market_status_details="ok",
+        )
+        db_session.add(log)
+        db_session.commit()
+        db_session.refresh(log)
+
+        mock_fg = {"composite_level": "NEUTRAL", "composite_score": 50}
+        with patch(
+            "application.scan_service.get_fear_greed_index", return_value=mock_fg
+        ):
+            result = get_last_scan_status(db_session)
+
+        assert result["last_scanned_at"] is not None
+        assert result["epoch"] is not None
+        assert result["market_status"] == "BULLISH"
+        assert result["fear_greed_level"] == "NEUTRAL"
+        assert result["fear_greed_score"] == 50
+
+
+# ---------------------------------------------------------------------------
+# TestGetFearGreed
+# ---------------------------------------------------------------------------
+
+
+class TestGetFearGreed:
+    def test_delegates_to_infrastructure(self) -> None:
+        from application.scan_service import get_fear_greed
+
+        mock_fg = {"composite_level": "GREED", "composite_score": 72}
+        with patch(
+            "application.scan_service.get_fear_greed_index", return_value=mock_fg
+        ):
+            result = get_fear_greed()
+
+        assert result == mock_fg

@@ -7,7 +7,7 @@
 #  Fullstack (composite):
 #    make ci               Run all linting + all tests (mirrors CI)
 #    make lint             Lint backend + frontend
-#    make test             Test backend (+ frontend when Phase 4 adds Vitest)
+#    make test             Test backend + frontend (Vitest)
 #    make format           Format backend code
 #
 #  Backend (granular):
@@ -21,10 +21,11 @@
 #    make frontend-build   Production build
 #
 #  Setup:
-#    make setup            First-time: venv + npm + codegen
+#    make setup            First-time: venv + npm + codegen + pre-commit hooks
 #    make install          Create backend venv and install deps
 #    make frontend-install Install frontend deps (npm ci)
 #    make generate-api     Export OpenAPI spec + regenerate TS types
+#    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff)
 #
 #  Docker:
 #    make up               Start all services (background)
@@ -72,9 +73,9 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 # ---------------------------------------------------------------------------
 #  Setup & Install
 # ---------------------------------------------------------------------------
-.PHONY: setup install frontend-install
+.PHONY: setup install frontend-install setup-hooks
 
-setup: install frontend-install generate-api ## Full first-time setup (backend + frontend + codegen)
+setup: install frontend-install generate-api setup-hooks ## Full first-time setup (backend + frontend + codegen + hooks)
 	@echo "Setup complete. Run 'make ci' to verify everything passes."
 
 install: ## Create backend venv and install dependencies
@@ -83,6 +84,10 @@ install: ## Create backend venv and install dependencies
 
 frontend-install: ## Install frontend dependencies (npm ci)
 	cd $(FRONTEND_DIR) && npm ci
+
+setup-hooks: .venv-check ## Install pre-commit hooks (auto-runs architecture boundary + ruff on every commit)
+	$(PIP) install pre-commit
+	$(BACKEND_DIR)/.venv/bin/pre-commit install
 
 # ---------------------------------------------------------------------------
 #  Backend (granular)
@@ -117,11 +122,14 @@ frontend-build: .node-check generate-api ## Build frontend for production (requi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: lint test format ci clean
+.PHONY: lint test format ci clean frontend-test
 
 lint: backend-lint frontend-lint ## Lint entire project (backend + frontend)
 
-test: backend-test ## Test entire project (backend now; frontend-test added in Phase 4)
+frontend-test: .node-check ## Run frontend tests (Vitest)
+	cd $(FRONTEND_DIR) && npm test
+
+test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
@@ -179,7 +187,10 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help
+.PHONY: generate-key security help check-constants
+
+check-constants: ## Check backend/frontend constant sync
+	python3 scripts/check_constant_sync.py
 
 generate-key: ## Generate a secure API key (add to .env as FOLIO_API_KEY)
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"

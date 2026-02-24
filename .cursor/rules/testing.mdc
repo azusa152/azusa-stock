@@ -46,3 +46,13 @@ Every test follows **Arrange / Act / Assert**. See `backend/tests/` for canonica
 
 - Every webhook action MUST have at least **one happy-path test** and **one error-path test**.
 - The `help` action must be tested to ensure discoverability stays accurate.
+
+## Architecture Boundary Tests
+
+Architecture boundary tests in `backend/tests/test_architecture.py` enforce layer dependency rules using Python's AST module:
+
+- **Domain** must not import from `application`, `infrastructure`, or `api`.
+- **Infrastructure** must not import from `application` or `api`.
+- **API routes** may only import from `infrastructure.database` (for `get_session`); all other `infrastructure.*` imports are forbidden.
+
+Any new module must not violate the allowed import directions. Run `make test` to verify boundaries have not regressed.
