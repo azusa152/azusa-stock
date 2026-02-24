@@ -49,6 +49,7 @@ from application.filing_service import (
     get_filing_summary,
     get_guru_filing_history,
     get_holding_changes,
+    get_top_holdings as filing_get_top_holdings,
     sync_all_gurus,
     sync_guru_filing,
 )
@@ -61,10 +62,6 @@ from application.resonance_service import (
 )
 from domain.constants import GURU_HOLDING_CHANGES_DISPLAY_LIMIT, GURU_TOP_HOLDINGS_COUNT
 from infrastructure.database import get_session
-from infrastructure.repositories import (
-    find_holdings_by_filing,
-    find_latest_filing_by_guru,
-)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -311,31 +308,25 @@ def get_top_holdings(
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
     """取得指定大師持倉權重最高的前 N 支股票（預設 Top 10，最多 50）。"""
-    filing = find_latest_filing_by_guru(session, guru_id)
-    if filing is None:
+    top = filing_get_top_holdings(session, guru_id, n)
+    if not top:
         raise HTTPException(
             status_code=404,
             detail=f"No filing data found for guru {guru_id}",
         )
-    holdings = find_holdings_by_filing(session, filing.id)
-    top = sorted(
-        [h for h in holdings if h.weight_pct is not None],
-        key=lambda h: h.weight_pct or 0,
-        reverse=True,
-    )[:n]
     return [
         GuruHoldingResponse(
             guru_id=guru_id,
-            cusip=h.cusip,
-            ticker=h.ticker,
-            company_name=h.company_name,
-            value=h.value,
-            shares=h.shares,
-            action=h.action,
-            change_pct=h.change_pct,
-            weight_pct=h.weight_pct,
-            report_date=filing.report_date,
-            filing_date=filing.filing_date,
+            cusip=h.get("cusip", ""),
+            ticker=h.get("ticker"),
+            company_name=h.get("company_name", ""),
+            value=h.get("value", 0.0),
+            shares=h.get("shares", 0.0),
+            action=h.get("action", "UNCHANGED"),
+            change_pct=h.get("change_pct"),
+            weight_pct=h.get("weight_pct"),
+            report_date=h.get("report_date"),
+            filing_date=h.get("filing_date"),
         )
         for h in top
     ]
