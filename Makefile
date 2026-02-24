@@ -7,7 +7,7 @@
 #  Fullstack (composite):
 #    make ci               Run all linting + all tests (mirrors CI)
 #    make lint             Lint backend + frontend
-#    make test             Test backend (+ frontend when Phase 4 adds Vitest)
+#    make test             Test backend + frontend (Vitest)
 #    make format           Format backend code
 #
 #  Backend (granular):
@@ -117,11 +117,14 @@ frontend-build: .node-check generate-api ## Build frontend for production (requi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: lint test format ci clean
+.PHONY: lint test format ci clean frontend-test
 
 lint: backend-lint frontend-lint ## Lint entire project (backend + frontend)
 
-test: backend-test ## Test entire project (backend now; frontend-test added in Phase 4)
+frontend-test: .node-check ## Run frontend tests (Vitest)
+	cd $(FRONTEND_DIR) && npm test
+
+test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
