@@ -42,7 +42,7 @@ class TestGetFearGreedEndpoint:
         }
 
         with patch(
-            "application.scan_service.get_fear_greed_index",
+            "application.scan.scan_service.get_fear_greed_index",
             return_value=mock_fg_vix_only,
         ):
             # Act
@@ -72,7 +72,8 @@ class TestGetFearGreedEndpoint:
         }
 
         with patch(
-            "application.scan_service.get_fear_greed_index", return_value=mock_fg_na
+            "application.scan.scan_service.get_fear_greed_index",
+            return_value=mock_fg_na,
         ):
             # Act
             resp = client.get("/market/fear-greed")

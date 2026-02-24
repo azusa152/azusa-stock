@@ -20,8 +20,10 @@ from tests.conftest import test_engine
 SYNC_ALL_TARGET = "api.guru_routes.sync_all_gurus"
 SYNC_ONE_TARGET = "api.guru_routes.sync_guru_filing"
 SEND_DIGEST_TARGET = "api.guru_routes.send_filing_season_digest"
-WEBHOOK_SYNC_TARGET = "application.webhook_service.sync_all_gurus"
-WEBHOOK_DIGEST_TARGET = "application.webhook_service.send_filing_season_digest"
+WEBHOOK_SYNC_TARGET = "application.messaging.webhook_service.sync_all_gurus"
+WEBHOOK_DIGEST_TARGET = (
+    "application.messaging.webhook_service.send_filing_season_digest"
+)
 
 
 # ---------------------------------------------------------------------------

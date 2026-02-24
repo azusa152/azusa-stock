@@ -21,7 +21,7 @@ from api.schemas import (
     WithdrawResponse,
     XRayAlertResponse,
 )
-from application import holding_service
+from application.portfolio import holding_service
 from application.services import (
     StockNotFoundError,
     calculate_currency_exposure,

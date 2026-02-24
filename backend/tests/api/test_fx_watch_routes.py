@@ -280,7 +280,7 @@ class TestFXWatchActions:
         assert data["total_watches"] == 0
         assert data["results"] == []
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_check_fx_watches_with_active_config(
         self, mock_get_history, client: TestClient
     ):
@@ -320,9 +320,9 @@ class TestFXWatchActions:
         assert result["result"]["alert_on_recent_high"] is True
         assert result["result"]["alert_on_consecutive_increase"] is True
 
-    @patch("application.fx_watch_service.send_telegram_message_dual")
-    @patch("application.fx_watch_service.get_forex_history_long")
-    @patch("application.fx_watch_service.is_notification_enabled")
+    @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_send_fx_watch_alerts_triggers_notification(
         self,
         mock_notification_enabled,
@@ -392,9 +392,9 @@ class TestFXWatchValidation:
 class TestFXWatchAlertCooldown:
     """Tests for alert cooldown integration flow."""
 
-    @patch("application.fx_watch_service.send_telegram_message_dual")
-    @patch("application.fx_watch_service.get_forex_history_long")
-    @patch("application.fx_watch_service.is_notification_enabled")
+    @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_cooldown_should_prevent_duplicate_alerts(
         self,
         mock_notification_enabled,
@@ -436,7 +436,7 @@ class TestFXWatchAlertCooldown:
         assert second.json()["triggered_alerts"] == 0
         assert second.json()["sent_alerts"] == 0
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_check_should_handle_forex_api_failure_gracefully(
         self, mock_get_history, client: TestClient
     ):
@@ -465,9 +465,9 @@ class TestFXWatchAlertCooldown:
 class TestFXWatchNotificationToggle:
     """Tests for notification toggle integration."""
 
-    @patch("application.fx_watch_service.send_telegram_message_dual")
-    @patch("application.fx_watch_service.get_forex_history_long")
-    @patch("application.fx_watch_service.is_notification_enabled")
+    @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_alert_should_not_send_when_notification_disabled(
         self,
         mock_notification_enabled,

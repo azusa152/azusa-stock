@@ -44,7 +44,7 @@ from api.schemas import (
     SyncAllResponse,
     SyncResponse,
 )
-from application.filing_service import (
+from application.stock.filing_service import (
     get_dashboard_summary,
     get_filing_summary,
     get_guru_filing_history,
@@ -53,9 +53,9 @@ from application.filing_service import (
     sync_all_gurus,
     sync_guru_filing,
 )
-from application.guru_service import add_guru, list_gurus, remove_guru
-from application.notification_service import send_filing_season_digest
-from application.resonance_service import (
+from application.guru.guru_service import add_guru, list_gurus, remove_guru
+from application.messaging.notification_service import send_filing_season_digest
+from application.guru.resonance_service import (
     compute_portfolio_resonance,
     get_great_minds_list,
     get_resonance_for_ticker,

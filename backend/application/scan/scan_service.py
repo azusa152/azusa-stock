@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 
 from application.formatters import format_fear_greed_label
-from application.stock_service import _get_stock_or_raise
+from application.stock.stock_service import _get_stock_or_raise
 from domain.analysis import (
     compute_bias_percentile,
     detect_rogue_wave,

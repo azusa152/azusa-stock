@@ -10,7 +10,7 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from application.telegram_settings_service import (
+from application.messaging.telegram_settings_service import (
     _mask_token,
     get_settings,
     send_test_message,
@@ -123,7 +123,7 @@ class TestUpdateSettings:
 
     def test_encrypts_token_when_fernet_key_set(self, db_session: Session) -> None:
         with patch(
-            "application.telegram_settings_service.encrypt_token",
+            "application.messaging.telegram_settings_service.encrypt_token",
             return_value="encrypted_value",
         ) as mock_encrypt:
             with patch.dict("os.environ", {"FERNET_KEY": "somekey"}):
@@ -177,7 +177,7 @@ class TestSendTestMessage:
     def test_sends_message_successfully(self, db_session: Session) -> None:
         _seed_settings(db_session, chat_id="123456")
         with patch(
-            "application.telegram_settings_service.send_telegram_message_dual"
+            "application.messaging.telegram_settings_service.send_telegram_message_dual"
         ) as mock_send:
             result = send_test_message(db_session, _LANG)
         mock_send.assert_called_once()
@@ -186,7 +186,7 @@ class TestSendTestMessage:
     def test_raises_500_when_send_fails(self, db_session: Session) -> None:
         _seed_settings(db_session, chat_id="123456")
         with patch(
-            "application.telegram_settings_service.send_telegram_message_dual",
+            "application.messaging.telegram_settings_service.send_telegram_message_dual",
             side_effect=RuntimeError("network error"),
         ):
             with pytest.raises(HTTPException) as exc_info:

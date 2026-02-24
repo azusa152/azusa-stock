@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from application.stock_service import StockNotFoundError
+from application.stock.stock_service import StockNotFoundError
 from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,

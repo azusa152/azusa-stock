@@ -57,7 +57,7 @@ def test_telegram_test_send_exception_sanitized(client):
 
     # Patch send_telegram_message_dual where it's imported in telegram_settings_service
     with patch(
-        "application.telegram_settings_service.send_telegram_message_dual"
+        "application.messaging.telegram_settings_service.send_telegram_message_dual"
     ) as mock_send:
         mock_send.side_effect = ConnectionError(
             "HTTP 403 Forbidden - Bot token invalid: sk-test-12345"

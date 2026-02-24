@@ -134,7 +134,7 @@ def send_weekly_digest(session: Session) -> dict:
     holdings_detail: list[dict] = []
     categories: dict = {}
     try:
-        from application.rebalance_service import calculate_rebalance
+        from application.portfolio.rebalance_service import calculate_rebalance
 
         rebalance = calculate_rebalance(session)
         current_total = rebalance.get("total_value")
@@ -244,7 +244,7 @@ def send_weekly_digest(session: Session) -> dict:
     # Lazy import to avoid circular dependency: notification_service ↔ resonance_service.
     smart_money_lines: list[str] = []
     try:
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
         for entry in resonance:
@@ -348,7 +348,7 @@ def get_portfolio_summary(session: Session) -> str:
     categories: dict = {}
     display_currency = "USD"
     try:
-        from application.rebalance_service import calculate_rebalance
+        from application.portfolio.rebalance_service import calculate_rebalance
 
         rebalance = calculate_rebalance(session)
         current_total = rebalance.get("total_value")
@@ -432,7 +432,7 @@ def get_portfolio_summary(session: Session) -> str:
 
     # --- Smart Money 大師動態 ---
     try:
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
         smart_lines: list[str] = []
@@ -475,7 +475,7 @@ def send_filing_season_digest(session: Session) -> dict:
         dict with keys: status ("sent" | "skipped" | "no_data"),
                         message (str), guru_count (int)
     """
-    from application.filing_service import get_filing_summary
+    from application.stock.filing_service import get_filing_summary
 
     lang = get_user_language(session)
 
@@ -520,7 +520,7 @@ def send_resonance_alerts(session: Session) -> dict:
     Returns:
         dict with keys: status, alert_count, alerts (list of dicts)
     """
-    from application.resonance_service import compute_portfolio_resonance
+    from application.guru.resonance_service import compute_portfolio_resonance
 
     lang = get_user_language(session)
 

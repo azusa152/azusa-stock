@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from sqlmodel import Session
 
-from application.prewarm_service import (
+from application.scan.prewarm_service import (
     _batch_prewarm_signals,
     _collect_tickers,
     prewarm_all_caches,
@@ -23,7 +23,7 @@ class TestCollectTickers:
 
     def test_should_return_empty_when_no_stocks_or_holdings(self, db_session: Session):
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -52,7 +52,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -80,7 +80,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -116,7 +116,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -145,7 +145,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -180,7 +180,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert — both should appear
@@ -210,7 +210,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert — USD cash holding excluded, NVDA included
@@ -240,7 +240,7 @@ class TestCollectTickers:
         db_session.commit()
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             result = _collect_tickers()
 
         # Assert
@@ -256,12 +256,12 @@ class TestCollectTickers:
 class TestPrewarmAllCaches:
     """Tests for the orchestration function."""
 
-    @patch("application.prewarm_service.get_ticker_sector")
-    @patch("application.prewarm_service.prewarm_beta_batch")
-    @patch("application.prewarm_service.prewarm_etf_holdings_batch")
-    @patch("application.prewarm_service.prewarm_moat_batch")
-    @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service._batch_prewarm_signals")
+    @patch("application.scan.prewarm_service.get_ticker_sector")
+    @patch("application.scan.prewarm_service.prewarm_beta_batch")
+    @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")
+    @patch("application.scan.prewarm_service.prewarm_moat_batch")
+    @patch("application.scan.prewarm_service.get_fear_greed_index")
+    @patch("application.scan.prewarm_service._batch_prewarm_signals")
     def test_happy_path_should_call_all_phases(
         self,
         mock_signals,
@@ -299,7 +299,7 @@ class TestPrewarmAllCaches:
         mock_sector.return_value = "Technology"
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
         # Assert
@@ -330,12 +330,12 @@ class TestPrewarmAllCaches:
         assert "NVDA" in beta_tickers
         assert "VTI" in beta_tickers
 
-    @patch("application.prewarm_service.get_ticker_sector")
-    @patch("application.prewarm_service.prewarm_beta_batch")
-    @patch("application.prewarm_service.prewarm_etf_holdings_batch")
-    @patch("application.prewarm_service.prewarm_moat_batch")
-    @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service._batch_prewarm_signals")
+    @patch("application.scan.prewarm_service.get_ticker_sector")
+    @patch("application.scan.prewarm_service.prewarm_beta_batch")
+    @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")
+    @patch("application.scan.prewarm_service.prewarm_moat_batch")
+    @patch("application.scan.prewarm_service.get_fear_greed_index")
+    @patch("application.scan.prewarm_service._batch_prewarm_signals")
     def test_empty_db_should_skip_all_phases(
         self,
         mock_signals,
@@ -347,7 +347,7 @@ class TestPrewarmAllCaches:
         db_session: Session,
     ):
         # Act — empty DB
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
         # Assert — no prewarm functions called
@@ -358,12 +358,12 @@ class TestPrewarmAllCaches:
         mock_beta.assert_not_called()
         mock_sector.assert_not_called()
 
-    @patch("application.prewarm_service.get_ticker_sector")
-    @patch("application.prewarm_service.prewarm_beta_batch")
-    @patch("application.prewarm_service.prewarm_etf_holdings_batch")
-    @patch("application.prewarm_service.prewarm_moat_batch")
-    @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service._batch_prewarm_signals")
+    @patch("application.scan.prewarm_service.get_ticker_sector")
+    @patch("application.scan.prewarm_service.prewarm_beta_batch")
+    @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")
+    @patch("application.scan.prewarm_service.prewarm_moat_batch")
+    @patch("application.scan.prewarm_service.get_fear_greed_index")
+    @patch("application.scan.prewarm_service._batch_prewarm_signals")
     def test_partial_failure_should_not_block_other_phases(
         self,
         mock_signals,
@@ -392,7 +392,7 @@ class TestPrewarmAllCaches:
         mock_sector.return_value = "Technology"
 
         # Act — should NOT raise
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
         # Assert — parallel phases still run (signals failure is isolated)
@@ -402,12 +402,12 @@ class TestPrewarmAllCaches:
         mock_beta.assert_called_once()
         mock_sector.assert_called_once()  # sector prewarm still runs
 
-    @patch("application.prewarm_service.get_ticker_sector")
-    @patch("application.prewarm_service.prewarm_beta_batch")
-    @patch("application.prewarm_service.prewarm_etf_holdings_batch")
-    @patch("application.prewarm_service.prewarm_moat_batch")
-    @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service._batch_prewarm_signals")
+    @patch("application.scan.prewarm_service.get_ticker_sector")
+    @patch("application.scan.prewarm_service.prewarm_beta_batch")
+    @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")
+    @patch("application.scan.prewarm_service.prewarm_moat_batch")
+    @patch("application.scan.prewarm_service.get_fear_greed_index")
+    @patch("application.scan.prewarm_service._batch_prewarm_signals")
     def test_no_etf_should_skip_etf_phase(
         self,
         mock_signals,
@@ -436,19 +436,19 @@ class TestPrewarmAllCaches:
         mock_sector.return_value = "Technology"
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
         # Assert — ETF phase skipped, beta still called
         mock_etf.assert_not_called()
         mock_beta.assert_called_once()
 
-    @patch("application.prewarm_service.get_ticker_sector")
-    @patch("application.prewarm_service.prewarm_beta_batch")
-    @patch("application.prewarm_service.prewarm_etf_holdings_batch")
-    @patch("application.prewarm_service.prewarm_moat_batch")
-    @patch("application.prewarm_service.get_fear_greed_index")
-    @patch("application.prewarm_service._batch_prewarm_signals")
+    @patch("application.scan.prewarm_service.get_ticker_sector")
+    @patch("application.scan.prewarm_service.prewarm_beta_batch")
+    @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")
+    @patch("application.scan.prewarm_service.prewarm_moat_batch")
+    @patch("application.scan.prewarm_service.get_fear_greed_index")
+    @patch("application.scan.prewarm_service._batch_prewarm_signals")
     def test_cash_stocks_should_be_excluded_from_signals_and_moat(
         self,
         mock_signals,
@@ -483,7 +483,7 @@ class TestPrewarmAllCaches:
         mock_sector.return_value = "Technology"
 
         # Act
-        with patch("application.prewarm_service.engine", db_session.get_bind()):
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
             prewarm_all_caches()
 
         # Assert — _batch_prewarm_signals receives signals tickers (no USD)
@@ -512,9 +512,9 @@ class TestPrewarmAllCaches:
 class TestBatchPrewarmSignals:
     """Tests for _batch_prewarm_signals — batch download + fallback logic."""
 
-    @patch("application.prewarm_service.prewarm_signals_batch")
-    @patch("application.prewarm_service.prime_signals_cache_batch")
-    @patch("application.prewarm_service.batch_download_history")
+    @patch("application.scan.prewarm_service.prewarm_signals_batch")
+    @patch("application.scan.prewarm_service.prime_signals_cache_batch")
+    @patch("application.scan.prewarm_service.batch_download_history")
     def test_full_batch_success_should_not_call_fallback(
         self, mock_batch_dl, mock_prime, mock_fallback
     ):
@@ -529,9 +529,9 @@ class TestBatchPrewarmSignals:
         mock_prime.assert_called_once()
         mock_fallback.assert_not_called()
 
-    @patch("application.prewarm_service.prewarm_signals_batch")
-    @patch("application.prewarm_service.prime_signals_cache_batch")
-    @patch("application.prewarm_service.batch_download_history")
+    @patch("application.scan.prewarm_service.prewarm_signals_batch")
+    @patch("application.scan.prewarm_service.prime_signals_cache_batch")
+    @patch("application.scan.prewarm_service.batch_download_history")
     def test_partial_batch_should_fallback_for_missed_tickers(
         self, mock_batch_dl, mock_prime, mock_fallback
     ):
@@ -547,9 +547,9 @@ class TestBatchPrewarmSignals:
         mock_prime.assert_called_once()
         mock_fallback.assert_called_once_with(["0050.TW"])
 
-    @patch("application.prewarm_service.prewarm_signals_batch")
-    @patch("application.prewarm_service.prime_signals_cache_batch")
-    @patch("application.prewarm_service.batch_download_history")
+    @patch("application.scan.prewarm_service.prewarm_signals_batch")
+    @patch("application.scan.prewarm_service.prime_signals_cache_batch")
+    @patch("application.scan.prewarm_service.batch_download_history")
     def test_empty_batch_result_should_fully_fallback(
         self, mock_batch_dl, mock_prime, mock_fallback
     ):
@@ -564,8 +564,8 @@ class TestBatchPrewarmSignals:
         mock_prime.assert_not_called()
         mock_fallback.assert_called_once_with(["AAPL", "NVDA"])
 
-    @patch("application.prewarm_service.prewarm_signals_batch")
-    @patch("application.prewarm_service.batch_download_history")
+    @patch("application.scan.prewarm_service.prewarm_signals_batch")
+    @patch("application.scan.prewarm_service.batch_download_history")
     def test_empty_ticker_list_should_be_a_no_op(self, mock_batch_dl, mock_fallback):
         # Act
         _batch_prewarm_signals([])

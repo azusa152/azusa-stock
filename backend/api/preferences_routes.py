@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from api.schemas import PreferencesRequest, PreferencesResponse
-from application import preferences_service
+from application.settings import preferences_service
 from i18n import get_user_language
 from infrastructure.database import get_session
 from logging_config import get_logger

@@ -4,20 +4,20 @@ Application — Webhook Service：OpenClaw / AI agent webhook 處理。
 
 from sqlmodel import Session
 
-from application.filing_service import sync_all_gurus
+from application.stock.filing_service import sync_all_gurus
 from application.formatters import format_fear_greed_label
-from application.fx_watch_service import send_fx_watch_alerts
-from application.notification_service import (
+from application.portfolio.fx_watch_service import send_fx_watch_alerts
+from application.messaging.notification_service import (
     get_portfolio_summary,
     send_filing_season_digest,
 )
-from application.stock_service import (
+from application.stock.stock_service import (
     StockAlreadyExistsError,
     StockNotFoundError,
     create_stock,
 )
-from application.scan_service import list_price_alerts, run_scan
-from application.rebalance_service import calculate_withdrawal
+from application.scan.scan_service import list_price_alerts, run_scan
+from application.portfolio.rebalance_service import calculate_withdrawal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     DEFAULT_WEBHOOK_THESIS,

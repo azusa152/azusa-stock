@@ -62,7 +62,7 @@ class TestWithdrawHappyPath:
 
         # Act — mock exchange rates (all USD, rate=1.0)
         with patch(
-            "application.rebalance_service.get_exchange_rates",
+            "application.portfolio.rebalance_service.get_exchange_rates",
             return_value={"USD": 1.0},
         ):
             resp = client.post(
@@ -89,7 +89,7 @@ class TestWithdrawHappyPath:
 
         # Act
         with patch(
-            "application.rebalance_service.get_exchange_rates",
+            "application.portfolio.rebalance_service.get_exchange_rates",
             return_value={"USD": 1.0},
         ):
             resp = client.post(
@@ -168,7 +168,7 @@ class TestWithdrawNoHoldings:
 
         # Act
         with patch(
-            "application.rebalance_service.get_exchange_rates",
+            "application.portfolio.rebalance_service.get_exchange_rates",
             return_value={"USD": 1.0},
         ):
             resp = client.post(
@@ -224,7 +224,7 @@ class TestWebhookWithdraw:
 
         # Act
         with patch(
-            "application.rebalance_service.get_exchange_rates",
+            "application.portfolio.rebalance_service.get_exchange_rates",
             return_value={"USD": 1.0},
         ):
             resp = client.post(

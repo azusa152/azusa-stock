@@ -5,7 +5,7 @@ Exposes FX historical data for frontend chart visualization.
 
 from fastapi import APIRouter
 
-from application.fx_watch_service import get_forex_history
+from application.portfolio.fx_watch_service import get_forex_history
 
 router = APIRouter(prefix="/forex", tags=["Forex"])
 

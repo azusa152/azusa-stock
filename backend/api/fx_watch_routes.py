@@ -16,7 +16,7 @@ from api.schemas import (
     FXWatchUpdateRequest,
     MessageResponse,
 )
-from application.fx_watch_service import (
+from application.portfolio.fx_watch_service import (
     check_fx_watches,
     create_watch,
     get_all_watches,

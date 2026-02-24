@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from application.stock_service import StockNotFoundError
+from application.stock.stock_service import StockNotFoundError
 
 
 # ---------------------------------------------------------------------------

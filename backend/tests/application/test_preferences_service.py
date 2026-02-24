@@ -5,7 +5,7 @@ Uses db_session fixture (in-memory SQLite) — no mocks required for pure CRUD.
 
 from sqlmodel import Session
 
-from application.preferences_service import get_preferences, update_preferences
+from application.settings.preferences_service import get_preferences, update_preferences
 from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,

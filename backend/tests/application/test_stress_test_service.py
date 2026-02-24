@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session
 
-from application.stress_test_service import calculate_stress_test
-from application.stock_service import StockNotFoundError
+from application.portfolio.stress_test_service import calculate_stress_test
+from application.stock.stock_service import StockNotFoundError
 from domain.entities import Holding
 from domain.enums import StockCategory
 
@@ -94,10 +94,10 @@ def _mock_compute_holding_market_values(holdings, fx_rates):
 class TestCalculateStressTestHappyPath:
     """Tests for stress test service happy path."""
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_simple_portfolio_should_calculate_stress_test(
         self,
         mock_fx,
@@ -139,10 +139,10 @@ class TestCalculateStressTestHappyPath:
         # Verify prewarm was called
         mock_prewarm.assert_called_once()
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_mixed_portfolio_with_currency_conversion(
         self,
         mock_fx,
@@ -202,10 +202,10 @@ class TestCalculateStressTestHappyPath:
         # Total loss: 33750 * (-10%) * 1.47 ≈ -4963
         assert -5000 <= result["total_loss"] <= -4900
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_cash_holdings_should_have_zero_beta(
         self,
         mock_fx,
@@ -265,10 +265,10 @@ class TestCalculateStressTestHappyPath:
 class TestBetaFallback:
     """Tests for beta fallback when yfinance returns None."""
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_should_use_category_fallback_when_beta_is_none(
         self,
         mock_fx,
@@ -319,10 +319,10 @@ class TestStressTestErrorHandling:
         with pytest.raises(StockNotFoundError, match="尚未輸入任何持倉"):
             calculate_stress_test(db_session, -20.0, "USD")
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_should_handle_missing_price_with_cost_basis_fallback(
         self,
         mock_fx,
@@ -364,11 +364,11 @@ class TestStressTestErrorHandling:
 class TestStressTestPrivacy:
     """Tests for privacy compliance (no absolute dollar logging)."""
 
-    @patch("application.stress_test_service.logger")
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.logger")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_should_not_log_absolute_dollar_amounts(
         self,
         mock_fx,
@@ -418,10 +418,10 @@ class TestStressTestPrivacy:
 class TestStressTestEdgeCases:
     """Tests for edge cases."""
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_all_cash_portfolio_should_return_zero_loss(
         self,
         mock_fx,
@@ -455,10 +455,10 @@ class TestStressTestEdgeCases:
         # prewarm_beta_batch should NOT be called (no non-cash tickers)
         mock_prewarm.assert_not_called()
 
-    @patch("application.stress_test_service.prewarm_beta_batch")
-    @patch("application.stress_test_service.get_stock_beta")
-    @patch("application.stress_test_service._compute_holding_market_values")
-    @patch("application.stress_test_service.get_exchange_rates")
+    @patch("application.portfolio.stress_test_service.prewarm_beta_batch")
+    @patch("application.portfolio.stress_test_service.get_stock_beta")
+    @patch("application.portfolio.stress_test_service._compute_holding_market_values")
+    @patch("application.portfolio.stress_test_service.get_exchange_rates")
     def test_extreme_scenario_should_trigger_panic_zone(
         self,
         mock_fx,

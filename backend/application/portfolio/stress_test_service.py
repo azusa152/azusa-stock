@@ -5,8 +5,8 @@ Application — 壓力測試服務。
 
 from sqlmodel import Session, select
 
-from application.rebalance_service import _compute_holding_market_values
-from application.stock_service import StockNotFoundError
+from application.portfolio.rebalance_service import _compute_holding_market_values
+from application.stock.stock_service import StockNotFoundError
 from i18n import get_user_language, t
 from domain.constants import CATEGORY_FALLBACK_BETA, DEFAULT_USER_ID
 from domain.entities import Holding

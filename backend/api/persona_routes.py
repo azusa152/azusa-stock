@@ -12,7 +12,7 @@ from api.schemas import (
     ProfileResponse,
     ProfileUpdateRequest,
 )
-from application import persona_service
+from application.settings import persona_service
 from i18n import get_user_language
 from infrastructure.database import get_session
 from logging_config import get_logger

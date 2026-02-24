@@ -27,7 +27,7 @@ from unittest.mock import patch  # noqa: E402
 import pytest  # noqa: E402
 from sqlmodel import Session  # noqa: E402
 
-from application.rebalance_service import calculate_rebalance  # noqa: E402
+from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
 from domain.entities import Holding, UserInvestmentProfile  # noqa: E402
 from domain.enums import StockCategory  # noqa: E402
 
@@ -49,10 +49,10 @@ _MOCK_SIGNALS = {
 }
 
 _BASE_PATCHES = [
-    "application.rebalance_service.prewarm_signals_batch",
-    "application.rebalance_service.prewarm_etf_holdings_batch",
-    "application.rebalance_service.get_forex_history",
-    "application.rebalance_service.get_forex_history_long",
+    "application.portfolio.rebalance_service.prewarm_signals_batch",
+    "application.portfolio.rebalance_service.prewarm_etf_holdings_batch",
+    "application.portfolio.rebalance_service.get_forex_history",
+    "application.portfolio.rebalance_service.get_forex_history_long",
 ]
 
 
@@ -88,14 +88,14 @@ def _add_holding(session: Session, ticker: str, quantity: float = 10.0) -> None:
 class TestEtfSectorLookthrough:
     """Sector exposure correctly decomposes ETF holdings."""
 
-    @patch("application.rebalance_service.get_etf_sector_weights")
-    @patch("application.rebalance_service.get_etf_top_holdings")
-    @patch("application.rebalance_service.get_ticker_sector")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_b_distributes_mv_by_sector_weights(
         self,
         _mock_prewarm_signals,
@@ -147,14 +147,14 @@ class TestEtfSectorLookthrough:
             total_mv * 0.12, rel=0.01
         )
 
-    @patch("application.rebalance_service.get_etf_sector_weights")
-    @patch("application.rebalance_service.get_etf_top_holdings")
-    @patch("application.rebalance_service.get_ticker_sector")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_a_fallback_uses_constituent_sectors(
         self,
         _mock_prewarm_signals,
@@ -201,14 +201,14 @@ class TestEtfSectorLookthrough:
             total_mv, rel=0.01
         )
 
-    @patch("application.rebalance_service.get_etf_sector_weights")
-    @patch("application.rebalance_service.get_etf_top_holdings")
-    @patch("application.rebalance_service.get_ticker_sector")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_a_residual_not_dumped_to_unknown(
         self,
         _mock_prewarm_signals,
@@ -251,14 +251,14 @@ class TestEtfSectorLookthrough:
         sector_exposure = {s["sector"]: s for s in result["sector_exposure"]}
         assert "Unknown" not in sector_exposure
 
-    @patch("application.rebalance_service.get_etf_sector_weights")
-    @patch("application.rebalance_service.get_etf_top_holdings")
-    @patch("application.rebalance_service.get_ticker_sector")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_direct_holding_uses_get_ticker_sector(
         self,
         _mock_prewarm_signals,
@@ -294,14 +294,14 @@ class TestEtfSectorLookthrough:
         )
         mock_sector.assert_called_once_with("NVDA")
 
-    @patch("application.rebalance_service.get_etf_sector_weights")
-    @patch("application.rebalance_service.get_etf_top_holdings")
-    @patch("application.rebalance_service.get_ticker_sector")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_mixed_portfolio_etf_and_direct(
         self,
         _mock_prewarm_signals,

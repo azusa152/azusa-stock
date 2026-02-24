@@ -25,7 +25,7 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         儲存後的 PortfolioSnapshot 實例
     """
     # Lazy import to avoid circular dependency: snapshot_service ↔ rebalance_service
-    from application.rebalance_service import calculate_rebalance
+    from application.portfolio.rebalance_service import calculate_rebalance
 
     rebalance = calculate_rebalance(session)
     total_value: float = rebalance.get("total_value", 0.0)

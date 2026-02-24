@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session
 
-from application.rebalance_service import calculate_rebalance
+from application.portfolio.rebalance_service import calculate_rebalance
 from domain.entities import Holding, UserInvestmentProfile, UserPreferences
 from domain.enums import StockCategory
 
@@ -14,13 +14,19 @@ from domain.enums import StockCategory
 class TestRebalancePortfolioChange:
     """Tests for portfolio-level daily change calculation."""
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_calculate_rebalance_should_include_total_change(
         self,
         _mock_etf_weights,
@@ -78,13 +84,19 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change"] == pytest.approx(100.0, rel=0.01)
         assert result["total_value_change_pct"] == pytest.approx(9.09, rel=0.01)
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_calculate_rebalance_should_include_holding_change_pct(
         self,
         _mock_etf_weights,
@@ -139,13 +151,19 @@ class TestRebalancePortfolioChange:
         # Change %: (900 - 875) / 875 * 100 = 2.86%
         assert holding_detail["change_pct"] == pytest.approx(2.86, rel=0.01)
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_calculate_rebalance_should_handle_missing_previous_close(
         self,
         _mock_etf_weights,
@@ -195,7 +213,7 @@ class TestRebalancePortfolioChange:
         assert result["previous_total_value"] == pytest.approx(550.0, rel=0.01)
         assert holding_detail["change_pct"] is None
 
-    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
     def test_calculate_rebalance_should_handle_zero_previous_total_value(
         self, mock_fx, db_session: Session
     ):
@@ -230,13 +248,19 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change_pct"] == pytest.approx(0.0, rel=0.01)
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_calculate_rebalance_should_aggregate_multiple_holdings_change(
         self,
         _mock_etf_weights,
@@ -323,13 +347,19 @@ class TestRebalancePortfolioChange:
 class TestRebalanceAdviceTranslation:
     """Application-layer step 5.5: advice must be list[str], not list[dict]."""
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_advice_is_list_of_strings_when_balanced(
         self,
         _mock_etf_weights,
@@ -385,13 +415,19 @@ class TestRebalanceAdviceTranslation:
         ), f"Expected list[str], got: {advice}"
         assert any("No rebalancing needed" in a for a in advice)
 
-    @patch("application.rebalance_service.get_technical_signals")
-    @patch("application.rebalance_service.get_exchange_rates")
-    @patch("application.rebalance_service.prewarm_signals_batch")
-    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
-    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
-    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
-    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
     def test_advice_is_list_of_strings_when_overweight(
         self,
         _mock_etf_weights,

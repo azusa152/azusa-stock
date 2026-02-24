@@ -19,9 +19,9 @@ from api.schemas import (
     ScanStatusResponse,
     VIXData,
 )
-from application import scan_service
+from application.scan import scan_service
 from application.formatters import format_fear_greed_label
-from application.prewarm_service import is_prewarm_ready
+from application.scan.prewarm_service import is_prewarm_ready
 from application.services import run_scan, send_weekly_digest
 from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
 from i18n import get_user_language, t

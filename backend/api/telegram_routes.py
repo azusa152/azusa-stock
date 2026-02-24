@@ -12,7 +12,7 @@ from api.schemas import (
     TelegramSettingsRequest,
     TelegramSettingsResponse,
 )
-from application import telegram_settings_service
+from application.messaging import telegram_settings_service
 from i18n import get_user_language
 from infrastructure.database import get_session
 from logging_config import get_logger

@@ -23,8 +23,8 @@ from application.services import (
     update_display_order,
     update_stock_category,
 )
-from application import stock_service
-from application.stock_service import get_enriched_stocks
+from application.stock import stock_service
+from application.stock.stock_service import get_enriched_stocks
 from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
@@ -379,7 +379,7 @@ def toggle_price_alert_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """切換價格警報啟用狀態。"""
-    from application.scan_service import toggle_price_alert
+    from application.scan.scan_service import toggle_price_alert
 
     return toggle_price_alert(session, alert_id)
 

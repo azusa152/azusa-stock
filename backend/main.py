@@ -53,14 +53,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("資料庫初始化完成，服務就緒。")
 
     # 種入系統預設大師（冪等）
-    from application.guru_service import seed_default_gurus
+    from application.guru.guru_service import seed_default_gurus
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
-    from application.prewarm_service import prewarm_all_caches
+    from application.scan.prewarm_service import prewarm_all_caches
 
     threading.Thread(target=prewarm_all_caches, daemon=True).start()
     logger.info("背景快取預熱已啟動。")

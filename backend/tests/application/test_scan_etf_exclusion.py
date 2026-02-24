@@ -4,20 +4,20 @@ from unittest.mock import patch
 
 from sqlmodel import Session
 
-from application.scan_service import run_scan
+from application.scan.scan_service import run_scan
 from domain.entities import Stock
 from domain.enums import StockCategory
 
 
-@patch("application.scan_service.batch_download_history", new=lambda *a, **kw: {})
+@patch("application.scan.scan_service.batch_download_history", new=lambda *a, **kw: {})
 class TestETFExclusionFromSentiment:
     """ETFs flagged with is_etf=True should be excluded from Layer 1 sentiment."""
 
-    @patch("application.scan_service.send_telegram_message_dual")
-    @patch("application.scan_service.get_fear_greed_index")
-    @patch("application.scan_service.analyze_moat_trend")
-    @patch("application.scan_service.get_technical_signals")
-    @patch("application.scan_service.analyze_market_sentiment")
+    @patch("application.scan.scan_service.send_telegram_message_dual")
+    @patch("application.scan.scan_service.get_fear_greed_index")
+    @patch("application.scan.scan_service.analyze_moat_trend")
+    @patch("application.scan.scan_service.get_technical_signals")
+    @patch("application.scan.scan_service.analyze_market_sentiment")
     def test_run_scan_should_exclude_etf_from_sentiment_tickers(
         self,
         mock_sentiment,
@@ -80,11 +80,11 @@ class TestETFExclusionFromSentiment:
         assert "MSFT" in ticker_list
         assert "VTI" not in ticker_list
 
-    @patch("application.scan_service.send_telegram_message_dual")
-    @patch("application.scan_service.get_fear_greed_index")
-    @patch("application.scan_service.analyze_moat_trend")
-    @patch("application.scan_service.get_technical_signals")
-    @patch("application.scan_service.analyze_market_sentiment")
+    @patch("application.scan.scan_service.send_telegram_message_dual")
+    @patch("application.scan.scan_service.get_fear_greed_index")
+    @patch("application.scan.scan_service.analyze_moat_trend")
+    @patch("application.scan.scan_service.get_technical_signals")
+    @patch("application.scan.scan_service.analyze_market_sentiment")
     def test_run_scan_should_include_non_etf_trend_setters(
         self,
         mock_sentiment,

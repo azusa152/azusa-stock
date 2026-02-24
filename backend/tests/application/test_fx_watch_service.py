@@ -81,7 +81,7 @@ MOCK_HISTORY = [
     {"date": "2026-02-11", "close": 32.0},
 ]
 
-MODULE = "application.fx_watch_service"
+MODULE = "application.portfolio.fx_watch_service"
 
 
 # ===========================================================================
@@ -97,7 +97,7 @@ class TestCreateWatch:
     def test_create_watch_should_uppercase_currency_codes(
         self, _mock_logger, mock_repo_create
     ):
-        from application.fx_watch_service import create_watch
+        from application.portfolio.fx_watch_service import create_watch
 
         mock_repo_create.return_value = _make_watch(base="USD", quote="TWD")
         session = MagicMock()
@@ -114,7 +114,7 @@ class TestCreateWatch:
     def test_create_watch_should_delegate_to_repository(
         self, _mock_logger, mock_repo_create
     ):
-        from application.fx_watch_service import create_watch
+        from application.portfolio.fx_watch_service import create_watch
 
         expected = _make_watch()
         mock_repo_create.return_value = expected
@@ -131,7 +131,7 @@ class TestGetAllWatches:
 
     @patch(f"{MODULE}.find_active_fx_watches")
     def test_active_only_true_should_call_find_active(self, mock_find_active):
-        from application.fx_watch_service import get_all_watches
+        from application.portfolio.fx_watch_service import get_all_watches
 
         mock_find_active.return_value = [_make_watch()]
         session = MagicMock()
@@ -143,7 +143,7 @@ class TestGetAllWatches:
 
     @patch(f"{MODULE}.find_all_fx_watches")
     def test_active_only_false_should_call_find_all(self, mock_find_all):
-        from application.fx_watch_service import get_all_watches
+        from application.portfolio.fx_watch_service import get_all_watches
 
         mock_find_all.return_value = [_make_watch(), _make_watch(watch_id=2)]
         session = MagicMock()
@@ -161,7 +161,7 @@ class TestUpdateWatch:
     @patch(f"{MODULE}.find_fx_watch_by_id", return_value=None)
     @patch(f"{MODULE}.logger")
     def test_should_return_none_when_not_found(self, _logger, mock_find, _mock_update):
-        from application.fx_watch_service import update_watch
+        from application.portfolio.fx_watch_service import update_watch
 
         result = update_watch(MagicMock(), watch_id=999)
 
@@ -171,7 +171,7 @@ class TestUpdateWatch:
     @patch(f"{MODULE}.find_fx_watch_by_id")
     @patch(f"{MODULE}.logger")
     def test_should_apply_only_provided_fields(self, _logger, mock_find, mock_update):
-        from application.fx_watch_service import update_watch
+        from application.portfolio.fx_watch_service import update_watch
 
         watch = _make_watch(recent_high_days=30, is_active=True)
         mock_find.return_value = watch
@@ -193,7 +193,7 @@ class TestRemoveWatch:
     @patch(f"{MODULE}.find_fx_watch_by_id", return_value=None)
     @patch(f"{MODULE}.logger")
     def test_should_return_false_when_not_found(self, _logger, _mock_find):
-        from application.fx_watch_service import remove_watch
+        from application.portfolio.fx_watch_service import remove_watch
 
         result = remove_watch(MagicMock(), watch_id=999)
 
@@ -203,7 +203,7 @@ class TestRemoveWatch:
     @patch(f"{MODULE}.find_fx_watch_by_id")
     @patch(f"{MODULE}.logger")
     def test_should_return_true_and_delete(self, _logger, mock_find, mock_delete):
-        from application.fx_watch_service import remove_watch
+        from application.portfolio.fx_watch_service import remove_watch
 
         mock_find.return_value = _make_watch()
         session = MagicMock()
@@ -224,7 +224,7 @@ class TestGetForexHistory:
 
     @patch(f"{MODULE}.get_forex_history_long")
     def test_should_uppercase_and_delegate(self, mock_infra):
-        from application.fx_watch_service import get_forex_history
+        from application.portfolio.fx_watch_service import get_forex_history
 
         mock_infra.return_value = MOCK_HISTORY
 
@@ -240,7 +240,7 @@ class TestGetForexHistory:
     def test_should_return_empty_list_on_infrastructure_failure(
         self, _mock_logger, _mock_infra
     ):
-        from application.fx_watch_service import get_forex_history
+        from application.portfolio.fx_watch_service import get_forex_history
 
         result = get_forex_history("USD", "TWD")
 
@@ -258,7 +258,7 @@ class TestCheckFXWatches:
     @patch(f"{MODULE}.find_active_fx_watches", return_value=[])
     @patch(f"{MODULE}.logger")
     def test_should_return_empty_when_no_active_watches(self, _logger, _mock_find):
-        from application.fx_watch_service import check_fx_watches
+        from application.portfolio.fx_watch_service import check_fx_watches
 
         result = check_fx_watches(MagicMock())
 
@@ -271,7 +271,7 @@ class TestCheckFXWatches:
     def test_should_return_results_for_each_active_watch(
         self, _logger, mock_find, mock_history, mock_assess
     ):
-        from application.fx_watch_service import check_fx_watches
+        from application.portfolio.fx_watch_service import check_fx_watches
 
         mock_find.return_value = [
             _make_watch(watch_id=1, base="USD", quote="TWD"),
@@ -295,7 +295,7 @@ class TestCheckFXWatches:
     def test_should_skip_failed_watch_and_continue(
         self, _logger, mock_find, mock_history, mock_assess
     ):
-        from application.fx_watch_service import check_fx_watches
+        from application.portfolio.fx_watch_service import check_fx_watches
 
         mock_find.return_value = [
             _make_watch(watch_id=1, base="USD", quote="TWD"),
@@ -317,7 +317,7 @@ class TestCheckFXWatches:
     def test_should_pass_watch_config_params_to_domain(
         self, _logger, mock_find, mock_history, mock_assess
     ):
-        from application.fx_watch_service import check_fx_watches
+        from application.portfolio.fx_watch_service import check_fx_watches
 
         watch = _make_watch(
             recent_high_days=60,
@@ -355,7 +355,7 @@ class TestSendFXWatchAlerts:
     def test_should_return_zero_counts_when_no_active_watches(
         self, _logger, _mock_find
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         result = send_fx_watch_alerts(MagicMock())
 
@@ -370,7 +370,7 @@ class TestSendFXWatchAlerts:
     def test_should_skip_watch_within_cooldown_period(
         self, _logger, mock_find, mock_history
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         now = datetime.now(timezone.utc)
         # last_alerted_at was 1 hour ago, cooldown is 24 hours -> still in cooldown
@@ -394,7 +394,7 @@ class TestSendFXWatchAlerts:
         self, _logger, mock_find, mock_history
     ):
         """SQLite may return naive datetimes — verify UTC fallback works."""
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         # Naive datetime (no tzinfo) — simulates SQLite returning without tz
         naive_last_alerted = datetime.now(timezone.utc).replace(
@@ -432,7 +432,7 @@ class TestSendFXWatchAlerts:
         _mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         now = datetime.now(timezone.utc)
         # last_alerted_at was 25 hours ago, cooldown is 24 hours -> expired
@@ -466,7 +466,7 @@ class TestSendFXWatchAlerts:
         _mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
         mock_find.return_value = [watch]
@@ -491,7 +491,7 @@ class TestSendFXWatchAlerts:
         mock_assess,
         mock_update_alerted,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
         mock_find.return_value = [watch]
@@ -519,7 +519,7 @@ class TestSendFXWatchAlerts:
         mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
         mock_find.return_value = [watch]
@@ -549,7 +549,7 @@ class TestSendFXWatchAlerts:
         mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
         mock_find.return_value = [watch]
@@ -581,7 +581,7 @@ class TestSendFXWatchAlerts:
         _mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
         mock_find.return_value = [watch]
@@ -611,7 +611,7 @@ class TestSendFXWatchAlerts:
         _mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         mock_find.return_value = [
             _make_watch(watch_id=1, base="USD", quote="TWD", last_alerted_at=None),
@@ -643,7 +643,7 @@ class TestSendFXWatchAlerts:
         mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None, base="USD", quote="TWD")
         mock_find.return_value = [watch]
@@ -687,7 +687,7 @@ class TestSendFXWatchAlerts:
         mock_telegram,
         _mock_notif,
     ):
-        from application.fx_watch_service import send_fx_watch_alerts
+        from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         mock_find.return_value = [
             _make_watch(watch_id=1, base="USD", quote="TWD", last_alerted_at=None),

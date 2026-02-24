@@ -15,7 +15,7 @@ MOCK_HISTORY = [
 class TestGetForexHistory:
     """Tests for forex history endpoint."""
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_should_return_200_with_data(self, mock_get_history, client: TestClient):
         # Arrange
         mock_get_history.return_value = MOCK_HISTORY
@@ -31,7 +31,7 @@ class TestGetForexHistory:
         assert data[0]["close"] == 30.0
         assert data[2]["close"] == 31.0
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_should_return_empty_list_when_no_data(
         self, mock_get_history, client: TestClient
     ):
@@ -45,7 +45,7 @@ class TestGetForexHistory:
         assert response.status_code == 200
         assert response.json() == []
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_should_accept_lowercase_currency_codes(
         self, mock_get_history, client: TestClient
     ):
@@ -60,7 +60,7 @@ class TestGetForexHistory:
         # Verify the service receives uppercased codes
         mock_get_history.assert_called_once_with("USD", "TWD")
 
-    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_should_return_200_with_empty_list_on_api_failure(
         self, mock_get_history, client: TestClient
     ):

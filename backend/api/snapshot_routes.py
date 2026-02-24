@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from api.rate_limit import limiter
 from api.schemas import AcceptedResponse, SnapshotResponse, TwrResponse
-from application.snapshot_service import get_snapshot_range, get_snapshots
+from application.portfolio.snapshot_service import get_snapshot_range, get_snapshots
 from domain.entities import PortfolioSnapshot
 from infrastructure.database import engine, get_session
 from logging_config import get_logger
@@ -40,7 +40,7 @@ def _to_response(snap: PortfolioSnapshot) -> SnapshotResponse:
 def _run_snapshot_background() -> None:
     """在背景執行緒中建立快照（自建 DB Session）。"""
     try:
-        from application.snapshot_service import take_daily_snapshot
+        from application.portfolio.snapshot_service import take_daily_snapshot
 
         with Session(engine) as session:
             take_daily_snapshot(session)
