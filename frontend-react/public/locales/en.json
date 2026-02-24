@@ -188,7 +188,9 @@
     "performance_period_6m": "6M",
     "performance_period_ytd": "YTD",
     "performance_period_1y": "1Y",
-    "performance_period_all": "ALL"
+    "performance_period_all": "ALL",
+    "performance_portfolio_return": "Portfolio",
+    "performance_no_period_data": "No data for this period"
   },
   "radar": {
     "title": "📡 Folio",

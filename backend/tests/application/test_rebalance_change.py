@@ -7,7 +7,7 @@ import pytest
 from sqlmodel import Session
 
 from application.rebalance_service import calculate_rebalance
-from domain.entities import Holding, UserInvestmentProfile
+from domain.entities import Holding, UserInvestmentProfile, UserPreferences
 from domain.enums import StockCategory
 
 
@@ -318,3 +318,138 @@ class TestRebalancePortfolioChange:
 
         assert nvda_holding["change_pct"] == pytest.approx(9.09, rel=0.01)
         assert aapl_holding["change_pct"] == pytest.approx(-5.56, rel=0.01)
+
+
+class TestRebalanceAdviceTranslation:
+    """Application-layer step 5.5: advice must be list[str], not list[dict]."""
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    def test_advice_is_list_of_strings_when_balanced(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        # Arrange — perfectly balanced portfolio: Growth 50% / Bond 50%
+        db_session.add(UserPreferences(user_id="default", language="en"))
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 50, "Bond": 50}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        for ticker, category in [
+            ("NVDA", StockCategory.GROWTH),
+            ("BND", StockCategory.BOND),
+        ]:
+            db_session.add(
+                Holding(
+                    user_id="default",
+                    ticker=ticker,
+                    category=category,
+                    quantity=10.0,
+                    cost_basis=100.0,
+                    currency="USD",
+                    is_cash=False,
+                )
+            )
+        db_session.commit()
+
+        mock_signals.return_value = {
+            "price": 100.0,
+            "previous_close": 100.0,
+            "change_pct": 0.0,
+        }
+        mock_fx.return_value = {"USD": 1.0}
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert — translated strings, not raw dicts
+        advice = result["advice"]
+        assert isinstance(advice, list)
+        assert len(advice) >= 1
+        assert all(
+            isinstance(a, str) for a in advice
+        ), f"Expected list[str], got: {advice}"
+        assert any("No rebalancing needed" in a for a in advice)
+
+    @patch("application.rebalance_service.get_technical_signals")
+    @patch("application.rebalance_service.get_exchange_rates")
+    @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
+    @patch("application.rebalance_service.get_etf_sector_weights", return_value=None)
+    def test_advice_is_list_of_strings_when_overweight(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        # Arrange — Growth 80% vs target 50%: clear overweight drift
+        db_session.add(UserPreferences(user_id="default", language="en"))
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 50, "Bond": 50}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="NVDA",
+                category=StockCategory.GROWTH,
+                quantity=80.0,
+                cost_basis=1.0,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="BND",
+                category=StockCategory.BOND,
+                quantity=20.0,
+                cost_basis=1.0,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        mock_signals.return_value = {
+            "price": 1.0,
+            "previous_close": 1.0,
+            "change_pct": 0.0,
+        }
+        mock_fx.return_value = {"USD": 1.0}
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert — translated strings, not raw dicts
+        advice = result["advice"]
+        assert isinstance(advice, list)
+        assert len(advice) >= 1
+        assert all(
+            isinstance(a, str) for a in advice
+        ), f"Expected list[str], got: {advice}"
+        assert any("overweight" in a.lower() for a in advice)

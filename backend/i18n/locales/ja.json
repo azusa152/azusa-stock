@@ -140,7 +140,11 @@
     "withdrawal_insufficient": "⚠️ 保有資産が入力されていません。出金プランを計算できません。",
     "withdrawal_shortfall_total": "⚠️ ポートフォリオ評価額不足、不足額: {amount} {currency}。",
     "withdrawal_no_sellable": "⚠️ 売却可能な保有資産がありません。",
-    "withdrawal_success": "✅ 出金プランを生成しました。{count}件の売却推奨があります。"
+    "withdrawal_success": "✅ 出金プランを生成しました。{count}件の売却推奨があります。",
+    "advice_zero": "⚠️ 保有総額がゼロのため、配分計算ができません。",
+    "advice_over": "{icon} {category} は {drift}% 超過配分です。一部売却を検討してください。",
+    "advice_under": "{icon} {category} は {drift}% 不足配分です。追加購入を検討してください。",
+    "advice_ok": "✅ 全カテゴリが目標範囲内です。リバランス不要。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外貨両替タイミングアラート</b>\n\n",

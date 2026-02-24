@@ -188,7 +188,9 @@
     "performance_period_6m": "6M",
     "performance_period_ytd": "今年",
     "performance_period_1y": "1Y",
-    "performance_period_all": "全期間"
+    "performance_period_all": "全期間",
+    "performance_portfolio_return": "ポートフォリオ",
+    "performance_no_period_data": "この期間のデータがありません"
   },
   "radar": {
     "title": "📡 Folio",

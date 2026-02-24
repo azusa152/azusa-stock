@@ -140,7 +140,11 @@
     "withdrawal_insufficient": "⚠️ No holdings entered, cannot calculate withdrawal plan.",
     "withdrawal_shortfall_total": "⚠️ Insufficient portfolio value, shortfall: {amount} {currency}.",
     "withdrawal_no_sellable": "⚠️ No holdings available to sell.",
-    "withdrawal_success": "✅ Withdrawal plan generated with {count} sell recommendations."
+    "withdrawal_success": "✅ Withdrawal plan generated with {count} sell recommendations.",
+    "advice_zero": "⚠️ Total portfolio value is zero. Unable to calculate allocation.",
+    "advice_over": "{icon} {category} is overweight by {drift}%. Consider trimming.",
+    "advice_under": "{icon} {category} is underweight by {drift}%. Consider adding.",
+    "advice_ok": "✅ All categories are within target range. No rebalancing needed."
   },
   "fx_watch": {
     "alert_header": "💱 <b>FX Exchange Timing Alert</b>\n\n",
