@@ -1,0 +1,18 @@
+---
+description: Apply when implementing or modifying signal analysis, scan logic, market sentiment, thesis validation, RSI thresholds, MA200 amplifier, or any investment domain business rules in backend/domain/.
+globs: ""
+alwaysApply: false
+---
+
+# Investment Logic (Core Philosophy)
+
+The canonical implementation lives in `backend/domain/analysis.py` with thresholds in `backend/domain/constants.py`. Read those files before making changes.
+
+## Principles
+1. **Follow the Money (Capex):** Tier 1 "Trend Setters" (Hyperscalers, Berkshire) signal market direction via MA200 and RSI.
+2. **Moat Validation (Gross Margin):** Tier 2 stocks MUST maintain Gross Margin. Gross Margin decline YoY + price drop → "Thesis Broken" (Red Alert).
+3. **Gray-Scale Thinking:** Track thesis evolution to avoid hindsight bias.
+
+## Signal Architecture (reference only — source of truth is `backend/domain/analysis.py`)
+- **9-State Signal Taxonomy:** `determine_scan_signal()` — two-phase: priority cascade then MA200 amplifier. Category-aware RSI offsets (Growth +2, Moat +1, Bond -3).
+- **5-Tier Market Sentiment:** `determine_market_sentiment()` — breadth % of Trend Setters below 60MA. Sentiment is context only, does NOT gate signals.

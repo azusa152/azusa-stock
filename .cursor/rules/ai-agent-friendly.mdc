@@ -1,42 +1,23 @@
 ---
 description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing endpoints. Covers structured responses, OpenAPI completeness, error codes, and webhook discoverability.
-globs: ["backend/**"]
+globs: ["backend/api/**"]
 ---
 
-# AI Agent-Friendly System Design
+# AI Agent-Friendly API Design
 
-Every API surface must be designed so AI agents (OpenClaw, LLM tool-use, MCP clients) can discover, call, and interpret endpoints without human assistance.
+APIs must be discoverable and parseable by AI agents (LLM tool-use, MCP clients) without human help. See `backend/api/stock_routes.py` for the canonical pattern.
 
-## 1. Structured, Machine-Parseable Responses
-
-- Every endpoint MUST return JSON with typed Pydantic `response_model`.
+## Response Standards
+- Every endpoint: JSON with typed Pydantic `response_model`. Exception: `GET /summary` returns plain text.
 - Webhook responses: `{"success": bool, "message": str, "data": dict}`.
-- Exception: `GET /summary` returns plain text for LLM consumption.
-- See `backend/api/stock_routes.py` for canonical examples.
+- Errors: JSON with `error_code` (machine-readable slug) + `detail` (i18n localized). Agents branch on `error_code`.
 
-## 2. Descriptive Error Responses
+## OpenAPI Completeness
+Every FastAPI route MUST have: `summary` param, typed `response_model`, Pydantic request body schemas for POST/PUT/PATCH.
 
-- All errors MUST return JSON with `detail` (localized via i18n) and `error_code` (machine-readable slug).
-- Agents branch on `error_code`, not substring matching `detail`.
-- Example: `raise HTTPException(status_code=404, detail={"error_code": "STOCK_NOT_FOUND", "detail": t("stock.not_found", ticker=ticker, lang=lang)})`
+## Webhook Discoverability
+- `POST /webhook {"action": "help"}` returns all supported actions, params, and descriptions.
+- Action registry: single source of truth in `backend/domain/constants.py`. New action = one dict entry + one handler.
 
-## 3. Webhook Action Discoverability
-
-- `POST /webhook` with `{"action": "help"}` MUST return all supported actions, required params, and descriptions.
-- Keep action registry in `backend/domain/constants.py`.
-
-## 4. OpenAPI Completeness
-
-Every FastAPI route MUST have:
-1. A `summary` parameter (shown in Swagger & OpenAPI JSON)
-2. A typed `response_model`
-3. Pydantic request body schemas for POST/PUT/PATCH
-
-Reference `backend/api/stock_routes.py` for the standard pattern.
-
-## 5. Implementation Guidelines
-
-- Strictly follow tier-specific logic (Trend Setter vs. Moat vs. Growth) when implementing the Scanner.
-- List endpoints default to `limit=50, offset=0` for pagination.
-- Action registry: single source of truth in `backend/domain/constants.py`.
-- Adding new agent actions: one dict entry + one handler function.
+## Defaults
+- List endpoints: `limit=50, offset=0` for pagination.
