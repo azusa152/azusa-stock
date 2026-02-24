@@ -438,6 +438,7 @@ class HoldingResponse(BaseModel):
     currency: str = "USD"
     account_type: Optional[str] = None
     is_cash: bool
+    purchase_fx_rate: Optional[float] = None
     updated_at: str
 
 
@@ -465,6 +466,8 @@ class HoldingDetail(BaseModel):
     )
     current_price: Optional[float] = None
     change_pct: Optional[float] = None
+    purchase_fx_rate: Optional[float] = None
+    current_fx_rate: Optional[float] = None
 
 
 class XRayEntry(BaseModel):

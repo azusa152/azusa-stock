@@ -272,6 +272,9 @@
       "bond": "🛡️ 債券 ({{count}})",
       "removed": "📦 已移除 ({{count}})"
     },
+    "market": {
+      "all": "全部"
+    },
     "empty_category": "📭 尚無{{category}}類股票，請在左側面板新增。",
     "removed": {
       "category": "分類：{{category}}",
@@ -493,7 +496,9 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
-      "change_pct": "漲跌%"
+      "change_pct": "漲跌%",
+      "home_return": "本幣: {{pct}}",
+      "fx_return": "匯率: {{pct}}"
     },
     "holdings": {
       "title": "持倉明細",

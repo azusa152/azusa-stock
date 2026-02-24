@@ -272,6 +272,9 @@
       "bond": "🛡️ Bond ({{count}})",
       "removed": "📦 Removed ({{count}})"
     },
+    "market": {
+      "all": "ALL"
+    },
     "empty_category": "📭 No {{category}} stocks yet. Add from left panel.",
     "removed": {
       "category": "Category: {{category}}",
@@ -493,7 +496,9 @@
       "value": "Value",
       "weight_pct": "Wt%",
       "cost": "Cost",
-      "change_pct": "Chg%"
+      "change_pct": "Chg%",
+      "home_return": "Home: {{pct}}",
+      "fx_return": "FX: {{pct}}"
     },
     "holdings": {
       "title": "Holdings Detail",

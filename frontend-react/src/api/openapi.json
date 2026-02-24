@@ -5990,6 +5990,28 @@
               }
             ],
             "title": "Change Pct"
+          },
+          "purchase_fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Fx Rate"
+          },
+          "current_fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Fx Rate"
           }
         },
         "type": "object",
@@ -6204,6 +6226,17 @@
           "is_cash": {
             "type": "boolean",
             "title": "Is Cash"
+          },
+          "purchase_fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Fx Rate"
           },
           "updated_at": {
             "type": "string",

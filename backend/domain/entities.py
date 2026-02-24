@@ -144,6 +144,9 @@ class Holding(SQLModel, table=True):
         default=None, description="帳戶類型（活存/定存/貨幣市場基金）"
     )
     is_cash: bool = Field(default=False, description="是否為現金類資產")
+    purchase_fx_rate: Optional[float] = Field(
+        default=None, description="購入時匯率（1 單位持倉幣別 = ? 單位 USD）"
+    )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="更新時間",

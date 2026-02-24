@@ -272,6 +272,9 @@
       "bond": "🛡️ 债券 ({{count}})",
       "removed": "📦 已移除 ({{count}})"
     },
+    "market": {
+      "all": "全部"
+    },
     "empty_category": "📭 尚无{{category}}类股票，请在左侧面板新增。",
     "removed": {
       "category": "分类：{{category}}",
@@ -493,7 +496,9 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
-      "change_pct": "涨跌%"
+      "change_pct": "涨跌%",
+      "home_return": "本币: {{pct}}",
+      "fx_return": "汇率: {{pct}}"
     },
     "holdings": {
       "title": "持仓明细",

@@ -107,6 +107,11 @@ from domain.constants import (
     SIGNALS_CACHE_TTL,
     VIX_HISTORY_PERIOD,
     VIX_TICKER,
+    NIKKEI_VI_TICKER,
+    NIKKEI_VI_EXTREME_FEAR,
+    NIKKEI_VI_FEAR,
+    NIKKEI_VI_NEUTRAL_LOW,
+    NIKKEI_VI_GREED,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
@@ -1721,6 +1726,44 @@ def get_fear_greed_index() -> dict:
         _fetch_fear_greed,
         is_error=_is_fear_greed_error,
     )
+
+
+def get_jp_volatility_index() -> Optional[dict]:
+    """
+    Fetch Nikkei VI as JP market fear indicator.
+    Returns {"value": float, "level": str, "source": "Nikkei VI"} or None on failure.
+    """
+    try:
+        hist = _yf_history_short(NIKKEI_VI_TICKER, VIX_HISTORY_PERIOD)
+
+        if hist is None or hist.empty:
+            logger.warning("Nikkei VI 資料為空。")
+            return None
+
+        closes = hist["Close"].dropna().tolist()
+        if not closes:
+            return None
+
+        current = float(closes[-1])
+
+        # Map to fear/greed level using JP thresholds (similar to VIX mapping)
+        if current > NIKKEI_VI_EXTREME_FEAR:
+            level = FearGreedLevel.EXTREME_FEAR.value
+        elif current > NIKKEI_VI_FEAR:
+            level = FearGreedLevel.FEAR.value
+        elif current > NIKKEI_VI_NEUTRAL_LOW:
+            level = FearGreedLevel.NEUTRAL.value
+        elif current > NIKKEI_VI_GREED:
+            level = FearGreedLevel.GREED.value
+        else:
+            level = FearGreedLevel.EXTREME_GREED.value
+
+        logger.info("Nikkei VI = %.2f（等級：%s）", current, level)
+        return {"value": round(current, 2), "level": level, "source": "Nikkei VI"}
+
+    except Exception as e:
+        logger.warning("Nikkei VI 取得失敗：%s", e)
+        return None
 
 
 # ===========================================================================
