@@ -36,3 +36,8 @@ alwaysApply: false
 - Resolve language at API layer: `lang=get_user_language(session)`
 - Locale files: `backend/i18n/locales/{en,ja,zh-CN,zh-TW}.json`
 - Default: `zh-TW`. Fallback: requested lang → `zh-TW` → raw key
+- **Return machine-readable keys for display labels.** For any field the frontend will render as a display label (e.g. a level, a status, a category name), return an enum key or constant string (e.g. `"low"`, `"moderate"`). Let the frontend handle translation via `t()`. Only use backend `t()` for long-form prose (advice sentences, disclaimers) that cannot easily be keyed.
+
+## Pydantic Schemas
+- **Separate Create vs Update schemas.** Every endpoint that mutates a resource must have its own schema: `FooRequest` for creation (required fields) and `UpdateFooRequest` for partial updates (all fields `Optional`). Never reuse a create schema as the update endpoint's request body — required fields will cause 422 errors when the frontend sends partial payloads.
+- After adding or changing any schema in `backend/api/schemas.py`, run `make generate-api` to keep the frontend TypeScript types in sync.

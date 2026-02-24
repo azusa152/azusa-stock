@@ -29,6 +29,7 @@
     "privacy_mode": "🙈 隐私模式",
     "privacy_mask": "***",
     "success": "✅ 成功",
+    "saving": "保存中…",
     "error": "❌ 错误",
     "warning": "⚠️ 警告",
     "info": "ℹ️ 信息",
@@ -527,6 +528,12 @@
       "beta": "组合 β",
       "loss": "预估损失",
       "pain_level": "痛苦指数",
+      "pain_labels": {
+        "low": "微风轻拂",
+        "moderate": "有感修正",
+        "high": "伤筋动骨",
+        "panic": "睡不着觉"
+      },
       "breakdown_title": "个股明细",
       "col_beta": "β",
       "col_drop": "跌幅%",
@@ -560,7 +567,10 @@
       "delete_button": "删除",
       "confirm_delete": "确认删除",
       "col_broker": "券商",
-      "col_actions": "操作"
+      "col_actions": "操作",
+      "edit_hint": "按 Enter 保存・Esc 取消",
+      "err_qty": "数量必须大于 0",
+      "err_cost": "成本基础必须大于等于 0"
     }
   },
   "fx_watch": {

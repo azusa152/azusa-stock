@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { useLocation, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import i18n from "@/lib/i18n"
 import {
   Sidebar,
   SidebarContent,
@@ -42,12 +43,21 @@ export function AppSidebar() {
   const { data: prefs } = usePreferences()
   const savePreferences = useSavePreferences()
 
-  // Hydrate from server value on first load
+  // Hydrate privacy mode from server preferences on first load
   useEffect(() => {
     if (prefs?.privacy_mode !== undefined) {
       initialize(prefs.privacy_mode)
     }
   }, [prefs?.privacy_mode, initialize])
+
+  // Hydrate language from server preferences on first load so frontend and
+  // backend stay in sync (backend uses the saved language for translated API responses).
+  // Use i18n.changeLanguage directly to avoid the write-back API call.
+  useEffect(() => {
+    if (prefs?.language) {
+      i18n.changeLanguage(prefs.language).catch(() => { /* fail silently */ })
+    }
+  }, [prefs?.language])
 
   function togglePrivacy() {
     toggle()

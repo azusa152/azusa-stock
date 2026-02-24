@@ -1,10 +1,18 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useTemplates, useCreateProfile, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { useProfile } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES } from "@/lib/constants"
+
+function mergeConfig(config: Record<string, unknown>): Record<string, number> {
+  const base = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
+  for (const [k, v] of Object.entries(config)) {
+    if (k in base) base[k] = typeof v === "number" ? v : 0
+  }
+  return base
+}
 
 export function TargetAllocation() {
   const { t } = useTranslation()
@@ -14,23 +22,19 @@ export function TargetAllocation() {
   const updateMutation = useUpdateProfile()
 
   const [selectedTemplate, setSelectedTemplate] = useState("")
-  const [sliders, setSliders] = useState<Record<string, number>>(
-    Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
-  )
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  // Populate sliders from existing profile config when server data changes
-  const [prevProfile, setPrevProfile] = useState(profile)
-  if (prevProfile !== profile) {
-    setPrevProfile(profile)
-    if (profile?.config) {
-      const merged: Record<string, number> = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
-      for (const [k, v] of Object.entries(profile.config)) {
-        if (k in merged) merged[k] = v as number
-      }
-      setSliders(merged)
-    }
-  }
+  // Base values derived from saved profile — re-computed whenever profile loads or changes.
+  // This ensures sliders show the correct saved values even when the component mounts
+  // after the profile query has already resolved (e.g. inside a lazy TabsContent).
+  const profileSliders = useMemo(
+    () => (profile?.config ? mergeConfig(profile.config) : Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))),
+    [profile]
+  )
+
+  // User edits override the profile base. null = no pending edits, show profileSliders.
+  const [userSliders, setUserSliders] = useState<Record<string, number> | null>(null)
+  const sliders = userSliders ?? profileSliders
 
   const total = Object.values(sliders).reduce((a, b) => a + b, 0)
   const remaining = 100 - total
@@ -39,12 +43,12 @@ export function TargetAllocation() {
     setSelectedTemplate(templateId)
     const tmpl = templates?.find((tmpl) => tmpl.id === templateId)
     if (tmpl?.default_config) {
-      const merged: Record<string, number> = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
-      for (const [k, v] of Object.entries(tmpl.default_config)) {
-        if (k in merged) merged[k] = v as number
-      }
-      setSliders(merged)
+      setUserSliders(mergeConfig(tmpl.default_config as Record<string, unknown>))
     }
+  }
+
+  const handleSliderChange = (cat: string, value: number) => {
+    setUserSliders((prev) => ({ ...(prev ?? profileSliders), [cat]: value }))
   }
 
   const handleSave = () => {
@@ -62,6 +66,7 @@ export function TargetAllocation() {
           onSuccess: () => {
             setFeedback(t("common.success"))
             toast.success(t("common.success"))
+            setUserSliders(null)
           },
           onError: () => {
             setFeedback(t("common.error"))
@@ -74,6 +79,7 @@ export function TargetAllocation() {
         onSuccess: () => {
           setFeedback(t("common.success"))
           toast.success(t("common.success"))
+          setUserSliders(null)
         },
         onError: () => {
           setFeedback(t("common.error"))
@@ -114,7 +120,7 @@ export function TargetAllocation() {
         {STOCK_CATEGORIES.map((cat) => (
           <div key={cat} className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium">{cat}</label>
+              <label className="text-xs font-medium">{t(`config.category.${cat.toLowerCase()}`)}</label>
               <span className="text-xs font-semibold">{sliders[cat] ?? 0}%</span>
             </div>
             <input
@@ -123,7 +129,7 @@ export function TargetAllocation() {
               max={100}
               step={1}
               value={sliders[cat] ?? 0}
-              onChange={(e) => setSliders((prev) => ({ ...prev, [cat]: Number(e.target.value) }))}
+              onChange={(e) => handleSliderChange(cat, Number(e.target.value))}
               className="w-full"
             />
           </div>

@@ -62,11 +62,4 @@ export interface PostSellDrift {
   market_value: number
 }
 
-// UpdateHoldingRequest: PUT /holdings/{id} accepts HoldingRequest but only
-// some fields are relevant for updates; kept hand-written for partial flexibility
-export interface UpdateHoldingRequest {
-  quantity?: number
-  cost_basis?: number
-  broker?: string
-  category?: string
-}
+export type UpdateHoldingRequest = components["schemas"]["UpdateHoldingRequest"]
