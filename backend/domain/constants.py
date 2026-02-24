@@ -533,3 +533,10 @@ DISK_KEY_SECTOR = "sector"
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
 EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})
+
+# ---------------------------------------------------------------------------
+# J-Quants API (optional JP data supplement)
+# ---------------------------------------------------------------------------
+JQUANTS_CACHE_TTL = 86400  # 24 hours (financial data changes quarterly)
+DISK_KEY_JQUANTS_FINANCIALS = "jquants_financials"
+DISK_JQUANTS_FINANCIALS_TTL = 604800  # 7 days

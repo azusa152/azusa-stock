@@ -1,8 +1,69 @@
+from unittest.mock import MagicMock, patch
+
+from domain.enums import MoatStatus
 from domain.protocols import MarketDataProvider
 from infrastructure.market_data_resolver import MarketDataResolver
+
+NOT_AVAILABLE = MoatStatus.NOT_AVAILABLE.value
 
 
 def test_resolver_satisfies_protocol():
     """MarketDataResolver structurally conforms to MarketDataProvider."""
     resolver = MarketDataResolver()
     assert isinstance(resolver, MarketDataProvider)
+
+
+@patch("infrastructure.market_data.analyze_moat_trend")
+def test_jp_moat_fallback_to_jquants(mock_yf_moat):
+    """When yfinance returns NOT_AVAILABLE for a JP ticker, tries J-Quants."""
+    mock_yf_moat.return_value = {"moat": NOT_AVAILABLE, "ticker": "7203.T"}
+
+    mock_jquants = MagicMock()
+    mock_jquants.is_available.return_value = True
+    mock_jquants.get_financials.return_value = {
+        "gross_profit": 3000000,
+        "revenue": 10000000,
+    }
+
+    resolver = MarketDataResolver()
+    resolver._jquants = mock_jquants
+
+    result = resolver.analyze_moat_trend("7203.T")
+
+    mock_jquants.get_financials.assert_called_once_with("7203.T")
+    assert result["moat"] == "STABLE"
+    assert result["current_margin"] == 30.0
+    assert result["source"] == "jquants"
+
+
+@patch("infrastructure.market_data.analyze_moat_trend")
+def test_non_jp_ticker_never_calls_jquants(mock_yf_moat):
+    """Non-JP tickers never touch J-Quants even if it is available."""
+    mock_yf_moat.return_value = {"moat": NOT_AVAILABLE, "ticker": "AAPL"}
+
+    mock_jquants = MagicMock()
+    mock_jquants.is_available.return_value = True
+
+    resolver = MarketDataResolver()
+    resolver._jquants = mock_jquants
+
+    resolver.analyze_moat_trend("AAPL")
+
+    mock_jquants.get_financials.assert_not_called()
+
+
+@patch("infrastructure.market_data.analyze_moat_trend")
+def test_jp_moat_skips_jquants_when_yfinance_succeeds(mock_yf_moat):
+    """When yfinance returns a non-N/A moat, J-Quants is not called."""
+    mock_yf_moat.return_value = {"moat": "STABLE", "ticker": "7203.T"}
+
+    mock_jquants = MagicMock()
+    mock_jquants.is_available.return_value = True
+
+    resolver = MarketDataResolver()
+    resolver._jquants = mock_jquants
+
+    result = resolver.analyze_moat_trend("7203.T")
+
+    mock_jquants.get_financials.assert_not_called()
+    assert result["moat"] == "STABLE"

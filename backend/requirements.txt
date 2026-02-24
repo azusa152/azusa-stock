@@ -5,6 +5,7 @@ uvicorn[standard]==0.34.0
 sqlmodel==0.0.22
 
 # Market Data
+jquants-api-client>=2.0.0
 yfinance==0.2.58
 curl_cffi==0.7.4
 requests==2.32.4  # CVE-2024-47081: Minimum safe version
