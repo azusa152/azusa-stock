@@ -167,6 +167,20 @@ jobs:
       - name: Run tests
         run: npm test
 
+  constant-sync:
+    name: Backend/Frontend Constant Sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check constant sync
+        run: python scripts/check_constant_sync.py
+
   security:
     name: Security Audit (pip-audit)
     runs-on: ubuntu-latest

@@ -182,7 +182,10 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help
+.PHONY: generate-key security help check-constants
+
+check-constants: ## Check backend/frontend constant sync
+	python3 scripts/check_constant_sync.py
 
 generate-key: ## Generate a secure API key (add to .env as FOLIO_API_KEY)
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"
