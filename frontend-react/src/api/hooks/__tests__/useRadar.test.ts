@@ -13,7 +13,7 @@ vi.mock("@/api/client", () => ({
   },
 }));
 
-const mockApiClient = apiClient as {
+const mockApiClient = apiClient as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
 };
