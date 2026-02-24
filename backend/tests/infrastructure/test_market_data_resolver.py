@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from domain.enums import MoatStatus
 from domain.protocols import MarketDataProvider
-from infrastructure.market_data_resolver import MarketDataResolver
+from infrastructure.market_data_resolver import MarketDataResolver, _is_tw_ticker
 
 NOT_AVAILABLE = MoatStatus.NOT_AVAILABLE.value
 
@@ -50,6 +50,14 @@ def test_non_jp_ticker_never_calls_jquants(mock_yf_moat):
     resolver.analyze_moat_trend("AAPL")
 
     mock_jquants.get_financials.assert_not_called()
+
+
+def test_is_tw_ticker():
+    assert _is_tw_ticker("2330.TW") is True
+    assert _is_tw_ticker("2317.TW") is True
+    assert _is_tw_ticker("7203.T") is False
+    assert _is_tw_ticker("AAPL") is False
+    assert _is_tw_ticker("0700.HK") is False
 
 
 @patch("infrastructure.market_data.analyze_moat_trend")

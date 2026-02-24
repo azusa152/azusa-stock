@@ -807,16 +807,21 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
                 "details": "N/A failed to get new data",
             }
 
-        def _get_gross_margin(col) -> Optional[float]:
-            gross_profit = _safe_loc(financials, ["Gross Profit"], col)
-            revenue = _safe_loc(
-                financials,
-                ["Total Revenue", "Operating Revenue", "Revenue"],
-                col,
-            )
+        _gross_profit_labels = ["Gross Profit"]
+        _operating_profit_labels = ["Operating Profit"]
+        _revenue_labels = ["Total Revenue", "Operating Revenue", "Revenue", "Net Sales"]
+
+        def _get_gross_margin(col) -> tuple[Optional[float], str]:
+            """Return (margin_pct, margin_type) where margin_type is 'gross' or 'operating'."""
+            gross_profit = _safe_loc(financials, _gross_profit_labels, col)
+            margin_type = "gross"
+            if gross_profit is None:
+                gross_profit = _safe_loc(financials, _operating_profit_labels, col)
+                margin_type = "operating"
+            revenue = _safe_loc(financials, _revenue_labels, col)
             if gross_profit is not None and revenue and revenue != 0:
-                return round(float(gross_profit) / float(revenue) * 100, 2)
-            return None
+                return round(float(gross_profit) / float(revenue) * 100, 2), margin_type
+            return None, margin_type
 
         def _quarter_label(col) -> str:
             if hasattr(col, "month"):
@@ -828,20 +833,20 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
         quarters_to_fetch = min(len(columns), MARGIN_TREND_QUARTERS)
         margin_trend: list[dict] = []
         for col in columns[:quarters_to_fetch]:
-            gm = _get_gross_margin(col)
+            gm, _ = _get_gross_margin(col)
             margin_trend.append({"date": _quarter_label(col), "value": gm})
         margin_trend.reverse()  # 最舊在左，最新在右（圖表用）
 
         # --- YoY 比較 ---
         latest_col = columns[0]
-        current_margin = _get_gross_margin(latest_col)
+        current_margin, margin_type = _get_gross_margin(latest_col)
 
         # 優先拿第 5 季（去年同期），不足則拿最舊一季
         if len(columns) >= MARGIN_TREND_QUARTERS:
             yoy_col = columns[MARGIN_TREND_QUARTERS - 1]
         else:
             yoy_col = columns[-1]
-        previous_margin = _get_gross_margin(yoy_col)
+        previous_margin, _ = _get_gross_margin(yoy_col)
 
         # 使用 domain 層的純判定函式
         moat_status, change = determine_moat_status(current_margin, previous_margin)
@@ -867,11 +872,14 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
             "change": change,
             "moat": moat_status.value,
             "margin_trend": margin_trend,
+            "margin_type": margin_type,
         }
 
         result["details"] = build_moat_details(
             moat_status.value, current_margin, previous_margin, change
         )
+        if margin_type == "operating":
+            result["details"] += " (operating margin)"
 
         if moat_status == MoatStatus.DETERIORATING:
             logger.warning(

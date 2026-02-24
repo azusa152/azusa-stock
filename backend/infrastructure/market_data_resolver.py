@@ -12,6 +12,10 @@ def _is_jp_ticker(ticker: str) -> bool:
     return ticker.endswith(".T")
 
 
+def _is_tw_ticker(ticker: str) -> bool:
+    return ticker.endswith(".TW")
+
+
 def _infer_market(ticker: str) -> str:
     if ticker.endswith(".T"):
         return "JP"
