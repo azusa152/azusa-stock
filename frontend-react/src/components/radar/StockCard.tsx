@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
+import { formatPrice } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
 import { PriceChart } from "@/components/radar/PriceChart"
@@ -22,11 +23,11 @@ function infer_market_label(ticker: string): string {
   return "🇺🇸 US"
 }
 
-function infer_currency(ticker: string): string {
-  if (ticker.endsWith(".TW")) return "NT$"
-  if (ticker.endsWith(".T")) return "¥"
-  if (ticker.endsWith(".HK")) return "HK$"
-  return "$"
+function infer_currency(ticker: string): { symbol: string; code: string } {
+  if (ticker.endsWith(".TW")) return { symbol: "NT$", code: "TWD" }
+  if (ticker.endsWith(".T")) return { symbol: "¥", code: "JPY" }
+  if (ticker.endsWith(".HK")) return { symbol: "HK$", code: "HKD" }
+  return { symbol: "$", code: "USD" }
 }
 
 interface Props {
@@ -303,12 +304,12 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
             {price != null && (
               <span className="flex flex-col items-end leading-tight">
                 <span className="text-sm font-semibold tabular-nums">
-                  {currency}{price.toFixed(2)}
+                  {currency.symbol}{formatPrice(price, currency.code)}
                 </span>
                 {changePct != null && (
                   <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
                     {isUp ? "▲" : "▼"}{" "}
-                    {changeAbs != null ? `${currency}${Math.abs(changeAbs).toFixed(2)} ` : ""}
+                    {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
                     ({Math.abs(changePct).toFixed(2)}%)
                   </span>
                 )}
@@ -399,13 +400,13 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
                   {/* Text metrics row */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {enrichment?.signals?.price != null && (
-                      <span>Price: {currency}{(enrichment.signals.price as number).toFixed(2)}</span>
+                      <span>Price: {currency.symbol}{formatPrice(enrichment.signals.price as number, currency.code)}</span>
                     )}
                     {enrichment?.signals?.ma200 != null && (
-                      <span>MA200: {currency}{(enrichment.signals.ma200 as number).toFixed(2)}</span>
+                      <span>MA200: {currency.symbol}{formatPrice(enrichment.signals.ma200 as number, currency.code)}</span>
                     )}
                     {enrichment?.signals?.ma60 != null && (
-                      <span>MA60: {currency}{(enrichment.signals.ma60 as number).toFixed(2)}</span>
+                      <span>MA60: {currency.symbol}{formatPrice(enrichment.signals.ma60 as number, currency.code)}</span>
                     )}
                   </div>
 

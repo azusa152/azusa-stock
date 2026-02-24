@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useUpdateHolding, useDeleteHolding } from "@/api/hooks/useAllocation"
 import type { Holding } from "@/api/types/allocation"
+import { formatPrice } from "@/lib/format"
 
 interface Props {
   privacyMode: boolean
@@ -211,7 +212,7 @@ export function HoldingsManager({ privacyMode }: Props) {
                   <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
                   <td className="py-0.5 pr-2 text-right">{privacyMode ? "***" : h.quantity}</td>
                   <td className="py-0.5 pr-2 text-right">
-                    {privacyMode ? "***" : (h.cost_basis != null ? h.cost_basis.toFixed(2) : "—")}
+                    {privacyMode ? "***" : (h.cost_basis != null ? formatPrice(h.cost_basis, h.currency) : "—")}
                   </td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{h.broker ?? "—"}</td>
                   <td className="py-0.5 text-right space-x-2 whitespace-nowrap">
