@@ -2,10 +2,8 @@
 API — 持倉 (Holding) 管理與再平衡 (Rebalance) 路由。
 """
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from api.schemas import (
     CashHoldingRequest,
@@ -22,6 +20,7 @@ from api.schemas import (
     WithdrawResponse,
     XRayAlertResponse,
 )
+from application import holding_service
 from application.services import (
     StockNotFoundError,
     calculate_currency_exposure,
@@ -31,13 +30,7 @@ from application.services import (
     send_fx_alerts,
     send_xray_warnings,
 )
-from domain.constants import (
-    DEFAULT_USER_ID,
-    ERROR_HOLDING_NOT_FOUND,
-    ERROR_INVALID_INPUT,
-    GENERIC_VALIDATION_ERROR,
-)
-from domain.entities import Holding
+from domain.constants import ERROR_HOLDING_NOT_FOUND
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -45,21 +38,6 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter()
-
-
-def _holding_to_response(h: Holding) -> HoldingResponse:
-    return HoldingResponse(
-        id=h.id,  # type: ignore[arg-type]
-        ticker=h.ticker,
-        category=h.category,
-        quantity=h.quantity,
-        cost_basis=h.cost_basis,
-        broker=h.broker,
-        currency=h.currency,
-        account_type=h.account_type,
-        is_cash=h.is_cash,
-        updated_at=h.updated_at.isoformat(),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -72,10 +50,7 @@ def _holding_to_response(h: Holding) -> HoldingResponse:
 )
 def list_holdings(session: Session = Depends(get_session)) -> list[HoldingResponse]:
     """取得所有持倉。"""
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
-    return [_holding_to_response(h) for h in holdings]
+    return [HoldingResponse(**h) for h in holding_service.list_holdings(session)]
 
 
 @router.post("/holdings", response_model=HoldingResponse, summary="Add a holding")
@@ -84,22 +59,10 @@ def create_holding(
     session: Session = Depends(get_session),
 ) -> HoldingResponse:
     """新增持倉。"""
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=payload.ticker.strip().upper(),
-        category=payload.category,
-        quantity=payload.quantity,
-        cost_basis=payload.cost_basis,
-        broker=payload.broker,
-        currency=payload.currency.strip().upper(),
-        account_type=payload.account_type,
-        is_cash=payload.is_cash,
+    lang = get_user_language(session)
+    return HoldingResponse(
+        **holding_service.create_holding(session, payload.model_dump(), lang)
     )
-    session.add(holding)
-    session.commit()
-    session.refresh(holding)
-    logger.info("新增持倉：%s（%s）", holding.ticker, holding.category)
-    return _holding_to_response(holding)
 
 
 @router.post(
@@ -110,25 +73,10 @@ def create_cash_holding(
     session: Session = Depends(get_session),
 ) -> HoldingResponse:
     """新增現金持倉（簡化入口）。"""
-    from domain.enums import StockCategory
-
-    currency_upper = payload.currency.strip().upper()
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=currency_upper,
-        category=StockCategory.CASH,
-        quantity=payload.amount,
-        cost_basis=1.0,
-        broker=payload.broker,
-        currency=currency_upper,
-        account_type=payload.account_type,
-        is_cash=True,
+    lang = get_user_language(session)
+    return HoldingResponse(
+        **holding_service.create_cash_holding(session, payload.model_dump(), lang)
     )
-    session.add(holding)
-    session.commit()
-    session.refresh(holding)
-    logger.info("新增現金持倉：%s %.2f", holding.ticker, holding.quantity)
-    return _holding_to_response(holding)
 
 
 @router.put(
@@ -140,27 +88,12 @@ def update_holding(
     session: Session = Depends(get_session),
 ) -> HoldingResponse:
     """更新持倉。"""
-    holding = session.get(Holding, holding_id)
-    if not holding:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_HOLDING_NOT_FOUND,
-                "detail": t("api.holding_not_found", lang=get_user_language(session)),
-            },
+    lang = get_user_language(session)
+    return HoldingResponse(
+        **holding_service.update_holding(
+            session, holding_id, payload.model_dump(), lang
         )
-    holding.ticker = payload.ticker.strip().upper()
-    holding.category = payload.category
-    holding.quantity = payload.quantity
-    holding.cost_basis = payload.cost_basis
-    holding.broker = payload.broker
-    holding.currency = payload.currency.strip().upper()
-    holding.account_type = payload.account_type
-    holding.is_cash = payload.is_cash
-    holding.updated_at = datetime.now(timezone.utc)
-    session.commit()
-    session.refresh(holding)
-    return _holding_to_response(holding)
+    )
 
 
 @router.delete(
@@ -171,24 +104,8 @@ def delete_holding(
     session: Session = Depends(get_session),
 ) -> dict:
     """刪除持倉。"""
-    holding = session.get(Holding, holding_id)
-    if not holding:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_HOLDING_NOT_FOUND,
-                "detail": t("api.holding_not_found", lang=get_user_language(session)),
-            },
-        )
-    ticker = holding.ticker
-    session.delete(holding)
-    session.commit()
-    logger.info("刪除持倉：%s", ticker)
-    return {
-        "message": t(
-            "api.holding_deleted", lang=get_user_language(session), ticker=ticker
-        )
-    }
+    lang = get_user_language(session)
+    return holding_service.delete_holding(session, holding_id, lang)
 
 
 # ---------------------------------------------------------------------------
@@ -199,24 +116,7 @@ def delete_holding(
 @router.get("/holdings/export", summary="Export all holdings as JSON")
 def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     """匯出所有持倉（JSON 格式）。"""
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
-    return [
-        {
-            "ticker": h.ticker,
-            "category": h.category.value
-            if hasattr(h.category, "value")
-            else h.category,
-            "quantity": h.quantity,
-            "cost_basis": h.cost_basis,
-            "broker": h.broker,
-            "currency": h.currency,
-            "account_type": h.account_type,
-            "is_cash": h.is_cash,
-        }
-        for h in holdings
-    ]
+    return holding_service.export_holdings(session)
 
 
 @router.post(
@@ -236,57 +136,10 @@ def import_holdings(
     - ticker 長度限制 20 字元
     - quantity 必須大於 0
     """
-    if len(data) > 1000:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error_code": ERROR_INVALID_INPUT,
-                "detail": t(GENERIC_VALIDATION_ERROR, lang=get_user_language(session)),
-            },
-        )
-
-    # 清除既有持倉
-    existing = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
-    for h in existing:
-        session.delete(h)
-
-    count = 0
-    errors: list[str] = []
-    for i, item in enumerate(data):
-        try:
-            item_dict = item.model_dump()
-            holding = Holding(
-                user_id=DEFAULT_USER_ID,
-                ticker=item_dict["ticker"],
-                category=item_dict["category"],
-                quantity=item_dict["quantity"],
-                cost_basis=item_dict.get("cost_basis"),
-                broker=item_dict.get("broker"),
-                currency=item_dict["currency"],
-                account_type=item_dict.get("account_type"),
-                is_cash=item_dict.get("is_cash", False),
-            )
-            session.add(holding)
-            count += 1
-        except Exception as e:
-            logger.warning("持倉匯入第 %d 筆失敗：%s", i + 1, e)
-            errors.append(
-                t(
-                    "api.import_item_failed",
-                    lang=get_user_language(session),
-                    index=i + 1,
-                )
-            )
-
-    session.commit()
-    logger.info("匯入持倉完成：%d 筆成功，%d 筆失敗。", count, len(errors))
-    return {
-        "message": t("api.import_done", lang=get_user_language(session), count=count),
-        "imported": count,
-        "errors": errors,
-    }
+    lang = get_user_language(session)
+    return holding_service.import_holdings(
+        session, [item.model_dump() for item in data], lang
+    )
 
 
 # ---------------------------------------------------------------------------
