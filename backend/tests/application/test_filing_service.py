@@ -1056,3 +1056,117 @@ class TestBackfillGuruFilings:
         assert result["synced"] == 2
         assert result["errors"] == 1
         assert result["total_filings"] == 3
+
+
+# ===========================================================================
+# filing_service — get_top_holdings tests
+# ===========================================================================
+
+
+class TestGetTopHoldings:
+    """Tests for get_top_holdings()."""
+
+    def _seed_filing_with_holdings(
+        self, session: Session, cik: str, holdings_data: list[dict]
+    ):
+        guru = save_guru(session, Guru(name="Corp", cik=cik, display_name="Mgr"))
+        filing = save_filing(
+            session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number=f"ACC-TOP-{cik}",
+                report_date="2024-12-31",
+                filing_date="2025-02-14",
+            ),
+        )
+        save_holdings_batch(
+            session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip=f"CUSIP{i:03d}",
+                    company_name=h["company_name"],
+                    value=h["value"],
+                    shares=h["shares"],
+                    weight_pct=h["weight_pct"],
+                )
+                for i, h in enumerate(holdings_data)
+            ],
+        )
+        return guru
+
+    def test_returns_empty_list_when_no_filing(self, db_session: Session) -> None:
+        from application.filing_service import get_top_holdings
+
+        guru = save_guru(
+            db_session, Guru(name="Corp", cik="0005000001", display_name="Mgr")
+        )
+        result = get_top_holdings(db_session, guru.id)
+        assert result == []
+
+    def test_returns_holdings_sorted_by_weight_desc(self, db_session: Session) -> None:
+        from application.filing_service import get_top_holdings
+
+        holdings_data = [
+            {
+                "company_name": "Low Co",
+                "value": 10.0,
+                "shares": 100.0,
+                "weight_pct": 10.0,
+            },
+            {
+                "company_name": "High Co",
+                "value": 70.0,
+                "shares": 700.0,
+                "weight_pct": 70.0,
+            },
+            {
+                "company_name": "Mid Co",
+                "value": 20.0,
+                "shares": 200.0,
+                "weight_pct": 20.0,
+            },
+        ]
+        guru = self._seed_filing_with_holdings(db_session, "0005000002", holdings_data)
+
+        result = get_top_holdings(db_session, guru.id)
+
+        weights = [h["weight_pct"] for h in result if h["weight_pct"] is not None]
+        assert weights == sorted(weights, reverse=True)
+
+    def test_limits_to_n_holdings(self, db_session: Session) -> None:
+        from application.filing_service import get_top_holdings
+
+        holdings_data = [
+            {
+                "company_name": f"Co {i}",
+                "value": float(i + 1),
+                "shares": float((i + 1) * 10),
+                "weight_pct": float(i + 1),
+            }
+            for i in range(15)
+        ]
+        guru = self._seed_filing_with_holdings(db_session, "0005000003", holdings_data)
+
+        result = get_top_holdings(db_session, guru.id, n=5)
+
+        assert len(result) == 5
+
+    def test_default_n_is_10(self, db_session: Session) -> None:
+        from application.filing_service import get_top_holdings
+
+        holdings_data = [
+            {
+                "company_name": f"Co {i}",
+                "value": float(i + 1),
+                "shares": float((i + 1) * 10),
+                "weight_pct": float(i + 1),
+            }
+            for i in range(15)
+        ]
+        guru = self._seed_filing_with_holdings(db_session, "0005000004", holdings_data)
+
+        result = get_top_holdings(db_session, guru.id)
+
+        assert len(result) == 10

@@ -640,3 +640,31 @@ def toggle_price_alert(session: Session, alert_id: int) -> dict:
     session.commit()
     key = "scan.alert_resumed" if alert.is_active else "scan.alert_paused"
     return {"message": t(key, lang=lang), "is_active": alert.is_active}
+
+
+# ===========================================================================
+# Last Scan Status
+# ===========================================================================
+
+
+def get_last_scan_status(session: Session) -> dict:
+    """Get last scan metadata including fear & greed index."""
+    logs = repo.find_latest_scan_logs(session, limit=1)
+    if not logs:
+        return {"last_scanned_at": None, "epoch": None}
+    log = logs[0]
+    ts = log.scanned_at
+    fg = get_fear_greed_index()
+    return {
+        "last_scanned_at": ts.isoformat(),
+        "epoch": int(ts.timestamp()),
+        "market_status": log.market_status,
+        "market_status_details": getattr(log, "market_status_details", ""),
+        "fear_greed_level": fg.get("composite_level"),
+        "fear_greed_score": fg.get("composite_score"),
+    }
+
+
+def get_fear_greed() -> dict | None:
+    """Fetch current Fear & Greed index."""
+    return get_fear_greed_index()

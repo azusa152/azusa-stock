@@ -333,6 +333,16 @@ def get_guru_filing_history(session: Session, guru_id: int) -> list[dict]:
     ]
 
 
+def get_top_holdings(session: Session, guru_id: int, n: int = 10) -> list[dict]:
+    """Get top N holdings for a guru's latest filing."""
+    filing = find_latest_filing_by_guru(session, guru_id)
+    if not filing:
+        return []
+    holdings = find_holdings_by_filing(session, filing.id)
+    sorted_holdings = sorted(holdings, key=lambda h: h.weight_pct or 0, reverse=True)
+    return [h.model_dump() for h in sorted_holdings[:n]]
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
