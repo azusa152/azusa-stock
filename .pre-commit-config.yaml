@@ -1,16 +1,49 @@
 # Pre-commit hooks for Folio — enforces architecture boundaries and code style at commit time.
 #
 # Setup (done automatically by `make setup`):
-#   pip install pre-commit
-#   pre-commit install
+#   make setup-hooks
 #
-# Run manually:
-#   pre-commit run --all-files
+# Run manually against all files:
+#   backend/.venv/bin/pre-commit run --all-files
+#
+# Update remote hook versions:
+#   backend/.venv/bin/pre-commit autoupdate
 #
 # Skip (emergency only — CI will still catch violations):
 #   git commit --no-verify
 
+# ---------------------------------------------------------------------------
+# 1. Standard hygiene hooks (remote — pre-commit/pre-commit-hooks v5.0.0)
+# ---------------------------------------------------------------------------
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml           # Validates YAML syntax (docker-compose, CI, this config)
+      - id: check-merge-conflict # Prevents committing unresolved conflict markers
+      - id: trailing-whitespace  # Removes trailing whitespace for clean diffs
+      - id: end-of-file-fixer    # Ensures newline at EOF (POSIX standard)
+      - id: check-added-large-files
+        args: [--maxkb=500]      # Prevents accidental binary blobs / DB files
+
+# ---------------------------------------------------------------------------
+# 2. Python linting and formatting (remote — astral-sh/ruff-pre-commit v0.8.5)
+#    Replaces local venv-dependent ruff hooks. ruff-pre-commit ships its own
+#    prebuilt binary — works on any machine after `pre-commit install`,
+#    no venv required.
+# ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.5
+    hooks:
+      - id: ruff                 # Lint with auto-fix; fails if fixes were applied
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      - id: ruff-format          # Format check (read-only — format explicitly with `make format`)
+        files: ^backend/
+
+# ---------------------------------------------------------------------------
+# 3. Project-specific hooks (local — no remote equivalent)
+# ---------------------------------------------------------------------------
   - repo: local
     hooks:
       - id: architecture-boundary
@@ -20,23 +53,9 @@ repos:
         pass_filenames: false
         files: ^backend/
 
-      - id: ruff-check
-        name: ruff lint
-        entry: bash -c 'backend/.venv/bin/ruff check backend/'
-        language: system
-        pass_filenames: false
-        files: ^backend/.*\.py$
-
-      - id: ruff-format
-        name: ruff format check
-        entry: bash -c 'backend/.venv/bin/ruff format --check backend/'
-        language: system
-        pass_filenames: false
-        files: ^backend/.*\.py$
-
       - id: eslint
         name: eslint (frontend)
-        entry: bash -c 'cd frontend-react && npm run lint'
+        entry: bash -c 'cd frontend-react && npx eslint .'
         language: system
         pass_filenames: false
         files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
