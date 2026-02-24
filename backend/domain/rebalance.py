@@ -36,7 +36,7 @@ def calculate_rebalance(
         return {
             "total_value": 0.0,
             "categories": {},
-            "advice": ["⚠️ 持倉總市值為零，無法計算配置。"],
+            "advice": [{"key": "rebalance.advice_zero", "params": {}}],
         }
 
     all_categories = sorted(
@@ -61,12 +61,30 @@ def calculate_rebalance(
         if abs(drift) > threshold:
             icon = CATEGORY_ICON.get(cat, "📊")
             if drift > 0:
-                advice.append(f"{icon} {cat} 超配 {drift:+.1f}%，考慮減碼。")
+                advice.append(
+                    {
+                        "key": "rebalance.advice_over",
+                        "params": {
+                            "icon": icon,
+                            "category": cat,
+                            "drift": f"{drift:.1f}",
+                        },
+                    }
+                )
             else:
-                advice.append(f"{icon} {cat} 低配 {drift:+.1f}%，考慮加碼。")
+                advice.append(
+                    {
+                        "key": "rebalance.advice_under",
+                        "params": {
+                            "icon": icon,
+                            "category": cat,
+                            "drift": f"{abs(drift):.1f}",
+                        },
+                    }
+                )
 
     if not advice:
-        advice.append("✅ 各分類配置均在目標範圍內，無需調整。")
+        advice.append({"key": "rebalance.advice_ok", "params": {}})
 
     return {
         "total_value": round(total_value, 2),

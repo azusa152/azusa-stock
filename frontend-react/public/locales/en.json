@@ -29,6 +29,7 @@
     "privacy_mode": "🙈 Privacy Mode",
     "privacy_mask": "***",
     "success": "✅ Success",
+    "saving": "Saving…",
     "error": "❌ Error",
     "warning": "⚠️ Warning",
     "info": "ℹ️ Info",
@@ -187,7 +188,9 @@
     "performance_period_6m": "6M",
     "performance_period_ytd": "YTD",
     "performance_period_1y": "1Y",
-    "performance_period_all": "ALL"
+    "performance_period_all": "ALL",
+    "performance_portfolio_return": "Portfolio",
+    "performance_no_period_data": "No data for this period"
   },
   "radar": {
     "title": "📡 Folio",
@@ -527,6 +530,12 @@
       "beta": "Portfolio β",
       "loss": "Expected Loss",
       "pain_level": "Pain Level",
+      "pain_labels": {
+        "low": "Just a Scratch",
+        "moderate": "Noticeable Correction",
+        "high": "Significant Damage (Bear Market)",
+        "panic": "Sleepless Nights (Panic Zone)"
+      },
       "breakdown_title": "Holdings Breakdown",
       "col_beta": "β",
       "col_drop": "Drop%",
@@ -560,7 +569,10 @@
       "delete_button": "Delete",
       "confirm_delete": "Confirm Delete",
       "col_broker": "Broker",
-      "col_actions": "Actions"
+      "col_actions": "Actions",
+      "edit_hint": "Press Enter to save · Esc to cancel",
+      "err_qty": "Quantity must be greater than 0",
+      "err_cost": "Cost basis must be 0 or greater"
     }
   },
   "fx_watch": {

@@ -87,7 +87,7 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
             <div className="rounded-lg border border-border p-3" style={{ borderColor: `${painColor}40`, backgroundColor: `${painColor}10` }}>
               <p className="text-muted-foreground">{t("allocation.stress.pain_level")}</p>
               <p className="text-base font-bold" style={{ color: painColor }}>
-                {data.pain_level.emoji} {data.pain_level.label}
+                {data.pain_level.emoji} {t(`allocation.stress.pain_labels.${data.pain_level.level}`)}
               </p>
             </div>
           </div>

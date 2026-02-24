@@ -373,7 +373,10 @@ def run_scan(session: Session) -> dict:
     session.commit()
 
     # === 檢查自訂價格警報 ===
-    _check_price_alerts(session, results, lang)
+    try:
+        _check_price_alerts(session, results, lang)
+    except Exception:
+        logger.error("價格警報檢查失敗，繼續掃描差異比對。", exc_info=True)
 
     # === 差異比對 + 通知 ===
     category_icon = CATEGORY_ICON
@@ -495,10 +498,13 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
         if not triggered:
             continue
 
-        # 冷卻檢查
+        # 冷卻檢查（SQLite 讀回的 datetime 可能為 naive，統一轉換為 UTC-aware）
         if alert.last_triggered_at:
+            triggered_at = alert.last_triggered_at
+            if triggered_at.tzinfo is None:
+                triggered_at = triggered_at.replace(tzinfo=timezone.utc)
             cooldown = timedelta(hours=PRICE_ALERT_COOLDOWN_HOURS)
-            if now - alert.last_triggered_at < cooldown:
+            if now - triggered_at < cooldown:
                 continue
 
         # 觸發

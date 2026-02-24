@@ -408,6 +408,15 @@ class HoldingRequest(BaseModel):
     is_cash: bool = False
 
 
+class UpdateHoldingRequest(BaseModel):
+    """PUT /holdings/{id} 請求 Body — 所有欄位均為選填，僅更新提供的欄位。"""
+
+    quantity: Optional[float] = Field(default=None, gt=0)
+    cost_basis: Optional[float] = Field(default=None, ge=0)
+    broker: Optional[str] = None
+    category: Optional[StockCategory] = None
+
+
 class CashHoldingRequest(BaseModel):
     """POST /holdings/cash 請求 Body。"""
 

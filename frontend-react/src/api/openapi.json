@@ -2335,7 +2335,7 @@
     "/holdings/{holding_id}": {
       "put": {
         "summary": "Update a holding",
-        "description": "\u66f4\u65b0\u6301\u5009\u3002",
+        "description": "\u66f4\u65b0\u6301\u5009\uff08\u90e8\u5206\u66f4\u65b0\uff09\u3002",
         "operationId": "update_holding_holdings__holding_id__put",
         "parameters": [
           {
@@ -2369,7 +2369,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/HoldingRequest"
+                "$ref": "#/components/schemas/UpdateHoldingRequest"
               }
             }
           }
@@ -7665,6 +7665,58 @@
         ],
         "title": "TwrResponse",
         "description": "GET /snapshots/twr \u56de\u50b3\u7684\u6642\u9593\u52a0\u6b0a\u5831\u916c\u7387\u3002"
+      },
+      "UpdateHoldingRequest": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          },
+          "broker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StockCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "UpdateHoldingRequest",
+        "description": "PUT /holdings/{id} \u8acb\u6c42 Body \u2014 \u6240\u6709\u6b04\u4f4d\u5747\u70ba\u9078\u586b\uff0c\u50c5\u66f4\u65b0\u63d0\u4f9b\u7684\u6b04\u4f4d\u3002"
       },
       "VIXData": {
         "properties": {

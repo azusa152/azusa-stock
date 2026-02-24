@@ -205,6 +205,11 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     # 5) 委託 domain 純函式計算
     result = _pure_rebalance(category_values, target_config)
 
+    # 5.5) 將 domain 回傳的結構化建議翻譯為用戶語言字串
+    result["advice"] = [
+        t(item["key"], lang=lang, **item["params"]) for item in result["advice"]
+    ]
+
     # 6) 計算投資組合日漲跌
     total_value = result["total_value"]
     previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())

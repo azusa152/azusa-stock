@@ -140,7 +140,11 @@
     "withdrawal_insufficient": "⚠️ 尚未输入任何持仓，无法计算提款建议。",
     "withdrawal_shortfall_total": "⚠️ 投资组合市值不足，缺口：{amount} {currency}。",
     "withdrawal_no_sellable": "⚠️ 无可卖出的持仓。",
-    "withdrawal_success": "✅ 聪明提款建议已产生，共 {count} 笔卖出建议。"
+    "withdrawal_success": "✅ 聪明提款建议已产生，共 {count} 笔卖出建议。",
+    "advice_zero": "⚠️ 持仓总市值为零，无法计算配置。",
+    "advice_over": "{icon} {category} 超配 {drift}%，考虑减仓。",
+    "advice_under": "{icon} {category} 低配 {drift}%，考虑加仓。",
+    "advice_ok": "✅ 各分类配置均在目标范围内，无需调整。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外汇换汇时机警报</b>\n\n",

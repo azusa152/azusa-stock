@@ -3,6 +3,16 @@
 from domain.rebalance import calculate_rebalance
 
 
+def _advice_keys(result: dict) -> list[str]:
+    """Extract i18n keys from the structured advice list."""
+    return [item["key"] for item in result["advice"]]
+
+
+def _advice_params(result: dict) -> list[dict]:
+    """Extract params dicts from the structured advice list."""
+    return [item["params"] for item in result["advice"]]
+
+
 class TestCalculateRebalanceZeroTotal:
     """Edge case: total value is zero."""
 
@@ -13,7 +23,7 @@ class TestCalculateRebalanceZeroTotal:
         # Assert
         assert result["total_value"] == 0.0
         assert result["categories"] == {}
-        assert any("市值為零" in a for a in result["advice"])
+        assert "rebalance.advice_zero" in _advice_keys(result)
 
     def test_should_return_empty_when_all_values_zero(self):
         # Arrange
@@ -41,7 +51,7 @@ class TestCalculateRebalanceBalanced:
         assert result["total_value"] == 100000.0
         assert result["categories"]["Bond"]["current_pct"] == 50.0
         assert result["categories"]["Bond"]["drift_pct"] == 0.0
-        assert any("無需調整" in a for a in result["advice"])
+        assert "rebalance.advice_ok" in _advice_keys(result)
 
 
 class TestCalculateRebalanceDrift:
@@ -59,7 +69,14 @@ class TestCalculateRebalanceDrift:
         growth = result["categories"]["Growth"]
         assert growth["current_pct"] == 80.0
         assert growth["drift_pct"] == 30.0
-        assert any("超配" in a and "Growth" in a for a in result["advice"])
+        keys = _advice_keys(result)
+        params = _advice_params(result)
+        assert "rebalance.advice_over" in keys
+        over_params = next(
+            p for k, p in zip(keys, params) if k == "rebalance.advice_over"
+        )
+        assert over_params["category"] == "Growth"
+        assert over_params["drift"] == "30.0"
 
     def test_should_advise_add_when_underweight(self):
         # Arrange — Bond underweight: 20% vs target 50%
@@ -73,7 +90,14 @@ class TestCalculateRebalanceDrift:
         bond = result["categories"]["Bond"]
         assert bond["current_pct"] == 20.0
         assert bond["drift_pct"] == -30.0
-        assert any("低配" in a and "Bond" in a for a in result["advice"])
+        keys = _advice_keys(result)
+        params = _advice_params(result)
+        assert "rebalance.advice_under" in keys
+        under_params = next(
+            p for k, p in zip(keys, params) if k == "rebalance.advice_under"
+        )
+        assert under_params["category"] == "Bond"
+        assert under_params["drift"] == "30.0"
 
     def test_should_not_advise_when_drift_below_threshold(self):
         # Arrange — drift = 1% which is below default threshold
@@ -84,7 +108,7 @@ class TestCalculateRebalanceDrift:
         result = calculate_rebalance(values, targets)
 
         # Assert
-        assert any("無需調整" in a for a in result["advice"])
+        assert "rebalance.advice_ok" in _advice_keys(result)
 
 
 class TestCalculateRebalanceCustomThreshold:
@@ -99,7 +123,8 @@ class TestCalculateRebalanceCustomThreshold:
         result = calculate_rebalance(values, targets, threshold=1.0)
 
         # Assert
-        assert any("超配" in a or "低配" in a for a in result["advice"])
+        keys = _advice_keys(result)
+        assert "rebalance.advice_over" in keys or "rebalance.advice_under" in keys
 
 
 class TestCalculateRebalanceMismatchedCategories:
@@ -130,3 +155,48 @@ class TestCalculateRebalanceMismatchedCategories:
         assert "Moat" in result["categories"]
         assert result["categories"]["Moat"]["current_pct"] == 0.0
         assert result["categories"]["Moat"]["drift_pct"] == -20.0
+
+
+class TestCalculateRebalanceAdviceStructure:
+    """Advice items are structured dicts with key and params fields."""
+
+    def test_advice_items_have_key_and_params(self):
+        # Arrange
+        values = {"Bond": 20000.0, "Growth": 80000.0}
+        targets = {"Bond": 50, "Growth": 50}
+
+        # Act
+        result = calculate_rebalance(values, targets)
+
+        # Assert — every advice item must be a dict with "key" and "params"
+        for item in result["advice"]:
+            assert isinstance(item, dict)
+            assert "key" in item
+            assert "params" in item
+            assert isinstance(item["key"], str)
+            assert isinstance(item["params"], dict)
+
+    def test_zero_total_advice_has_no_params(self):
+        # Arrange / Act
+        result = calculate_rebalance({}, {})
+
+        # Assert
+        advice = result["advice"]
+        assert len(advice) == 1
+        assert advice[0]["key"] == "rebalance.advice_zero"
+        assert advice[0]["params"] == {}
+
+    def test_ok_advice_has_no_params(self):
+        # Arrange
+        values = {"Bond": 50000.0, "Growth": 50000.0}
+        targets = {"Bond": 50, "Growth": 50}
+
+        # Act
+        result = calculate_rebalance(values, targets)
+
+        # Assert
+        ok_items = [
+            item for item in result["advice"] if item["key"] == "rebalance.advice_ok"
+        ]
+        assert len(ok_items) == 1
+        assert ok_items[0]["params"] == {}

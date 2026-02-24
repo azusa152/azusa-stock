@@ -29,6 +29,7 @@
     "privacy_mode": "🙈 隱私模式",
     "privacy_mask": "***",
     "success": "✅ 成功",
+    "saving": "儲存中…",
     "error": "❌ 錯誤",
     "warning": "⚠️ 警告",
     "info": "ℹ️ 資訊",
@@ -187,7 +188,9 @@
     "performance_period_6m": "6M",
     "performance_period_ytd": "今年",
     "performance_period_1y": "1Y",
-    "performance_period_all": "全部"
+    "performance_period_all": "全部",
+    "performance_portfolio_return": "投資組合",
+    "performance_no_period_data": "此期間無資料"
   },
   "radar": {
     "title": "📡 Folio",
@@ -527,6 +530,12 @@
       "beta": "組合 β",
       "loss": "預估損失",
       "pain_level": "痛苦指數",
+      "pain_labels": {
+        "low": "微風輕拂",
+        "moderate": "有感修正",
+        "high": "傷筋動骨",
+        "panic": "睡不著覺"
+      },
       "breakdown_title": "個股明細",
       "col_beta": "β",
       "col_drop": "跌幅%",
@@ -560,7 +569,10 @@
       "delete_button": "刪除",
       "confirm_delete": "確認刪除",
       "col_broker": "券商",
-      "col_actions": "操作"
+      "col_actions": "操作",
+      "edit_hint": "按 Enter 儲存・Esc 取消",
+      "err_qty": "數量必須大於 0",
+      "err_cost": "成本基礎必須大於等於 0"
     }
   },
   "fx_watch": {

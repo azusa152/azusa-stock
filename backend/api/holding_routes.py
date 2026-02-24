@@ -16,6 +16,7 @@ from api.schemas import (
     MessageResponse,
     RebalanceResponse,
     StressTestResponse,
+    UpdateHoldingRequest,
     WithdrawRequest,
     WithdrawResponse,
     XRayAlertResponse,
@@ -84,14 +85,14 @@ def create_cash_holding(
 )
 def update_holding(
     holding_id: int,
-    payload: HoldingRequest,
+    payload: UpdateHoldingRequest,
     session: Session = Depends(get_session),
 ) -> HoldingResponse:
-    """更新持倉。"""
+    """更新持倉（部分更新）。"""
     lang = get_user_language(session)
     return HoldingResponse(
         **holding_service.update_holding(
-            session, holding_id, payload.model_dump(), lang
+            session, holding_id, payload.model_dump(exclude_unset=True), lang
         )
     )
 

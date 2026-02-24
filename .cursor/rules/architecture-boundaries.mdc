@@ -37,7 +37,8 @@ session.exec(select(...))                      # Use application service
 
 1. Create or extend the service method in `application/` first
 2. The route in `api/` calls the service — never touches infrastructure directly
-3. Run `make ci` to verify boundaries pass
+3. Add a **contract test** in `backend/tests/` that calls the endpoint with the expected minimal payload and asserts a 2xx response. This catches schema mismatches between frontend expectations and backend request validation.
+4. Run `make ci` to verify boundaries and contract tests pass
 
 ## When Adding a New Feature (Research-Plan-Implement)
 

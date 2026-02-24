@@ -107,16 +107,27 @@ def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
 
 
 def update_holding(session: Session, holding_id: int, payload: dict, lang: str) -> dict:
-    """Update an existing holding. Raises HTTPException 404 if not found."""
+    """Partially update an existing holding. Only provided fields are overwritten.
+
+    Raises HTTPException 404 if not found.
+    """
     holding = _get_holding_or_raise(session, holding_id, lang)
-    holding.ticker = payload["ticker"].strip().upper()
-    holding.category = payload["category"]
-    holding.quantity = payload["quantity"]
-    holding.cost_basis = payload.get("cost_basis")
-    holding.broker = payload.get("broker")
-    holding.currency = payload["currency"].strip().upper()
-    holding.account_type = payload.get("account_type")
-    holding.is_cash = payload.get("is_cash", False)
+    if "ticker" in payload:
+        holding.ticker = payload["ticker"].strip().upper()
+    if "category" in payload:
+        holding.category = payload["category"]
+    if "quantity" in payload:
+        holding.quantity = payload["quantity"]
+    if "cost_basis" in payload:
+        holding.cost_basis = payload["cost_basis"]
+    if "broker" in payload:
+        holding.broker = payload["broker"]
+    if "currency" in payload:
+        holding.currency = payload["currency"].strip().upper()
+    if "account_type" in payload:
+        holding.account_type = payload["account_type"]
+    if "is_cash" in payload:
+        holding.is_cash = payload["is_cash"]
     holding.updated_at = datetime.now(timezone.utc)
     saved = repo.save_holding(session, holding)
     return _holding_to_dict(saved)
