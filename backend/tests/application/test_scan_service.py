@@ -1,5 +1,5 @@
 """
-Tests for Rogue Wave integration in _analyze_single_stock() (scan_service.py).
+Tests for scan_service: Rogue Wave integration, _check_price_alerts, and scan alert isolation.
 
 Covers:
 - bias_percentile and is_rogue_wave present in scan results
@@ -7,15 +7,18 @@ Covers:
 - rogue_wave_alert NOT appended when conditions unmet (high bias but low volume)
 - is_rogue_wave skipped for Cash category (SKIP_SIGNALS_CATEGORIES)
 - get_bias_distribution empty dict → bias_percentile stays None, no rogue wave
+- _check_price_alerts: threshold trigger, cooldown, naive datetime safety, isolation
 """
+
+from __future__ import annotations
 
 from unittest.mock import patch
 
 from sqlmodel import Session
 
 from application.scan_service import run_scan
-from domain.entities import Stock
-from domain.enums import StockCategory
+from domain.entities import PriceAlert, Stock
+from domain.enums import ScanSignal, StockCategory
 
 
 # ---------------------------------------------------------------------------
@@ -362,3 +365,129 @@ class TestGetFearGreed:
             result = get_fear_greed()
 
         assert result == mock_fg
+
+
+# ---------------------------------------------------------------------------
+# TestCheckPriceAlerts
+# ---------------------------------------------------------------------------
+
+
+class TestCheckPriceAlerts:
+    """Tests for _check_price_alerts: trigger, cooldown, timezone safety, isolation."""
+
+    _RESULTS = [{"ticker": "AAPL", "rsi": 25.0, "price": 150.0, "bias": -10.0}]
+
+    def _make_alert(
+        self, metric: str = "rsi", operator: str = "lt", threshold: float = 30.0
+    ) -> PriceAlert:
+        return PriceAlert(
+            stock_ticker="AAPL", metric=metric, operator=operator, threshold=threshold
+        )
+
+    @patch("application.scan_service.send_telegram_message_dual")
+    def test_should_send_notification_when_threshold_exceeded(
+        self, mock_telegram, db_session: Session
+    ) -> None:
+        from application.scan_service import _check_price_alerts
+
+        alert = self._make_alert(metric="rsi", operator="lt", threshold=30.0)
+        db_session.add(alert)
+        db_session.commit()
+
+        _check_price_alerts(db_session, self._RESULTS, "en")
+
+        mock_telegram.assert_called_once()
+        db_session.refresh(alert)
+        assert alert.last_triggered_at is not None
+
+    @patch("application.scan_service.send_telegram_message_dual")
+    def test_should_not_send_notification_when_threshold_not_exceeded(
+        self, mock_telegram, db_session: Session
+    ) -> None:
+        from application.scan_service import _check_price_alerts
+
+        alert = self._make_alert(metric="rsi", operator="gt", threshold=30.0)
+        db_session.add(alert)
+        db_session.commit()
+
+        _check_price_alerts(db_session, self._RESULTS, "en")
+
+        mock_telegram.assert_not_called()
+
+    @patch("application.scan_service.send_telegram_message_dual")
+    def test_should_not_send_notification_within_cooldown(
+        self, mock_telegram, db_session: Session
+    ) -> None:
+        from datetime import datetime, timezone
+
+        from application.scan_service import _check_price_alerts
+
+        alert = self._make_alert()
+        alert.last_triggered_at = datetime.now(timezone.utc)
+        db_session.add(alert)
+        db_session.commit()
+
+        _check_price_alerts(db_session, self._RESULTS, "en")
+
+        mock_telegram.assert_not_called()
+
+    @patch("application.scan_service.send_telegram_message_dual")
+    def test_should_not_crash_when_last_triggered_at_is_naive_datetime(
+        self, mock_telegram, db_session: Session
+    ) -> None:
+        """Regression: SQLite may return naive datetimes; comparison must not raise TypeError."""
+        from datetime import datetime, timezone
+
+        from application.scan_service import _check_price_alerts
+
+        alert = self._make_alert()
+        # Simulate what SQLite returns after a round-trip: naive datetime
+        alert.last_triggered_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_session.add(alert)
+        db_session.commit()
+
+        # Should not raise even though last_triggered_at is naive
+        _check_price_alerts(db_session, self._RESULTS, "en")
+
+    @patch("application.scan_service.send_telegram_message_dual")
+    @patch("application.scan_service.get_fear_greed_index")
+    @patch("application.scan_service.analyze_moat_trend")
+    @patch("application.scan_service.get_bias_distribution")
+    @patch("application.scan_service.get_technical_signals")
+    @patch("application.scan_service.analyze_market_sentiment")
+    @patch("application.scan_service.batch_download_history", return_value={})
+    def test_scan_alerts_still_sent_when_price_alerts_raise(
+        self,
+        mock_batch,
+        mock_sentiment,
+        mock_signals,
+        mock_bias_dist,
+        mock_moat,
+        mock_fg,
+        mock_telegram,
+        db_session: Session,
+    ) -> None:
+        """Regression: a crash in _check_price_alerts must not prevent scan signal alerts."""
+        stock = Stock(
+            ticker="AAPL",
+            category=StockCategory.GROWTH,
+            current_thesis="test",
+            last_scan_signal=ScanSignal.NORMAL.value,
+        )
+        db_session.add(stock)
+        db_session.commit()
+
+        mock_sentiment.return_value = _MOCK_MARKET_SENTIMENT
+        mock_signals.return_value = {**_BASE_SIGNALS, "rsi": 25.0, "bias": -15.0}
+        mock_bias_dist.return_value = {}
+        mock_moat.return_value = _MOCK_MOAT
+        mock_fg.return_value = _MOCK_FG
+
+        with patch(
+            "application.scan_service._check_price_alerts",
+            side_effect=RuntimeError("simulated crash"),
+        ):
+            run_scan(db_session)
+
+        # Scan signal alert should still have been attempted
+        mock_telegram.assert_called()
