@@ -27,6 +27,7 @@ from infrastructure.market_data import (
     get_earnings_date,
     get_fear_greed_index,
     get_jp_volatility_index,
+    get_tw_volatility_index,
     get_price_history as _get_price_history,
     get_technical_signals,
 )
@@ -691,10 +692,16 @@ def get_market_sentiment_multi(session: Session) -> dict:
     """Return sentiment for each market the user has stocks in."""
     result: dict = {"US": get_fear_greed_index()}
 
-    # Check if user has JP stocks
     stocks = repo.find_active_stocks(session)
+
+    # Check if user has JP stocks
     has_jp = any(s.ticker.endswith(".T") for s in stocks)
     if has_jp:
         result["JP"] = get_jp_volatility_index()
+
+    # Check if user has TW stocks
+    has_tw = any(s.ticker.endswith(".TW") for s in stocks)
+    if has_tw:
+        result["TW"] = get_tw_volatility_index()
 
     return result

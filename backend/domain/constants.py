@@ -551,3 +551,13 @@ NIKKEI_VI_NEUTRAL_HIGH = 25  # Nikkei VI 18–25 → 中性
 NIKKEI_VI_NEUTRAL_LOW = 18
 NIKKEI_VI_GREED = 14  # Nikkei VI 14–18 → 貪婪
 # Nikkei VI < 14 → 極度貪婪
+
+# ---------------------------------------------------------------------------
+# TW Market Sentiment (^TWII Realized Volatility)
+# ---------------------------------------------------------------------------
+TWII_TICKER = "^TWII"  # TAIEX Weighted Index on yfinance
+TWII_VOL_EXTREME_FEAR = 30  # annualized vol > 30% → 極度恐懼
+TWII_VOL_FEAR = 22  # annualized vol 22–30% → 恐懼
+TWII_VOL_NEUTRAL_LOW = 15  # annualized vol 15–22% → 中性
+TWII_VOL_GREED = 10  # annualized vol 10–15% → 貪婪
+# annualized vol < 10% → 極度貪婪

@@ -5,6 +5,7 @@ Infrastructure — 市場資料適配器 (yfinance)。
 含 tenacity 重試機制，針對暫時性網路 / DNS 錯誤自動指數退避重試。
 """
 
+import math
 import threading
 import time
 from datetime import datetime, timezone
@@ -112,6 +113,11 @@ from domain.constants import (
     NIKKEI_VI_FEAR,
     NIKKEI_VI_NEUTRAL_LOW,
     NIKKEI_VI_GREED,
+    TWII_TICKER,
+    TWII_VOL_EXTREME_FEAR,
+    TWII_VOL_FEAR,
+    TWII_VOL_NEUTRAL_LOW,
+    TWII_VOL_GREED,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
@@ -1771,6 +1777,54 @@ def get_jp_volatility_index() -> Optional[dict]:
 
     except Exception as e:
         logger.warning("Nikkei VI 取得失敗：%s", e)
+        return None
+
+
+def get_tw_volatility_index() -> Optional[dict]:
+    """
+    Calculate TW market fear indicator from ^TWII realized volatility.
+    Fetches 1 month of TAIEX daily closes and computes annualized realized vol.
+    Returns {"value": float, "level": str, "source": "TAIEX Realized Vol"} or None on failure.
+    """
+    try:
+        hist = _yf_history_short(TWII_TICKER, "1mo")
+
+        if hist is None or hist.empty:
+            logger.warning("TAIEX ^TWII 資料為空。")
+            return None
+
+        closes = hist["Close"].dropna()
+        if len(closes) < 5:
+            logger.warning("TAIEX ^TWII 資料不足（%d 筆），需至少 5 筆。", len(closes))
+            return None
+
+        returns = (closes / closes.shift(1)).apply(math.log).dropna()
+        annualized_vol = float(returns.std() * math.sqrt(252) * 100)
+
+        if annualized_vol > TWII_VOL_EXTREME_FEAR:
+            level = FearGreedLevel.EXTREME_FEAR.value
+        elif annualized_vol > TWII_VOL_FEAR:
+            level = FearGreedLevel.FEAR.value
+        elif annualized_vol > TWII_VOL_NEUTRAL_LOW:
+            level = FearGreedLevel.NEUTRAL.value
+        elif annualized_vol > TWII_VOL_GREED:
+            level = FearGreedLevel.GREED.value
+        else:
+            level = FearGreedLevel.EXTREME_GREED.value
+
+        logger.info(
+            "TAIEX realized vol = %.2f%%（等級：%s，source=twii, market=TW）",
+            annualized_vol,
+            level,
+        )
+        return {
+            "value": round(annualized_vol, 2),
+            "level": level,
+            "source": "TAIEX Realized Vol",
+        }
+
+    except Exception as e:
+        logger.warning("TAIEX realized vol 取得失敗：%s", e)
         return None
 
 
