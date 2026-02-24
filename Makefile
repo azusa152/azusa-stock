@@ -21,10 +21,11 @@
 #    make frontend-build   Production build
 #
 #  Setup:
-#    make setup            First-time: venv + npm + codegen
+#    make setup            First-time: venv + npm + codegen + pre-commit hooks
 #    make install          Create backend venv and install deps
 #    make frontend-install Install frontend deps (npm ci)
 #    make generate-api     Export OpenAPI spec + regenerate TS types
+#    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff)
 #
 #  Docker:
 #    make up               Start all services (background)
@@ -72,9 +73,9 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 # ---------------------------------------------------------------------------
 #  Setup & Install
 # ---------------------------------------------------------------------------
-.PHONY: setup install frontend-install
+.PHONY: setup install frontend-install setup-hooks
 
-setup: install frontend-install generate-api ## Full first-time setup (backend + frontend + codegen)
+setup: install frontend-install generate-api setup-hooks ## Full first-time setup (backend + frontend + codegen + hooks)
 	@echo "Setup complete. Run 'make ci' to verify everything passes."
 
 install: ## Create backend venv and install dependencies
@@ -83,6 +84,10 @@ install: ## Create backend venv and install dependencies
 
 frontend-install: ## Install frontend dependencies (npm ci)
 	cd $(FRONTEND_DIR) && npm ci
+
+setup-hooks: .venv-check ## Install pre-commit hooks (auto-runs architecture boundary + ruff on every commit)
+	$(PIP) install pre-commit
+	$(BACKEND_DIR)/.venv/bin/pre-commit install
 
 # ---------------------------------------------------------------------------
 #  Backend (granular)

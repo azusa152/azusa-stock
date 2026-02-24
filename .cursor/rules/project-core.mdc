@@ -18,5 +18,6 @@ FastAPI + React (Vite + TypeScript + shadcn/ui + Tailwind) + SQLite (SQLModel) +
 - **Type Safety:** Pydantic models and Python type hints everywhere.
 - **API Type Codegen:** Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas.py`.
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.
-- **Existing Patterns:** Before writing new modules, check existing files in the same layer for conventions.
+- **Architecture Boundaries:** See `.cursor/rules/architecture-boundaries.mdc`. API routes delegate to `application/` services — never import directly from `infrastructure/` (except `infrastructure.database`).
+- **New Features:** Follow Research → Plan → Implement → Verify (`make ci`) workflow. Check existing patterns in the same layer before writing new code.
 - **Documentation Sync:** When adding or changing any feature, update: (1) `README.md` feature list/API reference, (2) in-page instructions (SOP collapsible sections, help tooltips) in affected frontend pages, (3) `docs/agents/folio/SKILL.md` and `docs/agents/AGENTS.md` if endpoints/webhook actions changed, (4) run `make generate-api` if schemas changed.

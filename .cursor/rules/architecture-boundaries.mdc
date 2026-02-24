@@ -1,0 +1,47 @@
+---
+description: "Enforce clean architecture layer boundaries. Prevents import violations that break the dependency direction: domain → application → infrastructure → api."
+alwaysApply: true
+---
+
+# Architecture Boundary Rules (enforced by `backend/tests/test_architecture.py`)
+
+## Import Rules — MUST follow, NO exceptions
+
+| If editing a file in... | MAY import from | MUST NOT import from |
+|---|---|---|
+| `domain/` | stdlib, `domain.*` | `application`, `infrastructure`, `api` |
+| `application/` | `domain.*`, `infrastructure.*`, `i18n`, `logging_config` | `api` |
+| `infrastructure/` | `domain.*`, `i18n`, `logging_config`, stdlib | `application`, `api` |
+| `api/` | `application.*`, `domain.*`, `api.*`, `i18n`, `logging_config` | `infrastructure.*` (except `infrastructure.database`) |
+
+## API Route Pattern — Delegate to Services
+
+ALLOWED in `api/` files:
+
+```python
+from infrastructure.database import get_session, engine
+from application.stock_service import StockService
+```
+
+FORBIDDEN in `api/` files:
+
+```python
+from infrastructure.repositories import ...   # Use application service
+from infrastructure.market_data import ...     # Use application service
+from infrastructure.crypto import ...          # Use application service
+from infrastructure.notification import ...    # Use application service
+session.exec(select(...))                      # Use application service
+```
+
+## When Adding a New Endpoint
+
+1. Create or extend the service method in `application/` first
+2. The route in `api/` calls the service — never touches infrastructure directly
+3. Run `make ci` to verify boundaries pass
+
+## When Adding a New Feature (Research-Plan-Implement)
+
+1. **Research**: Check existing files in the same layer for patterns before writing
+2. **Plan**: Identify which layers need changes and verify imports will be clean
+3. **Implement**: Write code following the patterns found in step 1
+4. **Verify**: Run `make ci` — architecture tests MUST pass before committing
