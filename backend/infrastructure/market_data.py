@@ -22,7 +22,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from application.formatters import build_moat_details, build_signal_status
+from domain.formatters import build_moat_details, build_signal_status
 from domain.analysis import (
     classify_vix,
     compute_bias,
