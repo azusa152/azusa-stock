@@ -410,9 +410,9 @@ class TestRebalanceAdviceTranslation:
         advice = result["advice"]
         assert isinstance(advice, list)
         assert len(advice) >= 1
-        assert all(
-            isinstance(a, str) for a in advice
-        ), f"Expected list[str], got: {advice}"
+        assert all(isinstance(a, str) for a in advice), (
+            f"Expected list[str], got: {advice}"
+        )
         assert any("No rebalancing needed" in a for a in advice)
 
     @patch("application.portfolio.rebalance_service.get_technical_signals")
@@ -485,7 +485,7 @@ class TestRebalanceAdviceTranslation:
         advice = result["advice"]
         assert isinstance(advice, list)
         assert len(advice) >= 1
-        assert all(
-            isinstance(a, str) for a in advice
-        ), f"Expected list[str], got: {advice}"
+        assert all(isinstance(a, str) for a in advice), (
+            f"Expected list[str], got: {advice}"
+        )
         assert any("overweight" in a.lower() for a in advice)

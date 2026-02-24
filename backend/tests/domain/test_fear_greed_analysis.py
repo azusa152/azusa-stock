@@ -123,9 +123,9 @@ class TestVixToScore:
         # VIX=21.3: ratio = (30-21.3)/(30-20) = 0.87
         # score = 25 + 0.87 * 20 = 42.4 → 42
         score = _vix_to_score(21.3)
-        assert (
-            25 <= score <= 45
-        ), f"VIX=21.3 should map to FEAR zone (25-45), got {score}"
+        assert 25 <= score <= 45, (
+            f"VIX=21.3 should map to FEAR zone (25-45), got {score}"
+        )
 
     def test_vix_to_score_should_interpolate_in_neutral_zone(self):
         # VIX=17.5 is midpoint of 20-15 range → midpoint of 45-55 = 50

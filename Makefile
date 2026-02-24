@@ -148,6 +148,7 @@ ci: lint test ## Full CI check — runs all linting + all tests
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
+	rm -rf .pytest_cache .ruff_cache
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/node_modules/.cache
 
 # ---------------------------------------------------------------------------
@@ -200,8 +201,8 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 .PHONY: generate-key security help check-constants
 
-check-constants: ## Check backend/frontend constant sync
-	python3 scripts/check_constant_sync.py
+check-constants: .venv-check ## Check backend/frontend constant sync
+	$(PYTHON) scripts/check_constant_sync.py
 
 generate-key: ## Generate a secure API key (add to .env as FOLIO_API_KEY)
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"

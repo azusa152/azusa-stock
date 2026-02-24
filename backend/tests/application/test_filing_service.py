@@ -980,9 +980,9 @@ class TestBackfillGuruFilings:
 
         for edgar in _BACKFILL_EDGAR_FILINGS:
             filing = find_filing_by_accession(db_session, edgar["accession_number"])
-            assert (
-                filing is not None
-            ), f"Filing {edgar['accession_number']} not found in DB"
+            assert filing is not None, (
+                f"Filing {edgar['accession_number']} not found in DB"
+            )
 
     @patch(
         f"{FILING_MODULE}.get_latest_13f_filings",

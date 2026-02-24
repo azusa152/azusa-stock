@@ -33,7 +33,7 @@ repos:
 #    no venv required.
 # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.5
+    rev: v0.15.2
     hooks:
       - id: ruff                 # Lint with auto-fix; fails if fixes were applied
         args: [--fix, --exit-non-zero-on-fix]
