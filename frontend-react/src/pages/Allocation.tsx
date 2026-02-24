@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
-import { usePreferences } from "@/api/hooks/useAllocation"
+import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { AddHoldingSheet } from "@/components/allocation/AddHoldingSheet"
 import { RebalanceAnalysis } from "@/components/allocation/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/CurrencyExposure"
@@ -25,9 +25,8 @@ export default function Allocation() {
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading } = useHoldings()
-  const { data: prefs } = usePreferences()
+  const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
-  const privacyMode = prefs?.privacy_mode ?? false
   const isLoading = profileLoading || holdingsLoading
 
   if (isLoading) {

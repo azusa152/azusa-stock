@@ -26,7 +26,11 @@ globs: ["frontend-react/**"]
 - Key naming: dot-notation by page (e.g., `radar.add_stock`). Interpolation: `t("key", { variable })`.
 
 ## Project-Specific Hooks
-- **Privacy:** `usePrivacyMode()` — Zustand store with `maskMoney()` helper. Monetary values: `privacyMode ? "***" : formatted_value`.
+- **Privacy:** `usePrivacyMode()` — Zustand store, single source of truth for all pages.
+  - Read privacy state via `useIsPrivate()` (boolean selector) or `usePrivacyMode((s) => s.isPrivate)`.
+  - Mask values: `isPrivate ? "***" : formattedValue`; currency shorthand: `maskMoney(value)`.
+  - **NEVER** read `privacy_mode` from the server preferences API directly in a component — only the Zustand store is authoritative.
+  - On app startup, the sidebar hydrates the store from `GET /settings/preferences`. Toggle changes are persisted to `PUT /settings/preferences` automatically.
 - **Theme:** `useTheme()` — Zustand, persisted to `localStorage` as `folio-theme`. Dark mode via `.dark` class on `<html>`.
 - **Charts:** `useRechartsTheme()` for Recharts, `useLightweightChartTheme()` for TradingView charts.
 

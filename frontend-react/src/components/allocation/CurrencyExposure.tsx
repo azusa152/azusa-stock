@@ -130,12 +130,14 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
                 {data.fx_movements.map((m, i) => (
                   <tr key={i} className="border-b border-border/50">
                     <td className="py-0.5 pr-3 font-medium">{m.pair}</td>
-                    <td className="py-0.5 pr-3 text-right">{m.current_rate.toFixed(4)}</td>
+                    <td className="py-0.5 pr-3 text-right">
+                      {privacyMode ? "***" : m.current_rate.toFixed(4)}
+                    </td>
                     <td
                       className="py-0.5 text-right"
-                      style={{ color: m.change_pct >= 0 ? "#22c55e" : "#ef4444" }}
+                      style={{ color: !privacyMode && m.change_pct >= 0 ? "#22c55e" : !privacyMode ? "#ef4444" : undefined }}
                     >
-                      {m.change_pct >= 0 ? "+" : ""}{m.change_pct.toFixed(2)}% {m.direction === "up" ? "📈" : "📉"}
+                      {privacyMode ? "***" : `${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}% ${m.direction === "up" ? "📈" : "📉"}`}
                     </td>
                   </tr>
                 ))}
@@ -158,8 +160,10 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
               >
                 <span className="font-semibold">{a.pair}</span>
                 <span>{a.period_label}</span>
-                <span>{a.change_pct >= 0 ? "+" : ""}{a.change_pct.toFixed(2)}%</span>
-                <span className="text-muted-foreground">@ {a.current_rate.toFixed(4)}</span>
+                <span>{privacyMode ? "***" : `${a.change_pct >= 0 ? "+" : ""}${a.change_pct.toFixed(2)}%`}</span>
+                <span className="text-muted-foreground">
+                  {privacyMode ? "@ ***" : `@ ${a.current_rate.toFixed(4)}`}
+                </span>
               </div>
             ))}
           </div>

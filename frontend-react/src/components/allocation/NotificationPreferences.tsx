@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
+import { useIsPrivate } from "@/hooks/usePrivacyMode"
 
 const PREF_KEYS = [
   "scan_alerts",
@@ -18,6 +19,7 @@ export function NotificationPreferences() {
   const { t } = useTranslation()
   const { data } = usePreferences()
   const saveMutation = useSavePreferences()
+  const isPrivate = useIsPrivate()
 
   const [prefs, setPrefs] = useState<Record<string, boolean>>(
     Object.fromEntries(PREF_KEYS.map((k) => [k, true]))
@@ -35,7 +37,7 @@ export function NotificationPreferences() {
   const handleSave = () => {
     setFeedback(null)
     saveMutation.mutate(
-      { privacy_mode: data?.privacy_mode ?? false, notification_preferences: prefs },
+      { privacy_mode: isPrivate, notification_preferences: prefs },
       {
         onSuccess: () => {
           setFeedback(t("common.success"))

@@ -21,7 +21,19 @@ describe("usePrivacyMode", () => {
     usePrivacyMode.getState().toggle();
     expect(usePrivacyMode.getState().isPrivate).toBe(false);
   });
+
+  it("initialize sets isPrivate from server value", () => {
+    usePrivacyMode.getState().initialize(true);
+    expect(usePrivacyMode.getState().isPrivate).toBe(true);
+  });
+
+  it("initialize can reset to false", () => {
+    usePrivacyMode.setState({ isPrivate: true });
+    usePrivacyMode.getState().initialize(false);
+    expect(usePrivacyMode.getState().isPrivate).toBe(false);
+  });
 });
+
 
 describe("maskMoney", () => {
   it("formats money when privacy mode is off", () => {

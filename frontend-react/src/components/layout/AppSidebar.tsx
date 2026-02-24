@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useLocation, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
@@ -22,6 +23,7 @@ import { useLanguage } from "@/hooks/useLanguage"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { useTheme } from "@/hooks/useTheme"
 import { Switch } from "@/components/ui/switch"
+import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 
 const NAV_ITEMS = [
   { path: "/", labelKey: "nav.dashboard", icon: "📊" },
@@ -35,8 +37,26 @@ export function AppSidebar() {
   const { t } = useTranslation()
   const location = useLocation()
   const { language, changeLanguage, LANGUAGE_OPTIONS } = useLanguage()
-  const { isPrivate, toggle: togglePrivacy } = usePrivacyMode()
+  const { isPrivate, toggle, initialize } = usePrivacyMode()
   const { theme, toggle: toggleTheme } = useTheme()
+  const { data: prefs } = usePreferences()
+  const savePreferences = useSavePreferences()
+
+  // Hydrate from server value on first load
+  useEffect(() => {
+    if (prefs?.privacy_mode !== undefined) {
+      initialize(prefs.privacy_mode)
+    }
+  }, [prefs?.privacy_mode, initialize])
+
+  function togglePrivacy() {
+    toggle()
+    const next = !isPrivate
+    savePreferences.mutate(
+      { privacy_mode: next },
+      { onError: () => { /* fail silently — UI already updated optimistically */ } },
+    )
+  }
 
   return (
     <Sidebar>
