@@ -67,8 +67,15 @@
 ### 大師足跡追蹤 (Smart Money)
 
 - **SEC 13F 季報追蹤** — 匯入任意機構投資人 SEC CIK，一鍵同步最新 13F 持倉快照（波克夏、橋水、文藝復興等）
+- **投資風格與等級分類** — 每位大師標記投資風格（VALUE / GROWTH / MACRO / QUANT / ACTIVIST / MULTI_STRATEGY）與等級（Tier 1 傳奇 / Tier 2 精英 / Tier 3 新銳），卡片顯示彩色風格徽章與星級，支援多選風格篩選
+- **活動動態牆 (Activity Feed)** — Overview 頁面聚合「最多買入」與「最多賣出」排行，一眼看出本季哪些股票最受大師青睞或拋售
+- **強化版共識持股** — Consensus Stocks 展示每位大師的個別動作徽章（NEW / INCREASED / DECREASED...）、平均持倉比重與 GICS 產業標籤，不只看誰買，還看買多重
 - **持倉異動儀表板** — 按動作分組（新建倉 / 清倉 / 加碼 / 減碼），含市值、股數、變動幅度與持倉權重
-- **前 10 大持倉圖表** — 互動式水平長條圖 + 明細表，以顏色標示持倉動作
+- **大師卡片指標** — 每張 Guru 卡片顯示 Top-5 集中度（`top5_concentration_pct`）與換手率（`turnover_pct`），判斷大師風格是高度集中還是廣泛分散
+- **前 N 大持倉圖表** — 互動式水平長條圖 + 明細表，以顏色標示持倉動作
+- **季度持倉對比 (QoQ)** — 跨最近 N 季快照：每檔持股顯示各季股數、比重與動作，trend 欄標示增持 ↑ / 減持 ↓ / 新建倉 ★ / 清倉 ✕
+- **大師總投資組合 (Grand Portfolio)** — 獨立分頁聚合所有追蹤大師的最新 13F，顯示各股票的跨師持倉比重（`combined_weight_pct`）、平均比重、dominant action 與產業分佈圓餅圖
+- **申報後績效欄位** — 持倉異動表與前 N 大持倉表均顯示「**申報後漲跌幅**」欄，綠色顯示上漲、紅色顯示下跌、`—` 表示資料不足（加上 `?include_performance=true` 啟用；過去報告日收盤價永久磁碟快取，不重複查詢）
 - **英雄所見略同 (Great Minds Think Alike)** — 自動比對追蹤清單 / 持倉與所有大師 13F 持股，找出共鳴個股
 - **共鳴徽章** — 投資雷達頁面股票卡片自動標記 🏆×N 徽章，揭示大師持有重疊
 - **儀表板共鳴摘要** — 首頁一眼看出哪些持倉與大師觀點重疊
@@ -605,8 +612,11 @@ docker compose up --build -d
 | `POST` | `/gurus/sync` | 觸發所有大師 13F 同步（SEC EDGAR，帶 mutex 防重複） |
 | `POST` | `/gurus/{guru_id}/sync` | 觸發單一大師 13F 同步 |
 | `GET` | `/gurus/{guru_id}/filing` | 取得大師最新 13F 申報摘要（基準日 / 公告日 / 總市值 / 持倉數） |
-| `GET` | `/gurus/{guru_id}/holdings` | 取得大師所有持倉（含動作標籤：NEW/SOLD/INCREASED/DECREASED/UNCHANGED） |
-| `GET` | `/gurus/{guru_id}/top` | 取得大師前 N 大持倉（按權重排序，預設 N=10） |
+| `GET` | `/gurus/{guru_id}/filings` | 取得大師歷次 13F 申報紀錄（report_date / filing_date / holdings_count / total_value） |
+| `GET` | `/gurus/{guru_id}/holdings` | 取得大師所有持倉（含動作標籤：NEW/SOLD/INCREASED/DECREASED/UNCHANGED）；加上 `?include_performance=true` 回傳 `price_change_pct`（申報後漲跌幅 %） |
+| `GET` | `/gurus/{guru_id}/top` | 取得大師前 N 大持倉（按權重排序，預設 N=10）；加上 `?include_performance=true` 回傳 `price_change_pct`（申報後漲跌幅 %） |
+| `GET` | `/gurus/{guru_id}/qoq` | 取得指定大師跨季度持倉歷史（預設 3 季），支援 `?quarters=N`；每筆含 ticker / company_name / 各季快照（shares / value / weight_pct / action）/ trend（increasing / decreasing / new / exited / stable） |
+| `GET` | `/gurus/grand-portfolio` | 跨所有大師最新 13F 聚合視圖，回傳 items（combined_weight_pct / avg_weight_pct / dominant_action / sector / guru_count）+ total_value + sector_breakdown |
 | `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
 | `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
 

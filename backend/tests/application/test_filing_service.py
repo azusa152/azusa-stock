@@ -114,11 +114,12 @@ class TestSeedDefaultGurus:
 
     def test_seed_default_gurus_should_set_style_and_tier(self, db_session: Session):
         from application.guru.guru_service import seed_default_gurus
+        from domain.core.constants import DEFAULT_GURUS
 
         seed_default_gurus(db_session)
         active = find_all_active_gurus(db_session)
 
-        assert len(active) == 10
+        assert len(active) == len(DEFAULT_GURUS)
         assert all(g.style is not None for g in active)
         assert all(g.tier is not None for g in active)
 

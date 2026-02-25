@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { useGurus, useSyncAllGurus } from "@/api/hooks/useSmartMoney"
 import { OverviewTab } from "@/components/smartmoney/OverviewTab"
 import { GuruTab } from "@/components/smartmoney/GuruTab"
@@ -22,6 +23,28 @@ export default function SmartMoney() {
 
   const { data: gurus, isLoading, isError } = useGurus()
   const syncAllMutation = useSyncAllGurus()
+  const tabsListRef = useRef<HTMLDivElement>(null)
+
+  const activeGurus = gurus?.filter((g) => g.is_active) ?? []
+  const filteredGurus = activeGurus.filter(
+    (g) => styleFilter == null || g.style === styleFilter,
+  )
+  const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
+  const resolvedTab =
+    activeTab !== OVERVIEW_TAB &&
+    activeTab !== GRAND_PORTFOLIO_TAB &&
+    activeTab !== ADD_GURU_TAB &&
+    !filteredGuruIds.has(activeTab)
+      ? OVERVIEW_TAB
+      : activeTab
+
+  useEffect(() => {
+    if (!tabsListRef.current) return
+    const activeEl = tabsListRef.current.querySelector<HTMLElement>(
+      `[data-state="active"]`,
+    )
+    activeEl?.scrollIntoView({ inline: "nearest", block: "nearest" })
+  }, [resolvedTab])
 
   if (isLoading) {
     return (
@@ -43,25 +66,9 @@ export default function SmartMoney() {
     )
   }
 
-  const activeGurus = gurus.filter((g) => g.is_active)
-
-  const filteredGurus = activeGurus.filter(
-    (g) => styleFilter == null || g.style === styleFilter,
-  )
-
   const availableStyles: string[] = Array.from(
     new Set(activeGurus.map((g) => g.style).filter((s): s is string => !!s)),
   )
-
-  // If the active guru tab was filtered out, fall back to Overview
-  const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
-  const resolvedTab =
-    activeTab !== OVERVIEW_TAB &&
-    activeTab !== GRAND_PORTFOLIO_TAB &&
-    activeTab !== ADD_GURU_TAB &&
-    !filteredGuruIds.has(activeTab)
-      ? OVERVIEW_TAB
-      : activeTab
 
   return (
     <div className="p-6 space-y-4">
@@ -141,18 +148,21 @@ export default function SmartMoney() {
 
       {/* Tab bar: Overview + Grand Portfolio + per-guru + Add Guru */}
       <Tabs value={resolvedTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
-          <TabsTrigger value={GRAND_PORTFOLIO_TAB}>
-            {t("smart_money.grand_portfolio.tab")}
-          </TabsTrigger>
-          {filteredGurus.map((guru) => (
-            <TabsTrigger key={guru.id} value={String(guru.id)}>
-              {guru.display_name}
+        <ScrollArea className="w-full">
+          <TabsList ref={tabsListRef} className="inline-flex w-max gap-1">
+            <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
+            <TabsTrigger value={GRAND_PORTFOLIO_TAB}>
+              {t("smart_money.grand_portfolio.tab")}
             </TabsTrigger>
-          ))}
-          <TabsTrigger value={ADD_GURU_TAB}>{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
-        </TabsList>
+            {filteredGurus.map((guru) => (
+              <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)}>
+                {guru.display_name}
+              </TabsTrigger>
+            ))}
+            <TabsTrigger value={ADD_GURU_TAB}>{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Overview tab */}
         <TabsContent value={OVERVIEW_TAB} className="mt-4">

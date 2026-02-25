@@ -523,7 +523,7 @@ DEFAULT_GURUS = [
         "cik": "0001535581",
         "display_name": "Howard Marks",
         "style": "VALUE",
-        "tier": "TIER_2",
+        "tier": "TIER_1",
     },
     {
         "name": "ARK Investment Management LLC",
@@ -552,6 +552,34 @@ DEFAULT_GURUS = [
         "display_name": "David Tepper",
         "style": "MULTI_STRATEGY",
         "tier": "TIER_2",
+    },
+    {
+        "name": "Himalaya Capital Management LLC",
+        "cik": "0001598220",
+        "display_name": "Li Lu",
+        "style": "VALUE",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Gotham Asset Management, LLC",
+        "cik": "0001452934",
+        "display_name": "Joel Greenblatt",
+        "style": "QUANT",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Soros Fund Management LLC",
+        "cik": "0001029160",
+        "display_name": "George Soros",
+        "style": "MACRO",
+        "tier": "TIER_1",
+    },
+    {
+        "name": "Social Capital Holdings Inc.",
+        "cik": "0001705696",
+        "display_name": "Chamath Palihapitiya",
+        "style": "GROWTH",
+        "tier": "TIER_3",
     },
 ]
 

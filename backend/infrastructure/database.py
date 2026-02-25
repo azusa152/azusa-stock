@@ -65,6 +65,9 @@ def _run_migrations() -> None:
         "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
         # Holding: 新增購入時匯率欄位（Phase 6 FX return tracking）
         "ALTER TABLE holding ADD COLUMN purchase_fx_rate REAL;",
+        # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
+        "ALTER TABLE guru ADD COLUMN style VARCHAR;",
+        "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
     ]
 
     with engine.connect() as conn:

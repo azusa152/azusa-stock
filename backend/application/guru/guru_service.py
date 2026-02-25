@@ -45,8 +45,8 @@ def seed_default_gurus(session: Session) -> int:
             save_guru(session, guru)
             added += 1
             logger.info("種子大師新增：%s (%s)", entry["display_name"], entry["cik"])
-        elif existing.style is None or existing.tier is None:
-            # Backfill style/tier for rows seeded before these fields existed
+        elif existing.style != entry.get("style") or existing.tier != entry.get("tier"):
+            # Keep DEFAULT_GURUS as source of truth for default guru metadata
             existing.style = entry.get("style")
             existing.tier = entry.get("tier")
             update_guru(session, existing)
