@@ -8,10 +8,12 @@ from sqlmodel import Session
 
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
+from infrastructure.persistence.repositories import _compute_trend
 from infrastructure.repositories import (
     find_activity_feed,
     find_all_guru_summaries,
     find_consensus_stocks,
+    find_holding_history_by_guru,
     find_notable_changes_all_gurus,
     find_sector_breakdown,
     save_filing,
@@ -923,3 +925,298 @@ class TestFindActivityFeed:
         result = find_activity_feed(test_session, limit=1)
 
         assert len(result["most_bought"]) <= 1
+
+
+# ===========================================================================
+# _compute_trend
+# ===========================================================================
+
+
+class TestComputeTrend:
+    def test_single_value_returns_stable(self):
+        assert _compute_trend([100.0]) == "stable"
+
+    def test_empty_returns_stable(self):
+        assert _compute_trend([]) == "stable"
+
+    def test_increasing_when_change_gte_10pct(self):
+        assert _compute_trend([100.0, 115.0]) == "increasing"
+
+    def test_decreasing_when_change_lte_minus10pct(self):
+        assert _compute_trend([100.0, 85.0]) == "decreasing"
+
+    def test_stable_when_change_between_minus10_and_10(self):
+        assert _compute_trend([100.0, 105.0]) == "stable"
+
+    def test_exited_when_last_is_zero(self):
+        assert _compute_trend([100.0, 0.0]) == "exited"
+
+    def test_new_when_first_is_zero(self):
+        assert _compute_trend([0.0, 100.0]) == "new"
+
+
+# ===========================================================================
+# find_holding_history_by_guru
+# ===========================================================================
+
+
+class TestFindHoldingHistoryByGuru:
+    def test_returns_empty_for_guru_with_no_filings(self, test_session: Session):
+        guru = _make_guru(
+            test_session,
+            cik="5000000001",
+            display_name="No Filings QoQ Guru",
+        )
+        result = find_holding_history_by_guru(test_session, guru.id)
+        assert result == []
+
+    def test_single_filing_returns_single_quarter_per_ticker(
+        self, test_session: Session
+    ):
+        guru = _make_guru(
+            test_session, cik="5000000002", display_name="Single Filing QoQ Guru"
+        )
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-001",
+                report_date="2025-09-30",
+                filing_date="2025-11-14",
+                total_value=500_000.0,
+                holdings_count=2,
+            ),
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    value=300_000.0,
+                    shares=2000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=60.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0002",
+                    ticker="MSFT",
+                    company_name="Microsoft Corp",
+                    value=200_000.0,
+                    shares=500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        assert len(result) == 2
+        tickers = [item["ticker"] for item in result]
+        assert "AAPL" in tickers
+        assert "MSFT" in tickers
+        for item in result:
+            assert len(item["quarters"]) == 1
+            assert "trend" in item
+            assert item["quarters"][0]["report_date"] == "2025-09-30"
+
+    def test_multi_quarter_groups_by_ticker(self, test_session: Session):
+        guru = _make_guru(
+            test_session, cik="5000000003", display_name="Multi Quarter QoQ Guru"
+        )
+        filing1 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-003-F1",
+                report_date="2025-03-31",
+                filing_date="2025-05-14",
+                total_value=400_000.0,
+                holdings_count=1,
+            ),
+        )
+        filing2 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-003-F2",
+                report_date="2025-06-30",
+                filing_date="2025-08-14",
+                total_value=500_000.0,
+                holdings_count=1,
+            ),
+        )
+        # Same ticker in both filings
+        for filing, shares in [(filing1, 1000.0), (filing2, 1200.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0003",
+                        ticker="GOOG",
+                        company_name="Alphabet Inc",
+                        value=400_000.0,
+                        shares=shares,
+                        action=HoldingAction.INCREASED.value,
+                        weight_pct=80.0,
+                    )
+                ],
+            )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        assert len(result) == 1
+        item = result[0]
+        assert item["ticker"] == "GOOG"
+        assert len(item["quarters"]) == 2
+        # Newest first
+        assert item["quarters"][0]["report_date"] == "2025-06-30"
+        assert item["quarters"][1]["report_date"] == "2025-03-31"
+        # Shares increased by 20% → trend = increasing
+        assert item["trend"] == "increasing"
+
+    def test_sorted_by_latest_weight_desc(self, test_session: Session):
+        guru = _make_guru(test_session, cik="5000000004", display_name="Sort QoQ Guru")
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-004",
+                report_date="2025-09-30",
+                filing_date="2025-11-14",
+                total_value=600_000.0,
+                holdings_count=3,
+            ),
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0041",
+                    ticker="LOW_WT",
+                    company_name="Low Weight Co",
+                    value=60_000.0,
+                    shares=100.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=10.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0042",
+                    ticker="HIGH_WT",
+                    company_name="High Weight Co",
+                    value=540_000.0,
+                    shares=900.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=90.0,
+                ),
+            ],
+        )
+
+        result = find_holding_history_by_guru(test_session, guru.id)
+
+        assert result[0]["ticker"] == "HIGH_WT"
+        assert result[1]["ticker"] == "LOW_WT"
+
+    def test_varying_quarter_counts_per_ticker(self, test_session: Session):
+        """Ticker held across all 3 filings has 3 quarters; one held in only 2 has 2.
+
+        Confirms the backend returns varying-length quarters lists — the frontend
+        is responsible for padding empty cells when rendering the aligned table.
+        """
+        guru = _make_guru(
+            test_session, cik="5000000005", display_name="Varying QoQ Guru"
+        )
+        filing1 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F1",
+                report_date="2024-03-31",
+                filing_date="2024-05-14",
+                total_value=400_000.0,
+                holdings_count=1,
+            ),
+        )
+        filing2 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F2",
+                report_date="2024-06-30",
+                filing_date="2024-08-14",
+                total_value=500_000.0,
+                holdings_count=2,
+            ),
+        )
+        filing3 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F3",
+                report_date="2024-09-30",
+                filing_date="2024-11-14",
+                total_value=600_000.0,
+                holdings_count=2,
+            ),
+        )
+        # AAPL held in all 3 filings
+        for filing, shares in [(filing1, 1000.0), (filing2, 1100.0), (filing3, 1200.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0051",
+                        ticker="AAPL",
+                        company_name="Apple Inc",
+                        value=300_000.0,
+                        shares=shares,
+                        action=HoldingAction.UNCHANGED.value,
+                        weight_pct=50.0,
+                    )
+                ],
+            )
+        # NVDA only in filing2 and filing3 (not filing1)
+        for filing, shares in [(filing2, 500.0), (filing3, 600.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0052",
+                        ticker="NVDA",
+                        company_name="Nvidia Corp",
+                        value=200_000.0,
+                        shares=shares,
+                        action=HoldingAction.NEW_POSITION.value,
+                        weight_pct=40.0,
+                    )
+                ],
+            )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        aapl = next(item for item in result if item["ticker"] == "AAPL")
+        nvda = next(item for item in result if item["ticker"] == "NVDA")
+
+        # AAPL has data in all 3 filings
+        assert len(aapl["quarters"]) == 3
+        # NVDA only has data from 2 filings
+        assert len(nvda["quarters"]) == 2
+        # NVDA quarters should be from filing2 and filing3
+        nvda_dates = {q["report_date"] for q in nvda["quarters"]}
+        assert nvda_dates == {"2024-06-30", "2024-09-30"}

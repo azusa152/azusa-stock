@@ -21,6 +21,9 @@ export type GuruFiling = components["schemas"]["GuruFilingResponse"]
 export type GuruHolding = components["schemas"]["GuruHoldingResponse"]
 export type FilingHistoryItem = components["schemas"]["FilingHistoryItem"]
 export type FilingHistoryResponse = components["schemas"]["FilingHistoryResponse"]
+export type QoQQuarterSnapshot = components["schemas"]["QoQQuarterSnapshot"]
+export type QoQHoldingItem = components["schemas"]["QoQHoldingItem"]
+export type QoQResponse = components["schemas"]["QoQResponse"]
 
 // GreatMindsEntryResponse.gurus is list[dict] in the backend → typed as unknown[] in the generated type.
 // Provide a properly typed override for frontend rendering.

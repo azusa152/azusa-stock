@@ -35,6 +35,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_guru_by_cik,
     find_guru_by_id,
     find_holding_by_id,
+    find_holding_history_by_guru,
     find_holdings_by_filing,
     find_holdings_by_guru_latest,
     find_holdings_by_ticker_across_gurus,

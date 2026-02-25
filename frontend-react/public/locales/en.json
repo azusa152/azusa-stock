@@ -1107,7 +1107,13 @@
     "tab": {
       "changes": "📊 Holding Changes",
       "top": "🏆 Top 10 Holdings",
-      "great_minds": "🤝 Great Minds Think Alike"
+      "great_minds": "🤝 Great Minds Think Alike",
+      "qoq": "📅 Quarter-over-Quarter"
+    },
+    "qoq": {
+      "trend": "Trend",
+      "no_data": "No historical data available",
+      "loading": "Loading..."
     },
     "action": {
       "new_position": "New Position",

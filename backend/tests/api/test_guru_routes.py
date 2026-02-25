@@ -720,3 +720,81 @@ class TestGetFilingHistory:
         assert "filing_date" in filing
         assert "total_value" in filing
         assert "holdings_count" in filing
+
+
+# ===========================================================================
+# GET /gurus/{guru_id}/qoq
+# ===========================================================================
+
+
+class TestGetGuruQoQ:
+    def test_returns_200_with_guru_id_and_items_fields(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000001")
+            guru_id = guru.id
+            _make_filing(session, guru_id, report_date="2024-12-31")
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "guru_id" in body
+        assert "items" in body
+        assert body["guru_id"] == guru_id
+
+    def test_returns_empty_items_when_no_filings(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000002")
+            guru_id = guru.id
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        assert resp.json()["items"] == []
+
+    def test_returns_200_for_nonexistent_guru(self, client):
+        resp = client.get("/gurus/99999/qoq")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+
+    def test_quarters_param_is_accepted(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000003")
+            guru_id = guru.id
+
+        resp = client.get(f"/gurus/{guru_id}/qoq?quarters=5")
+        assert resp.status_code == 200
+
+    def test_items_contain_correct_shape(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000004")
+            guru_id = guru.id
+            filing = _make_filing(session, guru_id, report_date="2024-12-31")
+            session.add(
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru_id,
+                    cusip="QOQ00001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    value=300_000.0,
+                    shares=2000.0,
+                    action="UNCHANGED",
+                    weight_pct=60.0,
+                )
+            )
+            session.commit()
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) == 1
+        item = items[0]
+        assert item["ticker"] == "AAPL"
+        assert "company_name" in item
+        assert "quarters" in item
+        assert "trend" in item
+        assert len(item["quarters"]) == 1
+        q = item["quarters"][0]
+        assert q["report_date"] == "2024-12-31"
+        assert q["shares"] == 2000.0
+        assert q["weight_pct"] == 60.0

@@ -255,3 +255,34 @@ class FilingHistoryResponse(BaseModel):
     """GET /gurus/{guru_id}/filings 完整回應。"""
 
     filings: list[FilingHistoryItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Response Schemas — Quarter-over-Quarter (QoQ)
+# ---------------------------------------------------------------------------
+
+
+class QoQQuarterSnapshot(BaseModel):
+    """單季持倉快照（QoQ 比較用）。"""
+
+    report_date: str
+    shares: float
+    value: float
+    weight_pct: float | None = None
+    action: str
+
+
+class QoQHoldingItem(BaseModel):
+    """跨季度的單一股票持倉歷史記錄。"""
+
+    ticker: str | None = None
+    company_name: str
+    quarters: list[QoQQuarterSnapshot]  # newest first
+    trend: str  # "increasing" | "decreasing" | "new" | "exited" | "stable"
+
+
+class QoQResponse(BaseModel):
+    """GET /gurus/{guru_id}/qoq 完整回應。"""
+
+    guru_id: int
+    items: list[QoQHoldingItem] = []

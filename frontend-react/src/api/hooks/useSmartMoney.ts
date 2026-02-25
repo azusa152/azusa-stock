@@ -7,6 +7,7 @@ import type {
   GuruHolding,
   FilingHistoryResponse,
   GreatMindsResponse,
+  QoQResponse,
   AddGuruRequest,
 } from "@/api/types/smartMoney"
 
@@ -92,6 +93,18 @@ export function useGreatMinds() {
       return data
     },
     staleTime: 24 * 60 * 60 * 1000,
+  })
+}
+
+export function useGuruQoQ(id: number, enabled = true) {
+  return useQuery<QoQResponse>({
+    queryKey: ["guruQoQ", id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<QoQResponse>(`/gurus/${id}/qoq`)
+      return data
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 

@@ -634,6 +634,81 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
     return results
 
 
+def find_holding_history_by_guru(
+    session: Session, guru_id: int, quarters: int = 3
+) -> list[dict]:
+    """Return per-ticker holding snapshots across the last N filings for a guru.
+
+    For each ticker ever held across those filings, returns a list of quarterly
+    snapshots: {report_date, shares, value, weight_pct, action}.
+    Sorted by the latest quarter's weight_pct DESC (most important positions first).
+    """
+    filings = find_filings_by_guru(session, guru_id, limit=quarters)
+    if not filings:
+        return []
+
+    filing_ids = [f.id for f in filings]
+    filing_date_map = {f.id: f.report_date for f in filings}
+
+    holdings = session.exec(
+        select(GuruHolding)
+        .where(GuruHolding.filing_id.in_(filing_ids))  # type: ignore[union-attr]
+        .order_by(GuruHolding.filing_id.desc(), GuruHolding.weight_pct.desc())  # type: ignore[union-attr]
+    ).all()
+
+    ticker_map: dict[str, dict] = {}
+    for h in holdings:
+        key = h.ticker or h.cusip
+        if key not in ticker_map:
+            ticker_map[key] = {
+                "ticker": h.ticker,
+                "company_name": h.company_name,
+                "quarters": [],
+                "_latest_weight": None,
+            }
+        ticker_map[key]["quarters"].append(
+            {
+                "report_date": filing_date_map[h.filing_id],
+                "shares": h.shares,
+                "value": h.value,
+                "weight_pct": h.weight_pct,
+                "action": h.action,
+            }
+        )
+
+    result = []
+    for item in ticker_map.values():
+        qs = sorted(item["quarters"], key=lambda x: x["report_date"])
+        shares_series = [q["shares"] for q in qs]
+        item["trend"] = _compute_trend(shares_series)
+        item["quarters"] = list(reversed(qs))
+        item["_latest_weight"] = qs[-1]["weight_pct"] if qs else None
+        result.append(item)
+
+    result.sort(key=lambda x: x["_latest_weight"] or 0, reverse=True)
+    for item in result:
+        del item["_latest_weight"]
+
+    return result
+
+
+def _compute_trend(shares_series: list[float]) -> str:
+    """Classify overall trend from oldest to newest share count."""
+    if len(shares_series) < 2:
+        return "stable"
+    first, last = shares_series[0], shares_series[-1]
+    if last == 0:
+        return "exited"
+    if first == 0:
+        return "new"
+    change_pct = (last - first) / first * 100
+    if change_pct >= 10:
+        return "increasing"
+    if change_pct <= -10:
+        return "decreasing"
+    return "stable"
+
+
 def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
     """
     查詢所有大師最新申報中的新建倉（NEW_POSITION）和清倉（SOLD_OUT）。

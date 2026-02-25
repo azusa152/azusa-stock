@@ -11,6 +11,7 @@ Routes:
   GET    /gurus/{guru_id}/filing   — Latest filing summary
   GET    /gurus/{guru_id}/holdings — All holdings with actions
   GET    /gurus/{guru_id}/top      — Top N holdings by weight
+  GET    /gurus/{guru_id}/qoq      — Quarter-over-quarter holding history
   GET    /resonance                — Portfolio resonance overview
   GET    /resonance/great-minds    — Great Minds Think Alike list
   GET    /resonance/{ticker}       — Which gurus hold this ticker
@@ -35,6 +36,7 @@ from api.schemas import (
     GuruHoldingResponse,
     GuruResponse,
     GuruSummaryItem,
+    QoQResponse,
     ResonanceEntryResponse,
     ResonanceResponse,
     ResonanceTickerResponse,
@@ -56,6 +58,7 @@ from application.stock.filing_service import (
     get_filing_summary,
     get_guru_filing_history,
     get_holding_changes,
+    get_holding_qoq,
     sync_all_gurus,
     sync_guru_filing,
 )
@@ -341,6 +344,21 @@ def get_top_holdings(
         )
         for h in top
     ]
+
+
+@router.get(
+    "/{guru_id}/qoq",
+    response_model=QoQResponse,
+    summary="Quarter-over-quarter holding history for a guru",
+)
+def get_guru_qoq(
+    guru_id: int,
+    quarters: int = Query(default=3, ge=2, le=8),
+    session: Session = Depends(get_session),
+) -> QoQResponse:
+    """取得指定大師跨季度持倉歷史（預設最近 3 季）。"""
+    data = get_holding_qoq(session, guru_id, quarters=quarters)
+    return QoQResponse(**data)
 
 
 # ===========================================================================

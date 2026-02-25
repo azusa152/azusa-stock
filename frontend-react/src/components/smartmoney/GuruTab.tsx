@@ -10,10 +10,12 @@ import {
   useGuruHoldingChanges,
   useGuruTopHoldings,
   useGreatMinds,
+  useGuruQoQ,
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
 import { ActionBadge } from "./ActionBadge"
+import { QoQTable } from "./QoQTable"
 import type { GuruHolding } from "@/api/types/smartMoney"
 
 interface Props {
@@ -38,6 +40,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [qoqOpen, setQoqOpen] = useState(false)
   const [greatMindsOpen, setGreatMindsOpen] = useState(false)
 
   const syncMutation = useSyncGuru()
@@ -47,6 +50,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { data: filingsResp } = useGuruFilings(guruId, enabled && historyOpen)
   const { data: changes, isLoading: changesLoading } = useGuruHoldingChanges(guruId, enabled)
   const { data: topHoldings, isLoading: topLoading } = useGuruTopHoldings(guruId, enabled)
+  const { data: qoqData } = useGuruQoQ(guruId, enabled && qoqOpen)
   const { data: greatMinds } = useGreatMinds()
 
   if (!enabled) return null
@@ -394,11 +398,34 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
     </section>
   )
 
+  // -------------------------------------------------------------------------
+  // QoQ section
+  // -------------------------------------------------------------------------
+  const qoqSection = (
+    <section className="space-y-2">
+      <button
+        onClick={() => setQoqOpen((v) => !v)}
+        className="flex items-center gap-1 text-sm font-semibold"
+      >
+        {t("smart_money.tab.qoq")}
+        <span className="text-muted-foreground text-xs">{qoqOpen ? "▲" : "▼"}</span>
+      </button>
+      {qoqOpen &&
+        (qoqData ? (
+          <QoQTable data={qoqData} />
+        ) : (
+          <p className="text-xs text-muted-foreground">{t("smart_money.qoq.loading")}</p>
+        ))}
+    </section>
+  )
+
   return (
     <div className="space-y-6">
       {filingSection}
       <hr className="border-border" />
       {holdingChangesSection}
+      <hr className="border-border" />
+      {qoqSection}
       <hr className="border-border" />
       {topHoldingsSection}
       <hr className="border-border" />

@@ -352,6 +352,22 @@ def get_top_holdings(session: Session, guru_id: int, n: int = 10) -> list[dict]:
     ]
 
 
+def get_holding_qoq(session: Session, guru_id: int, quarters: int = 3) -> dict:
+    """Return QoQ holding history for a guru.
+
+    quarters: number of past filings to include (default 3 = ~9 months).
+    Returns: {guru_id, items: list[QoQHoldingItem]}.
+    """
+    from infrastructure.persistence.repositories import find_holding_history_by_guru
+
+    guru = find_guru_by_id(session, guru_id)
+    if not guru:
+        return {"guru_id": guru_id, "items": []}
+
+    items = find_holding_history_by_guru(session, guru_id, quarters=quarters)
+    return {"guru_id": guru_id, "items": items}
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------

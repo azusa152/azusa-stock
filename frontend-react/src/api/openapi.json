@@ -4086,6 +4086,77 @@
         }
       }
     },
+    "/gurus/{guru_id}/qoq": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "Quarter-over-quarter holding history for a guru",
+        "description": "\u53d6\u5f97\u6307\u5b9a\u5927\u5e2b\u8de8\u5b63\u5ea6\u6301\u5009\u6b77\u53f2\uff08\u9810\u8a2d\u6700\u8fd1 3 \u5b63\uff09\u3002",
+        "operationId": "get_guru_qoq_gurus__guru_id__qoq_get",
+        "parameters": [
+          {
+            "name": "guru_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Guru Id"
+            }
+          },
+          {
+            "name": "quarters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 8,
+              "minimum": 2,
+              "default": 3,
+              "title": "Quarters"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QoQResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/gurus/dashboard": {
       "get": {
         "tags": [
@@ -6879,6 +6950,106 @@
         "type": "object",
         "title": "ProfileUpdateRequest",
         "description": "PUT /profiles/{id} \u8acb\u6c42 Body\u3002"
+      },
+      "QoQHoldingItem": {
+        "properties": {
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "quarters": {
+            "items": {
+              "$ref": "#/components/schemas/QoQQuarterSnapshot"
+            },
+            "type": "array",
+            "title": "Quarters"
+          },
+          "trend": {
+            "type": "string",
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_name",
+          "quarters",
+          "trend"
+        ],
+        "title": "QoQHoldingItem",
+        "description": "\u8de8\u5b63\u5ea6\u7684\u55ae\u4e00\u80a1\u7968\u6301\u5009\u6b77\u53f2\u8a18\u9304\u3002"
+      },
+      "QoQQuarterSnapshot": {
+        "properties": {
+          "report_date": {
+            "type": "string",
+            "title": "Report Date"
+          },
+          "shares": {
+            "type": "number",
+            "title": "Shares"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_date",
+          "shares",
+          "value",
+          "action"
+        ],
+        "title": "QoQQuarterSnapshot",
+        "description": "\u55ae\u5b63\u6301\u5009\u5feb\u7167\uff08QoQ \u6bd4\u8f03\u7528\uff09\u3002"
+      },
+      "QoQResponse": {
+        "properties": {
+          "guru_id": {
+            "type": "integer",
+            "title": "Guru Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QoQHoldingItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "guru_id"
+        ],
+        "title": "QoQResponse",
+        "description": "GET /gurus/{guru_id}/qoq \u5b8c\u6574\u56de\u61c9\u3002"
       },
       "ReactivateRequest": {
         "properties": {
