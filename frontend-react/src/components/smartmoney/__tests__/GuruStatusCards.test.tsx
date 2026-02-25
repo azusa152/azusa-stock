@@ -24,6 +24,8 @@ function makeGuru(overrides: Partial<GuruSummaryItem> = {}): GuruSummaryItem {
     filing_count: 8,
     style: null,
     tier: null,
+    top5_concentration_pct: null,
+    turnover_pct: null,
     ...overrides,
   }
 }
@@ -80,5 +82,39 @@ describe("GuruStatusCards", () => {
     render(<GuruStatusCards gurus={[makeGuru({ style: "MACRO", tier: "TIER_1" })]} />)
     expect(screen.getByText("MACRO")).toBeInTheDocument()
     expect(screen.getByText("★★★")).toBeInTheDocument()
+  })
+
+  it("renders top5_concentration_pct when present", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: 45.5 })]} />)
+    expect(screen.getByText(/45\.5%/)).toBeInTheDocument()
+    expect(screen.getByText("smart_money.metric.concentration")).toBeInTheDocument()
+  })
+
+  it("renders 'high conviction' label when top5_concentration_pct >= 60", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: 72.0 })]} />)
+    expect(screen.getByText("smart_money.metric.high_conviction")).toBeInTheDocument()
+  })
+
+  it("renders 'diversified' label when top5_concentration_pct <= 30", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: 25.0 })]} />)
+    expect(screen.getByText("smart_money.metric.diversified")).toBeInTheDocument()
+  })
+
+  it("does not render conviction label for mid-range concentration", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: 45.0 })]} />)
+    expect(screen.queryByText("smart_money.metric.high_conviction")).not.toBeInTheDocument()
+    expect(screen.queryByText("smart_money.metric.diversified")).not.toBeInTheDocument()
+  })
+
+  it("renders turnover_pct when present", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ turnover_pct: 33.0 })]} />)
+    expect(screen.getByText(/33%/)).toBeInTheDocument()
+    expect(screen.getByText("smart_money.metric.turnover")).toBeInTheDocument()
+  })
+
+  it("does not render concentration or turnover when both are null", () => {
+    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: null, turnover_pct: null })]} />)
+    expect(screen.queryByText("smart_money.metric.concentration")).not.toBeInTheDocument()
+    expect(screen.queryByText("smart_money.metric.turnover")).not.toBeInTheDocument()
   })
 })

@@ -101,6 +101,9 @@ export const GURU_TIER_STARS: Record<string, number> = {
   TIER_3: 1,
 }
 
+export const HIGH_CONVICTION_THRESHOLD = 60
+export const DIVERSIFIED_THRESHOLD = 30
+
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [
   { key: "US", labelKey: "config.market.us", suffix: "", currency: "USD" },

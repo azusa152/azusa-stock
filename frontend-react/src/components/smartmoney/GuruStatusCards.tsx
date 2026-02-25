@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import { useSyncGuru } from "@/api/hooks/useSmartMoney"
 import { formatValue, isStale } from "./formatters"
 import { GuruStyleBadge } from "./GuruStyleBadge"
-import { GURU_TIER_STARS } from "@/lib/constants"
+import { GURU_TIER_STARS, HIGH_CONVICTION_THRESHOLD, DIVERSIFIED_THRESHOLD } from "@/lib/constants"
 import type { GuruSummaryItem } from "@/api/types/smartMoney"
 
 interface Props {
@@ -68,6 +69,43 @@ export function GuruStatusCards({ gurus }: Props) {
                   </span>
                   {t("smart_money.overview.report_date_label")}
                 </div>
+
+                {/* Concentration */}
+                {guru.top5_concentration_pct != null && (
+                  <div>
+                    <span
+                      className={cn(
+                        "block font-medium",
+                        guru.top5_concentration_pct >= HIGH_CONVICTION_THRESHOLD
+                          ? "text-amber-600 dark:text-amber-400"
+                          : guru.top5_concentration_pct <= DIVERSIFIED_THRESHOLD
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-foreground",
+                      )}
+                    >
+                      {guru.top5_concentration_pct.toFixed(1)}%
+                      {(guru.top5_concentration_pct >= HIGH_CONVICTION_THRESHOLD ||
+                        guru.top5_concentration_pct <= DIVERSIFIED_THRESHOLD) && (
+                        <span className="font-normal text-muted-foreground ml-1 text-[10px]">
+                          {guru.top5_concentration_pct >= HIGH_CONVICTION_THRESHOLD
+                            ? t("smart_money.metric.high_conviction")
+                            : t("smart_money.metric.diversified")}
+                        </span>
+                      )}
+                    </span>
+                    {t("smart_money.metric.concentration")}
+                  </div>
+                )}
+
+                {/* Turnover */}
+                {guru.turnover_pct != null && (
+                  <div>
+                    <span className="block text-foreground font-medium">
+                      {guru.turnover_pct.toFixed(0)}%
+                    </span>
+                    {t("smart_money.metric.turnover")}
+                  </div>
+                )}
               </div>
 
               {/* Sync button */}

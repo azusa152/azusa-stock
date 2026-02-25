@@ -1098,7 +1098,11 @@
       "report_date": "持仓基准日",
       "filing_date": "公告日",
       "total_value": "持仓总市值",
-      "holdings_count": "持仓数量"
+      "holdings_count": "持仓数量",
+      "concentration": "前5大持仓比重",
+      "high_conviction": "高度集中",
+      "diversified": "分散型",
+      "turnover": "季度换手率"
     },
     "tab": {
       "changes": "📊 持仓变动",

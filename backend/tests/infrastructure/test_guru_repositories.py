@@ -363,6 +363,175 @@ class TestFindAllGuruSummaries:
         assert match["filing_count"] == 0
         assert match["latest_report_date"] is None
 
+    def test_no_filing_returns_none_for_metrics(self, test_session: Session):
+        """Guru with no filings should have None for concentration and turnover."""
+        _make_guru(
+            test_session, cik="1000000050", display_name="No Filing Metrics Guru"
+        )
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "No Filing Metrics Guru"),
+            None,
+        )
+        assert match is not None
+        assert match["top5_concentration_pct"] is None
+        assert match["turnover_pct"] is None
+
+    def test_top5_concentration_pct_sums_top_five_weights(self, test_session: Session):
+        """top5_concentration_pct should be the sum of the top-5 weight_pct values."""
+        guru = _make_guru(
+            test_session, cik="1000000051", display_name="Concentration Guru"
+        )
+        # holdings_count must reflect the actual holdings we add (7 here)
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="CONC-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=7,
+            ),
+        )
+        # Add 7 holdings with distinct weight_pct values
+        weights = [30.0, 20.0, 15.0, 10.0, 8.0, 5.0, 2.0]
+        for i, w in enumerate(weights):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"CONC-C{i:03d}",
+                ticker=f"TICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=HoldingAction.UNCHANGED.value,
+                weight_pct=w,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Concentration Guru"), None
+        )
+        assert match is not None
+        # Top-5: 30+20+15+10+8 = 83.0
+        assert match["top5_concentration_pct"] == pytest.approx(83.0)
+
+    def test_turnover_pct_counts_new_and_sold(self, test_session: Session):
+        """turnover_pct = (new_positions + sold_out) / holdings_count * 100."""
+        guru = _make_guru(test_session, cik="1000000052", display_name="Turnover Guru")
+        # 4 holdings: 1 NEW_POSITION, 1 SOLD_OUT, 2 UNCHANGED → turnover = 50%
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="TURN-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=4,
+            ),
+        )
+        actions = [
+            HoldingAction.NEW_POSITION,
+            HoldingAction.SOLD_OUT,
+            HoldingAction.UNCHANGED,
+            HoldingAction.UNCHANGED,
+        ]
+        for i, action in enumerate(actions):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"TURN-C{i:03d}",
+                ticker=f"TTICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=action.value,
+                weight_pct=10.0,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Turnover Guru"), None
+        )
+        assert match is not None
+        # (1 + 1) / 4 * 100 = 50.0
+        assert match["turnover_pct"] == pytest.approx(50.0)
+
+    def test_concentration_fewer_than_5_holdings_sums_all(self, test_session: Session):
+        """When a filing has fewer than 5 holdings, concentration is the sum of all."""
+        guru = _make_guru(
+            test_session, cik="1000000053", display_name="Few Holdings Guru"
+        )
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="FEW-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=3,
+            ),
+        )
+        weights = [40.0, 35.0, 25.0]
+        for i, w in enumerate(weights):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"FEW-C{i:03d}",
+                ticker=f"FTICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=HoldingAction.UNCHANGED.value,
+                weight_pct=w,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Few Holdings Guru"), None
+        )
+        assert match is not None
+        # All 3 holdings: 40+35+25 = 100.0
+        assert match["top5_concentration_pct"] == pytest.approx(100.0)
+
+    def test_turnover_pct_is_none_when_holdings_count_is_zero(
+        self, test_session: Session
+    ):
+        """Filing with holdings_count=0 should yield turnover_pct=None (division guard)."""
+        guru = _make_guru(
+            test_session, cik="1000000054", display_name="Empty Filing Guru"
+        )
+        save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="EMPTY-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=0.0,
+                holdings_count=0,
+            ),
+        )
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Empty Filing Guru"), None
+        )
+        assert match is not None
+        assert match["turnover_pct"] is None
+
 
 # ===========================================================================
 # find_consensus_stocks

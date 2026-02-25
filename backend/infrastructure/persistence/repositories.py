@@ -540,8 +540,11 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
 
     回傳 list of dict，每筆含：
         id, display_name, latest_report_date, latest_filing_date,
-        total_value, holdings_count, filing_count
+        total_value, holdings_count, filing_count,
+        top5_concentration_pct, turnover_pct
     """
+    from domain.enums import HoldingAction
+
     # 子查詢：每位大師最新申報日期
     latest_subq = (
         select(
@@ -581,6 +584,38 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
     results = []
     for guru in gurus:
         filing = latest_filings.get(guru.id)
+
+        top5_concentration_pct = None
+        turnover_pct = None
+
+        if filing:
+            # Top-5 concentration: sum of top-5 weight_pct excluding SOLD_OUT
+            top5 = session.exec(
+                select(GuruHolding.weight_pct)
+                .where(
+                    GuruHolding.filing_id == filing.id,
+                    GuruHolding.weight_pct.isnot(None),  # type: ignore[union-attr]
+                    GuruHolding.action != HoldingAction.SOLD_OUT.value,
+                )
+                .order_by(GuruHolding.weight_pct.desc())
+                .limit(5)
+            ).all()
+            if top5:
+                top5_concentration_pct = round(sum(top5), 1)
+
+            # Turnover: (new_positions + sold_out) / holdings_count * 100
+            if filing.holdings_count > 0:
+                action_counts = session.exec(
+                    select(GuruHolding.action, func.count().label("cnt"))
+                    .where(GuruHolding.filing_id == filing.id)
+                    .group_by(GuruHolding.action)
+                ).all()
+                action_map = {a: c for a, c in action_counts}
+                churned = action_map.get(
+                    HoldingAction.NEW_POSITION.value, 0
+                ) + action_map.get(HoldingAction.SOLD_OUT.value, 0)
+                turnover_pct = round(churned / filing.holdings_count * 100, 1)
+
         results.append(
             {
                 "id": guru.id,
@@ -592,6 +627,8 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
                 "filing_count": filing_counts.get(guru.id, 0),
                 "style": guru.style,
                 "tier": guru.tier,
+                "top5_concentration_pct": top5_concentration_pct,
+                "turnover_pct": turnover_pct,
             }
         )
     return results

@@ -1098,7 +1098,11 @@
       "report_date": "基準日",
       "filing_date": "申告日",
       "total_value": "総保有額",
-      "holdings_count": "保有銘柄数"
+      "holdings_count": "保有銘柄数",
+      "concentration": "上位5銘柄比率",
+      "high_conviction": "高確信度",
+      "diversified": "分散型",
+      "turnover": "四半期回転率"
     },
     "tab": {
       "changes": "📊 保有変動",

@@ -6083,6 +6083,28 @@
               }
             ],
             "title": "Tier"
+          },
+          "top5_concentration_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top5 Concentration Pct"
+          },
+          "turnover_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnover Pct"
           }
         },
         "type": "object",

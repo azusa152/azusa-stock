@@ -161,6 +161,8 @@ class GuruSummaryItem(BaseModel):
     filing_count: int = 0
     style: str | None = None
     tier: str | None = None
+    top5_concentration_pct: float | None = None
+    turnover_pct: float | None = None
 
 
 class SeasonHighlightItem(BaseModel):

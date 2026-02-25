@@ -1098,7 +1098,11 @@
       "report_date": "Snapshot Date",
       "filing_date": "Filed Date",
       "total_value": "Total Value",
-      "holdings_count": "# Holdings"
+      "holdings_count": "# Holdings",
+      "concentration": "Top-5 Weight",
+      "high_conviction": "high conviction",
+      "diversified": "diversified",
+      "turnover": "Quarterly Turnover"
     },
     "tab": {
       "changes": "📊 Holding Changes",
