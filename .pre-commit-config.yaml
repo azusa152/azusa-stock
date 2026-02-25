@@ -66,3 +66,10 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend-react/
+
+      - id: constant-sync
+        name: backend/frontend constant sync
+        entry: bash -c 'python3 scripts/check_constant_sync.py'
+        language: system
+        pass_filenames: false
+        files: (backend/domain/core/constants\.py|frontend-react/src/lib/constants\.ts)

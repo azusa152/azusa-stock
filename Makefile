@@ -144,7 +144,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test ## Full CI check — runs all linting + all tests
+ci: lint test check-constants ## Full CI check — runs all linting + all tests + constant sync
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
