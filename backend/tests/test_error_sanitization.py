@@ -19,7 +19,7 @@ from i18n import t
 def test_webhook_exception_sanitized(client):
     """Webhook endpoint returns generic error on exception (no leak)."""
     # Patch handle_webhook where it's imported in stock_routes
-    with patch("api.stock_routes.handle_webhook") as mock_handle:
+    with patch("api.routes.stock_routes.handle_webhook") as mock_handle:
         mock_handle.side_effect = RuntimeError(
             "Database connection failed - secret info"
         )

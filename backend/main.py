@@ -17,19 +17,19 @@ from slowapi.errors import RateLimitExceeded
 from sqlmodel import Session
 
 from api.dependencies import require_api_key
-from api.forex_routes import router as forex_router
-from api.fx_watch_routes import router as fx_watch_router
-from api.guru_routes import resonance_router, router as guru_router
-from api.holding_routes import router as holding_router
-from api.persona_routes import router as persona_router
-from api.preferences_routes import router as preferences_router
 from api.rate_limit import limiter
-from api.scan_routes import router as scan_router
-from api.snapshot_routes import router as snapshot_router
+from api.routes.forex_routes import router as forex_router
+from api.routes.fx_watch_routes import router as fx_watch_router
+from api.routes.guru_routes import resonance_router, router as guru_router
+from api.routes.holding_routes import router as holding_router
+from api.routes.persona_routes import router as persona_router
+from api.routes.preferences_routes import router as preferences_router
+from api.routes.scan_routes import router as scan_router
+from api.routes.snapshot_routes import router as snapshot_router
+from api.routes.stock_routes import router as stock_router
+from api.routes.telegram_routes import router as telegram_router
+from api.routes.thesis_routes import router as thesis_router
 from api.schemas import HealthResponse
-from api.stock_routes import router as stock_router
-from api.telegram_routes import router as telegram_router
-from api.thesis_routes import router as thesis_router
 from infrastructure.database import create_db_and_tables
 from config.settings import init_settings
 from logging_config import get_logger
