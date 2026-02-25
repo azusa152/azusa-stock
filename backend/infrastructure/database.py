@@ -134,7 +134,7 @@ def _encrypt_plaintext_tokens() -> None:
 
     try:
         from domain.entities import UserTelegramSettings
-        from infrastructure.crypto import encrypt_token, is_encrypted
+        from infrastructure.external.crypto import encrypt_token, is_encrypted
 
         with Session(engine) as session:
             settings_list = session.query(UserTelegramSettings).all()

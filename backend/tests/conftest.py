@@ -17,6 +17,10 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 # FOLIO_API_KEY from .env file when main.py imports load_dotenv()
 os.environ["FOLIO_API_KEY"] = ""
 
+# Prevent tests from sending real Telegram messages even if .env has credentials
+os.environ["TELEGRAM_BOT_TOKEN"] = ""
+os.environ["TELEGRAM_CHAT_ID"] = ""
+
 # Set test Fernet key for encryption tests (required for Phase 4)
 # This key is only used in tests and is not a real secret
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
@@ -140,6 +144,18 @@ _PATCHES: list[tuple[str, object]] = [
     ("infrastructure.market_data.get_stock_beta", 1.0),
     ("infrastructure.notification.send_telegram_message", None),
     ("infrastructure.notification.send_telegram_message_dual", None),
+    # Consumer-level patches: patch where functions are used, not where defined.
+    # Required because `from infrastructure.notification import X` binds the name
+    # directly in each module's namespace, bypassing source-module patches.
+    ("application.portfolio.rebalance_service.send_telegram_message_dual", None),
+    ("application.portfolio.rebalance_service.is_notification_enabled", True),
+    ("application.scan.scan_service.send_telegram_message_dual", None),
+    ("application.messaging.notification_service.send_telegram_message_dual", None),
+    ("application.portfolio.fx_watch_service.send_telegram_message_dual", None),
+    (
+        "application.messaging.telegram_settings_service.send_telegram_message_dual",
+        None,
+    ),
     # scan_service
     ("application.scan.scan_service.get_technical_signals", MOCK_SIGNALS),
     ("application.scan.scan_service.analyze_moat_trend", MOCK_MOAT),

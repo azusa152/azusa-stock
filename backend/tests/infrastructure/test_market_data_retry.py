@@ -28,7 +28,7 @@ import pytest  # noqa: E402
 from cachetools import TTLCache  # noqa: E402
 from curl_cffi.curl import CurlError  # noqa: E402
 
-from infrastructure.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (  # noqa: E402
     _cached_fetch,
     _is_error_dict,
     _is_moat_error,
@@ -63,8 +63,10 @@ class TestCachedFetchErrorSkip:
         error_result = {"error": "⚠️ Could not resolve host"}
 
         with (
-            patch("infrastructure.market_data._disk_get", return_value=None),
-            patch("infrastructure.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data.market_data._disk_get", return_value=None
+            ),
+            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -91,8 +93,10 @@ class TestCachedFetchErrorSkip:
         error_result = {"error": "⚠️ DNS failure"}
 
         with (
-            patch("infrastructure.market_data._disk_get", return_value=None),
-            patch("infrastructure.market_data._disk_set"),
+            patch(
+                "infrastructure.market_data.market_data._disk_get", return_value=None
+            ),
+            patch("infrastructure.market_data.market_data._disk_set"),
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -115,8 +119,10 @@ class TestCachedFetchErrorSkip:
         success_result = {"ticker": "NVDA", "price": 120.0, "rsi": 55.0}
 
         with (
-            patch("infrastructure.market_data._disk_get", return_value=None),
-            patch("infrastructure.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data.market_data._disk_get", return_value=None
+            ),
+            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=success_result)
 
@@ -147,8 +153,10 @@ class TestCachedFetchErrorSkip:
         error_result = {"error": "⚠️ Some error"}
 
         with (
-            patch("infrastructure.market_data._disk_get", return_value=None),
-            patch("infrastructure.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data.market_data._disk_get", return_value=None
+            ),
+            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -185,7 +193,9 @@ class TestCachedFetchErrorSkip:
         disk_result = {"ticker": "NVDA", "price": 125.0}
         fetcher = MagicMock()
 
-        with patch("infrastructure.market_data._disk_get", return_value=disk_result):
+        with patch(
+            "infrastructure.market_data.market_data._disk_get", return_value=disk_result
+        ):
             # Act
             result = _cached_fetch(
                 l1,

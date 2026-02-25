@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from unittest.mock import patch
 
-from infrastructure.market_data import _safe_loc, _fetch_moat_from_yf
+from infrastructure.market_data.market_data import _safe_loc, _fetch_moat_from_yf
 from domain.enums import MoatStatus
 
 NOT_AVAILABLE = MoatStatus.NOT_AVAILABLE.value
@@ -49,7 +49,7 @@ class TestFetchMoatFromYf:
             else list(rows.keys()),
         )
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_standard_labels_returns_correct_margin(self, mock_financials):
         cols = [datetime.date(2025, 12, 31), datetime.date(2024, 12, 31)]
         df = pd.DataFrame(
@@ -62,7 +62,7 @@ class TestFetchMoatFromYf:
         assert result["moat"] != NOT_AVAILABLE
         assert result["current_margin"] == pytest.approx(30.0)
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_jp_company_with_operating_revenue(self, mock_financials):
         """J-GAAP companies may use 'Operating Revenue' instead of 'Total Revenue'."""
         cols = [datetime.date(2025, 12, 31), datetime.date(2024, 12, 31)]
@@ -76,7 +76,7 @@ class TestFetchMoatFromYf:
         assert result["moat"] != NOT_AVAILABLE
         assert result["current_margin"] is not None
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_missing_gross_profit_returns_not_available(self, mock_financials):
         cols = [datetime.date(2025, 12, 31), datetime.date(2024, 12, 31)]
         df = pd.DataFrame(
@@ -88,7 +88,7 @@ class TestFetchMoatFromYf:
         result = _fetch_moat_from_yf("7203.T")
         assert result["moat"] == NOT_AVAILABLE
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_nan_gross_profit_returns_not_available(self, mock_financials):
         cols = [datetime.date(2025, 12, 31), datetime.date(2024, 12, 31)]
         df = pd.DataFrame(
@@ -100,14 +100,14 @@ class TestFetchMoatFromYf:
         result = _fetch_moat_from_yf("7203.T")
         assert result["moat"] == NOT_AVAILABLE
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_empty_dataframe_returns_not_available(self, mock_financials):
         mock_financials.return_value = pd.DataFrame()
 
         result = _fetch_moat_from_yf("7203.T")
         assert result["moat"] == NOT_AVAILABLE
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_tw_company_with_net_sales(self, mock_financials):
         """TW-GAAP companies may use 'Net Sales' instead of 'Total Revenue'."""
         cols = [datetime.date(2025, 9, 30), datetime.date(2024, 9, 30)]
@@ -122,7 +122,7 @@ class TestFetchMoatFromYf:
         assert result["current_margin"] == pytest.approx(25.0)
         assert result["margin_type"] == "gross"
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_tw_company_with_operating_profit_fallback(self, mock_financials):
         """TW-GAAP companies may expose 'Operating Profit' when gross profit row is absent.
         Result must be annotated as 'operating' to prevent misleading cross-market comparison."""
@@ -139,7 +139,7 @@ class TestFetchMoatFromYf:
         assert result["margin_type"] == "operating"
         assert "(operating margin)" in result["details"]
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_tw_company_standard_labels_work(self, mock_financials):
         """Most large-cap TW stocks (e.g. TSMC) return standard English labels via yfinance."""
         cols = [datetime.date(2025, 9, 30), datetime.date(2024, 9, 30)]
@@ -155,7 +155,7 @@ class TestFetchMoatFromYf:
         assert result["margin_type"] == "gross"
         assert "(operating margin)" not in result["details"]
 
-    @patch("infrastructure.market_data._yf_quarterly_financials")
+    @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_tw_operating_profit_with_net_sales(self, mock_financials):
         """TW company with both fallback labels and no standard labels (most divergent case)."""
         cols = [datetime.date(2025, 9, 30), datetime.date(2024, 9, 30)]

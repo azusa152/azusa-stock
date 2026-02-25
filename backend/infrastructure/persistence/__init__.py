@@ -1,6 +1,8 @@
-"""Backward-compatibility shim — re-exports infrastructure.persistence.repositories.
+"""infrastructure.persistence sub-package — database repository functions.
 
-Consumers using ``from infrastructure.repositories import X`` continue to work unchanged.
+Re-exports the public API of persistence.repositories so that
+``from infrastructure.repositories import X`` continues to work via the shim at
+``infrastructure/repositories.py``.
 """
 
 from infrastructure.persistence.repositories import (  # noqa: F401
