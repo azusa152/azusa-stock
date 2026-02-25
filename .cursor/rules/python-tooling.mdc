@@ -15,14 +15,18 @@ alwaysApply: false
 - **Import ordering:** stdlib, third-party, local — ruff handles this automatically.
 
 ## Makefile Shortcuts
-- **Fullstack targets:** `make lint` (backend + frontend), `make test` (backend; frontend added in Phase 4), `make format` (backend). These run the whole project.
-- **Granular targets:** `make backend-lint`, `make backend-test`, `make backend-format` for backend only; `make frontend-lint` for frontend only.
-- **CI gate:** Use `make ci` to run all linting + all tests — this mirrors what the CI pipeline runs. Always pass before committing.
+- **Fullstack targets:** `make lint` (backend + frontend), `make test` (backend + frontend), `make format` (backend). These run the whole project.
+- **Granular targets:** `make backend-lint`, `make backend-test`, `make backend-format` for backend only; `make frontend-lint`, `make frontend-test`, `make frontend-build`, `make frontend-security` for frontend only.
+- **CI gate:** Use `make ci` — it mirrors ALL GitHub CI pipeline jobs. If `make ci` passes locally, the GitHub pipeline will pass too. Always run before committing.
+  - Covers: `lint`, `test`, `check-constants`, `check-api-spec`, `frontend-build`, `frontend-security`, `backend-security`
+  - Run `make check-ci` to verify `make ci` still covers all pipeline jobs (auto-enforced by CI and pre-commit).
 - **Cleanup:** Use `make clean` to remove `.pytest_cache`, `.ruff_cache`, `dist`, and `node_modules/.cache`.
 - Run `make help` to see all available targets.
 
 ## Dependencies
-- **Dependencies:** Pin versions in `requirements.txt`. When adding a new package, add it with a pinned version.
+- **Dependencies:** Use pip-tools. Edit `backend/requirements.in` (loose constraints) and run `make lock` to regenerate the pinned `backend/requirements.txt`. Never edit `requirements.txt` by hand.
+- **Dev tools** (e.g. `pip-audit`, `ruff`, `pytest`) belong in `requirements.in` — never install them ad-hoc inside Makefile targets.
+- **Adding a new CI job:** Add the job to `.github/workflows/ci.yml`, add its job ID + corresponding make target to `KNOWN_JOB_MAP` in `scripts/check_ci_completeness.py`, and wire the make target into `make ci`. The `ci-completeness` pre-commit hook and CI job will enforce this.
 
 ## Logging
 - Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.

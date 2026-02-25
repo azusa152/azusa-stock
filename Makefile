@@ -5,24 +5,31 @@
 #  Quick reference (run `make help` for the full list):
 #
 #  Fullstack (composite):
-#    make ci               Run all linting + all tests (mirrors CI)
+#    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs
 #    make lint             Lint backend + frontend
-#    make test             Test backend + frontend (Vitest)
+#    make test             Test backend + frontend (pytest + Vitest)
 #    make format           Format backend code
 #
 #  Backend (granular):
 #    make backend-lint     Ruff check + format check
 #    make backend-test     pytest (in-memory SQLite)
 #    make backend-format   Ruff format
+#    make backend-security pip-audit vulnerability scan
 #
 #  Frontend (granular):
 #    make frontend-lint    ESLint
 #    make frontend-dev     Start Vite dev server
-#    make frontend-build   Production build
+#    make frontend-build   Production build (run generate-api first if types are stale)
+#    make frontend-security npm audit (high severity)
+#
+#  CI Integrity:
+#    make check-api-spec   Verify OpenAPI spec matches backend (mirrors CI api-spec job)
+#    make check-constants  Verify backend/frontend constant sync
+#    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
 #  Setup:
 #    make setup            First-time: venv + npm + codegen + pre-commit hooks
-#    make install          Create backend venv and install deps
+#    make install          Create backend venv and install deps (incl. pip-audit)
 #    make frontend-install Install frontend deps (npm ci)
 #    make generate-api     Export OpenAPI spec + regenerate TS types
 #    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff)
@@ -36,7 +43,7 @@
 #
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
-#    make security         Security audit (.env, secrets, pip-audit)
+#    make security         Security audit (.env, secrets)
 #    make clean            Remove build caches
 #    make backup           Backup database to ./backups/
 #    make restore          Restore database from latest backup
@@ -119,7 +126,7 @@ backend-format: .venv-check ## Ruff format — rewrite files in place (backend o
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: frontend-lint frontend-dev frontend-build
+.PHONY: frontend-lint frontend-dev frontend-build frontend-security
 
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
@@ -127,8 +134,11 @@ frontend-lint: .node-check ## ESLint (frontend only)
 frontend-dev: .node-check generate-api ## Start Vite dev server (requires backend venv; or cd frontend-react && npm run dev)
 	cd $(FRONTEND_DIR) && npm run dev
 
-frontend-build: .node-check generate-api ## Build frontend for production (requires backend venv; or cd frontend-react && npm run build)
+frontend-build: .node-check ## Build frontend for production (run generate-api first if types are stale)
 	cd $(FRONTEND_DIR) && npm run build
+
+frontend-security: .node-check ## npm audit — frontend high-severity vulnerabilities (mirrors CI frontend-security job)
+	cd $(FRONTEND_DIR) && npm audit --audit-level=high
 
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
@@ -144,7 +154,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants ## Full CI check — runs all linting + all tests + constant sync
+ci: lint test check-constants check-api-spec frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -199,10 +209,21 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants
+.PHONY: generate-key security help check-constants check-api-spec backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
+
+check-api-spec: .venv-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
+	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
+		$(PYTHON) scripts/export_openapi.py
+	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json
+
+backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors CI security job)
+	$(BACKEND_DIR)/.venv/bin/pip-audit --desc --ignore-vuln CVE-2025-69872
+
+check-ci: .venv-check ## Verify make ci covers all GitHub CI pipeline jobs
+	$(PYTHON) scripts/check_ci_completeness.py
 
 generate-key: ## Generate a secure API key (add to .env as FOLIO_API_KEY)
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"

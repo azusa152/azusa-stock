@@ -69,7 +69,21 @@ repos:
 
       - id: constant-sync
         name: backend/frontend constant sync
-        entry: bash -c 'python3 scripts/check_constant_sync.py'
+        entry: bash -c 'backend/.venv/bin/python scripts/check_constant_sync.py'
         language: system
         pass_filenames: false
         files: (backend/domain/core/constants\.py|frontend-react/src/lib/constants\.ts)
+
+      - id: npm-audit
+        name: npm audit (frontend, high severity)
+        entry: bash -c 'cd frontend-react && npm audit --audit-level=high'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/package-lock\.json$
+
+      - id: ci-completeness
+        name: CI completeness check
+        entry: bash -c 'backend/.venv/bin/python scripts/check_ci_completeness.py'
+        language: system
+        pass_filenames: false
+        files: (\.github/workflows/ci\.yml|Makefile)

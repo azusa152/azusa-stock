@@ -6,8 +6,8 @@
 
 ```bash
 docker compose up -d
-make ci            # Full CI check (lint + test)
-make test          # Run all tests (backend)
+make ci            # Full CI check — mirrors ALL GitHub CI pipeline jobs
+make test          # Run all tests (backend + frontend)
 make lint          # Lint all (backend + frontend)
 make format        # Format code
 make clean         # Remove build caches
@@ -55,4 +55,4 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 - **`api/routes/`** MUST delegate to `application/<domain>/` services. Only `infrastructure.database` (`get_session`, `engine`) is allowed in `api/`.
 - **`domain/`** must not import from any outer layer.
-- Run `make ci` after any backend change to verify boundaries.
+- Run `make ci` after any backend change to verify boundaries. `make ci` mirrors all GitHub CI pipeline jobs — if it passes locally, the pipeline will pass too.

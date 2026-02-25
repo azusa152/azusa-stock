@@ -15,6 +15,12 @@ anyio==4.12.1
     #   watchfiles
 beautifulsoup4==4.14.3
     # via yfinance
+boolean-py==5.0
+    # via license-expression
+cachecontrol==0.14.4
+    # via
+    #   cachecontrol
+    #   pip-audit
 cachetools==5.5.1
     # via -r backend/requirements.in
 certifi==2026.1.4
@@ -37,12 +43,18 @@ curl-cffi==0.7.4
     # via
     #   -r backend/requirements.in
     #   yfinance
+cyclonedx-python-lib==11.6.0
+    # via pip-audit
+defusedxml==0.7.1
+    # via py-serializable
 deprecated==1.3.1
     # via limits
 diskcache==5.6.3
     # via -r backend/requirements.in
 fastapi==0.129.0
     # via -r backend/requirements.in
+filelock==3.24.3
+    # via cachecontrol
 frozendict==2.4.7
     # via yfinance
 h11==0.16.0
@@ -64,8 +76,16 @@ iniconfig==2.3.0
     # via pytest
 jquants-api-client==2.0.0
     # via -r backend/requirements.in
+license-expression==30.4.4
+    # via cyclonedx-python-lib
 limits==5.8.0
     # via slowapi
+markdown-it-py==4.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
+msgpack==1.1.2
+    # via cachecontrol
 multitasking==0.0.12
     # via yfinance
 numpy==2.4.2
@@ -73,9 +93,13 @@ numpy==2.4.2
     #   jquants-api-client
     #   pandas
     #   yfinance
+packageurl-python==0.17.6
+    # via cyclonedx-python-lib
 packaging==26.0
     # via
     #   limits
+    #   pip-audit
+    #   pip-requirements-parser
     #   pytest
 pandas==2.3.3
     # via
@@ -83,10 +107,20 @@ pandas==2.3.3
     #   yfinance
 peewee==4.0.0
     # via yfinance
+pip-api==0.0.34
+    # via pip-audit
+pip-audit==2.10.0
+    # via -r backend/requirements.in
+pip-requirements-parser==32.0.1
+    # via pip-audit
 platformdirs==4.9.2
-    # via yfinance
+    # via
+    #   pip-audit
+    #   yfinance
 pluggy==1.6.0
     # via pytest
+py-serializable==2.1.0
+    # via cyclonedx-python-lib
 pycparser==3.0
     # via cffi
 pydantic==2.12.5
@@ -95,6 +129,10 @@ pydantic==2.12.5
     #   sqlmodel
 pydantic-core==2.41.5
     # via pydantic
+pygments==2.19.2
+    # via rich
+pyparsing==3.3.2
+    # via pip-requirements-parser
 pytest==8.3.4
     # via
     #   -r backend/requirements.in
@@ -116,14 +154,20 @@ pyyaml==6.0.3
 requests==2.32.4
     # via
     #   -r backend/requirements.in
+    #   cachecontrol
     #   jquants-api-client
+    #   pip-audit
     #   yfinance
+rich==14.3.3
+    # via pip-audit
 ruff==0.15.2
     # via -r backend/requirements.in
 six==1.17.0
     # via python-dateutil
 slowapi==0.1.9
     # via -r backend/requirements.in
+sortedcontainers==2.4.0
+    # via cyclonedx-python-lib
 soupsieve==2.8.3
     # via beautifulsoup4
 sqlalchemy==2.0.46
@@ -138,6 +182,10 @@ tenacity==8.5.0
     # via
     #   -r backend/requirements.in
     #   jquants-api-client
+tomli==2.4.0
+    # via pip-audit
+tomli-w==1.2.0
+    # via pip-audit
 typing-extensions==4.15.0
     # via
     #   beautifulsoup4
@@ -168,3 +216,6 @@ wrapt==2.1.1
     # via deprecated
 yfinance==0.2.58
     # via -r backend/requirements.in
+
+# The following packages are considered to be unsafe in a requirements file:
+# pip
