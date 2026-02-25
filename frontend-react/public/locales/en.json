@@ -207,7 +207,8 @@
     "performance_no_benchmark_data": "No {{benchmark}} data for this period",
     "performance_backfill_run": "Run backfill",
     "performance_backfilling": "Backfilling…",
-    "performance_backfill_done": "Backfill triggered — refresh in a moment"
+    "performance_backfill_complete": "Benchmark data loaded — chart updated",
+    "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page"
   },
   "radar": {
     "title": "📡 Folio",

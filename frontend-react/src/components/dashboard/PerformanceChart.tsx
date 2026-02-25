@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import apiClient from "@/api/client"
 import { useTranslation } from "react-i18next"
 import {
@@ -71,6 +73,7 @@ function getCommentaryKey(
 
 export function PerformanceChart({ snapshots }: Props) {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const [selectedKey, setSelectedKey] = useState("1M")
   const [selectedBenchmark, setSelectedBenchmark] = useState("^GSPC")
   const [crosshair, setCrosshair] = useState<CrosshairData | null>(null)
@@ -78,19 +81,47 @@ export function PerformanceChart({ snapshots }: Props) {
   // Whether the selected benchmark has enough data points in the current period
   const [hasBenchmarkData, setHasBenchmarkData] = useState(true)
   const [backfilling, setBackfilling] = useState(false)
-  const [backfillDone, setBackfillDone] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [])
+
+  // When benchmark data appears while we're polling → success
+  useEffect(() => {
+    if (hasBenchmarkData && pollRef.current) {
+      stopPolling()
+      setBackfilling(false)
+      toast.success(t("dashboard.performance_backfill_complete"))
+    }
+  }, [hasBenchmarkData, stopPolling, t])
+
+  // Cleanup on unmount
+  useEffect(() => () => stopPolling(), [stopPolling])
 
   const handleBackfill = useCallback(async () => {
     setBackfilling(true)
     try {
       await apiClient.post("/snapshots/backfill-benchmarks")
-      setBackfillDone(true)
+      // Poll every 4s; give up after 90s
+      let elapsed = 0
+      pollRef.current = setInterval(async () => {
+        elapsed += 4000
+        await queryClient.invalidateQueries({ queryKey: ["snapshots", 730] })
+        if (elapsed >= 90_000) {
+          stopPolling()
+          setBackfilling(false)
+          toast.error(t("dashboard.performance_backfill_timeout"))
+        }
+      }, 4000)
     } catch {
-      // silently ignore — user can retry
-    } finally {
       setBackfilling(false)
+      toast.error(t("common.error"))
     }
-  }, [])
+  }, [queryClient, stopPolling, t])
 
   // Stable chart / series refs — set once inside onInit, read by the data-update effect
   const chartRef = useRef<IChartApi | null>(null)
@@ -404,23 +435,19 @@ export function PerformanceChart({ snapshots }: Props) {
         {!hasBenchmarkData && hasPeriodData && (
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-amber-500">
-              {backfillDone
-                ? t("dashboard.performance_backfill_done")
-                : t("dashboard.performance_no_benchmark_data", {
-                    benchmark: t(
-                      BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
-                    ),
-                  })}
+              {t("dashboard.performance_no_benchmark_data", {
+                benchmark: t(
+                  BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
+                ),
+              })}
             </p>
-            {!backfillDone && (
-              <button
-                onClick={handleBackfill}
-                disabled={backfilling}
-                className="text-xs px-2 py-0.5 rounded border border-amber-500 text-amber-500 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
-              </button>
-            )}
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="text-xs px-2 py-0.5 rounded border border-amber-500 text-amber-500 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
+            </button>
           </div>
         )}
 

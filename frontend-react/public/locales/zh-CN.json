@@ -207,7 +207,8 @@
     "performance_no_benchmark_data": "此期间无 {{benchmark}} 基准数据",
     "performance_backfill_run": "执行回填",
     "performance_backfilling": "回填中…",
-    "performance_backfill_done": "已触发回填 — 稍后刷新页面"
+    "performance_backfill_complete": "基准数据已加载 — 图表已更新",
+    "performance_backfill_timeout": "回填时间较长，请稍后刷新页面"
   },
   "radar": {
     "title": "📡 Folio",

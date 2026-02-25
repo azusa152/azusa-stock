@@ -162,7 +162,9 @@ def backfill_benchmark_values(session: Session) -> int:
                 prices[ticker] = None
                 continue
             try:
-                idx = pd.Timestamp(snap_date)
+                idx = pd.Timestamp(snap_date, tz="UTC")
+                if series.index.tz is None:
+                    series = series.tz_localize("UTC")
                 close = series.asof(idx)
                 prices[ticker] = float(close) if pd.notna(close) else None
             except Exception as exc:

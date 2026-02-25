@@ -207,7 +207,8 @@
     "performance_no_benchmark_data": "この期間の {{benchmark}} データなし",
     "performance_backfill_run": "バックフィル実行",
     "performance_backfilling": "バックフィル中…",
-    "performance_backfill_done": "バックフィルをトリガーしました — しばらくしてから更新してください"
+    "performance_backfill_complete": "基準データを読み込みました — チャートを更新しました",
+    "performance_backfill_timeout": "バックフィルに時間がかかっています — ページを更新してください"
   },
   "radar": {
     "title": "📡 Folio",

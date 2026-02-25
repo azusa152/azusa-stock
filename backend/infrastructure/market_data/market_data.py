@@ -390,13 +390,18 @@ def _get_session() -> cffi_requests.Session:
 def _yf_history(ticker: str, period: str):
     """
     取得 yfinance 歷史資料（含重試）。
-    僅針對網路層例外（CurlError、ConnectionError、OSError）重試，
-    資料品質問題（空資料）不重試。
+    空結果也視為可重試：yfinance 有時會吞掉 CurlError/SSL 錯誤，
+    僅回傳空 DataFrame 而不拋出例外，導致 @_yf_retry 無法觸發。
     """
     _rate_limiter.wait()
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
-    return stock, stock.history(period=period)
+    hist = stock.history(period=period)
+    if hist.empty:
+        raise OSError(
+            f"{ticker}: yfinance returned empty history, possibly due to a swallowed network error"
+        )
+    return stock, hist
 
 
 @_yf_retry
@@ -437,11 +442,18 @@ def detect_is_etf(ticker: str) -> bool:
 
 @_yf_retry
 def _yf_history_short(ticker: str, period: str = "5d"):
-    """取得 yfinance 短期歷史（匯率等，含重試）。"""
+    """取得 yfinance 短期歷史（匯率等，含重試）。
+    空結果視為可重試（與 _yf_history 相同理由）。
+    """
     _rate_limiter.wait()
     session = _get_session()
     ticker_obj = yf.Ticker(ticker, session=session)
-    return ticker_obj.history(period=period)
+    hist = ticker_obj.history(period=period)
+    if hist.empty:
+        raise OSError(
+            f"{ticker}: yfinance returned empty short history, possibly due to a swallowed network error"
+        )
+    return hist
 
 
 @_yf_retry
