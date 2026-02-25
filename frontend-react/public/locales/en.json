@@ -1197,7 +1197,27 @@
       "display_placeholder": "e.g. Warren Buffett",
       "submit_button": "Add Guru",
       "required_warning": "⚠️ Please fill in all fields.",
-      "success": "✅ Added {{display_name}}. Switch to the Overview tab to see it."
+      "success": "✅ Added {{display_name}}. Switch to the Overview tab to see it.",
+      "style_label": "Investment Style (optional)",
+      "style_placeholder": "Select a style",
+      "tier_label": "Tier (optional)",
+      "tier_placeholder": "Select a tier"
+    },
+    "filter": {
+      "all_styles": "All Styles"
     }
+  },
+  "guru_style": {
+    "value": "Value",
+    "growth": "Growth",
+    "macro": "Macro",
+    "quant": "Quant",
+    "activist": "Activist",
+    "multi_strategy": "Multi-Strategy"
+  },
+  "guru_tier": {
+    "tier_1": "Legendary",
+    "tier_2": "Elite",
+    "tier_3": "Notable"
   }
 }

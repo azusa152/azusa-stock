@@ -5591,6 +5591,43 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Display Name"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "VALUE",
+                  "GROWTH",
+                  "MACRO",
+                  "QUANT",
+                  "ACTIVIST",
+                  "MULTI_STRATEGY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style",
+            "description": "\u6295\u8cc7\u98a8\u683c"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "TIER_1",
+                  "TIER_2",
+                  "TIER_3"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier",
+            "description": "\u7b49\u7d1a\u6392\u540d"
           }
         },
         "type": "object",
@@ -5812,6 +5849,28 @@
           "is_default": {
             "type": "boolean",
             "title": "Is Default"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           }
         },
         "type": "object",
@@ -5878,6 +5937,28 @@
             "type": "integer",
             "title": "Filing Count",
             "default": 0
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           }
         },
         "type": "object",

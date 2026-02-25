@@ -7,6 +7,7 @@ import { useGurus, useSyncAllGurus } from "@/api/hooks/useSmartMoney"
 import { OverviewTab } from "@/components/smartmoney/OverviewTab"
 import { GuruTab } from "@/components/smartmoney/GuruTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
+import { cn } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
 const ADD_GURU_TAB = "add_guru"
@@ -15,6 +16,7 @@ export default function SmartMoney() {
   const { t } = useTranslation()
   const [sopOpen, setSopOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(OVERVIEW_TAB)
+  const [styleFilter, setStyleFilter] = useState<string | null>(null)
 
   const { data: gurus, isLoading, isError } = useGurus()
   const syncAllMutation = useSyncAllGurus()
@@ -40,6 +42,23 @@ export default function SmartMoney() {
   }
 
   const activeGurus = gurus.filter((g) => g.is_active)
+
+  const filteredGurus = activeGurus.filter(
+    (g) => styleFilter == null || g.style === styleFilter,
+  )
+
+  const availableStyles: string[] = Array.from(
+    new Set(activeGurus.map((g) => g.style).filter((s): s is string => !!s)),
+  )
+
+  // If the active guru tab was filtered out, fall back to Overview
+  const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
+  const resolvedTab =
+    activeTab !== OVERVIEW_TAB &&
+    activeTab !== ADD_GURU_TAB &&
+    !filteredGuruIds.has(activeTab)
+      ? OVERVIEW_TAB
+      : activeTab
 
   return (
     <div className="p-6 space-y-4">
@@ -90,11 +109,38 @@ export default function SmartMoney() {
         </p>
       )}
 
+      {/* Style filter chips */}
+      {availableStyles.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setStyleFilter(null)}
+            className={cn(
+              "text-xs px-2 py-0.5 rounded-full border transition-colors",
+              styleFilter == null ? "bg-foreground text-background" : "hover:bg-muted/50",
+            )}
+          >
+            {t("smart_money.filter.all_styles")}
+          </button>
+          {availableStyles.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStyleFilter(s === styleFilter ? null : s)}
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                s === styleFilter ? "bg-foreground text-background" : "hover:bg-muted/50",
+              )}
+            >
+              {t(`guru_style.${s.toLowerCase()}`, { defaultValue: s })}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tab bar: Overview + per-guru + Add Guru */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={resolvedTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
-          {activeGurus.map((guru) => (
+          {filteredGurus.map((guru) => (
             <TabsTrigger key={guru.id} value={String(guru.id)}>
               {guru.display_name}
             </TabsTrigger>
@@ -112,9 +158,9 @@ export default function SmartMoney() {
         </TabsContent>
 
         {/* Per-guru tabs */}
-        {activeGurus.map((guru) => (
+        {filteredGurus.map((guru) => (
           <TabsContent key={guru.id} value={String(guru.id)} className="mt-4">
-            <GuruTab guruId={guru.id} guruName={guru.display_name} enabled={activeTab === String(guru.id)} />
+            <GuruTab guruId={guru.id} guruName={guru.display_name} enabled={resolvedTab === String(guru.id)} />
           </TabsContent>
         ))}
 

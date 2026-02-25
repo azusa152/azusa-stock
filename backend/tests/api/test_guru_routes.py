@@ -119,6 +119,25 @@ class TestGetGurus:
         assert "cik" in data[0]
         assert "is_default" in data[0]
 
+    def test_response_includes_style_and_tier_fields(self, client):
+        with Session(test_engine) as session:
+            save_guru(
+                session,
+                Guru(
+                    name="Berkshire Hathaway",
+                    cik="0001067983",
+                    display_name="Buffett",
+                    style="VALUE",
+                    tier="TIER_1",
+                ),
+            )
+
+        resp = client.get("/gurus")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[0]["style"] == "VALUE"
+        assert data[0]["tier"] == "TIER_1"
+
 
 # ===========================================================================
 # POST /gurus — GuruCreate validation

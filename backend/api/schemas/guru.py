@@ -2,7 +2,14 @@
 API — Guru / Resonance / Dashboard / Filing Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+GuruStyleLiteral = Literal[
+    "VALUE", "GROWTH", "MACRO", "QUANT", "ACTIVIST", "MULTI_STRATEGY"
+]
+GuruTierLiteral = Literal["TIER_1", "TIER_2", "TIER_3"]
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -15,6 +22,8 @@ class GuruCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     cik: str = Field(..., min_length=1, max_length=20, description="SEC CIK 代碼")
     display_name: str = Field(..., min_length=1, max_length=100)
+    style: GuruStyleLiteral | None = Field(default=None, description="投資風格")
+    tier: GuruTierLiteral | None = Field(default=None, description="等級排名")
 
 
 # ---------------------------------------------------------------------------
@@ -31,6 +40,8 @@ class GuruResponse(BaseModel):
     display_name: str
     is_active: bool
     is_default: bool
+    style: str | None = None
+    tier: str | None = None
 
 
 class GuruFilingResponse(BaseModel):
@@ -148,6 +159,8 @@ class GuruSummaryItem(BaseModel):
     total_value: float | None = None
     holdings_count: int = 0
     filing_count: int = 0
+    style: str | None = None
+    tier: str | None = None
 
 
 class SeasonHighlightItem(BaseModel):

@@ -1197,7 +1197,27 @@
       "display_placeholder": "例如 Warren Buffett",
       "submit_button": "添加大师",
       "required_warning": "⚠️ 请填写所有字段。",
-      "success": "✅ 已添加 {{display_name}}，请切换至总览页面查看。"
+      "success": "✅ 已添加 {{display_name}}，请切换至总览页面查看。",
+      "style_label": "投资风格（可选）",
+      "style_placeholder": "选择风格",
+      "tier_label": "等级（可选）",
+      "tier_placeholder": "选择等级"
+    },
+    "filter": {
+      "all_styles": "所有风格"
     }
+  },
+  "guru_style": {
+    "value": "价值",
+    "growth": "成长",
+    "macro": "宏观",
+    "quant": "量化",
+    "activist": "维权",
+    "multi_strategy": "多策略"
+  },
+  "guru_tier": {
+    "tier_1": "传奇",
+    "tier_2": "精英",
+    "tier_3": "值得关注"
   }
 }

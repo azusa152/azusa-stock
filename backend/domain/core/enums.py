@@ -101,3 +101,22 @@ class HoldingAction(StrEnum):
     INCREASED = "INCREASED"  # 加碼 (>= threshold)
     DECREASED = "DECREASED"  # 減碼 (>= threshold)
     UNCHANGED = "UNCHANGED"  # 持平 (< threshold)
+
+
+class GuruStyle(StrEnum):
+    """大師投資風格分類（基於 HFR 行業標準分類）。"""
+
+    VALUE = "VALUE"
+    GROWTH = "GROWTH"
+    MACRO = "MACRO"
+    QUANT = "QUANT"
+    ACTIVIST = "ACTIVIST"
+    MULTI_STRATEGY = "MULTI_STRATEGY"
+
+
+class GuruTier(StrEnum):
+    """大師等級排名（編輯評選，非基於績效計算）。"""
+
+    TIER_1 = "TIER_1"  # 傳奇 / 必追蹤
+    TIER_2 = "TIER_2"  # 菁英 / 高關注度
+    TIER_3 = "TIER_3"  # 值得關注 / 利基 / 使用者自訂

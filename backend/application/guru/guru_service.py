@@ -38,11 +38,18 @@ def seed_default_gurus(session: Session) -> int:
                 name=entry["name"],
                 cik=entry["cik"],
                 display_name=entry["display_name"],
+                style=entry.get("style"),
+                tier=entry.get("tier"),
                 is_default=True,
             )
             save_guru(session, guru)
             added += 1
             logger.info("種子大師新增：%s (%s)", entry["display_name"], entry["cik"])
+        elif existing.style is None or existing.tier is None:
+            # Backfill style/tier for rows seeded before these fields existed
+            existing.style = entry.get("style")
+            existing.tier = entry.get("tier")
+            update_guru(session, existing)
 
     logger.info(
         "大師種子資料完成：本次新增 %d 筆，共 %d 筆預設大師", added, len(DEFAULT_GURUS)
@@ -68,6 +75,8 @@ def add_guru(
     name: str,
     cik: str,
     display_name: str,
+    style: str | None = None,
+    tier: str | None = None,
 ) -> Guru:
     """
     新增自訂大師（以 CIK 為唯一鍵）。
@@ -78,6 +87,8 @@ def add_guru(
         name: 機構正式名稱
         cik: SEC CIK（10 碼補零）
         display_name: 顯示名稱
+        style: 投資風格（選填）
+        tier: 等級排名（選填）
 
     Returns:
         新增或重新啟用的 Guru 實體
@@ -88,11 +99,15 @@ def add_guru(
         existing.is_active = True
         existing.name = name
         existing.display_name = display_name
+        if style is not None:
+            existing.style = style
+        if tier is not None:
+            existing.tier = tier
         guru = update_guru(session, existing)
         logger.info("大師重新啟用：%s (%s)", display_name, cik)
         return guru
 
-    guru = Guru(name=name, cik=cik, display_name=display_name)
+    guru = Guru(name=name, cik=cik, display_name=display_name, style=style, tier=tier)
     saved = save_guru(session, guru)
     logger.info("新增大師：%s (%s)", display_name, cik)
     return saved

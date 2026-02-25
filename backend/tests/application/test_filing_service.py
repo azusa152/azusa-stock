@@ -112,6 +112,39 @@ class TestSeedDefaultGurus:
 
         assert all(g.is_default for g in active)
 
+    def test_seed_default_gurus_should_set_style_and_tier(self, db_session: Session):
+        from application.guru.guru_service import seed_default_gurus
+
+        seed_default_gurus(db_session)
+        active = find_all_active_gurus(db_session)
+
+        assert len(active) == 10
+        assert all(g.style is not None for g in active)
+        assert all(g.tier is not None for g in active)
+
+    def test_seed_default_gurus_should_backfill_style_tier_on_second_call(
+        self, db_session: Session
+    ):
+        from application.guru.guru_service import seed_default_gurus
+        from infrastructure.repositories import find_guru_by_cik, update_guru
+
+        seed_default_gurus(db_session)
+
+        # Wipe style/tier for one guru to simulate pre-existing data
+        buffett = find_guru_by_cik(db_session, "0001067983")
+        assert buffett is not None
+        buffett.style = None
+        buffett.tier = None
+        update_guru(db_session, buffett)
+
+        # Second seed should backfill
+        seed_default_gurus(db_session)
+
+        refreshed = find_guru_by_cik(db_session, "0001067983")
+        assert refreshed is not None
+        assert refreshed.style == "VALUE"
+        assert refreshed.tier == "TIER_1"
+
 
 class TestListGurus:
     """Tests for list_gurus()."""

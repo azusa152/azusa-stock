@@ -1197,7 +1197,27 @@
       "display_placeholder": "例: Warren Buffett",
       "submit_button": "グルを追加",
       "required_warning": "⚠️ すべての欄を入力してください。",
-      "success": "✅ {{display_name}} を追加しました。概要タブに切り替えて確認してください。"
+      "success": "✅ {{display_name}} を追加しました。概要タブに切り替えて確認してください。",
+      "style_label": "投資スタイル（任意）",
+      "style_placeholder": "スタイルを選択",
+      "tier_label": "ティア（任意）",
+      "tier_placeholder": "ティアを選択"
+    },
+    "filter": {
+      "all_styles": "すべてのスタイル"
     }
+  },
+  "guru_style": {
+    "value": "バリュー",
+    "growth": "グロース",
+    "macro": "マクロ",
+    "quant": "クオンツ",
+    "activist": "アクティビスト",
+    "multi_strategy": "マルチストラテジー"
+  },
+  "guru_tier": {
+    "tier_1": "レジェンド",
+    "tier_2": "エリート",
+    "tier_3": "注目"
   }
 }

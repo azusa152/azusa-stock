@@ -96,6 +96,8 @@ def get_gurus(session: Session = Depends(get_session)) -> list[GuruResponse]:
             display_name=g.display_name,
             is_active=g.is_active,
             is_default=g.is_default,
+            style=g.style,
+            tier=g.tier,
         )
         for g in gurus
     ]
@@ -113,7 +115,12 @@ def create_guru(
 ) -> GuruResponse:
     """新增自訂大師。若 CIK 已存在且為停用狀態則重新啟用。"""
     guru = add_guru(
-        session, name=body.name, cik=body.cik, display_name=body.display_name
+        session,
+        name=body.name,
+        cik=body.cik,
+        display_name=body.display_name,
+        style=body.style,
+        tier=body.tier,
     )
     return GuruResponse(
         id=guru.id,
@@ -122,6 +129,8 @@ def create_guru(
         display_name=guru.display_name,
         is_active=guru.is_active,
         is_default=guru.is_default,
+        style=guru.style,
+        tier=guru.tier,
     )
 
 

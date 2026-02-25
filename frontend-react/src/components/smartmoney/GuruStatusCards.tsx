@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useSyncGuru } from "@/api/hooks/useSmartMoney"
 import { formatValue, isStale } from "./formatters"
+import { GuruStyleBadge } from "./GuruStyleBadge"
+import { GURU_TIER_STARS } from "@/lib/constants"
 import type { GuruSummaryItem } from "@/api/types/smartMoney"
 
 interface Props {
@@ -28,7 +30,15 @@ export function GuruStatusCards({ gurus }: Props) {
             <CardContent className="p-3 space-y-1.5">
               {/* Header row */}
               <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold text-sm truncate">{guru.display_name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  <p className="font-semibold text-sm truncate">{guru.display_name}</p>
+                  <GuruStyleBadge style={guru.style} />
+                  {guru.tier && GURU_TIER_STARS[guru.tier] != null && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {"★".repeat(GURU_TIER_STARS[guru.tier])}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs shrink-0">
                   {stale
                     ? t("smart_money.overview.stale_label")

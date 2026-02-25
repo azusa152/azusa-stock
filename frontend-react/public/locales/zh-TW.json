@@ -1197,7 +1197,27 @@
       "display_placeholder": "例如 Warren Buffett",
       "submit_button": "新增大師",
       "required_warning": "⚠️ 請填寫所有欄位。",
-      "success": "✅ 已新增 {{display_name}}，請切換至總覽頁面查看。"
+      "success": "✅ 已新增 {{display_name}}，請切換至總覽頁面查看。",
+      "style_label": "投資風格（選填）",
+      "style_placeholder": "選擇風格",
+      "tier_label": "等級（選填）",
+      "tier_placeholder": "選擇等級"
+    },
+    "filter": {
+      "all_styles": "所有風格"
     }
+  },
+  "guru_style": {
+    "value": "價值",
+    "growth": "成長",
+    "macro": "總體宏觀",
+    "quant": "量化",
+    "activist": "維權",
+    "multi_strategy": "多策略"
+  },
+  "guru_tier": {
+    "tier_1": "傳奇",
+    "tier_2": "菁英",
+    "tier_3": "值得關注"
   }
 }

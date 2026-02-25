@@ -590,6 +590,8 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
                 "total_value": filing.total_value if filing else None,
                 "holdings_count": filing.holdings_count if filing else 0,
                 "filing_count": filing_counts.get(guru.id, 0),
+                "style": guru.style,
+                "tier": guru.tier,
             }
         )
     return results
