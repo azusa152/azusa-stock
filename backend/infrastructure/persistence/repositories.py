@@ -658,54 +658,73 @@ def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
 
 
 def find_consensus_stocks(session: Session) -> list[dict]:
-    """
-    查詢被多位大師同時持有的股票（最新申報），依持有大師數量降序排列。
+    """Return tickers held by >1 active guru in their latest filings.
 
-    回傳 list of dict，每筆含：
-        ticker, guru_count, gurus (list of display_name), total_value
+    Excludes SOLD_OUT positions. Returns enriched shape with per-guru
+    action/weight detail, avg weight, sector, and company name.
     """
     from domain.enums import HoldingAction
 
-    latest_filing_ids_subq = _latest_filing_ids_subquery()
+    latest_ids = _latest_filing_ids_subquery()
 
-    # 取得所有最新申報中有 ticker 的持倉（排除 SOLD_OUT）
-    holdings_stmt = (
+    # Single query: all relevant holdings with guru display names
+    stmt = (
         select(GuruHolding, Guru.display_name)
-        .join(
-            latest_filing_ids_subq,
-            GuruHolding.filing_id == latest_filing_ids_subq.c.filing_id,
-        )
+        .join(latest_ids, GuruHolding.filing_id == latest_ids.c.filing_id)
         .join(Guru, GuruHolding.guru_id == Guru.id)
         .where(
             GuruHolding.ticker.isnot(None),  # type: ignore[union-attr]
             GuruHolding.action != HoldingAction.SOLD_OUT.value,
         )
     )
-    rows = session.exec(holdings_stmt).all()
+    rows = session.exec(stmt).all()
 
-    # 聚合：ticker → {guru_count, gurus, total_value}
+    # Aggregate: ticker → {company_name, sector, guru_details, total_value}
     ticker_map: dict[str, dict] = {}
     for holding, guru_display_name in rows:
         t = holding.ticker
         if t not in ticker_map:
-            ticker_map[t] = {"gurus": [], "total_value": 0.0}
-        if guru_display_name not in ticker_map[t]["gurus"]:
-            ticker_map[t]["gurus"].append(guru_display_name)
+            ticker_map[t] = {
+                "company_name": holding.company_name,
+                "sector": holding.sector,
+                "guru_details": [],
+                "total_value": 0.0,
+            }
+        # Deduplicate by display_name (one guru may hold multiple CUSIPs for same ticker)
+        if not any(
+            g["display_name"] == guru_display_name
+            for g in ticker_map[t]["guru_details"]
+        ):
+            ticker_map[t]["guru_details"].append(
+                {
+                    "display_name": guru_display_name,
+                    "action": holding.action,
+                    "weight_pct": holding.weight_pct,
+                }
+            )
         ticker_map[t]["total_value"] += holding.value
 
-    # 只保留被多位大師持有的，依 guru_count 降序
-    consensus = [
-        {
-            "ticker": t,
-            "guru_count": len(d["gurus"]),
-            "gurus": d["gurus"],
-            "total_value": d["total_value"],
-        }
-        for t, d in ticker_map.items()
-        if len(d["gurus"]) > 1
-    ]
-    consensus.sort(key=lambda x: x["guru_count"], reverse=True)
-    return consensus
+    result = []
+    for t, d in ticker_map.items():
+        guru_details = d["guru_details"]
+        if len(guru_details) <= 1:
+            continue
+        weights = [g["weight_pct"] for g in guru_details if g["weight_pct"] is not None]
+        avg_weight_pct = sum(weights) / len(weights) if weights else None
+        result.append(
+            {
+                "ticker": t,
+                "company_name": d["company_name"],
+                "guru_count": len(guru_details),
+                "gurus": guru_details,
+                "total_value": d["total_value"],
+                "avg_weight_pct": avg_weight_pct,
+                "sector": d["sector"],
+            }
+        )
+
+    result.sort(key=lambda x: (-x["guru_count"], -x["total_value"]))
+    return result
 
 
 def find_sector_breakdown(session: Session) -> list[dict]:

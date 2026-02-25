@@ -577,9 +577,19 @@ _DASHBOARD_DATA = {
     "consensus": [
         {
             "ticker": "AAPL",
+            "company_name": "Apple Inc",
             "guru_count": 2,
-            "gurus": ["Warren Buffett", "Ray Dalio"],
+            "gurus": [
+                {
+                    "display_name": "Warren Buffett",
+                    "action": "UNCHANGED",
+                    "weight_pct": 5.0,
+                },
+                {"display_name": "Ray Dalio", "action": "INCREASED", "weight_pct": 3.0},
+            ],
             "total_value": 200_000_000.0,
+            "avg_weight_pct": 4.0,
+            "sector": "Technology",
         }
     ],
     "sector_breakdown": [
@@ -590,6 +600,10 @@ _DASHBOARD_DATA = {
             "weight_pct": 45.0,
         }
     ],
+    "activity_feed": {
+        "most_bought": [],
+        "most_sold": [],
+    },
 }
 
 
@@ -649,6 +663,7 @@ class TestGetDashboard:
             "season_highlights": {"new_positions": [], "sold_outs": []},
             "consensus": [],
             "sector_breakdown": [],
+            "activity_feed": {"most_bought": [], "most_sold": []},
         }
         with patch(DASHBOARD_TARGET, return_value=empty_data):
             resp = client.get("/gurus/dashboard")

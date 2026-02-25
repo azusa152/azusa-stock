@@ -4839,11 +4839,46 @@
         "title": "CategoryUpdateRequest",
         "description": "PATCH /ticker/{ticker}/category \u8acb\u6c42 Body\u3002"
       },
+      "ConsensusGuruDetail": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name",
+          "action"
+        ],
+        "title": "ConsensusGuruDetail",
+        "description": "\u5171\u8b58\u80a1\u7968\u4e2d\u55ae\u4e00\u5927\u5e2b\u7684\u6301\u5009\u7d30\u7bc0\u3002"
+      },
       "ConsensusStockItem": {
         "properties": {
           "ticker": {
             "type": "string",
             "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "default": ""
           },
           "guru_count": {
             "type": "integer",
@@ -4851,7 +4886,7 @@
           },
           "gurus": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ConsensusGuruDetail"
             },
             "type": "array",
             "title": "Gurus",
@@ -4861,6 +4896,28 @@
             "type": "number",
             "title": "Total Value",
             "default": 0.0
+          },
+          "avg_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Weight Pct"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
           }
         },
         "type": "object",

@@ -1185,7 +1185,8 @@
       "sync_button": "🔄 同步",
       "filing_history_expander": "📅 申報歷史 ({{count}} 筆)",
       "filing_history_row": "📄 {{report_date}}  ·  公告：{{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} 筆",
-      "sector_weight_axis": "配置比重 (%)"
+      "sector_weight_axis": "配置比重 (%)",
+      "avg_weight_label": "平均"
     },
     "add_guru": {
       "title": "➕ 新增自訂大師",

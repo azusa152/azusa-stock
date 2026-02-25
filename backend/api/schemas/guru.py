@@ -182,13 +182,24 @@ class SeasonHighlights(BaseModel):
     sold_outs: list[SeasonHighlightItem] = []
 
 
+class ConsensusGuruDetail(BaseModel):
+    """共識股票中單一大師的持倉細節。"""
+
+    display_name: str
+    action: str
+    weight_pct: float | None = None
+
+
 class ConsensusStockItem(BaseModel):
     """被多位大師同時持有的共識股票。"""
 
     ticker: str
+    company_name: str = ""
     guru_count: int
-    gurus: list[str] = []
+    gurus: list[ConsensusGuruDetail] = []
     total_value: float = 0.0
+    avg_weight_pct: float | None = None
+    sector: str | None = None
 
 
 class SectorBreakdownItem(BaseModel):

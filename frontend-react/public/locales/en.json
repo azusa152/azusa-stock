@@ -1185,7 +1185,8 @@
       "sync_button": "🔄 Sync",
       "filing_history_expander": "📅 Filing History ({{count}})",
       "filing_history_row": "📄 {{report_date}}  ·  Filed: {{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} holdings",
-      "sector_weight_axis": "Weight (%)"
+      "sector_weight_axis": "Weight (%)",
+      "avg_weight_label": "avg"
     },
     "add_guru": {
       "title": "➕ Add Custom Guru",

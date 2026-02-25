@@ -418,6 +418,72 @@ class TestFindConsensusStocks:
         assert meta_entry is not None
         assert meta_entry["guru_count"] == 2
         assert len(meta_entry["gurus"]) == 2
+        # gurus is now list[dict] with display_name, action, weight_pct
+        guru_names = {g["display_name"] for g in meta_entry["gurus"]}
+        assert "Consensus Guru A" in guru_names
+        assert "Consensus Guru B" in guru_names
+
+    def test_enriched_fields_present(self, test_session: Session):
+        """Each consensus item should include company_name, avg_weight_pct, sector."""
+        guru_a = _make_guru(
+            test_session, cik="2000000006", display_name="Enrich Guru A"
+        )
+        guru_b = _make_guru(
+            test_session, cik="2000000007", display_name="Enrich Guru B"
+        )
+        filing_a = _make_filing(test_session, guru_a.id, "CON-006", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "CON-007", "2025-12-31")
+        self._make_holding_with_ticker(
+            test_session, filing_a.id, guru_a.id, "CUSIP-EA1", "GOOGL"
+        )
+        self._make_holding_with_ticker(
+            test_session, filing_b.id, guru_b.id, "CUSIP-EB1", "GOOGL"
+        )
+
+        result = find_consensus_stocks(test_session)
+
+        entry = next((r for r in result if r["ticker"] == "GOOGL"), None)
+        assert entry is not None
+        assert entry["company_name"] == "Company GOOGL"
+        assert entry["avg_weight_pct"] == pytest.approx(5.0)
+        assert entry["sector"] is None  # helper doesn't set sector
+        # Each guru detail has the expected keys and values
+        for g in entry["gurus"]:
+            assert "display_name" in g
+            assert "action" in g
+            assert g["weight_pct"] == pytest.approx(5.0)
+
+    def test_sold_out_excluded(self, test_session: Session):
+        """SOLD_OUT positions must not appear in consensus."""
+        guru_a = _make_guru(
+            test_session, cik="2000000008", display_name="SoldOut Guru A"
+        )
+        guru_b = _make_guru(
+            test_session, cik="2000000009", display_name="SoldOut Guru B"
+        )
+        filing_a = _make_filing(test_session, guru_a.id, "CON-008", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "CON-009", "2025-12-31")
+
+        for filing_id, guru_id, cusip in [
+            (filing_a.id, guru_a.id, "CUSIP-SO1"),
+            (filing_b.id, guru_b.id, "CUSIP-SO2"),
+        ]:
+            holding = GuruHolding(
+                filing_id=filing_id,
+                guru_id=guru_id,
+                cusip=cusip,
+                ticker="SOLD_TICKER",
+                company_name="Sold Co",
+                value=100_000.0,
+                shares=500.0,
+                action=HoldingAction.SOLD_OUT.value,
+                weight_pct=2.0,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        result = find_consensus_stocks(test_session)
+
+        assert not any(r["ticker"] == "SOLD_TICKER" for r in result)
 
     def test_ticker_held_by_single_guru_not_in_consensus(self, test_session: Session):
         """A ticker held by only one guru should NOT appear (consensus requires 2+)."""

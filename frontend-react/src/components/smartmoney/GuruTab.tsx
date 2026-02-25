@@ -13,24 +13,13 @@ import {
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
+import { ActionBadge } from "./ActionBadge"
 import type { GuruHolding } from "@/api/types/smartMoney"
 
 interface Props {
   guruId: number
   guruName: string
   enabled: boolean
-}
-
-function ActionBadge({ action }: { action: string }) {
-  const { t } = useTranslation()
-  const color = ACTION_COLORS[action] ?? ACTION_COLORS.UNCHANGED
-  const icon = ACTION_ICONS[action] ?? "⚪"
-  const labelKey = `smart_money.action.${action.toLowerCase()}`
-  return (
-    <span style={{ color }} className="text-xs font-medium whitespace-nowrap">
-      {icon} {t(labelKey, { defaultValue: action })}
-    </span>
-  )
 }
 
 function groupByAction(holdings: GuruHolding[]): Map<string, GuruHolding[]> {
