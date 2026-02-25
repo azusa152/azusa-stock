@@ -12,6 +12,7 @@ filterwarnings = [
 source = ["api", "application", "domain", "infrastructure"]
 omit = ["tests/*", "**/conftest.py"]
 relative_files = true
+parallel = true
 
 [tool.coverage.report]
 fail_under = 85
