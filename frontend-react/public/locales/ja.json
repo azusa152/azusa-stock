@@ -204,7 +204,10 @@
     "performance_commentary_positive_no_benchmark": "当期ポートフォリオは {{return}}% 上昇",
     "performance_commentary_negative_no_benchmark": "当期ポートフォリオは {{return}}% 下落",
     "performance_commentary_flat_no_benchmark": "当期ポートフォリオはほぼ横ばい",
-    "performance_no_benchmark_data": "この期間の {{benchmark}} データなし — バックフィルを実行して過去データを補完"
+    "performance_no_benchmark_data": "この期間の {{benchmark}} データなし",
+    "performance_backfill_run": "バックフィル実行",
+    "performance_backfilling": "バックフィル中…",
+    "performance_backfill_done": "バックフィルをトリガーしました — しばらくしてから更新してください"
   },
   "radar": {
     "title": "📡 Folio",

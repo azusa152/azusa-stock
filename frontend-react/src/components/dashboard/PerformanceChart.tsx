@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
+import apiClient from "@/api/client"
 import { useTranslation } from "react-i18next"
 import {
   AreaSeries,
@@ -76,6 +77,20 @@ export function PerformanceChart({ snapshots }: Props) {
 
   // Whether the selected benchmark has enough data points in the current period
   const [hasBenchmarkData, setHasBenchmarkData] = useState(true)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillDone, setBackfillDone] = useState(false)
+
+  const handleBackfill = useCallback(async () => {
+    setBackfilling(true)
+    try {
+      await apiClient.post("/snapshots/backfill-benchmarks")
+      setBackfillDone(true)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setBackfilling(false)
+    }
+  }, [])
 
   // Stable chart / series refs — set once inside onInit, read by the data-update effect
   const chartRef = useRef<IChartApi | null>(null)
@@ -385,15 +400,28 @@ export function PerformanceChart({ snapshots }: Props) {
           ))}
         </div>
 
-        {/* No-data notice when selected benchmark has no history for this period */}
+        {/* No-data notice + backfill trigger */}
         {!hasBenchmarkData && hasPeriodData && (
-          <p className="text-xs text-amber-500 mt-0.5">
-            {t("dashboard.performance_no_benchmark_data", {
-              benchmark: t(
-                BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
-              ),
-            })}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-amber-500">
+              {backfillDone
+                ? t("dashboard.performance_backfill_done")
+                : t("dashboard.performance_no_benchmark_data", {
+                    benchmark: t(
+                      BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
+                    ),
+                  })}
+            </p>
+            {!backfillDone && (
+              <button
+                onClick={handleBackfill}
+                disabled={backfilling}
+                className="text-xs px-2 py-0.5 rounded border border-amber-500 text-amber-500 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Sub-caption: date range when idle, hovered date when crosshair active */}

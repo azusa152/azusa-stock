@@ -204,7 +204,10 @@
     "performance_commentary_positive_no_benchmark": "本期投資組合上漲 {{return}}%",
     "performance_commentary_negative_no_benchmark": "本期投資組合下跌 {{return}}%",
     "performance_commentary_flat_no_benchmark": "本期投資組合幾乎持平",
-    "performance_no_benchmark_data": "此期間無 {{benchmark}} 基準資料 — 可執行回填以補全歷史數據"
+    "performance_no_benchmark_data": "此期間無 {{benchmark}} 基準資料",
+    "performance_backfill_run": "執行回填",
+    "performance_backfilling": "回填中…",
+    "performance_backfill_done": "已觸發回填 — 稍後重新整理頁面"
   },
   "radar": {
     "title": "📡 Folio",

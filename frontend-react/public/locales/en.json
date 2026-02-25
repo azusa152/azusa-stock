@@ -204,7 +204,10 @@
     "performance_commentary_positive_no_benchmark": "Portfolio up {{return}}% for the period",
     "performance_commentary_negative_no_benchmark": "Portfolio down {{return}}% for the period",
     "performance_commentary_flat_no_benchmark": "Portfolio roughly flat for the period",
-    "performance_no_benchmark_data": "No {{benchmark}} data for this period — run backfill to populate historical data"
+    "performance_no_benchmark_data": "No {{benchmark}} data for this period",
+    "performance_backfill_run": "Run backfill",
+    "performance_backfilling": "Backfilling…",
+    "performance_backfill_done": "Backfill triggered — refresh in a moment"
   },
   "radar": {
     "title": "📡 Folio",
