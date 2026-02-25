@@ -1141,7 +1141,8 @@
       "weight_pct": "比重%",
       "rank": "#",
       "action": "アクション",
-      "sector": "セクター"
+      "sector": "セクター",
+      "perf_since_filing": "申告来騰落"
     },
     "changes": {
       "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。",

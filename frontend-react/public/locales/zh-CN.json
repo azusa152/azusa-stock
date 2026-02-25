@@ -1141,7 +1141,8 @@
       "weight_pct": "权重%",
       "rank": "#",
       "action": "操作",
-      "sector": "板块"
+      "sector": "板块",
+      "perf_since_filing": "申报以来涨跌"
     },
     "changes": {
       "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。",

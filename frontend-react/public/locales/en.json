@@ -1141,7 +1141,8 @@
       "weight_pct": "Wt%",
       "rank": "#",
       "action": "Action",
-      "sector": "Sector"
+      "sector": "Sector",
+      "perf_since_filing": "Since Filing"
     },
     "changes": {
       "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",

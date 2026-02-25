@@ -75,6 +75,7 @@ class GuruHoldingResponse(BaseModel):
     weight_pct: float | None = None
     report_date: str | None = None
     filing_date: str | None = None
+    price_change_pct: float | None = None
 
 
 class SyncResponse(BaseModel):

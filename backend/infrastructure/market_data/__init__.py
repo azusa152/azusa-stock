@@ -11,6 +11,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     batch_download_history,
     clear_all_caches,
     detect_is_etf,
+    fetch_price_pair,
     get_bias_distribution,
     get_cnn_fear_greed,
     get_dividend_info,

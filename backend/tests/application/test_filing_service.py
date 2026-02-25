@@ -1277,3 +1277,113 @@ class TestGetDashboardSummary:
             item["ticker"] for item in result["activity_feed"]["most_bought"]
         ]
         assert "DASH_TICKER" in bought_tickers
+
+
+# ===========================================================================
+# Phase 7 — enrich_holdings_with_performance tests
+# ===========================================================================
+
+
+class TestEnrichHoldingsWithPerformance:
+    """Unit tests for enrich_holdings_with_performance."""
+
+    ENRICH_TARGET = "infrastructure.market_data.fetch_price_pair"
+
+    def test_computes_positive_price_change_correctly(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "AAPL", "company_name": "Apple"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"AAPL": {"report_price": 100.0, "current_price": 110.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] == pytest.approx(10.0)
+
+    def test_computes_negative_price_change_correctly(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "TSLA", "company_name": "Tesla"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"TSLA": {"report_price": 200.0, "current_price": 190.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] == pytest.approx(-5.0)
+
+    def test_sets_none_when_ticker_is_missing(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": None, "company_name": "Unknown Co"}]
+        with patch(self.ENRICH_TARGET, return_value={}):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_sets_none_when_price_map_has_none_prices(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "NVDA", "company_name": "Nvidia"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"NVDA": {"report_price": None, "current_price": 500.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_never_raises_when_fetch_price_pair_throws(self):
+        """enrich_holdings_with_performance must not propagate exceptions."""
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "BAD", "company_name": "Bad Co"}]
+        with patch(self.ENRICH_TARGET, side_effect=RuntimeError("network error")):
+            # Should not raise; price_change_pct remains None
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_include_performance_false_does_not_call_enrich(self, db_session: Session):
+        """get_holding_changes with include_performance=False must skip enrichment."""
+        from application.stock.filing_service import (
+            get_holding_changes,
+        )
+
+        guru = save_guru(
+            db_session,
+            Guru(name="PerfTestGuru", cik="0009900001", display_name="Perf Test"),
+        )
+        filing = save_filing(
+            db_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="PERF-ACC-001",
+                report_date="2024-12-31",
+                filing_date="2025-02-14",
+            ),
+        )
+        save_holdings_batch(
+            db_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="PERFCUSIP1",
+                    ticker="PERF",
+                    company_name="Perf Co",
+                    value=100_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.NEW_POSITION.value,
+                    weight_pct=100.0,
+                )
+            ],
+        )
+
+        enrich_path = (
+            "application.stock.filing_service.enrich_holdings_with_performance"
+        )
+        with patch(enrich_path) as mock_enrich:
+            get_holding_changes(db_session, guru.id, include_performance=False)
+            mock_enrich.assert_not_called()

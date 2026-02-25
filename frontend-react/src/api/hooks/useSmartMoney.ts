@@ -62,11 +62,13 @@ export function useGuruFilings(id: number, enabled = true) {
   })
 }
 
-export function useGuruHoldingChanges(id: number, enabled = true) {
+export function useGuruHoldingChanges(id: number, enabled = true, includePerformance = true) {
   return useQuery<GuruHolding[]>({
-    queryKey: ["guruHoldingChanges", id],
+    queryKey: ["guruHoldingChanges", id, includePerformance],
     queryFn: async () => {
-      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/holdings?limit=20`)
+      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/holdings`, {
+        params: { limit: 20, include_performance: includePerformance },
+      })
       return data
     },
     staleTime: 5 * 60 * 1000,
@@ -74,11 +76,13 @@ export function useGuruHoldingChanges(id: number, enabled = true) {
   })
 }
 
-export function useGuruTopHoldings(id: number, enabled = true) {
+export function useGuruTopHoldings(id: number, enabled = true, includePerformance = true) {
   return useQuery<GuruHolding[]>({
-    queryKey: ["guruTopHoldings", id],
+    queryKey: ["guruTopHoldings", id, includePerformance],
     queryFn: async () => {
-      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/top?n=15`)
+      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/top`, {
+        params: { n: 15, include_performance: includePerformance },
+      })
       return data
     },
     staleTime: 5 * 60 * 1000,

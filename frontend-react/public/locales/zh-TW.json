@@ -1141,7 +1141,8 @@
       "weight_pct": "權重%",
       "rank": "#",
       "action": "操作",
-      "sector": "板塊"
+      "sector": "板塊",
+      "perf_since_filing": "申報以來漲跌"
     },
     "changes": {
       "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。",

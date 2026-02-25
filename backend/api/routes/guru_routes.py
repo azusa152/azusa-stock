@@ -304,6 +304,7 @@ def get_holdings(
         le=200,
         description="Max number of changes to return (sorted by abs(change_pct) then weight_pct)",
     ),
+    include_performance: bool = Query(default=False),
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
     """
@@ -311,7 +312,9 @@ def get_holdings(
 
     結果依變動幅度 abs(change_pct) 降序排列，再依 weight_pct 降序，最多回傳 limit 筆。
     """
-    changes = get_holding_changes(session, guru_id, limit=limit)
+    changes = get_holding_changes(
+        session, guru_id, limit=limit, include_performance=include_performance
+    )
     return [
         GuruHoldingResponse(
             guru_id=guru_id,
@@ -325,6 +328,7 @@ def get_holdings(
             weight_pct=h.get("weight_pct"),
             report_date=h.get("report_date"),
             filing_date=h.get("filing_date"),
+            price_change_pct=h.get("price_change_pct"),
         )
         for h in changes
     ]
@@ -340,10 +344,13 @@ def get_top_holdings(
     n: int = Query(
         default=GURU_TOP_HOLDINGS_COUNT, ge=1, le=50, description="Top N holdings"
     ),
+    include_performance: bool = Query(default=False),
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
     """取得指定大師持倉權重最高的前 N 支股票（預設 Top 10，最多 50）。"""
-    top = filing_get_top_holdings(session, guru_id, n)
+    top = filing_get_top_holdings(
+        session, guru_id, n, include_performance=include_performance
+    )
     if not top:
         raise HTTPException(
             status_code=404,
@@ -362,6 +369,7 @@ def get_top_holdings(
             weight_pct=h.get("weight_pct"),
             report_date=h.get("report_date"),
             filing_date=h.get("filing_date"),
+            price_change_pct=h.get("price_change_pct"),
         )
         for h in top
     ]

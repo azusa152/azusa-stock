@@ -4015,6 +4015,16 @@
             "description": "Max number of changes to return (sorted by abs(change_pct) then weight_pct)"
           },
           {
+            "name": "include_performance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Performance"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,
@@ -4090,6 +4100,16 @@
               "title": "N"
             },
             "description": "Top N holdings"
+          },
+          {
+            "name": "include_performance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Performance"
+            }
           },
           {
             "name": "x-api-key",
@@ -6166,6 +6186,17 @@
               }
             ],
             "title": "Filing Date"
+          },
+          "price_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Change Pct"
           }
         },
         "type": "object",
