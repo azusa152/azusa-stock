@@ -4,7 +4,7 @@ import { useAllocRebalance } from "@/api/hooks/useAllocation"
 import { HealthScore } from "./HealthScore"
 import { AllocationCharts } from "./AllocationCharts"
 import { DriftChart } from "./DriftChart"
-import { HoldingsTable } from "./HoldingsTable"
+import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
 import { SectorHeatmap } from "./SectorHeatmap"
 
