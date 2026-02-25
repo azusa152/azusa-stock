@@ -23,6 +23,8 @@ from api.schemas.guru import (  # noqa: F401
     DashboardResponse,
     FilingHistoryItem,
     FilingHistoryResponse,
+    GrandPortfolioItem,
+    GrandPortfolioResponse,
     GreatMindsEntryResponse,
     GreatMindsResponse,
     GuruCreate,

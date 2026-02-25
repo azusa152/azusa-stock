@@ -958,6 +958,112 @@ def find_activity_feed(session: Session, limit: int = 15) -> dict:
     }
 
 
+def find_grand_portfolio(session: Session) -> dict:
+    """Aggregate holdings across all active gurus' latest filings.
+
+    Groups by ticker in Python. Excludes SOLD_OUT positions.
+    Returns items sorted by combined_weight_pct DESC.
+    Uses a single query + Python aggregation (same pattern as find_activity_feed).
+    """
+    from domain.enums import HoldingAction
+
+    latest_ids = _latest_filing_ids_subquery()
+
+    # Single query: fetch all non-SOLD_OUT holdings with guru display names
+    stmt = (
+        select(GuruHolding, Guru.display_name)
+        .join(
+            latest_ids,
+            GuruHolding.filing_id == latest_ids.c.filing_id,
+        )
+        .join(Guru, GuruHolding.guru_id == Guru.id)
+        .where(
+            GuruHolding.action != HoldingAction.SOLD_OUT.value,
+            GuruHolding.ticker.isnot(None),  # type: ignore[union-attr]
+        )
+    )
+    rows = session.exec(stmt).all()
+
+    # ticker → {company_name, sector, gurus (deduped), total_value, weight_pct_sum,
+    #           weight_pct_count, action_counts}
+    ticker_map: dict[str, dict] = {}
+    for holding, guru_display_name in rows:
+        t = holding.ticker
+        if t not in ticker_map:
+            ticker_map[t] = {
+                "company_name": holding.company_name,
+                "sector": holding.sector,
+                "gurus": [],
+                "total_value": 0.0,
+                "weight_pct_sum": 0.0,
+                "weight_pct_count": 0,
+                "action_counts": {},
+            }
+        if guru_display_name not in ticker_map[t]["gurus"]:
+            ticker_map[t]["gurus"].append(guru_display_name)
+        ticker_map[t]["total_value"] += holding.value or 0.0
+        if holding.weight_pct is not None:
+            ticker_map[t]["weight_pct_sum"] += holding.weight_pct
+            ticker_map[t]["weight_pct_count"] += 1
+        ac = ticker_map[t]["action_counts"]
+        ac[holding.action] = ac.get(holding.action, 0) + 1
+
+    grand_total = sum(d["total_value"] for d in ticker_map.values())
+
+    items = []
+    for t, d in ticker_map.items():
+        combined_weight_pct = (
+            d["total_value"] / grand_total * 100 if grand_total > 0 else 0
+        )
+        avg_weight_pct = (
+            d["weight_pct_sum"] / d["weight_pct_count"]
+            if d["weight_pct_count"] > 0
+            else None
+        )
+        dominant_action = (
+            max(d["action_counts"], key=d["action_counts"].get)
+            if d["action_counts"]
+            else HoldingAction.UNCHANGED.value
+        )
+        items.append(
+            {
+                "ticker": t,
+                "company_name": d["company_name"],
+                "sector": d["sector"],
+                "guru_count": len(d["gurus"]),
+                "gurus": d["gurus"],
+                "total_value": d["total_value"],
+                "avg_weight_pct": avg_weight_pct,
+                "combined_weight_pct": round(combined_weight_pct, 3),
+                "dominant_action": dominant_action,
+            }
+        )
+
+    items.sort(key=lambda x: x["combined_weight_pct"], reverse=True)
+
+    # Sector breakdown for the grand portfolio
+    sector_map: dict[str, float] = {}
+    for item in items:
+        sector = item["sector"] or "Unknown"
+        sector_map[sector] = sector_map.get(sector, 0) + item["total_value"]
+    sector_breakdown = [
+        {
+            "sector": s,
+            "total_value": v,
+            "holding_count": sum(1 for i in items if (i["sector"] or "Unknown") == s),
+            "weight_pct": round(v / grand_total * 100, 2) if grand_total > 0 else 0,
+        }
+        for s, v in sorted(sector_map.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    return {
+        "items": items,
+        "total_value": grand_total,
+        "unique_tickers": len(items),
+        "sector_breakdown": sector_breakdown,
+    }
+
+
 # ===========================================================================
 # Holding Repository
 # ===========================================================================

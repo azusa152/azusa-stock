@@ -1108,7 +1108,17 @@
       "changes": "📊 持仓变动",
       "top": "🏆 前10大持仓",
       "great_minds": "🤝 英雄所见略同",
-      "qoq": "📅 季度比较"
+      "qoq": "📅 季度比较",
+      "grand_portfolio": "🌐 大师总仓位"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 大师总仓位",
+      "no_data": "无持仓数据",
+      "total_aum": "合计AUM",
+      "unique_tickers": "不重复股票数",
+      "top20_header": "合计权重前20大持仓",
+      "combined_weight": "合计权重",
+      "table_header": "全部持仓"
     },
     "qoq": {
       "trend": "趋势",
@@ -1130,7 +1140,8 @@
       "change_pct": "变动%",
       "weight_pct": "权重%",
       "rank": "#",
-      "action": "操作"
+      "action": "操作",
+      "sector": "板块"
     },
     "changes": {
       "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。",

@@ -368,6 +368,13 @@ def get_holding_qoq(session: Session, guru_id: int, quarters: int = 3) -> dict:
     return {"guru_id": guru_id, "items": items}
 
 
+def get_grand_portfolio(session: Session) -> dict:
+    """Return the aggregated Grand Portfolio across all active gurus."""
+    from infrastructure.persistence.repositories import find_grand_portfolio
+
+    return find_grand_portfolio(session)
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------

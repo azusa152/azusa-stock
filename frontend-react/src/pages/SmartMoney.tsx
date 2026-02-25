@@ -6,10 +6,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useGurus, useSyncAllGurus } from "@/api/hooks/useSmartMoney"
 import { OverviewTab } from "@/components/smartmoney/OverviewTab"
 import { GuruTab } from "@/components/smartmoney/GuruTab"
+import { GrandPortfolioTab } from "@/components/smartmoney/GrandPortfolioTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
 import { cn } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
+const GRAND_PORTFOLIO_TAB = "grand_portfolio"
 const ADD_GURU_TAB = "add_guru"
 
 export default function SmartMoney() {
@@ -55,6 +57,7 @@ export default function SmartMoney() {
   const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
   const resolvedTab =
     activeTab !== OVERVIEW_TAB &&
+    activeTab !== GRAND_PORTFOLIO_TAB &&
     activeTab !== ADD_GURU_TAB &&
     !filteredGuruIds.has(activeTab)
       ? OVERVIEW_TAB
@@ -136,10 +139,13 @@ export default function SmartMoney() {
         </div>
       )}
 
-      {/* Tab bar: Overview + per-guru + Add Guru */}
+      {/* Tab bar: Overview + Grand Portfolio + per-guru + Add Guru */}
       <Tabs value={resolvedTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
+          <TabsTrigger value={GRAND_PORTFOLIO_TAB}>
+            {t("smart_money.grand_portfolio.tab")}
+          </TabsTrigger>
           {filteredGurus.map((guru) => (
             <TabsTrigger key={guru.id} value={String(guru.id)}>
               {guru.display_name}
@@ -155,6 +161,11 @@ export default function SmartMoney() {
           ) : (
             <OverviewTab />
           )}
+        </TabsContent>
+
+        {/* Grand Portfolio tab */}
+        <TabsContent value={GRAND_PORTFOLIO_TAB} className="mt-4">
+          <GrandPortfolioTab />
         </TabsContent>
 
         {/* Per-guru tabs */}

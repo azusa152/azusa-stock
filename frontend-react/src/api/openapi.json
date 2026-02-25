@@ -3873,6 +3873,56 @@
         }
       }
     },
+    "/gurus/grand-portfolio": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "Aggregated portfolio across all active gurus' latest 13F filings",
+        "description": "\u8de8\u6240\u6709\u555f\u7528\u4e2d\u5927\u5e2b\u7684\u6700\u65b0 13F \u6301\u5009\u805a\u5408\u8996\u5716\u3002",
+        "operationId": "get_grand_portfolio_endpoint_gurus_grand_portfolio_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrandPortfolioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/gurus/{guru_id}/filing": {
       "get": {
         "tags": [
@@ -5715,6 +5765,117 @@
         "type": "object",
         "title": "FilingHistoryResponse",
         "description": "GET /gurus/{guru_id}/filings \u5b8c\u6574\u56de\u61c9\u3002"
+      },
+      "GrandPortfolioItem": {
+        "properties": {
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "guru_count": {
+            "type": "integer",
+            "title": "Guru Count"
+          },
+          "gurus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gurus"
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value"
+          },
+          "avg_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Weight Pct"
+          },
+          "combined_weight_pct": {
+            "type": "number",
+            "title": "Combined Weight Pct"
+          },
+          "dominant_action": {
+            "type": "string",
+            "title": "Dominant Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "sector",
+          "guru_count",
+          "gurus",
+          "total_value",
+          "avg_weight_pct",
+          "combined_weight_pct",
+          "dominant_action"
+        ],
+        "title": "GrandPortfolioItem",
+        "description": "\u55ae\u4e00\u80a1\u7968\u5728 Grand Portfolio \u4e2d\u7684\u805a\u5408\u6301\u5009\u3002"
+      },
+      "GrandPortfolioResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GrandPortfolioItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value",
+            "default": 0.0
+          },
+          "unique_tickers": {
+            "type": "integer",
+            "title": "Unique Tickers",
+            "default": 0
+          },
+          "sector_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/SectorBreakdownItem"
+            },
+            "type": "array",
+            "title": "Sector Breakdown",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "GrandPortfolioResponse",
+        "description": "GET /gurus/grand-portfolio \u5b8c\u6574\u56de\u61c9\u3002"
       },
       "GreatMindsEntryResponse": {
         "properties": {

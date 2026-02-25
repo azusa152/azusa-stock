@@ -13,6 +13,7 @@ from infrastructure.repositories import (
     find_activity_feed,
     find_all_guru_summaries,
     find_consensus_stocks,
+    find_grand_portfolio,
     find_holding_history_by_guru,
     find_notable_changes_all_gurus,
     find_sector_breakdown,
@@ -1220,3 +1221,191 @@ class TestFindHoldingHistoryByGuru:
         # NVDA quarters should be from filing2 and filing3
         nvda_dates = {q["report_date"] for q in nvda["quarters"]}
         assert nvda_dates == {"2024-06-30", "2024-09-30"}
+
+
+# ===========================================================================
+# find_grand_portfolio tests
+# ===========================================================================
+
+
+class TestFindGrandPortfolio:
+    """Tests for find_grand_portfolio repository function."""
+
+    def test_aggregates_values_across_gurus(self, test_session: Session):
+        """combined_weight_pct should sum values across all gurus."""
+        guru1 = _make_guru(test_session, cik="GP0001", display_name="Grand Guru1")
+        guru2 = _make_guru(test_session, cik="GP0002", display_name="Grand Guru2")
+
+        filing1 = _make_filing(test_session, guru1.id, "GP-ACC-001", "2024-12-31")
+        filing2 = _make_filing(test_session, guru2.id, "GP-ACC-002", "2024-12-31")
+
+        # Both gurus hold AAPL
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing1.id,
+                    guru_id=guru1.id,
+                    cusip="GP-C001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    sector="Technology",
+                    value=200_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=50.0,
+                ),
+                GuruHolding(
+                    filing_id=filing2.id,
+                    guru_id=guru2.id,
+                    cusip="GP-C002",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    sector="Technology",
+                    value=100_000.0,
+                    shares=500.0,
+                    action=HoldingAction.INCREASED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        items = result["items"]
+        assert len(items) >= 1
+        aapl = next(i for i in items if i["ticker"] == "AAPL")
+
+        # total_value for AAPL: 200000 + 100000 = 300000
+        assert aapl["total_value"] == pytest.approx(300_000.0)
+        assert aapl["guru_count"] == 2
+        assert aapl["combined_weight_pct"] == pytest.approx(100.0)
+
+    def test_combined_weight_pct_sums_to_100(self, test_session: Session):
+        """combined_weight_pct for all items should sum to ~100%."""
+        guru = _make_guru(test_session, cik="GP0003", display_name="Grand Guru3")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-003", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C010",
+                    ticker="MSFT",
+                    company_name="Microsoft",
+                    sector="Technology",
+                    value=600_000.0,
+                    shares=2000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=60.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C011",
+                    ticker="GOOGL",
+                    company_name="Alphabet",
+                    sector="Technology",
+                    value=400_000.0,
+                    shares=1500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        items = [i for i in result["items"] if i["ticker"] in ("MSFT", "GOOGL")]
+        total_weight = sum(i["combined_weight_pct"] for i in items)
+        assert total_weight == pytest.approx(100.0, abs=0.01)
+
+    def test_excludes_sold_out_positions(self, test_session: Session):
+        """SOLD_OUT holdings must not appear in grand portfolio results."""
+        guru = _make_guru(test_session, cik="GP0004", display_name="Grand Guru4")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-004", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C020",
+                    ticker="SOLD_STOCK",
+                    company_name="Sold Corp",
+                    sector="Finance",
+                    value=0.0,
+                    shares=0.0,
+                    action=HoldingAction.SOLD_OUT.value,
+                    weight_pct=0.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C021",
+                    ticker="KEPT_STOCK",
+                    company_name="Kept Corp",
+                    sector="Finance",
+                    value=500_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=50.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        tickers = {i["ticker"] for i in result["items"]}
+        assert "SOLD_STOCK" not in tickers
+        assert "KEPT_STOCK" in tickers
+
+    def test_sector_breakdown_is_correct(self, test_session: Session):
+        """sector_breakdown should aggregate total_value by sector."""
+        guru = _make_guru(test_session, cik="GP0005", display_name="Grand Guru5")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-005", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C030",
+                    ticker="TECH1",
+                    company_name="Tech One",
+                    sector="Technology",
+                    value=700_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=70.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C031",
+                    ticker="FIN1",
+                    company_name="Finance One",
+                    sector="Finance",
+                    value=300_000.0,
+                    shares=500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=30.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        breakdown = {b["sector"]: b for b in result["sector_breakdown"]}
+        assert breakdown["Technology"]["total_value"] == pytest.approx(700_000.0)
+        assert breakdown["Technology"]["weight_pct"] == pytest.approx(70.0)
+        assert breakdown["Finance"]["total_value"] == pytest.approx(300_000.0)
+        assert breakdown["Finance"]["holding_count"] == 1
+
+    def test_returns_empty_when_no_active_filings(self, test_session: Session):
+        """With no filings in the database, grand portfolio should return empty results."""
+        result = find_grand_portfolio(test_session)
+        assert result["items"] == []
+        assert result["total_value"] == 0.0
+        assert result["unique_tickers"] == 0
+        assert result["sector_breakdown"] == []

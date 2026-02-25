@@ -1108,7 +1108,17 @@
       "changes": "📊 保有変動",
       "top": "🏆 上位10保有",
       "great_minds": "🤝 達人も注目",
-      "qoq": "📅 四半期比較"
+      "qoq": "📅 四半期比較",
+      "grand_portfolio": "🌐 グランドポートフォリオ"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 グランドポートフォリオ",
+      "no_data": "保有データがありません",
+      "total_aum": "合計AUM",
+      "unique_tickers": "ユニーク銘柄数",
+      "top20_header": "合計ウェイト上位20銘柄",
+      "combined_weight": "合計ウェイト",
+      "table_header": "全保有"
     },
     "qoq": {
       "trend": "トレンド",
@@ -1130,7 +1140,8 @@
       "change_pct": "変動%",
       "weight_pct": "比重%",
       "rank": "#",
-      "action": "アクション"
+      "action": "アクション",
+      "sector": "セクター"
     },
     "changes": {
       "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。",

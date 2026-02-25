@@ -32,6 +32,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_filing_by_accession,
     find_filings_by_guru,
     find_fx_watch_by_id,
+    find_grand_portfolio,
     find_guru_by_cik,
     find_guru_by_id,
     find_holding_by_id,

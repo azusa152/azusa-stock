@@ -798,3 +798,94 @@ class TestGetGuruQoQ:
         assert q["report_date"] == "2024-12-31"
         assert q["shares"] == 2000.0
         assert q["weight_pct"] == 60.0
+
+
+# ===========================================================================
+# GET /gurus/grand-portfolio
+# ===========================================================================
+
+GRAND_PORTFOLIO_TARGET = "api.routes.guru_routes.get_grand_portfolio"
+
+_GRAND_PORTFOLIO_DATA = {
+    "items": [
+        {
+            "ticker": "AAPL",
+            "company_name": "Apple Inc",
+            "sector": "Technology",
+            "guru_count": 2,
+            "gurus": ["Warren Buffett", "Ray Dalio"],
+            "total_value": 300_000_000.0,
+            "avg_weight_pct": 5.5,
+            "combined_weight_pct": 12.5,
+            "dominant_action": "UNCHANGED",
+        }
+    ],
+    "total_value": 2_400_000_000.0,
+    "unique_tickers": 1,
+    "sector_breakdown": [
+        {
+            "sector": "Technology",
+            "total_value": 300_000_000.0,
+            "holding_count": 1,
+            "weight_pct": 12.5,
+        }
+    ],
+}
+
+
+class TestGetGrandPortfolio:
+    def test_returns_200_with_correct_shape(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "total_value" in body
+        assert "unique_tickers" in body
+        assert "sector_breakdown" in body
+
+    def test_items_contain_required_fields(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        item = resp.json()["items"][0]
+        assert item["ticker"] == "AAPL"
+        assert item["guru_count"] == 2
+        assert item["combined_weight_pct"] == 12.5
+        assert item["dominant_action"] == "UNCHANGED"
+        assert "gurus" in item
+        assert "total_value" in item
+
+    def test_sector_breakdown_is_present(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        breakdown = resp.json()["sector_breakdown"]
+        assert len(breakdown) == 1
+        assert breakdown[0]["sector"] == "Technology"
+        assert breakdown[0]["weight_pct"] == 12.5
+
+    def test_returns_empty_items_when_no_data(self, client):
+        empty_data = {
+            "items": [],
+            "total_value": 0.0,
+            "unique_tickers": 0,
+            "sector_breakdown": [],
+        }
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=empty_data):
+            resp = client.get("/gurus/grand-portfolio")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+        assert body["total_value"] == 0.0
+        assert body["unique_tickers"] == 0
+
+    def test_total_value_and_unique_tickers_are_returned(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        body = resp.json()
+        assert body["total_value"] == 2_400_000_000.0
+        assert body["unique_tickers"] == 1

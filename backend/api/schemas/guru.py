@@ -286,3 +286,31 @@ class QoQResponse(BaseModel):
 
     guru_id: int
     items: list[QoQHoldingItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Response Schemas — Grand Portfolio
+# ---------------------------------------------------------------------------
+
+
+class GrandPortfolioItem(BaseModel):
+    """單一股票在 Grand Portfolio 中的聚合持倉。"""
+
+    ticker: str | None
+    company_name: str
+    sector: str | None
+    guru_count: int
+    gurus: list[str]
+    total_value: float
+    avg_weight_pct: float | None
+    combined_weight_pct: float
+    dominant_action: str
+
+
+class GrandPortfolioResponse(BaseModel):
+    """GET /gurus/grand-portfolio 完整回應。"""
+
+    items: list[GrandPortfolioItem] = []
+    total_value: float = 0.0
+    unique_tickers: int = 0
+    sector_breakdown: list[SectorBreakdownItem] = []

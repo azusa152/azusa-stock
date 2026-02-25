@@ -1108,7 +1108,17 @@
       "changes": "📊 持倉異動",
       "top": "🏆 前 10 大持倉",
       "great_minds": "🤝 英雄所見略同",
-      "qoq": "📅 季度比較"
+      "qoq": "📅 季度比較",
+      "grand_portfolio": "🌐 大師總倉位"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 大師總倉位",
+      "no_data": "無持倉資料",
+      "total_aum": "合計 AUM",
+      "unique_tickers": "不重複股票數",
+      "top20_header": "合計權重前 20 大持倉",
+      "combined_weight": "合計權重",
+      "table_header": "全部持倉"
     },
     "qoq": {
       "trend": "趨勢",
@@ -1130,7 +1140,8 @@
       "change_pct": "變動%",
       "weight_pct": "權重%",
       "rank": "#",
-      "action": "操作"
+      "action": "操作",
+      "sector": "板塊"
     },
     "changes": {
       "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。",

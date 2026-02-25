@@ -3,6 +3,7 @@ import apiClient from "@/api/client"
 import type {
   Guru,
   DashboardResponse,
+  GrandPortfolioResponse,
   GuruFiling,
   GuruHolding,
   FilingHistoryResponse,
@@ -105,6 +106,17 @@ export function useGuruQoQ(id: number, enabled = true) {
     },
     staleTime: 5 * 60 * 1000,
     enabled,
+  })
+}
+
+export function useGrandPortfolio() {
+  return useQuery<GrandPortfolioResponse>({
+    queryKey: ["grandPortfolio"],
+    queryFn: () =>
+      apiClient
+        .get<GrandPortfolioResponse>("/gurus/grand-portfolio")
+        .then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
   })
 }
 

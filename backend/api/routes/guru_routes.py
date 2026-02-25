@@ -12,6 +12,7 @@ Routes:
   GET    /gurus/{guru_id}/holdings — All holdings with actions
   GET    /gurus/{guru_id}/top      — Top N holdings by weight
   GET    /gurus/{guru_id}/qoq      — Quarter-over-quarter holding history
+  GET    /gurus/grand-portfolio    — Aggregated portfolio across all active gurus
   GET    /resonance                — Portfolio resonance overview
   GET    /resonance/great-minds    — Great Minds Think Alike list
   GET    /resonance/{ticker}       — Which gurus hold this ticker
@@ -29,6 +30,7 @@ from api.schemas import (
     DashboardResponse,
     FilingHistoryItem,
     FilingHistoryResponse,
+    GrandPortfolioResponse,
     GreatMindsEntryResponse,
     GreatMindsResponse,
     GuruCreate,
@@ -56,6 +58,7 @@ from application.messaging.notification_service import send_filing_season_digest
 from application.stock.filing_service import (
     get_dashboard_summary,
     get_filing_summary,
+    get_grand_portfolio,
     get_guru_filing_history,
     get_holding_changes,
     get_holding_qoq,
@@ -231,6 +234,24 @@ def sync_one(
         increased=result.get("increased", 0),
         decreased=result.get("decreased", 0),
     )
+
+
+# ===========================================================================
+# Grand Portfolio
+# ===========================================================================
+
+
+@router.get(
+    "/grand-portfolio",
+    response_model=GrandPortfolioResponse,
+    summary="Aggregated portfolio across all active gurus' latest 13F filings",
+)
+def get_grand_portfolio_endpoint(
+    session: Session = Depends(get_session),
+) -> GrandPortfolioResponse:
+    """跨所有啟用中大師的最新 13F 持倉聚合視圖。"""
+    data = get_grand_portfolio(session)
+    return GrandPortfolioResponse(**data)
 
 
 # ===========================================================================

@@ -1108,7 +1108,17 @@
       "changes": "📊 Holding Changes",
       "top": "🏆 Top 10 Holdings",
       "great_minds": "🤝 Great Minds Think Alike",
-      "qoq": "📅 Quarter-over-Quarter"
+      "qoq": "📅 Quarter-over-Quarter",
+      "grand_portfolio": "🌐 Grand Portfolio"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 Grand Portfolio",
+      "no_data": "No holdings data available",
+      "total_aum": "Combined AUM",
+      "unique_tickers": "Unique Tickers",
+      "top20_header": "Top 20 Holdings by Combined Weight",
+      "combined_weight": "Combined Weight",
+      "table_header": "All Holdings"
     },
     "qoq": {
       "trend": "Trend",
@@ -1130,7 +1140,8 @@
       "change_pct": "Chg%",
       "weight_pct": "Wt%",
       "rank": "#",
-      "action": "Action"
+      "action": "Action",
+      "sector": "Sector"
     },
     "changes": {
       "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",
