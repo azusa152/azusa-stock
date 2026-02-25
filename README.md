@@ -10,7 +10,7 @@
 | api/routes/\_\_init\_\_.py                            |        0 |        0 |    100% |           |
 | api/routes/forex\_routes.py                           |        6 |        0 |    100% |           |
 | api/routes/fx\_watch\_routes.py                       |       43 |        0 |    100% |           |
-| api/routes/guru\_routes.py                            |      107 |        3 |     97% |176, 419-420 |
+| api/routes/guru\_routes.py                            |      115 |        3 |     97% |191, 475-476 |
 | api/routes/holding\_routes.py                         |       82 |       16 |     80% |161-168, 184-199, 254, 266-267 |
 | api/routes/persona\_routes.py                         |       30 |        9 |     70% |39, 58-61, 89-90, 107-108 |
 | api/routes/preferences\_routes.py                     |       16 |        0 |    100% |           |
@@ -22,7 +22,7 @@
 | api/schemas/\_\_init\_\_.py                           |        7 |        0 |    100% |           |
 | api/schemas/common.py                                 |        7 |        0 |    100% |           |
 | api/schemas/fx\_watch.py                              |       21 |        0 |    100% |           |
-| api/schemas/guru.py                                   |       72 |        0 |    100% |           |
+| api/schemas/guru.py                                   |      108 |        0 |    100% |           |
 | api/schemas/notification.py                           |       34 |        0 |    100% |           |
 | api/schemas/portfolio.py                              |      103 |        0 |    100% |           |
 | api/schemas/scan.py                                   |       76 |        0 |    100% |           |
@@ -30,7 +30,7 @@
 | application/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
 | application/formatters.py                             |      101 |        3 |     97% |82-83, 122 |
 | application/guru/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
-| application/guru/guru\_service.py                     |       39 |        0 |    100% |           |
+| application/guru/guru\_service.py                     |       47 |        2 |     96% |  103, 105 |
 | application/guru/resonance\_service.py                |       53 |        0 |    100% |           |
 | application/messaging/\_\_init\_\_.py                 |        3 |        0 |    100% |           |
 | application/messaging/notification\_service.py        |      253 |       18 |     93% |51-55, 60-65, 202-203, 257-258, 371, 449-450 |
@@ -50,7 +50,7 @@
 | application/settings/persona\_service.py              |       53 |        0 |    100% |           |
 | application/settings/preferences\_service.py          |       36 |        1 |     97% |        75 |
 | application/stock/\_\_init\_\_.py                     |        2 |        0 |    100% |           |
-| application/stock/filing\_service.py                  |      153 |        8 |     95% |161-168, 208-212, 286, 302 |
+| application/stock/filing\_service.py                  |      191 |       11 |     94% |162-169, 209-213, 290, 294, 365, 387-389 |
 | application/stock/stock\_service.py                   |      273 |       30 |     89% |297, 304-305, 331-335, 376-378, 489, 494, 607-608, 612-613, 652-659, 695-709 |
 | domain/\_\_init\_\_.py                                |        0 |        0 |    100% |           |
 | domain/analysis/\_\_init\_\_.py                       |        3 |        0 |    100% |           |
@@ -59,9 +59,9 @@
 | domain/analysis/smart\_money.py                       |       27 |        1 |     96% |        35 |
 | domain/constants.py                                   |        1 |        0 |    100% |           |
 | domain/core/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
-| domain/core/constants.py                              |      210 |        0 |    100% |           |
-| domain/core/entities.py                               |      144 |        2 |     99% |   182-183 |
-| domain/core/enums.py                                  |       47 |        0 |    100% |           |
+| domain/core/constants.py                              |      212 |        0 |    100% |           |
+| domain/core/entities.py                               |      146 |        2 |     99% |   182-183 |
+| domain/core/enums.py                                  |       58 |        0 |    100% |           |
 | domain/core/formatters.py                             |       36 |        0 |    100% |           |
 | domain/core/protocols.py                              |        3 |        0 |    100% |           |
 | domain/entities.py                                    |        1 |        0 |    100% |           |
@@ -79,7 +79,7 @@
 | domain/withdrawal.py                                  |        1 |        0 |    100% |           |
 | infrastructure/\_\_init\_\_.py                        |        0 |        0 |    100% |           |
 | infrastructure/crypto.py                              |        1 |        0 |    100% |           |
-| infrastructure/database.py                            |       99 |       25 |     75% |92-93, 102-106, 132-133, 144-154, 161-162, 166-167, 187-188, 219-220 |
+| infrastructure/database.py                            |       99 |       25 |     75% |95-96, 105-109, 135-136, 147-157, 164-165, 169-170, 190-191, 222-223 |
 | infrastructure/external/\_\_init\_\_.py               |        0 |        0 |    100% |           |
 | infrastructure/external/crypto.py                     |       38 |        3 |     92% |     80-82 |
 | infrastructure/external/notification.py               |       47 |       30 |     36% |40-60, 65-67, 72-78, 90-109 |
@@ -89,15 +89,15 @@
 | infrastructure/market\_data/\_\_init\_\_.py           |        1 |        0 |    100% |           |
 | infrastructure/market\_data/finmind\_adapter.py       |       57 |        2 |     96% |     52-53 |
 | infrastructure/market\_data/jquants\_adapter.py       |       37 |        9 |     76% | 19, 25-33 |
-| infrastructure/market\_data/market\_data.py           |      846 |      393 |     54% |164, 283-284, 339, 364-372, 403-406, 412-415, 429-433, 439-442, 457-463, 478-480, 515, 545-567, 585-587, 602, 686-687, 700-712, 744-745, 750-757, 765, 809-810, 836, 852, 891, 909-911, 928, 946-958, 971-1024, 1038-1069, 1074, 1090-1134, 1144-1162, 1176-1209, 1217-1220, 1232-1235, 1249-1286, 1295-1305, 1313-1350, 1359-1369, 1374-1381, 1395-1429, 1442-1453, 1463-1475, 1522, 1529, 1534, 1541, 1544-1546, 1578-1592, 1606-1650, 1664-1696, 1704-1712, 1723, 1735, 1750-1780, 1807, 1811, 1930, 2012-2014, 2026 |
+| infrastructure/market\_data/market\_data.py           |      902 |      448 |     50% |166, 285-286, 341, 366-374, 405-408, 414-417, 431-435, 441-444, 459-465, 480-482, 517, 547-569, 587-589, 604, 688-689, 702-714, 746-747, 752-759, 767, 811-812, 838, 854, 893, 911-913, 930, 948-960, 973-1026, 1040-1071, 1076, 1092-1136, 1146-1164, 1178-1211, 1219-1222, 1234-1237, 1251-1288, 1297-1307, 1315-1352, 1361-1371, 1376-1383, 1397-1431, 1444-1455, 1465-1477, 1524, 1531, 1536, 1543, 1546-1548, 1580-1594, 1608-1652, 1666-1698, 1706-1714, 1725, 1737, 1752-1782, 1809, 1813, 1932, 2014-2016, 2028, 2069-2160 |
 | infrastructure/market\_data/market\_data\_resolver.py |       73 |       23 |     68% |18-24, 42-43, 46-47, 53-54, 57-58, 61, 64, 67, 70, 120, 123, 126, 131 |
 | infrastructure/market\_data\_resolver.py              |        1 |        1 |      0% |         6 |
 | infrastructure/notification.py                        |        1 |        0 |    100% |           |
 | infrastructure/persistence/\_\_init\_\_.py            |        1 |        0 |    100% |           |
-| infrastructure/persistence/repositories.py            |      289 |       34 |     88% |58-66, 90-98, 104, 252-255, 260-264, 281, 286-287, 468, 811-814, 833-836, 871-874 |
+| infrastructure/persistence/repositories.py            |      402 |       34 |     92% |58-66, 90-98, 104, 252-255, 260-264, 281, 286-287, 468, 1120-1123, 1142-1145, 1180-1183 |
 | infrastructure/repositories.py                        |        1 |        0 |    100% |           |
 | infrastructure/sec\_edgar.py                          |        1 |        0 |    100% |           |
-| **TOTAL**                                             | **5859** |  **853** | **85%** |           |
+| **TOTAL**                                             | **6133** |  **913** | **85%** |           |
 
 
 ## Setup coverage badge
