@@ -200,6 +200,23 @@ class SectorBreakdownItem(BaseModel):
     weight_pct: float
 
 
+class ActivityFeedItem(BaseModel):
+    """單一股票的買入或賣出活動摘要。"""
+
+    ticker: str
+    company_name: str
+    guru_count: int
+    gurus: list[str] = []
+    total_value: float = 0.0
+
+
+class ActivityFeed(BaseModel):
+    """本季最多買入與最多賣出股票排行。"""
+
+    most_bought: list[ActivityFeedItem] = []
+    most_sold: list[ActivityFeedItem] = []
+
+
 class DashboardResponse(BaseModel):
     """GET /gurus/dashboard 完整回應。"""
 
@@ -207,6 +224,7 @@ class DashboardResponse(BaseModel):
     season_highlights: SeasonHighlights = SeasonHighlights()
     consensus: list[ConsensusStockItem] = []
     sector_breakdown: list[SectorBreakdownItem] = []
+    activity_feed: ActivityFeed = ActivityFeed()
 
 
 class FilingHistoryItem(BaseModel):

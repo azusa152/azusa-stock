@@ -30,6 +30,7 @@ from domain.smart_money import (
 )
 from infrastructure.market_data import get_ticker_sector
 from infrastructure.repositories import (
+    find_activity_feed,
     find_all_active_gurus,
     find_all_guru_summaries,
     find_consensus_stocks,
@@ -304,6 +305,7 @@ def get_dashboard_summary(session: Session) -> dict:
         "season_highlights": find_notable_changes_all_gurus(session),
         "consensus": find_consensus_stocks(session),
         "sector_breakdown": find_sector_breakdown(session),
+        "activity_feed": find_activity_feed(session),
     }
 
 

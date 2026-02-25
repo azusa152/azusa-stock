@@ -9,6 +9,7 @@ from sqlmodel import Session
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
 from infrastructure.repositories import (
+    find_activity_feed,
     find_all_guru_summaries,
     find_consensus_stocks,
     find_notable_changes_all_gurus,
@@ -509,3 +510,181 @@ class TestFindSectorBreakdown:
 
     def test_returns_list(self, test_session: Session):
         assert isinstance(find_sector_breakdown(test_session), list)
+
+
+# ===========================================================================
+# find_activity_feed
+# ===========================================================================
+
+
+class TestFindActivityFeed:
+    """Tests for the find_activity_feed repository function."""
+
+    def _make_holding_with_action(
+        self,
+        session: Session,
+        filing_id: int,
+        guru_id: int,
+        cusip: str,
+        ticker: str,
+        action: HoldingAction,
+        value: float = 100_000.0,
+    ) -> None:
+        holding = GuruHolding(
+            filing_id=filing_id,
+            guru_id=guru_id,
+            cusip=cusip,
+            ticker=ticker,
+            company_name=f"Company {ticker}",
+            value=value,
+            shares=1000.0,
+            action=action.value,
+            weight_pct=10.0,
+        )
+        save_holdings_batch(session, [holding])
+
+    def test_most_bought_contains_new_position_and_increased(
+        self, test_session: Session
+    ):
+        """most_bought should aggregate NEW_POSITION and INCREASED actions."""
+        guru = _make_guru(test_session, cik="4000000001", display_name="Buy Guru A")
+        filing = _make_filing(test_session, guru.id, "ACT-001", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C001",
+            "AAPL",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C002",
+            "MSFT",
+            HoldingAction.INCREASED,
+        )
+
+        result = find_activity_feed(test_session)
+
+        tickers_bought = [item["ticker"] for item in result["most_bought"]]
+        assert "AAPL" in tickers_bought
+        assert "MSFT" in tickers_bought
+
+    def test_most_sold_contains_sold_out_and_decreased(self, test_session: Session):
+        """most_sold should aggregate SOLD_OUT and DECREASED actions."""
+        guru = _make_guru(test_session, cik="4000000002", display_name="Sell Guru B")
+        filing = _make_filing(test_session, guru.id, "ACT-002", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session, filing.id, guru.id, "ACT-C003", "TSLA", HoldingAction.SOLD_OUT
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C004",
+            "NFLX",
+            HoldingAction.DECREASED,
+        )
+
+        result = find_activity_feed(test_session)
+
+        tickers_sold = [item["ticker"] for item in result["most_sold"]]
+        assert "TSLA" in tickers_sold
+        assert "NFLX" in tickers_sold
+
+    def test_buy_and_sell_are_mutually_exclusive(self, test_session: Session):
+        """A ticker in most_bought must not appear in most_sold and vice versa."""
+        guru = _make_guru(test_session, cik="4000000003", display_name="Mixed Guru C")
+        filing = _make_filing(test_session, guru.id, "ACT-003", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C005",
+            "BUYONLY",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C006",
+            "SELLONLY",
+            HoldingAction.SOLD_OUT,
+        )
+
+        result = find_activity_feed(test_session)
+
+        bought_tickers = {item["ticker"] for item in result["most_bought"]}
+        sold_tickers = {item["ticker"] for item in result["most_sold"]}
+        assert "BUYONLY" in bought_tickers
+        assert "SELLONLY" not in bought_tickers
+        assert "SELLONLY" in sold_tickers
+        assert "BUYONLY" not in sold_tickers
+
+    def test_returns_dict_with_both_keys(self, test_session: Session):
+        """find_activity_feed should always return a dict with most_bought and most_sold."""
+        result = find_activity_feed(test_session)
+        assert isinstance(result, dict)
+        assert "most_bought" in result
+        assert "most_sold" in result
+        assert isinstance(result["most_bought"], list)
+        assert isinstance(result["most_sold"], list)
+
+    def test_multi_guru_increases_guru_count(self, test_session: Session):
+        """When two gurus both buy the same ticker, guru_count should be 2."""
+        guru_a = _make_guru(test_session, cik="4000000004", display_name="Count Guru D")
+        guru_b = _make_guru(test_session, cik="4000000005", display_name="Count Guru E")
+        filing_a = _make_filing(test_session, guru_a.id, "ACT-004", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "ACT-005", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing_a.id,
+            guru_a.id,
+            "ACT-C007",
+            "SHARED",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing_b.id,
+            guru_b.id,
+            "ACT-C008",
+            "SHARED",
+            HoldingAction.NEW_POSITION,
+        )
+
+        result = find_activity_feed(test_session)
+
+        shared = next(
+            (item for item in result["most_bought"] if item["ticker"] == "SHARED"), None
+        )
+        assert shared is not None
+        assert shared["guru_count"] == 2
+        assert set(shared["gurus"]) == {"Count Guru D", "Count Guru E"}
+
+    def test_limit_truncates_results(self, test_session: Session):
+        """Passing limit=1 should return at most 1 item per list."""
+        guru = _make_guru(test_session, cik="4000000006", display_name="Limit Guru F")
+        filing = _make_filing(test_session, guru.id, "ACT-006", "2025-12-31")
+
+        # Seed 3 distinct buy tickers
+        for i, ticker in enumerate(["TICK1", "TICK2", "TICK3"]):
+            self._make_holding_with_action(
+                test_session,
+                filing.id,
+                guru.id,
+                f"ACT-C00{9 + i}",
+                ticker,
+                HoldingAction.NEW_POSITION,
+            )
+
+        result = find_activity_feed(test_session, limit=1)
+
+        assert len(result["most_bought"]) <= 1

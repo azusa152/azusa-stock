@@ -757,6 +757,76 @@ def find_sector_breakdown(session: Session) -> list[dict]:
     return result
 
 
+def find_activity_feed(session: Session, limit: int = 15) -> dict:
+    """Aggregate holdings across all gurus' latest filings.
+
+    Returns two ranked lists:
+    - most_bought: tickers with the most NEW_POSITION / INCREASED actions
+    - most_sold:   tickers with the most SOLD_OUT / DECREASED actions
+
+    Each item: ticker, company_name, guru_count, gurus (display names), total_value.
+    Sorted by guru_count DESC, then total_value DESC.
+    Uses a single query + Python aggregation (same pattern as find_consensus_stocks).
+    """
+    from domain.enums import HoldingAction
+
+    latest_ids = _latest_filing_ids_subquery()
+
+    buy_actions = [HoldingAction.NEW_POSITION.value, HoldingAction.INCREASED.value]
+    sell_actions = [HoldingAction.SOLD_OUT.value, HoldingAction.DECREASED.value]
+    all_actions = buy_actions + sell_actions
+
+    # Single query: fetch all relevant holdings with guru display names
+    stmt = (
+        select(GuruHolding, Guru.display_name)
+        .join(
+            latest_ids,
+            GuruHolding.filing_id == latest_ids.c.filing_id,
+        )
+        .join(Guru, GuruHolding.guru_id == Guru.id)
+        .where(
+            GuruHolding.action.in_(all_actions),
+            GuruHolding.ticker.isnot(None),  # type: ignore[union-attr]
+        )
+    )
+    rows = session.exec(stmt).all()
+
+    def _aggregate(actions: list[str]) -> list[dict]:
+        # ticker → {company_name, gurus (deduped), total_value}
+        ticker_map: dict[str, dict] = {}
+        for holding, guru_display_name in rows:
+            if holding.action not in actions:
+                continue
+            t = holding.ticker
+            if t not in ticker_map:
+                ticker_map[t] = {
+                    "company_name": holding.company_name,
+                    "gurus": [],
+                    "total_value": 0.0,
+                }
+            if guru_display_name not in ticker_map[t]["gurus"]:
+                ticker_map[t]["gurus"].append(guru_display_name)
+            ticker_map[t]["total_value"] += holding.value
+
+        result = [
+            {
+                "ticker": t,
+                "company_name": d["company_name"],
+                "guru_count": len(d["gurus"]),
+                "gurus": d["gurus"],
+                "total_value": d["total_value"],
+            }
+            for t, d in ticker_map.items()
+        ]
+        result.sort(key=lambda x: (-x["guru_count"], -x["total_value"]))
+        return result[:limit]
+
+    return {
+        "most_bought": _aggregate(buy_actions),
+        "most_sold": _aggregate(sell_actions),
+    }
+
+
 # ===========================================================================
 # Holding Repository
 # ===========================================================================

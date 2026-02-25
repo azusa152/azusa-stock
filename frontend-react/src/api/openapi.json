@@ -4663,6 +4663,66 @@
         "title": "AcceptedResponse",
         "description": "\u975e\u540c\u6b65\u64cd\u4f5c\u5df2\u63a5\u53d7\u56de\u61c9\u3002"
       },
+      "ActivityFeed": {
+        "properties": {
+          "most_bought": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedItem"
+            },
+            "type": "array",
+            "title": "Most Bought",
+            "default": []
+          },
+          "most_sold": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedItem"
+            },
+            "type": "array",
+            "title": "Most Sold",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "ActivityFeed",
+        "description": "\u672c\u5b63\u6700\u591a\u8cb7\u5165\u8207\u6700\u591a\u8ce3\u51fa\u80a1\u7968\u6392\u884c\u3002"
+      },
+      "ActivityFeedItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "guru_count": {
+            "type": "integer",
+            "title": "Guru Count"
+          },
+          "gurus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gurus",
+            "default": []
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "guru_count"
+        ],
+        "title": "ActivityFeedItem",
+        "description": "\u55ae\u4e00\u80a1\u7968\u7684\u8cb7\u5165\u6216\u8ce3\u51fa\u6d3b\u52d5\u6458\u8981\u3002"
+      },
       "CNNFearGreedData": {
         "properties": {
           "score": {
@@ -4956,6 +5016,13 @@
             "type": "array",
             "title": "Sector Breakdown",
             "default": []
+          },
+          "activity_feed": {
+            "$ref": "#/components/schemas/ActivityFeed",
+            "default": {
+              "most_bought": [],
+              "most_sold": []
+            }
           }
         },
         "type": "object",

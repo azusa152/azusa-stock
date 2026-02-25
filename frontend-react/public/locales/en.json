@@ -1169,6 +1169,7 @@
       "new_positions_header": "New Positions",
       "sold_outs_header": "Sold Outs",
       "highlights_empty": "📭 No new positions or sold outs this season.",
+      "activity_header": "📈 Filing Season Activity",
       "consensus_header": "🤝 Consensus Holdings",
       "consensus_empty": "📭 No stocks held by multiple gurus yet.",
       "consensus_gurus": "Gurus holding",
@@ -1205,6 +1206,13 @@
     },
     "filter": {
       "all_styles": "All Styles"
+    },
+    "activity": {
+      "most_bought": "Most Bought",
+      "most_sold": "Most Sold",
+      "guru_count_label": "gurus",
+      "empty_bought": "No buy activity this season",
+      "empty_sold": "No sell activity this season"
     }
   },
   "guru_style": {

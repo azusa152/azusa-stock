@@ -12,6 +12,8 @@ export type SeasonHighlightItem = components["schemas"]["SeasonHighlightItem"]
 export type SeasonHighlights = components["schemas"]["SeasonHighlights"]
 export type ConsensusStockItem = components["schemas"]["ConsensusStockItem"]
 export type SectorBreakdownItem = components["schemas"]["SectorBreakdownItem"]
+export type ActivityFeedItem = components["schemas"]["ActivityFeedItem"]
+export type ActivityFeed = components["schemas"]["ActivityFeed"]
 export type DashboardResponse = components["schemas"]["DashboardResponse"]
 
 export type GuruFiling = components["schemas"]["GuruFilingResponse"]

@@ -1169,6 +1169,7 @@
       "new_positions_header": "新建仓",
       "sold_outs_header": "清仓",
       "highlights_empty": "📭 本季尚无新建仓或清仓记录。",
+      "activity_header": "📈 本季申报动态",
       "consensus_header": "🤝 共识持股",
       "consensus_empty": "📭 目前无多位大师同时持有的股票。",
       "consensus_gurus": "持有大师",
@@ -1205,6 +1206,13 @@
     },
     "filter": {
       "all_styles": "所有风格"
+    },
+    "activity": {
+      "most_bought": "最多买入",
+      "most_sold": "最多卖出",
+      "guru_count_label": "位大师",
+      "empty_bought": "本季无买入活动",
+      "empty_sold": "本季无卖出活动"
     }
   },
   "guru_style": {

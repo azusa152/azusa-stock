@@ -21,6 +21,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_active_profile,
     find_active_stocks,
     find_active_stocks_by_category,
+    find_activity_feed,
     find_all_active_alerts,
     find_all_active_gurus,
     find_all_alerts_for_stock,

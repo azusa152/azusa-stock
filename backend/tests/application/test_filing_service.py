@@ -1207,3 +1207,73 @@ class TestGetTopHoldings:
         result = get_top_holdings(db_session, guru.id)
 
         assert len(result) == 10
+
+
+# ===========================================================================
+# TestGetDashboardSummary
+# ===========================================================================
+
+
+class TestGetDashboardSummary:
+    """Test that get_dashboard_summary includes activity_feed key."""
+
+    def test_dashboard_summary_includes_activity_feed_key(
+        self, db_session: Session
+    ) -> None:
+        from application.stock.filing_service import get_dashboard_summary
+
+        result = get_dashboard_summary(db_session)
+
+        assert "activity_feed" in result
+        assert "most_bought" in result["activity_feed"]
+        assert "most_sold" in result["activity_feed"]
+
+    def test_activity_feed_most_bought_contains_buy_actions(
+        self, db_session: Session
+    ) -> None:
+        from application.stock.filing_service import get_dashboard_summary
+        from domain.entities import Guru, GuruFiling, GuruHolding
+
+        guru = save_guru(
+            db_session,
+            Guru(
+                name="Dashboard Test Guru",
+                cik="5555555555",
+                display_name="Dashboard Guru",
+                is_active=True,
+            ),
+        )
+        filing = save_filing(
+            db_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="DASH-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=500_000.0,
+                holdings_count=1,
+            ),
+        )
+        save_holdings_batch(
+            db_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="DASHHCUSIP1",
+                    ticker="DASH_TICKER",
+                    company_name="Dashboard Co",
+                    value=500_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.NEW_POSITION.value,
+                    weight_pct=100.0,
+                )
+            ],
+        )
+
+        result = get_dashboard_summary(db_session)
+
+        bought_tickers = [
+            item["ticker"] for item in result["activity_feed"]["most_bought"]
+        ]
+        assert "DASH_TICKER" in bought_tickers
