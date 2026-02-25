@@ -415,7 +415,7 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 | OpenAPI Spec Freshness | `check-api-spec` |
 | Frontend Lint | `frontend-lint` |
 | Frontend Build | `frontend-build` |
-| Frontend Tests (含 coverage ≥ 2%) | `frontend-test` |
+| Frontend Tests (含 coverage ≥ 4% lines / 60% branches / 25% functions) | `frontend-test` |
 | Frontend Security (npm audit) | `frontend-security` |
 | Backend/Frontend Constant Sync | `check-constants` |
 | Security Audit (pip-audit) | `backend-security` |
@@ -425,7 +425,7 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 
 - 測試覆蓋率採 **Ratchet 策略** — 閾值只升不降，防止回退
 - **Backend 閾值**：80%（設定於 `backend/pyproject.toml` `[tool.coverage.report] fail_under`）
-- **Frontend 閾值**：2%（設定於 `frontend-react/vitest.config.ts` `coverage.thresholds`；前端測試初期較低，隨元件測試增加逐步提升）
+- **Frontend 閾值**：lines 4% / branches 60% / functions 25%（設定於 `frontend-react/vitest.config.ts` `coverage.thresholds`；`src/components/ui/` 為 shadcn 第三方元件，已從分母排除）
 - 提升覆蓋率後，手動調高閾值並提交，使新數值成為新的最低基準
 - Backend 覆蓋率 badge 由 py-cov-action 自動更新（每次合併至 `main` 時）
 

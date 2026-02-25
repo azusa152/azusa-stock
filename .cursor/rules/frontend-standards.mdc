@@ -94,7 +94,32 @@ function createWrapper() {
 beforeEach(() => { usePrivacyMode.setState({ isPrivate: false }); }); // reset between tests
 ```
 
+### Coverage thresholds (ratchet — only ever increase)
+
+Configured in `frontend-react/vitest.config.ts` under `coverage.thresholds`:
+
+| Metric | Current floor |
+|---|---|
+| Lines | 4% |
+| Branches | 60% |
+| Functions | 25% |
+| Statements | 4% |
+
+`src/components/ui/` is excluded from the coverage denominator — those are third-party shadcn/ui wrappers with no project logic to test.
+
+When coverage improves, bump the threshold values and commit them as the new floor.
+
+### vi.hoisted() for shared mock state
+
+When a `vi.mock()` factory needs to reference a `vi.fn()` defined outside the factory, use `vi.hoisted()` — otherwise `vi.mock` is hoisted before the variable is initialized:
+
+```ts
+const { mockFn } = vi.hoisted(() => ({ mockFn: vi.fn() }))
+vi.mock("some-module", () => ({ default: { method: mockFn } }))
+```
+
 ### Do NOT
 - Hit real APIs or network in tests — always mock `@/api/client`.
 - Use `setTimeout` or `sleep` — use `waitFor()` from `@testing-library/react`.
 - Import `describe`/`it`/`expect` explicitly — `globals: true` is set in `vitest.config.ts`.
+- Test `src/components/ui/` primitives — they are third-party and excluded from coverage.
