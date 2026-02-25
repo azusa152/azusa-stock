@@ -1,11 +1,11 @@
 """Tests for Fear & Greed pure analysis functions in domain/analysis.py."""
 
 from domain.analysis import (
-    _vix_to_score,
     classify_cnn_fear_greed,
     classify_vix,
     compute_composite_fear_greed,
 )
+from domain.analysis.analysis import _vix_to_score
 from domain.enums import FearGreedLevel
 
 
