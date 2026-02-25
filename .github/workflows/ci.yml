@@ -293,3 +293,25 @@ jobs:
 
       - name: Run pip-audit
         run: pip-audit --desc --ignore-vuln CVE-2025-69872
+
+  ci-gate:
+    name: CI Gate
+    if: ${{ cancelled() || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'failure') }}
+    needs:
+      - test
+      - lint
+      - api-spec
+      - frontend-lint
+      - frontend-build
+      - frontend-test
+      - frontend-security
+      - constant-sync
+      - ci-completeness
+      - security
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI failed or cancelled
+        run: |
+          echo "Job results: ${{ toJSON(needs.*.result) }}"
+          echo "::error::One or more CI jobs failed or were cancelled"
+          exit 1

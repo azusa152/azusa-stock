@@ -418,6 +418,7 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 | Frontend Security (npm audit) | `frontend-security` |
 | Backend/Frontend Constant Sync | `check-constants` |
 | Security Audit (pip-audit) | `backend-security` |
+| CI Gate | (aggregates all jobs above — blocks PR merge on failure) |
 
 <details>
 <summary>手動執行（不使用 Make）</summary>
@@ -435,6 +436,7 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 
 > 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
 > CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
+> **Merge Protection:** `CI Gate` 是 GitHub branch protection 的唯一必要狀態檢查。任何 CI job 失敗都會阻止 PR 合併。設定路徑：GitHub repo → Settings → Branches → Branch protection rules → `main` → Require status checks → 加入 `CI Gate`。
 
 ## 安全性 (Security)
 

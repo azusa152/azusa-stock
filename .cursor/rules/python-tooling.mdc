@@ -26,7 +26,7 @@ alwaysApply: false
 ## Dependencies
 - **Dependencies:** Use pip-tools. Edit `backend/requirements.in` (loose constraints) and run `make lock` to regenerate the pinned `backend/requirements.txt`. Never edit `requirements.txt` by hand.
 - **Dev tools** (e.g. `pip-audit`, `ruff`, `pytest`) belong in `requirements.in` — never install them ad-hoc inside Makefile targets.
-- **Adding a new CI job:** Add the job to `.github/workflows/ci.yml`, add its job ID + corresponding make target to `KNOWN_JOB_MAP` in `scripts/check_ci_completeness.py`, and wire the make target into `make ci`. The `ci-completeness` pre-commit hook and CI job will enforce this.
+- **Adding a new CI job:** Add the job to `.github/workflows/ci.yml`, add its job ID + corresponding make target to `KNOWN_JOB_MAP` in `scripts/check_ci_completeness.py`, and wire the make target into `make ci`. The `ci-completeness` pre-commit hook and CI job will enforce this. For infrastructure-only jobs (path filtering, meta-checks, merge gates), add the job ID to `SKIP_JOBS` instead of `KNOWN_JOB_MAP` — the `ci-gate` and `ci-completeness` jobs are examples of this. The `CI Gate` job is the sole required status check for merging to `main`; never remove it from `SKIP_JOBS`.
 
 ## Logging
 - Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.

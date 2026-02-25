@@ -55,4 +55,4 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 - **`api/routes/`** MUST delegate to `application/<domain>/` services. Only `infrastructure.database` (`get_session`, `engine`) is allowed in `api/`.
 - **`domain/`** must not import from any outer layer.
-- Run `make ci` after any backend change to verify boundaries. `make ci` mirrors all GitHub CI pipeline jobs — if it passes locally, the pipeline will pass too.
+- Run `make ci` after any backend change to verify boundaries. `make ci` mirrors all GitHub CI pipeline jobs — if it passes locally, the pipeline will pass too. The `CI Gate` job aggregates all pipeline results and is the sole required status check for merging to `main`.
