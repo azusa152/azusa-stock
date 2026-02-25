@@ -6,7 +6,7 @@ Application — Persona Service。
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlmodel import Session
@@ -117,7 +117,7 @@ def update_profile(session: Session, profile_id: int, payload: dict, lang: str) 
         profile.config = json.dumps(payload["config"])
     if payload.get("home_currency") is not None:
         profile.home_currency = payload["home_currency"]
-    profile.updated_at = datetime.now(timezone.utc)
+    profile.updated_at = datetime.now(UTC)
     session.commit()
     session.refresh(profile)
     return _profile_to_dict(profile)

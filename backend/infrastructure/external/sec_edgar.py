@@ -5,12 +5,12 @@ Infrastructure — SEC EDGAR API 適配器。
 含 tenacity 重試機制，針對暫時性網路錯誤自動指數退避重試。
 """
 
+import contextlib
 import os
 import re
 import threading
 import time
 import xml.etree.ElementTree as ET
-from typing import Optional
 
 import diskcache
 import httpx
@@ -29,8 +29,8 @@ from domain.constants import (
     DISK_KEY_GURU_FILING,
     GURU_FILING_CACHE_MAXSIZE,
     GURU_FILING_CACHE_TTL,
-    SEC_EDGAR_BASE_URL,
     SEC_EDGAR_ARCHIVES_BASE_URL,
+    SEC_EDGAR_BASE_URL,
     SEC_EDGAR_RATE_LIMIT_CPS,
     SEC_EDGAR_REQUEST_TIMEOUT,
     SEC_EDGAR_USER_AGENT,
@@ -105,10 +105,8 @@ def _disk_get(key: str):
 
 
 def _disk_set(key: str, value, ttl: int) -> None:
-    try:
+    with contextlib.suppress(Exception):
         _disk_cache.set(key, value, expire=ttl)
-    except Exception:
-        pass
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +138,7 @@ def _http_get_text(url: str) -> str:
         return resp.text
 
 
-def _discover_infotable_filename(accession_path: str, cik: str) -> Optional[str]:
+def _discover_infotable_filename(accession_path: str, cik: str) -> str | None:
     """
     從 EDGAR filing index.json 動態探索 information table XML 檔名。
 
@@ -332,7 +330,7 @@ def fetch_13f_filing_detail(accession_number: str, cik: str) -> list[dict]:
         return []
 
 
-def map_cusip_to_ticker(cusip: str, company_name: str) -> Optional[str]:
+def map_cusip_to_ticker(cusip: str, company_name: str) -> str | None:
     """
     盡力將 CUSIP 轉換為股票代號。
 

@@ -2,10 +2,7 @@
 API — Notification / Telegram / Preferences / Persona / Snapshot / Webhook Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel
-
 
 # ---------------------------------------------------------------------------
 # Telegram Settings Schemas
@@ -16,7 +13,7 @@ class TelegramSettingsRequest(BaseModel):
     """PUT /settings/telegram 請求 Body。"""
 
     telegram_chat_id: str = ""
-    custom_bot_token: Optional[str] = None
+    custom_bot_token: str | None = None
     use_custom_bot: bool = False
 
 
@@ -36,9 +33,9 @@ class TelegramSettingsResponse(BaseModel):
 class PreferencesRequest(BaseModel):
     """PUT /settings/preferences 請求 Body。"""
 
-    language: Optional[str] = None
+    language: str | None = None
     privacy_mode: bool
-    notification_preferences: Optional[dict[str, bool]] = None
+    notification_preferences: dict[str, bool] | None = None
 
 
 class PreferencesResponse(BaseModel):
@@ -69,7 +66,7 @@ class ProfileCreateRequest(BaseModel):
     """POST /profiles 請求 Body。"""
 
     name: str = ""
-    source_template_id: Optional[str] = None
+    source_template_id: str | None = None
     config: dict[str, float]  # {"Bond": 50, "Trend_Setter": 30, ...}
     home_currency: str = "TWD"
 
@@ -77,9 +74,9 @@ class ProfileCreateRequest(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     """PUT /profiles/{id} 請求 Body。"""
 
-    name: Optional[str] = None
-    config: Optional[dict[str, float]] = None
-    home_currency: Optional[str] = None
+    name: str | None = None
+    config: dict[str, float] | None = None
+    home_currency: str | None = None
 
 
 class ProfileResponse(BaseModel):
@@ -88,7 +85,7 @@ class ProfileResponse(BaseModel):
     id: int
     user_id: str
     name: str
-    source_template_id: Optional[str] = None
+    source_template_id: str | None = None
     home_currency: str = "TWD"
     config: dict
     is_active: bool
@@ -108,15 +105,15 @@ class SnapshotResponse(BaseModel):
     total_value: float
     category_values: dict  # parsed from JSON storage
     display_currency: str = "USD"
-    benchmark_value: Optional[float] = None
+    benchmark_value: float | None = None
 
 
 class TwrResponse(BaseModel):
     """GET /snapshots/twr 回傳的時間加權報酬率。"""
 
-    twr_pct: Optional[float]  # 百分比，例如 12.3 代表 +12.3%；None 表示資料不足
-    start_date: Optional[str] = None  # 計算起始日（快照中最早一筆）
-    end_date: Optional[str] = None  # 計算結束日（快照中最新一筆）
+    twr_pct: float | None  # 百分比，例如 12.3 代表 +12.3%；None 表示資料不足
+    start_date: str | None = None  # 計算起始日（快照中最早一筆）
+    end_date: str | None = None  # 計算結束日（快照中最新一筆）
     snapshot_count: int = 0  # 用於計算的快照筆數
 
 

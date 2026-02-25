@@ -2,12 +2,9 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from domain.enums import StockCategory
-
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -20,20 +17,20 @@ class HoldingRequest(BaseModel):
     ticker: str
     category: StockCategory
     quantity: float
-    cost_basis: Optional[float] = None
-    broker: Optional[str] = None
+    cost_basis: float | None = None
+    broker: str | None = None
     currency: str = "USD"
-    account_type: Optional[str] = None
+    account_type: str | None = None
     is_cash: bool = False
 
 
 class UpdateHoldingRequest(BaseModel):
     """PUT /holdings/{id} 請求 Body — 所有欄位均為選填，僅更新提供的欄位。"""
 
-    quantity: Optional[float] = Field(default=None, gt=0)
-    cost_basis: Optional[float] = Field(default=None, ge=0)
-    broker: Optional[str] = None
-    category: Optional[StockCategory] = None
+    quantity: float | None = Field(default=None, gt=0)
+    cost_basis: float | None = Field(default=None, ge=0)
+    broker: str | None = None
+    category: StockCategory | None = None
 
 
 class CashHoldingRequest(BaseModel):
@@ -41,8 +38,8 @@ class CashHoldingRequest(BaseModel):
 
     currency: str  # e.g. "USD", "TWD"
     amount: float
-    broker: Optional[str] = None
-    account_type: Optional[str] = None
+    broker: str | None = None
+    account_type: str | None = None
 
 
 class WithdrawRequest(BaseModel):
@@ -65,12 +62,12 @@ class HoldingResponse(BaseModel):
     ticker: str
     category: StockCategory
     quantity: float
-    cost_basis: Optional[float] = None
-    broker: Optional[str] = None
+    cost_basis: float | None = None
+    broker: str | None = None
     currency: str = "USD"
-    account_type: Optional[str] = None
+    account_type: str | None = None
     is_cash: bool
-    purchase_fx_rate: Optional[float] = None
+    purchase_fx_rate: float | None = None
     updated_at: str
 
 
@@ -80,10 +77,10 @@ class HoldingImportItem(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=20)
     category: str = Field(..., min_length=1, max_length=50)
     quantity: float = Field(..., gt=0)
-    cost_basis: Optional[float] = Field(default=None, ge=0)
-    broker: Optional[str] = Field(default=None, max_length=100)
+    cost_basis: float | None = Field(default=None, ge=0)
+    broker: str | None = Field(default=None, max_length=100)
     currency: str = Field(default="USD", min_length=3, max_length=3)
-    account_type: Optional[str] = Field(default=None, max_length=100)
+    account_type: str | None = Field(default=None, max_length=100)
     is_cash: bool = False
 
     @field_validator("ticker")
@@ -105,10 +102,10 @@ class HoldingExportItem(BaseModel):
     ticker: str
     category: str
     quantity: float
-    cost_basis: Optional[float] = None
-    broker: Optional[str] = None
+    cost_basis: float | None = None
+    broker: str | None = None
     currency: str = "USD"
-    account_type: Optional[str] = None
+    account_type: str | None = None
     is_cash: bool = False
 
 
@@ -135,14 +132,12 @@ class HoldingDetail(BaseModel):
     quantity: float
     market_value: float
     weight_pct: float
-    avg_cost: Optional[float] = None
-    cost_total: Optional[float] = (
-        None  # avg_cost * quantity * fx，以 display_currency 計
-    )
-    current_price: Optional[float] = None
-    change_pct: Optional[float] = None
-    purchase_fx_rate: Optional[float] = None
-    current_fx_rate: Optional[float] = None
+    avg_cost: float | None = None
+    cost_total: float | None = None  # avg_cost * quantity * fx，以 display_currency 計
+    current_price: float | None = None
+    change_pct: float | None = None
+    purchase_fx_rate: float | None = None
+    current_fx_rate: float | None = None
 
 
 class XRayEntry(BaseModel):
@@ -172,9 +167,9 @@ class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
     total_value: float
-    previous_total_value: Optional[float] = None
-    total_value_change: Optional[float] = None
-    total_value_change_pct: Optional[float] = None
+    previous_total_value: float | None = None
+    total_value_change: float | None = None
+    total_value_change_pct: float | None = None
     display_currency: str = "USD"
     categories: dict[str, CategoryAllocation]
     advice: list[str]
@@ -264,7 +259,7 @@ class SellRecommendationResponse(BaseModel):
     quantity_to_sell: float
     sell_value: float
     reason: str
-    unrealized_pl: Optional[float] = None
+    unrealized_pl: float | None = None
     priority: int  # 1=再平衡, 2=節稅, 3=流動性
 
 

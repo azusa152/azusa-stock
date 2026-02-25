@@ -23,15 +23,19 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_migration"
 )
 
-from sqlalchemy import Column, MetaData, Table, text  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import (  # noqa: E402
+    Column,
+    MetaData,
+    Table,
+    create_engine,  # noqa: E402
+    text,
+)
 from sqlalchemy import inspect as sa_inspect  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 from sqlmodel import SQLModel  # noqa: E402
 
 import domain.entities  # noqa: F401, E402 — register all entity models
 from infrastructure.database import _run_migrations  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,6 +1,7 @@
 # Folio — 智能資產配置
 
 [![CI](https://github.com/azusa152/azusa-stock/actions/workflows/ci.yml/badge.svg)](https://github.com/azusa152/azusa-stock/actions/workflows/ci.yml)
+![Coverage](https://raw.githubusercontent.com/azusa152/azusa-stock/python-coverage-comment-action-data/badge.svg)
 
 > 不是教你買什麼，而是幫你建立一套**有紀律的觀察流程** — 記錄觀點、追蹤訊號、自動提醒，讓你不再憑感覺做決定。
 
@@ -409,16 +410,24 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 
 | GitHub CI Job | 對應的 make 指令 |
 |---|---|
-| Backend Tests | `backend-test` |
+| Backend Tests (含 coverage ≥ 80%) | `backend-test` |
 | Lint (ruff) | `backend-lint` |
 | OpenAPI Spec Freshness | `check-api-spec` |
 | Frontend Lint | `frontend-lint` |
 | Frontend Build | `frontend-build` |
-| Frontend Tests | `frontend-test` |
+| Frontend Tests (含 coverage ≥ 2%) | `frontend-test` |
 | Frontend Security (npm audit) | `frontend-security` |
 | Backend/Frontend Constant Sync | `check-constants` |
 | Security Audit (pip-audit) | `backend-security` |
 | CI Gate | (aggregates all jobs above — blocks PR merge on failure) |
+
+**測試覆蓋率（Coverage）：**
+
+- 測試覆蓋率採 **Ratchet 策略** — 閾值只升不降，防止回退
+- **Backend 閾值**：80%（設定於 `backend/pyproject.toml` `[tool.coverage.report] fail_under`）
+- **Frontend 閾值**：2%（設定於 `frontend-react/vitest.config.ts` `coverage.thresholds`；前端測試初期較低，隨元件測試增加逐步提升）
+- 提升覆蓋率後，手動調高閾值並提交，使新數值成為新的最低基準
+- Backend 覆蓋率 badge 由 py-cov-action 自動更新（每次合併至 `main` 時）
 
 <details>
 <summary>手動執行（不使用 Make）</summary>

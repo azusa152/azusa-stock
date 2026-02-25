@@ -37,6 +37,8 @@ charset-normalizer==3.4.4
     # via requests
 click==8.3.1
     # via uvicorn
+coverage==7.13.4
+    # via pytest-cov
 cryptography==46.0.5
     # via -r backend/requirements.in
 curl-cffi==0.7.4
@@ -118,7 +120,9 @@ platformdirs==4.9.2
     #   pip-audit
     #   yfinance
 pluggy==1.6.0
-    # via pytest
+    # via
+    #   pytest
+    #   pytest-cov
 py-serializable==2.1.0
     # via cyclonedx-python-lib
 pycparser==3.0
@@ -136,7 +140,10 @@ pyparsing==3.3.2
 pytest==8.3.4
     # via
     #   -r backend/requirements.in
+    #   pytest-cov
     #   pytest-mock
+pytest-cov==7.0.0
+    # via -r backend/requirements.in
 pytest-mock==3.14.0
     # via -r backend/requirements.in
 python-dateutil==2.9.0.post0

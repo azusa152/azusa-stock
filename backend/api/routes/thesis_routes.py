@@ -30,7 +30,7 @@ def create_thesis_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get("/ticker/{ticker}/thesis", summary="Get thesis history for a stock")
@@ -45,4 +45,4 @@ def get_thesis_history_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e

@@ -12,7 +12,6 @@ from application.scan.prewarm_service import (
 from domain.entities import Holding, Stock
 from domain.enums import StockCategory
 
-
 # ---------------------------------------------------------------------------
 # _collect_tickers
 # ---------------------------------------------------------------------------

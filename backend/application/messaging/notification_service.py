@@ -4,7 +4,7 @@ Application — Notification Service：每週摘要、投資組合摘要。
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session
 
@@ -105,9 +105,7 @@ def send_weekly_digest(session: Session) -> dict:
     health_score = round(normal_count / total * 100, 1)
 
     # --- 過去 7 天的訊號變化 ---
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(
-        days=WEEKLY_DIGEST_LOOKBACK_DAYS
-    )
+    seven_days_ago = datetime.now(UTC) - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
     recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
     signal_changes: dict[str, int] = {}
     prev_signals: dict[str, str] = {}

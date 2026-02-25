@@ -2,12 +2,9 @@
 API — Scan / PriceAlert / FearGreed Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 from domain.enums import StockCategory
-
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -34,11 +31,11 @@ class ScanResult(BaseModel):
     category: StockCategory
     signal: str
     alerts: list[str]
-    moat: Optional[str] = None
-    bias: Optional[float] = None
-    volume_ratio: Optional[float] = None
-    market_status: Optional[str] = None
-    bias_percentile: Optional[float] = None
+    moat: str | None = None
+    bias: float | None = None
+    volume_ratio: float | None = None
+    market_status: str | None = None
+    bias_percentile: float | None = None
     is_rogue_wave: bool = False
 
 
@@ -52,19 +49,19 @@ class ScanResponse(BaseModel):
 class SignalsResponse(BaseModel):
     """GET /ticker/{ticker}/signals 技術訊號回應。"""
 
-    ticker: Optional[str] = None
-    price: Optional[float] = None
-    previous_close: Optional[float] = None
-    change_pct: Optional[float] = None
-    rsi: Optional[float] = None
-    ma200: Optional[float] = None
-    ma60: Optional[float] = None
-    bias: Optional[float] = None
-    bias_200: Optional[float] = None
-    volume_ratio: Optional[float] = None
+    ticker: str | None = None
+    price: float | None = None
+    previous_close: float | None = None
+    change_pct: float | None = None
+    rsi: float | None = None
+    ma200: float | None = None
+    ma60: float | None = None
+    bias: float | None = None
+    bias_200: float | None = None
+    volume_ratio: float | None = None
     status: list[str] = []
-    error: Optional[str] = None
-    bias_percentile: Optional[float] = None
+    error: str | None = None
+    bias_percentile: float | None = None
     is_rogue_wave: bool = False
 
 
@@ -79,29 +76,29 @@ class MoatResponse(BaseModel):
     """GET /ticker/{ticker}/moat 護城河分析回應。"""
 
     ticker: str = ""
-    moat: Optional[str] = None
-    details: Optional[str] = None
+    moat: str | None = None
+    details: str | None = None
     margins: list[dict] = []
-    yoy_change: Optional[float] = None
+    yoy_change: float | None = None
 
 
 class EarningsResponse(BaseModel):
     """GET /ticker/{ticker}/earnings 財報日曆回應。"""
 
     ticker: str = ""
-    next_earnings_date: Optional[str] = None
-    days_until: Optional[int] = None
-    error: Optional[str] = None
+    next_earnings_date: str | None = None
+    days_until: int | None = None
+    error: str | None = None
 
 
 class DividendResponse(BaseModel):
     """GET /ticker/{ticker}/dividend 股息資訊回應。"""
 
     ticker: str = ""
-    dividend_yield: Optional[float] = None
-    ex_date: Optional[str] = None
-    ytd_dividend_per_share: Optional[float] = None
-    error: Optional[str] = None
+    dividend_yield: float | None = None
+    ex_date: str | None = None
+    ytd_dividend_per_share: float | None = None
+    error: str | None = None
 
 
 class PriceAlertResponse(BaseModel):
@@ -118,12 +115,12 @@ class PriceAlertResponse(BaseModel):
 class LastScanResponse(BaseModel):
     """GET /scan/last 回應。"""
 
-    last_scanned_at: Optional[str] = None
-    epoch: Optional[int] = None
-    market_status: Optional[str] = None
-    market_status_details: Optional[str] = None
-    fear_greed_level: Optional[str] = None
-    fear_greed_score: Optional[int] = None
+    last_scanned_at: str | None = None
+    epoch: int | None = None
+    market_status: str | None = None
+    market_status_details: str | None = None
+    fear_greed_level: str | None = None
+    fear_greed_score: int | None = None
 
 
 class ScanStatusResponse(BaseModel):
@@ -150,8 +147,8 @@ class ScanLogResponse(BaseModel):
 class VIXData(BaseModel):
     """VIX 指數資料。"""
 
-    value: Optional[float] = None
-    change_1d: Optional[float] = None
+    value: float | None = None
+    change_1d: float | None = None
     level: str = "N/A"
     fetched_at: str = ""
 
@@ -159,7 +156,7 @@ class VIXData(BaseModel):
 class CNNFearGreedData(BaseModel):
     """CNN Fear & Greed Index 資料。"""
 
-    score: Optional[int] = None
+    score: int | None = None
     label: str = ""
     level: str = "N/A"
     fetched_at: str = ""
@@ -171,6 +168,6 @@ class FearGreedResponse(BaseModel):
     composite_score: int = 50
     composite_level: str = "N/A"
     composite_label: str = ""
-    vix: Optional[VIXData] = None
-    cnn: Optional[CNNFearGreedData] = None
+    vix: VIXData | None = None
+    cnn: CNNFearGreedData | None = None
     fetched_at: str = ""

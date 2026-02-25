@@ -1,5 +1,15 @@
 """application.stock sub-package — re-exports public API for backward compatibility."""
 
+from application.stock.filing_service import (  # noqa: F401
+    backfill_guru_filings,
+    get_dashboard_summary,
+    get_filing_summary,
+    get_guru_filing_history,
+    get_holding_changes,
+    get_top_holdings,
+    sync_all_gurus,
+    sync_guru_filing,
+)
 from application.stock.stock_service import (  # noqa: F401
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -29,14 +39,4 @@ from application.stock.stock_service import (  # noqa: F401
     reactivate_stock,
     update_display_order,
     update_stock_category,
-)
-from application.stock.filing_service import (  # noqa: F401
-    backfill_guru_filings,
-    get_dashboard_summary,
-    get_filing_summary,
-    get_guru_filing_history,
-    get_holding_changes,
-    get_top_holdings,
-    sync_all_gurus,
-    sync_guru_filing,
 )

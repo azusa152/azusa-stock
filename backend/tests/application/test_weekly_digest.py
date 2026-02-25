@@ -5,7 +5,7 @@ in application.messaging.notification_service.
 All external I/O is mocked — no Telegram calls, no yfinance requests.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from sqlmodel import Session
@@ -44,7 +44,7 @@ def _add_scan_log(
         stock_ticker=ticker,
         signal=signal,
         market_status="BULLISH",
-        scanned_at=datetime.now(timezone.utc) - timedelta(days=days_ago),
+        scanned_at=datetime.now(UTC) - timedelta(days=days_ago),
     )
     session.add(log)
     session.commit()

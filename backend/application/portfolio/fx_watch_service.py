@@ -3,7 +3,7 @@ Application — FX Watch Service：外匯換匯時機監控與警報。
 提供 CRUD 操作與定期監控邏輯。
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session
 
@@ -307,7 +307,7 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
         }
 
     triggered_alerts: list[dict] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for watch in watches:
         # 檢查冷卻時間
@@ -315,7 +315,7 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
             # SQLite 回傳的 datetime 可能不含時區資訊，統一轉為 UTC
             last_alerted = watch.last_alerted_at
             if last_alerted.tzinfo is None:
-                last_alerted = last_alerted.replace(tzinfo=timezone.utc)
+                last_alerted = last_alerted.replace(tzinfo=UTC)
             cooldown_until = last_alerted + timedelta(
                 hours=watch.reminder_interval_hours
             )

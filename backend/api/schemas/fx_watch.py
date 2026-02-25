@@ -2,8 +2,6 @@
 API — FX Watch / Forex Monitoring Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 from domain.constants import (
@@ -13,7 +11,6 @@ from domain.constants import (
     FX_WATCH_DEFAULT_RECENT_HIGH_DAYS,
     FX_WATCH_DEFAULT_REMINDER_HOURS,
 )
-
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -35,12 +32,12 @@ class FXWatchCreateRequest(BaseModel):
 class FXWatchUpdateRequest(BaseModel):
     """PATCH /fx-watch/{id} 請求 Body：更新外匯監控配置。"""
 
-    recent_high_days: Optional[int] = None
-    consecutive_increase_days: Optional[int] = None
-    alert_on_recent_high: Optional[bool] = None
-    alert_on_consecutive_increase: Optional[bool] = None
-    reminder_interval_hours: Optional[int] = None
-    is_active: Optional[bool] = None
+    recent_high_days: int | None = None
+    consecutive_increase_days: int | None = None
+    alert_on_recent_high: bool | None = None
+    alert_on_consecutive_increase: bool | None = None
+    reminder_interval_hours: int | None = None
+    is_active: bool | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +58,7 @@ class FXWatchResponse(BaseModel):
     alert_on_consecutive_increase: bool
     reminder_interval_hours: int
     is_active: bool
-    last_alerted_at: Optional[str] = None
+    last_alerted_at: str | None = None
     created_at: str
     updated_at: str
 

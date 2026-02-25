@@ -3,6 +3,26 @@ API — 股票管理路由。
 薄控制器：僅負責解析請求、呼叫 Service、回傳回應。
 """
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import PlainTextResponse
+from sqlmodel import Session
+
+from api.rate_limit import limiter
+from api.schemas import (
+    CategoryUpdateRequest,
+    DeactivateRequest,
+    ImportResponse,
+    MessageResponse,
+    PriceAlertCreateRequest,
+    ReactivateRequest,
+    RemovedStockResponse,
+    ReorderRequest,
+    StockImportItem,
+    StockResponse,
+    TickerCreateRequest,
+    WebhookRequest,
+    WebhookResponse,
+)
 from application.services import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -38,29 +58,9 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import PlainTextResponse
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
-from sqlmodel import Session
-
-from api.rate_limit import limiter
-from api.schemas import (
-    CategoryUpdateRequest,
-    DeactivateRequest,
-    ImportResponse,
-    MessageResponse,
-    PriceAlertCreateRequest,
-    ReactivateRequest,
-    RemovedStockResponse,
-    ReorderRequest,
-    StockImportItem,
-    StockResponse,
-    TickerCreateRequest,
-    WebhookRequest,
-    WebhookResponse,
-)
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -87,7 +87,7 @@ def create_ticker_route(
         raise HTTPException(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
-        )
+        ) from e
 
     return StockResponse(
         ticker=stock.ticker,
@@ -190,12 +190,12 @@ def update_category_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
     except CategoryUnchangedError as e:
         raise HTTPException(
             status_code=409,
             detail={"error_code": ERROR_CATEGORY_UNCHANGED, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.post(
@@ -215,12 +215,12 @@ def deactivate_ticker_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
     except StockAlreadyInactiveError as e:
         raise HTTPException(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_INACTIVE, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get(
@@ -248,7 +248,7 @@ def get_removal_history_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.post(
@@ -268,12 +268,12 @@ def reactivate_ticker_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
     except StockAlreadyActiveError as e:
         raise HTTPException(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_ACTIVE, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
@@ -303,7 +303,7 @@ def get_scan_history_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get("/scan/history", summary="Get latest scan logs across all stocks")
@@ -342,7 +342,7 @@ def create_price_alert_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_STOCK_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
 
 
 @router.get("/ticker/{ticker}/alerts", summary="List price alerts for a stock")

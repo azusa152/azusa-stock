@@ -7,7 +7,6 @@ Includes a circuit breaker: after 3 consecutive failures, disables for 30 minute
 import os
 import time
 from datetime import date, timedelta
-from typing import Optional
 
 import requests
 
@@ -23,7 +22,7 @@ _consecutive_failures = 0
 _circuit_open_until: float = 0
 
 
-def _get_token() -> Optional[str]:
+def _get_token() -> str | None:
     return os.getenv("FINMIND_API_TOKEN") or None
 
 
@@ -39,7 +38,7 @@ def is_available() -> bool:
     return True
 
 
-def _latest_value(rows: list[dict], type_name: str) -> Optional[float]:
+def _latest_value(rows: list[dict], type_name: str) -> float | None:
     """Return the value from the most recent row matching the given type."""
     matching = sorted(
         [r for r in rows if r.get("type") == type_name],
@@ -54,7 +53,7 @@ def _latest_value(rows: list[dict], type_name: str) -> Optional[float]:
         return None
 
 
-def get_financials(ticker_code: str) -> Optional[dict]:
+def get_financials(ticker_code: str) -> dict | None:
     """
     Fetch financial statements for a TW ticker from FinMind.
     ticker_code: yfinance-style TW ticker (e.g. "2330.TW").

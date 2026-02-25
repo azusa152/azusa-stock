@@ -7,11 +7,11 @@ from sqlmodel import Session, select
 
 from application.portfolio.rebalance_service import _compute_holding_market_values
 from application.stock.stock_service import StockNotFoundError
-from i18n import get_user_language, t
 from domain.constants import CATEGORY_FALLBACK_BETA, DEFAULT_USER_ID
 from domain.entities import Holding
 from domain.enums import StockCategory
 from domain.stress_test import calculate_stress_test as _pure_stress_test
+from i18n import get_user_language, t
 from infrastructure.market_data import (
     get_exchange_rates,
     get_stock_beta,

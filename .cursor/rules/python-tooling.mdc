@@ -28,6 +28,13 @@ alwaysApply: false
 - **Dev tools** (e.g. `pip-audit`, `ruff`, `pytest`) belong in `requirements.in` — never install them ad-hoc inside Makefile targets.
 - **Adding a new CI job:** Add the job to `.github/workflows/ci.yml`, add its job ID + corresponding make target to `KNOWN_JOB_MAP` in `scripts/check_ci_completeness.py`, and wire the make target into `make ci`. The `ci-completeness` pre-commit hook and CI job will enforce this. For infrastructure-only jobs (path filtering, meta-checks, merge gates), add the job ID to `SKIP_JOBS` instead of `KNOWN_JOB_MAP` — the `ci-gate` and `ci-completeness` jobs are examples of this. The `CI Gate` job is the sole required status check for merging to `main`; never remove it from `SKIP_JOBS`.
 
+## Test Coverage
+
+- `make backend-test` runs pytest with `pytest-cov` and enforces a coverage threshold. Config lives in `backend/pyproject.toml` under `[tool.coverage.report]`.
+- Current floor: `fail_under = 80`. When coverage improves, raise this value and commit the new floor (ratchet approach — thresholds only go up).
+- All new code in `application/`, `domain/`, and `api/` should have corresponding tests. Use `# pragma: no cover` sparingly for genuinely untestable branches.
+- `relative_files = true` is set in the coverage config — required for CI and py-cov-action badge generation to work correctly.
+
 ## Logging
 - Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.
 - Never use `print()` for diagnostic output; always use `logger.info()` / `logger.warning()` / `logger.error()`.

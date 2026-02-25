@@ -20,6 +20,7 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_sector"
 )
 
+from domain.constants import DISK_KEY_SECTOR, DISK_SECTOR_TTL  # noqa: E402
 from infrastructure.market_data.market_data import (  # noqa: E402
     _ETF_SECTOR_KEY_MAP,
     _SECTOR_NOT_FOUND,
@@ -28,7 +29,6 @@ from infrastructure.market_data.market_data import (  # noqa: E402
     get_etf_sector_weights,
     get_ticker_sector_cached,
 )
-from domain.constants import DISK_KEY_SECTOR, DISK_SECTOR_TTL  # noqa: E402
 
 
 class TestGetTickerSectorCached:

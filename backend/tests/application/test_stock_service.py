@@ -12,21 +12,25 @@ class TestGetSignalsForTicker:
     def test_returns_signals_with_bias_distribution(self) -> None:
         mock_signals = {"rsi": 55.0, "bias": 10.0}
         mock_dist = {"historical_biases": [1.0, 2.0], "count": 2}
-        with patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals):
-            with patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist):
-                from application.stock.stock_service import get_signals_for_ticker
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_signals_for_ticker
 
-                result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker("AAPL")
 
         assert result["rsi"] == 55.0
         assert result["bias_distribution"] == mock_dist
 
     def test_returns_signals_unchanged_when_signals_none(self) -> None:
-        with patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None):
-            with patch(f"{STOCK_MODULE}.get_bias_distribution") as mock_dist:
-                from application.stock.stock_service import get_signals_for_ticker
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_bias_distribution") as mock_dist,
+        ):
+            from application.stock.stock_service import get_signals_for_ticker
 
-                result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker("AAPL")
 
         assert result is None
         mock_dist.assert_not_called()

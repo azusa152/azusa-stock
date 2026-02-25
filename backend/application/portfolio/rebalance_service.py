@@ -3,7 +3,7 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 """
 
 import json as _json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
@@ -24,6 +24,8 @@ from domain.fx_analysis import (
 )
 from domain.rebalance import (
     calculate_rebalance as _pure_rebalance,
+)
+from domain.rebalance import (
     compute_portfolio_health_score,
 )
 from i18n import get_user_language, t
@@ -459,7 +461,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         if v > 0
     ]
 
-    result["calculated_at"] = datetime.now(timezone.utc).isoformat()
+    result["calculated_at"] = datetime.now(UTC).isoformat()
 
     return result
 
@@ -552,7 +554,7 @@ def calculate_currency_exposure(
             "advice": [
                 t("rebalance.no_holdings_data", lang=get_user_language(session))
             ],
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
         }
 
     # 3) 取得匯率（all currencies → home_currency）
@@ -697,7 +699,7 @@ def calculate_currency_exposure(
         "fx_rate_alerts": fx_rate_alerts_serialized,
         "risk_level": risk_level,
         "advice": advice,
-        "calculated_at": datetime.now(timezone.utc).isoformat(),
+        "calculated_at": datetime.now(UTC).isoformat(),
     }
 
 

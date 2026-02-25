@@ -122,14 +122,16 @@ class TestUpdateSettings:
         assert result["telegram_chat_id"] == "222"
 
     def test_encrypts_token_when_fernet_key_set(self, db_session: Session) -> None:
-        with patch(
-            "application.messaging.telegram_settings_service.encrypt_token",
-            return_value="encrypted_value",
-        ) as mock_encrypt:
-            with patch.dict("os.environ", {"FERNET_KEY": "somekey"}):
-                result = update_settings(
-                    db_session, self._payload(custom_bot_token="plaintext_token")
-                )
+        with (
+            patch(
+                "application.messaging.telegram_settings_service.encrypt_token",
+                return_value="encrypted_value",
+            ) as mock_encrypt,
+            patch.dict("os.environ", {"FERNET_KEY": "somekey"}),
+        ):
+            result = update_settings(
+                db_session, self._payload(custom_bot_token="plaintext_token")
+            )
         mock_encrypt.assert_called_once_with("plaintext_token")
         assert result["custom_bot_token_masked"] == "enc***lue"
 
@@ -185,11 +187,13 @@ class TestSendTestMessage:
 
     def test_raises_500_when_send_fails(self, db_session: Session) -> None:
         _seed_settings(db_session, chat_id="123456")
-        with patch(
-            "application.messaging.telegram_settings_service.send_telegram_message_dual",
-            side_effect=RuntimeError("network error"),
+        with (
+            patch(
+                "application.messaging.telegram_settings_service.send_telegram_message_dual",
+                side_effect=RuntimeError("network error"),
+            ),
+            pytest.raises(HTTPException) as exc_info,
         ):
-            with pytest.raises(HTTPException) as exc_info:
-                send_test_message(db_session, _LANG)
+            send_test_message(db_session, _LANG)
         assert exc_info.value.status_code == 500
         assert exc_info.value.detail["error_code"] == "TELEGRAM_SEND_FAILED"

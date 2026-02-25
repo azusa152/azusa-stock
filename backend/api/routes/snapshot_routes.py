@@ -5,7 +5,7 @@ API — 投資組合快照路由。
 
 import json
 import threading
-from datetime import date
+from datetime import UTC, date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session
@@ -104,11 +104,11 @@ def get_twr(
     - 預設計算今年 YTD（start = 1/1, end = 今日）。
     - 若無足夠快照，twr_pct 回傳 None。
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from domain.analysis import compute_twr
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     effective_start = start or date(today.year, 1, 1)
     effective_end = end or today
 

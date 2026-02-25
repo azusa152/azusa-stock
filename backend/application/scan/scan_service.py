@@ -4,7 +4,7 @@ Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史�
 
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session
 
@@ -469,7 +469,7 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
     # 建立 ticker → result 快查表
     result_map = {r["ticker"]: r for r in results}
     triggered_msgs: list[str] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for alert in all_alerts:
         r = result_map.get(alert.stock_ticker)
@@ -490,9 +490,12 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
 
         # 比較
         triggered = False
-        if alert.operator == "lt" and metric_value < alert.threshold:
-            triggered = True
-        elif alert.operator == "gt" and metric_value > alert.threshold:
+        if (
+            alert.operator == "lt"
+            and metric_value < alert.threshold
+            or alert.operator == "gt"
+            and metric_value > alert.threshold
+        ):
             triggered = True
 
         if not triggered:
@@ -502,7 +505,7 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
         if alert.last_triggered_at:
             triggered_at = alert.last_triggered_at
             if triggered_at.tzinfo is None:
-                triggered_at = triggered_at.replace(tzinfo=timezone.utc)
+                triggered_at = triggered_at.replace(tzinfo=UTC)
             cooldown = timedelta(hours=PRICE_ALERT_COOLDOWN_HOURS)
             if now - triggered_at < cooldown:
                 continue

@@ -22,6 +22,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
+# Coverage
+.coverage
+htmlcov/
+coverage/
+
 # IDE
 .vscode/
 .idea/

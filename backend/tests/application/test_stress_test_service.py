@@ -10,7 +10,6 @@ from application.stock.stock_service import StockNotFoundError
 from domain.entities import Holding
 from domain.enums import StockCategory
 
-
 # ---------------------------------------------------------------------------
 # Fixtures & Helpers
 # ---------------------------------------------------------------------------

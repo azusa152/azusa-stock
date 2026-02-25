@@ -4,7 +4,6 @@ Activated only when JQUANTS_API_KEY env var is set.
 """
 
 import os
-from typing import Optional
 
 from logging_config import get_logger
 
@@ -38,7 +37,7 @@ def is_available() -> bool:
     return _get_client() is not None
 
 
-def get_financials(ticker_code: str) -> Optional[dict]:
+def get_financials(ticker_code: str) -> dict | None:
     """
     Fetch financial statements for a JP ticker from J-Quants.
     ticker_code: 4-digit JP code (e.g. "7203"), NOT the yfinance suffix form.
