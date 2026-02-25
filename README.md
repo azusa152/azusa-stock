@@ -355,7 +355,7 @@ docker compose up --build
 # 首次完整設定（安裝後端 + 前端依賴，並產生型別）
 make setup
 
-# 修改 backend/api/schemas.py 後重新產生型別
+# 修改 backend/api/schemas/ 後重新產生型別
 make generate-api
 ```
 
@@ -841,12 +841,12 @@ graph TB
   INFRA --> DOMAIN
 ```
 
-| 層 | 目錄 | 職責 | 依賴 |
-|----|------|------|------|
-| **Domain** | `domain/` | 純業務規則、計算、列舉。不依賴框架，可獨立單元測試。 | 無 |
-| **Application** | `application/` | Use Case 編排：協調 Repository 與 Adapter 完成業務流程。 | Domain, Infrastructure |
-| **Infrastructure** | `infrastructure/` | 外部適配器：DB、yfinance、Telegram。可替換不影響業務。 | Domain |
-| **API** | `api/` | 薄控制器：解析 HTTP 請求 → 呼叫 Service → 回傳回應。 | Application |
+| 層 | 目錄 | 子套件 | 職責 | 依賴 |
+|----|------|--------|------|------|
+| **Domain** | `domain/` | `core/` · `analysis/` · `portfolio/` | 純業務規則、計算、列舉。不依賴框架，可獨立單元測試。 | 無 |
+| **Application** | `application/` | `stock/` · `scan/` · `portfolio/` · `guru/` · `messaging/` · `settings/` | Use Case 編排：協調 Repository 與 Adapter 完成業務流程。 | Domain, Infrastructure |
+| **Infrastructure** | `infrastructure/` | `market_data/` · `persistence/` · `external/` | 外部適配器：DB、yfinance、Telegram。可替換不影響業務。 | Domain |
+| **API** | `api/` | `routes/` · `schemas/` | 薄控制器：解析 HTTP 請求 → 呼叫 Service → 回傳回應。 | Application |
 
 <details>
 <summary>📁 完整專案目錄結構（點擊展開）</summary>
@@ -869,43 +869,73 @@ azusa-stock/
 │   ├── logging_config.py             # 集中式日誌（跨層共用）
 │   │
 │   ├── domain/                       # 領域層：純業務邏輯，無框架依賴
-│   │   ├── constants.py              #   集中管理閾值、快取設定、共用訊息
-│   │   ├── enums.py                  #   分類、狀態列舉 + 常數
-│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences, PortfolioSnapshot)
-│   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎, compute_twr（可獨立測試）
-│   │   ├── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
-│   │   ├── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
-│   │   └── stress_test.py            #   純計算：壓力測試 CAPM 模擬（可獨立測試）
+│   │   ├── core/                     #   基礎類型子套件
+│   │   │   ├── constants.py          #     集中管理閾值、快取設定、共用訊息
+│   │   │   ├── enums.py              #     分類、狀態列舉 + 常數
+│   │   │   ├── entities.py           #     SQLModel 資料表 (Stock, ThesisLog, ScanLog, PriceAlert, UserPreferences...)
+│   │   │   ├── protocols.py          #     MarketDataProvider Protocol
+│   │   │   └── formatters.py         #     訊號格式化工具
+│   │   ├── analysis/                 #   分析子套件
+│   │   │   ├── analysis.py           #     純計算：RSI, Bias, 決策引擎, compute_twr（可獨立測試）
+│   │   │   ├── fx_analysis.py        #     外匯風險分析
+│   │   │   └── smart_money.py        #     Smart Money 共鳴計算
+│   │   ├── portfolio/                #   投資組合子套件
+│   │   │   ├── rebalance.py          #     純計算：再平衡 drift 分析（可獨立測試）
+│   │   │   ├── withdrawal.py         #     純計算：聰明提款 Liquidity Waterfall（可獨立測試）
+│   │   │   └── stress_test.py        #     純計算：壓力測試 CAPM 模擬（可獨立測試）
+│   │   └── constants.py / entities.py / ...  # 向下相容 shim（re-export 至 core/）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
-│   │   ├── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
-│   │   ├── notification_service.py   #   每週摘要 + 豐富 get_portfolio_summary（含總值/日漲跌/前三名/偏移/Smart Money）
-│   │   ├── snapshot_service.py       #   投資組合快照：take_daily_snapshot / get_snapshots / get_snapshot_range
-│   │   ├── formatters.py             #   Telegram HTML 格式化（format_weekly_digest_html 等）
-│   │   ├── prewarm_service.py        #   啟動快取預熱（非阻塞背景執行）
-│   │   └── stress_test_service.py    #   壓力測試編排（Beta 取得 + FX + 組合分析）
+│   │   ├── stock/                    #   股票與財報服務
+│   │   ├── scan/                     #   掃描與預熱服務
+│   │   ├── portfolio/                #   持倉、再平衡、壓力測試、FX 監控服務
+│   │   ├── guru/                     #   大師足跡與共鳴服務
+│   │   ├── messaging/                #   通知、Webhook、Telegram 設定服務
+│   │   ├── settings/                 #   偏好設定、人格、快照服務
+│   │   ├── services.py               #   向下相容 facade（re-export 至各子套件）
+│   │   └── formatters.py             #   Telegram HTML 格式化（跨子套件共用）
 │   │
 │   ├── infrastructure/               # 基礎設施層：外部適配器
-│   │   ├── database.py               #   SQLite engine + session 管理
-│   │   ├── repositories.py           #   Repository Pattern（集中 DB 查詢，含批次操作）
-│   │   ├── market_data.py            #   yfinance 適配器（含快取 + Rate Limiter + tenacity 重試）
-│   │   └── notification.py           #   Telegram Bot 適配器
+│   │   ├── database.py               #   SQLite engine + session 管理（根層，api/ 允許直接匯入）
+│   │   ├── market_data/              #   市場資料子套件
+│   │   │   ├── market_data.py        #     yfinance 適配器（含快取 + Rate Limiter + tenacity 重試）
+│   │   │   ├── market_data_resolver.py #   市場與股票代號自動識別
+│   │   │   ├── finmind_adapter.py    #     FinMind API 台股資料適配器
+│   │   │   └── jquants_adapter.py    #     J-Quants API 日股財務資料適配器
+│   │   ├── persistence/              #   持久化子套件
+│   │   │   └── repositories.py       #     Repository Pattern（集中 DB 查詢，含批次操作）
+│   │   ├── external/                 #   外部服務子套件
+│   │   │   ├── notification.py       #     Telegram Bot 適配器（雙模式）
+│   │   │   ├── sec_edgar.py          #     SEC EDGAR 13F 資料擷取
+│   │   │   └── crypto.py             #     Fernet 加密工具（Bot Token 保護）
+│   │   └── repositories.py / notification.py / ...  # 向下相容 shim
 │   │
 │   ├── config/                        # 設定檔
 │   │   ├── system_personas.json      #   投資人格範本（6 種）
 │   │   └── templates/                #   匯入範本 (stock / holding)
 │   │
 │   └── api/                          # API 層：薄控制器
-│       ├── schemas.py                #   Pydantic 請求/回應 Schema（含 Webhook, TwrResponse, SnapshotResponse）
-│       ├── stock_routes.py           #   股票管理 + /summary + /webhook 路由
-│       ├── thesis_routes.py          #   觀點版控路由
-│       ├── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
-│       ├── snapshot_routes.py        #   /snapshots + /snapshots/twr + /snapshots/take 路由
-│       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
-│       ├── holding_routes.py         #   持倉管理 + 再平衡 + 壓力測試路由
-│       ├── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
-│       ├── preferences_routes.py    #   使用者偏好設定路由（隱私模式等）
-│       └── guru_routes.py           #   大師足跡路由（/gurus + /resonance，13F 同步 mutex）
+│       ├── schemas/                  #   Pydantic 請求/回應 Schema 子套件
+│       │   ├── common.py             #     HealthResponse 等共用 Schema
+│       │   ├── stock.py              #     股票、觀點、護城河 Schema
+│       │   ├── scan.py               #     掃描、價格警報 Schema
+│       │   ├── portfolio.py          #     持倉、再平衡、提款、壓力測試 Schema
+│       │   ├── guru.py               #     大師足跡、共鳴 Schema
+│       │   ├── fx_watch.py           #     外匯監控 Schema
+│       │   └── notification.py       #     Telegram、偏好設定、快照 Schema
+│       ├── routes/                   #   路由子套件
+│       │   ├── stock_routes.py       #     股票管理 + /summary + /webhook 路由
+│       │   ├── thesis_routes.py      #     觀點版控路由
+│       │   ├── scan_routes.py        #     三層漏斗掃描 + 每週摘要路由（含 mutex）
+│       │   ├── snapshot_routes.py    #     /snapshots + /snapshots/twr + /snapshots/take 路由
+│       │   ├── persona_routes.py     #     投資人格 + 配置 CRUD 路由
+│       │   ├── holding_routes.py     #     持倉管理 + 再平衡 + 壓力測試路由
+│       │   ├── telegram_routes.py    #     Telegram 通知設定路由（雙模式）
+│       │   ├── preferences_routes.py #     使用者偏好設定路由（隱私模式等）
+│       │   ├── fx_watch_routes.py    #     外匯監控 CRUD 路由
+│       │   └── guru_routes.py        #     大師足跡路由（/gurus + /resonance，13F 同步 mutex）
+│       ├── dependencies.py           #   FastAPI 依賴注入
+│       └── rate_limit.py             #   速率限制中介軟體
 │   │
 │   └── tests/                        # 測試套件（domain / application / api / infrastructure）
 │       ├── conftest.py               #   共用 fixtures（TestClient, in-memory DB, mock 外部服務）
@@ -916,10 +946,10 @@ azusa-stock/
 │       │   ├── test_stress_test_service.py  #   壓力測試服務編排（9 tests）
 │       │   └── ...                   #   其他 application 測試
 │       ├── api/
-│       │   ├── test_stress_test_routes.py   #   壓力測試 API 端點（14 tests）
+│       │   ├── routes/              #   路由測試（與 api/routes/ 結構對應）
 │       │   └── ...                   #   其他 API 測試
 │       └── infrastructure/
-│           ├── test_market_data_beta.py     #   Beta 快取與 yfinance 整合（19 tests）
+│           ├── market_data/         #   市場資料測試（與 infrastructure/market_data/ 結構對應）
 │           └── ...                   #   其他 infrastructure 測試
 │
 ├── frontend-react/
@@ -927,7 +957,7 @@ azusa-stock/
 │   ├── package.json
 │   ├── src/
 │   │   ├── api/                      # TanStack Query hooks + axios client + types（generated + hand-written）
-│   │   ├── components/               # 頁面元件（allocation/, dashboard/, radar/, fxwatch/, smartmoney/）
+│   │   ├── components/               # 頁面元件（allocation/{holdings,analysis,tools,settings}/, dashboard/, radar/, fxwatch/, smartmoney/）
 │   │   ├── hooks/                    # useTheme, usePrivacyMode, useLanguage, usePlotlyTheme
 │   │   ├── lib/                      # constants.ts、i18n.ts
 │   │   └── pages/                    # Dashboard, Radar, Allocation, FxWatch, SmartMoney

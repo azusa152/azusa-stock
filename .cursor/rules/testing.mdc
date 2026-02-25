@@ -13,7 +13,7 @@ Every feature MUST ship with tests. Bug fixes MUST include regression tests. No 
 
 ## Test File Structure
 
-Tests live in `backend/tests/` mirroring the source layout.
+Tests live in `backend/tests/` mirroring the source layout. Sub-packages mirror their source counterparts — e.g., `tests/domain/analysis/` for `domain/analysis/`, `tests/application/stock/` for `application/stock/`, `tests/api/routes/` for `api/routes/`, `tests/infrastructure/market_data/` for `infrastructure/market_data/`.
 
 ## Test Naming
 
@@ -32,6 +32,7 @@ Every test follows **Arrange / Act / Assert**. See `backend/tests/` for canonica
 
 - **yfinance**, **Telegram Bot API**, and any network I/O MUST be mocked. Never hit real APIs in tests.
 - Use `unittest.mock.patch` or `pytest-mock` to replace infrastructure adapters.
+- **Patch at the actual module**, not a re-export shim. Private symbols (e.g., `_fetch_signals_from_yf`) must be patched at their definition site: `infrastructure.market_data.market_data._fetch_signals_from_yf`, not `infrastructure.market_data._fetch_signals_from_yf`.
 
 ## Minimum Test Coverage Per Endpoint
 
@@ -53,6 +54,6 @@ Architecture boundary tests in `backend/tests/test_architecture.py` enforce laye
 
 - **Domain** must not import from `application`, `infrastructure`, or `api`.
 - **Infrastructure** must not import from `application` or `api`.
-- **API routes** may only import from `infrastructure.database` (for `get_session`); all other `infrastructure.*` imports are forbidden.
+- **API routes** (`api/routes/`) may only import from `infrastructure.database` (for `get_session`); all other `infrastructure.*` imports are forbidden — including `infrastructure.persistence.*`, `infrastructure.market_data.*`, and `infrastructure.external.*`.
 
 Any new module must not violate the allowed import directions. Run `make test` to verify boundaries have not regressed.
