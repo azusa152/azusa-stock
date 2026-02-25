@@ -68,6 +68,8 @@ def _run_migrations() -> None:
         # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
         "ALTER TABLE guru ADD COLUMN style VARCHAR;",
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
+        # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
+        "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
     ]
 
     with engine.connect() as conn:

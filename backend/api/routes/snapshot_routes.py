@@ -12,7 +12,11 @@ from sqlmodel import Session
 
 from api.rate_limit import limiter
 from api.schemas import AcceptedResponse, SnapshotResponse, TwrResponse
-from application.portfolio.snapshot_service import get_snapshot_range, get_snapshots
+from application.portfolio.snapshot_service import (
+    backfill_benchmark_values,
+    get_snapshot_range,
+    get_snapshots,
+)
 from domain.entities import PortfolioSnapshot
 from infrastructure.database import engine, get_session
 from logging_config import get_logger
@@ -28,12 +32,17 @@ def _to_response(snap: PortfolioSnapshot) -> SnapshotResponse:
         category_values = json.loads(snap.category_values)
     except (TypeError, ValueError):
         category_values = {}
+    try:
+        benchmark_values = json.loads(snap.benchmark_values)
+    except (TypeError, ValueError):
+        benchmark_values = {}
     return SnapshotResponse(
         snapshot_date=snap.snapshot_date.isoformat(),
         total_value=snap.total_value,
         category_values=category_values,
         display_currency=snap.display_currency,
         benchmark_value=snap.benchmark_value,
+        benchmark_values=benchmark_values,
     )
 
 
@@ -46,6 +55,16 @@ def _run_snapshot_background() -> None:
             take_daily_snapshot(session)
     except Exception as exc:
         logger.error("背景快照建立失敗：%s", exc, exc_info=True)
+
+
+def _run_backfill_background() -> None:
+    """在背景執行緒中回填基準指數歷史資料（自建 DB Session）。"""
+    try:
+        with Session(engine) as session:
+            updated = backfill_benchmark_values(session)
+            logger.info("基準指數回填完成：%d 件", updated)
+    except Exception as exc:
+        logger.error("基準指數回填失敗：%s", exc, exc_info=True)
 
 
 @router.get(
@@ -151,3 +170,24 @@ async def take_snapshot(
     logger.info("快照觸發請求已收到，啟動背景執行緒。")
     threading.Thread(target=_run_snapshot_background, daemon=True).start()
     return AcceptedResponse(message="snapshot triggered")
+
+
+@router.post(
+    "/snapshots/backfill-benchmarks",
+    response_model=AcceptedResponse,
+    summary="Backfill benchmark prices for historical snapshots (background)",
+)
+@limiter.limit("3/minute")
+async def backfill_benchmarks(
+    request: Request,
+) -> AcceptedResponse:
+    """
+    既存の空の benchmark_values を持つスナップショットに対して、
+    VT / ^N225 / ^TWII / ^GSPC の過去終値を yfinance から一括取得し補完する。
+
+    背景執行緒で非同步実行。完了までに数秒〜数十秒かかる場合がある。
+    Rate limited: 3/minute。
+    """
+    logger.info("基準指數回填請求已收到，啟動背景執行緒。")
+    threading.Thread(target=_run_backfill_background, daemon=True).start()
+    return AcceptedResponse(message="benchmark backfill triggered")

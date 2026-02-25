@@ -4781,6 +4781,53 @@
           }
         }
       }
+    },
+    "/snapshots/backfill-benchmarks": {
+      "post": {
+        "summary": "Backfill benchmark prices for historical snapshots (background)",
+        "description": "\u65e2\u5b58\u306e\u7a7a\u306e benchmark_values \u3092\u6301\u3064\u30b9\u30ca\u30c3\u30d7\u30b7\u30e7\u30c3\u30c8\u306b\u5bfe\u3057\u3066\u3001\nVT / ^N225 / ^TWII / ^GSPC \u306e\u904e\u53bb\u7d42\u5024\u3092 yfinance \u304b\u3089\u4e00\u62ec\u53d6\u5f97\u3057\u88dc\u5b8c\u3059\u308b\u3002\n\n\u80cc\u666f\u57f7\u884c\u7dd2\u3067\u975e\u540c\u6b65\u5b9f\u884c\u3002\u5b8c\u4e86\u307e\u3067\u306b\u6570\u79d2\u301c\u6570\u5341\u79d2\u304b\u304b\u308b\u5834\u5408\u304c\u3042\u308b\u3002\nRate limited: 3/minute\u3002",
+        "operationId": "backfill_benchmarks_snapshots_backfill_benchmarks_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7783,6 +7830,21 @@
               }
             ],
             "title": "Benchmark Value"
+          },
+          "benchmark_values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Benchmark Values",
+            "default": {}
           }
         },
         "type": "object",

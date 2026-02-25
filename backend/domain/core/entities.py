@@ -271,7 +271,11 @@ class PortfolioSnapshot(SQLModel, table=True):
     )
     display_currency: str = Field(default="USD", description="顯示幣別")
     benchmark_value: float | None = Field(
-        default=None, description="同日 S&P 500 收盤價（基準比較用）"
+        default=None, description="同日 S&P 500 收盤價（基準比較用，向下相容）"
+    )
+    benchmark_values: str = Field(
+        default="{}",
+        description='多基準指數收盤價 JSON，如 {"^GSPC": 5000, "VT": 120, "^N225": 38000, "^TWII": 18000}',
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),

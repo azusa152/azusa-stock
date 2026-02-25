@@ -10,7 +10,7 @@ import math
 import threading
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import TypeVar
 
 import diskcache
@@ -771,6 +771,35 @@ def get_price_history(ticker: str) -> list[dict] | None:
         DISK_PRICE_HISTORY_TTL,
         _fetch_price_history_from_yf,
     )
+
+
+def get_benchmark_close_history(
+    ticker: str,
+    start: date,
+    end: date,
+) -> object:
+    """
+    取得指定基準指數在 [start, end] 日期範圍內的每日收盤價序列。
+
+    回傳 pandas Series（index: DatetimeIndex, values: float），
+    僅包含有交易的日期。呼叫端可使用 .asof() 處理市場休日。
+    失敗或無資料時回傳 None。
+    """
+    try:
+        _rate_limiter.wait()
+        hist = yf.Ticker(ticker, session=_get_session()).history(
+            start=start,
+            end=end + timedelta(days=1),
+            auto_adjust=True,
+        )
+        if hist.empty:
+            return None
+        return hist["Close"]
+    except Exception as exc:
+        logger.warning(
+            "無法取得基準指數 %s 歷史資料（%s～%s）：%s", ticker, start, end, exc
+        )
+        return None
 
 
 # ===========================================================================

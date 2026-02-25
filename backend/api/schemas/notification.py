@@ -106,6 +106,7 @@ class SnapshotResponse(BaseModel):
     category_values: dict  # parsed from JSON storage
     display_currency: str = "USD"
     benchmark_value: float | None = None
+    benchmark_values: dict[str, float | None] = {}  # {"^GSPC": 5000, "VT": 120, ...}
 
 
 class TwrResponse(BaseModel):
