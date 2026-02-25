@@ -6,11 +6,12 @@
 
 ```bash
 docker compose up -d
-make ci            # Full CI check — mirrors ALL GitHub CI pipeline jobs
-make test          # Run all tests (backend + frontend)
-make lint          # Lint all (backend + frontend)
-make format        # Format code
-make clean         # Remove build caches
+make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs
+make test                # Run all tests (backend + frontend)
+make backend-test-quick  # Fast backend tests — no coverage, for local iteration
+make lint                # Lint all (backend + frontend)
+make format              # Format code
+make clean               # Remove build caches
 ```
 
 ## Dependency Management (pip-tools)

@@ -110,7 +110,7 @@ upgrade: .venv-check ## Re-lock all deps to latest compatible versions
 # ---------------------------------------------------------------------------
 #  Backend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: backend-lint backend-test backend-format
+.PHONY: backend-lint backend-test backend-test-quick backend-format
 
 backend-lint: .venv-check ## Ruff check + format --check (backend only)
 	$(RUFF) check --fix $(BACKEND_DIR)/
@@ -119,7 +119,13 @@ backend-lint: .venv-check ## Ruff check + format --check (backend only)
 backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend only)
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
 		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
+		-n auto --durations=20 \
 		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing
+
+backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
+	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
+		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -q --tb=short \
+		-n auto
 
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/

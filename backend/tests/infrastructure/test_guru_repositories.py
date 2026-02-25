@@ -8,9 +8,13 @@ from sqlmodel import Session
 
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
+from infrastructure.persistence.repositories import _compute_trend
 from infrastructure.repositories import (
+    find_activity_feed,
     find_all_guru_summaries,
     find_consensus_stocks,
+    find_grand_portfolio,
+    find_holding_history_by_guru,
     find_notable_changes_all_gurus,
     find_sector_breakdown,
     save_filing,
@@ -362,6 +366,175 @@ class TestFindAllGuruSummaries:
         assert match["filing_count"] == 0
         assert match["latest_report_date"] is None
 
+    def test_no_filing_returns_none_for_metrics(self, test_session: Session):
+        """Guru with no filings should have None for concentration and turnover."""
+        _make_guru(
+            test_session, cik="1000000050", display_name="No Filing Metrics Guru"
+        )
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "No Filing Metrics Guru"),
+            None,
+        )
+        assert match is not None
+        assert match["top5_concentration_pct"] is None
+        assert match["turnover_pct"] is None
+
+    def test_top5_concentration_pct_sums_top_five_weights(self, test_session: Session):
+        """top5_concentration_pct should be the sum of the top-5 weight_pct values."""
+        guru = _make_guru(
+            test_session, cik="1000000051", display_name="Concentration Guru"
+        )
+        # holdings_count must reflect the actual holdings we add (7 here)
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="CONC-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=7,
+            ),
+        )
+        # Add 7 holdings with distinct weight_pct values
+        weights = [30.0, 20.0, 15.0, 10.0, 8.0, 5.0, 2.0]
+        for i, w in enumerate(weights):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"CONC-C{i:03d}",
+                ticker=f"TICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=HoldingAction.UNCHANGED.value,
+                weight_pct=w,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Concentration Guru"), None
+        )
+        assert match is not None
+        # Top-5: 30+20+15+10+8 = 83.0
+        assert match["top5_concentration_pct"] == pytest.approx(83.0)
+
+    def test_turnover_pct_counts_new_and_sold(self, test_session: Session):
+        """turnover_pct = (new_positions + sold_out) / holdings_count * 100."""
+        guru = _make_guru(test_session, cik="1000000052", display_name="Turnover Guru")
+        # 4 holdings: 1 NEW_POSITION, 1 SOLD_OUT, 2 UNCHANGED → turnover = 50%
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="TURN-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=4,
+            ),
+        )
+        actions = [
+            HoldingAction.NEW_POSITION,
+            HoldingAction.SOLD_OUT,
+            HoldingAction.UNCHANGED,
+            HoldingAction.UNCHANGED,
+        ]
+        for i, action in enumerate(actions):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"TURN-C{i:03d}",
+                ticker=f"TTICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=action.value,
+                weight_pct=10.0,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Turnover Guru"), None
+        )
+        assert match is not None
+        # (1 + 1) / 4 * 100 = 50.0
+        assert match["turnover_pct"] == pytest.approx(50.0)
+
+    def test_concentration_fewer_than_5_holdings_sums_all(self, test_session: Session):
+        """When a filing has fewer than 5 holdings, concentration is the sum of all."""
+        guru = _make_guru(
+            test_session, cik="1000000053", display_name="Few Holdings Guru"
+        )
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="FEW-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=1_000_000.0,
+                holdings_count=3,
+            ),
+        )
+        weights = [40.0, 35.0, 25.0]
+        for i, w in enumerate(weights):
+            holding = GuruHolding(
+                filing_id=filing.id,
+                guru_id=guru.id,
+                cusip=f"FEW-C{i:03d}",
+                ticker=f"FTICK{i}",
+                company_name=f"Company {i}",
+                value=100_000.0,
+                shares=1000.0,
+                action=HoldingAction.UNCHANGED.value,
+                weight_pct=w,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Few Holdings Guru"), None
+        )
+        assert match is not None
+        # All 3 holdings: 40+35+25 = 100.0
+        assert match["top5_concentration_pct"] == pytest.approx(100.0)
+
+    def test_turnover_pct_is_none_when_holdings_count_is_zero(
+        self, test_session: Session
+    ):
+        """Filing with holdings_count=0 should yield turnover_pct=None (division guard)."""
+        guru = _make_guru(
+            test_session, cik="1000000054", display_name="Empty Filing Guru"
+        )
+        save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="EMPTY-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=0.0,
+                holdings_count=0,
+            ),
+        )
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Empty Filing Guru"), None
+        )
+        assert match is not None
+        assert match["turnover_pct"] is None
+
 
 # ===========================================================================
 # find_consensus_stocks
@@ -417,6 +590,72 @@ class TestFindConsensusStocks:
         assert meta_entry is not None
         assert meta_entry["guru_count"] == 2
         assert len(meta_entry["gurus"]) == 2
+        # gurus is now list[dict] with display_name, action, weight_pct
+        guru_names = {g["display_name"] for g in meta_entry["gurus"]}
+        assert "Consensus Guru A" in guru_names
+        assert "Consensus Guru B" in guru_names
+
+    def test_enriched_fields_present(self, test_session: Session):
+        """Each consensus item should include company_name, avg_weight_pct, sector."""
+        guru_a = _make_guru(
+            test_session, cik="2000000006", display_name="Enrich Guru A"
+        )
+        guru_b = _make_guru(
+            test_session, cik="2000000007", display_name="Enrich Guru B"
+        )
+        filing_a = _make_filing(test_session, guru_a.id, "CON-006", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "CON-007", "2025-12-31")
+        self._make_holding_with_ticker(
+            test_session, filing_a.id, guru_a.id, "CUSIP-EA1", "GOOGL"
+        )
+        self._make_holding_with_ticker(
+            test_session, filing_b.id, guru_b.id, "CUSIP-EB1", "GOOGL"
+        )
+
+        result = find_consensus_stocks(test_session)
+
+        entry = next((r for r in result if r["ticker"] == "GOOGL"), None)
+        assert entry is not None
+        assert entry["company_name"] == "Company GOOGL"
+        assert entry["avg_weight_pct"] == pytest.approx(5.0)
+        assert entry["sector"] is None  # helper doesn't set sector
+        # Each guru detail has the expected keys and values
+        for g in entry["gurus"]:
+            assert "display_name" in g
+            assert "action" in g
+            assert g["weight_pct"] == pytest.approx(5.0)
+
+    def test_sold_out_excluded(self, test_session: Session):
+        """SOLD_OUT positions must not appear in consensus."""
+        guru_a = _make_guru(
+            test_session, cik="2000000008", display_name="SoldOut Guru A"
+        )
+        guru_b = _make_guru(
+            test_session, cik="2000000009", display_name="SoldOut Guru B"
+        )
+        filing_a = _make_filing(test_session, guru_a.id, "CON-008", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "CON-009", "2025-12-31")
+
+        for filing_id, guru_id, cusip in [
+            (filing_a.id, guru_a.id, "CUSIP-SO1"),
+            (filing_b.id, guru_b.id, "CUSIP-SO2"),
+        ]:
+            holding = GuruHolding(
+                filing_id=filing_id,
+                guru_id=guru_id,
+                cusip=cusip,
+                ticker="SOLD_TICKER",
+                company_name="Sold Co",
+                value=100_000.0,
+                shares=500.0,
+                action=HoldingAction.SOLD_OUT.value,
+                weight_pct=2.0,
+            )
+            save_holdings_batch(test_session, [holding])
+
+        result = find_consensus_stocks(test_session)
+
+        assert not any(r["ticker"] == "SOLD_TICKER" for r in result)
 
     def test_ticker_held_by_single_guru_not_in_consensus(self, test_session: Session):
         """A ticker held by only one guru should NOT appear (consensus requires 2+)."""
@@ -509,3 +748,664 @@ class TestFindSectorBreakdown:
 
     def test_returns_list(self, test_session: Session):
         assert isinstance(find_sector_breakdown(test_session), list)
+
+
+# ===========================================================================
+# find_activity_feed
+# ===========================================================================
+
+
+class TestFindActivityFeed:
+    """Tests for the find_activity_feed repository function."""
+
+    def _make_holding_with_action(
+        self,
+        session: Session,
+        filing_id: int,
+        guru_id: int,
+        cusip: str,
+        ticker: str,
+        action: HoldingAction,
+        value: float = 100_000.0,
+    ) -> None:
+        holding = GuruHolding(
+            filing_id=filing_id,
+            guru_id=guru_id,
+            cusip=cusip,
+            ticker=ticker,
+            company_name=f"Company {ticker}",
+            value=value,
+            shares=1000.0,
+            action=action.value,
+            weight_pct=10.0,
+        )
+        save_holdings_batch(session, [holding])
+
+    def test_most_bought_contains_new_position_and_increased(
+        self, test_session: Session
+    ):
+        """most_bought should aggregate NEW_POSITION and INCREASED actions."""
+        guru = _make_guru(test_session, cik="4000000001", display_name="Buy Guru A")
+        filing = _make_filing(test_session, guru.id, "ACT-001", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C001",
+            "AAPL",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C002",
+            "MSFT",
+            HoldingAction.INCREASED,
+        )
+
+        result = find_activity_feed(test_session)
+
+        tickers_bought = [item["ticker"] for item in result["most_bought"]]
+        assert "AAPL" in tickers_bought
+        assert "MSFT" in tickers_bought
+
+    def test_most_sold_contains_sold_out_and_decreased(self, test_session: Session):
+        """most_sold should aggregate SOLD_OUT and DECREASED actions."""
+        guru = _make_guru(test_session, cik="4000000002", display_name="Sell Guru B")
+        filing = _make_filing(test_session, guru.id, "ACT-002", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session, filing.id, guru.id, "ACT-C003", "TSLA", HoldingAction.SOLD_OUT
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C004",
+            "NFLX",
+            HoldingAction.DECREASED,
+        )
+
+        result = find_activity_feed(test_session)
+
+        tickers_sold = [item["ticker"] for item in result["most_sold"]]
+        assert "TSLA" in tickers_sold
+        assert "NFLX" in tickers_sold
+
+    def test_buy_and_sell_are_mutually_exclusive(self, test_session: Session):
+        """A ticker in most_bought must not appear in most_sold and vice versa."""
+        guru = _make_guru(test_session, cik="4000000003", display_name="Mixed Guru C")
+        filing = _make_filing(test_session, guru.id, "ACT-003", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C005",
+            "BUYONLY",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing.id,
+            guru.id,
+            "ACT-C006",
+            "SELLONLY",
+            HoldingAction.SOLD_OUT,
+        )
+
+        result = find_activity_feed(test_session)
+
+        bought_tickers = {item["ticker"] for item in result["most_bought"]}
+        sold_tickers = {item["ticker"] for item in result["most_sold"]}
+        assert "BUYONLY" in bought_tickers
+        assert "SELLONLY" not in bought_tickers
+        assert "SELLONLY" in sold_tickers
+        assert "BUYONLY" not in sold_tickers
+
+    def test_returns_dict_with_both_keys(self, test_session: Session):
+        """find_activity_feed should always return a dict with most_bought and most_sold."""
+        result = find_activity_feed(test_session)
+        assert isinstance(result, dict)
+        assert "most_bought" in result
+        assert "most_sold" in result
+        assert isinstance(result["most_bought"], list)
+        assert isinstance(result["most_sold"], list)
+
+    def test_multi_guru_increases_guru_count(self, test_session: Session):
+        """When two gurus both buy the same ticker, guru_count should be 2."""
+        guru_a = _make_guru(test_session, cik="4000000004", display_name="Count Guru D")
+        guru_b = _make_guru(test_session, cik="4000000005", display_name="Count Guru E")
+        filing_a = _make_filing(test_session, guru_a.id, "ACT-004", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "ACT-005", "2025-12-31")
+
+        self._make_holding_with_action(
+            test_session,
+            filing_a.id,
+            guru_a.id,
+            "ACT-C007",
+            "SHARED",
+            HoldingAction.NEW_POSITION,
+        )
+        self._make_holding_with_action(
+            test_session,
+            filing_b.id,
+            guru_b.id,
+            "ACT-C008",
+            "SHARED",
+            HoldingAction.NEW_POSITION,
+        )
+
+        result = find_activity_feed(test_session)
+
+        shared = next(
+            (item for item in result["most_bought"] if item["ticker"] == "SHARED"), None
+        )
+        assert shared is not None
+        assert shared["guru_count"] == 2
+        assert set(shared["gurus"]) == {"Count Guru D", "Count Guru E"}
+
+    def test_limit_truncates_results(self, test_session: Session):
+        """Passing limit=1 should return at most 1 item per list."""
+        guru = _make_guru(test_session, cik="4000000006", display_name="Limit Guru F")
+        filing = _make_filing(test_session, guru.id, "ACT-006", "2025-12-31")
+
+        # Seed 3 distinct buy tickers
+        for i, ticker in enumerate(["TICK1", "TICK2", "TICK3"]):
+            self._make_holding_with_action(
+                test_session,
+                filing.id,
+                guru.id,
+                f"ACT-C00{9 + i}",
+                ticker,
+                HoldingAction.NEW_POSITION,
+            )
+
+        result = find_activity_feed(test_session, limit=1)
+
+        assert len(result["most_bought"]) <= 1
+
+
+# ===========================================================================
+# _compute_trend
+# ===========================================================================
+
+
+class TestComputeTrend:
+    def test_single_value_returns_stable(self):
+        assert _compute_trend([100.0]) == "stable"
+
+    def test_empty_returns_stable(self):
+        assert _compute_trend([]) == "stable"
+
+    def test_increasing_when_change_gte_10pct(self):
+        assert _compute_trend([100.0, 115.0]) == "increasing"
+
+    def test_decreasing_when_change_lte_minus10pct(self):
+        assert _compute_trend([100.0, 85.0]) == "decreasing"
+
+    def test_stable_when_change_between_minus10_and_10(self):
+        assert _compute_trend([100.0, 105.0]) == "stable"
+
+    def test_exited_when_last_is_zero(self):
+        assert _compute_trend([100.0, 0.0]) == "exited"
+
+    def test_new_when_first_is_zero(self):
+        assert _compute_trend([0.0, 100.0]) == "new"
+
+
+# ===========================================================================
+# find_holding_history_by_guru
+# ===========================================================================
+
+
+class TestFindHoldingHistoryByGuru:
+    def test_returns_empty_for_guru_with_no_filings(self, test_session: Session):
+        guru = _make_guru(
+            test_session,
+            cik="5000000001",
+            display_name="No Filings QoQ Guru",
+        )
+        result = find_holding_history_by_guru(test_session, guru.id)
+        assert result == []
+
+    def test_single_filing_returns_single_quarter_per_ticker(
+        self, test_session: Session
+    ):
+        guru = _make_guru(
+            test_session, cik="5000000002", display_name="Single Filing QoQ Guru"
+        )
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-001",
+                report_date="2025-09-30",
+                filing_date="2025-11-14",
+                total_value=500_000.0,
+                holdings_count=2,
+            ),
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    value=300_000.0,
+                    shares=2000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=60.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0002",
+                    ticker="MSFT",
+                    company_name="Microsoft Corp",
+                    value=200_000.0,
+                    shares=500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        assert len(result) == 2
+        tickers = [item["ticker"] for item in result]
+        assert "AAPL" in tickers
+        assert "MSFT" in tickers
+        for item in result:
+            assert len(item["quarters"]) == 1
+            assert "trend" in item
+            assert item["quarters"][0]["report_date"] == "2025-09-30"
+
+    def test_multi_quarter_groups_by_ticker(self, test_session: Session):
+        guru = _make_guru(
+            test_session, cik="5000000003", display_name="Multi Quarter QoQ Guru"
+        )
+        filing1 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-003-F1",
+                report_date="2025-03-31",
+                filing_date="2025-05-14",
+                total_value=400_000.0,
+                holdings_count=1,
+            ),
+        )
+        filing2 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-003-F2",
+                report_date="2025-06-30",
+                filing_date="2025-08-14",
+                total_value=500_000.0,
+                holdings_count=1,
+            ),
+        )
+        # Same ticker in both filings
+        for filing, shares in [(filing1, 1000.0), (filing2, 1200.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0003",
+                        ticker="GOOG",
+                        company_name="Alphabet Inc",
+                        value=400_000.0,
+                        shares=shares,
+                        action=HoldingAction.INCREASED.value,
+                        weight_pct=80.0,
+                    )
+                ],
+            )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        assert len(result) == 1
+        item = result[0]
+        assert item["ticker"] == "GOOG"
+        assert len(item["quarters"]) == 2
+        # Newest first
+        assert item["quarters"][0]["report_date"] == "2025-06-30"
+        assert item["quarters"][1]["report_date"] == "2025-03-31"
+        # Shares increased by 20% → trend = increasing
+        assert item["trend"] == "increasing"
+
+    def test_sorted_by_latest_weight_desc(self, test_session: Session):
+        guru = _make_guru(test_session, cik="5000000004", display_name="Sort QoQ Guru")
+        filing = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-004",
+                report_date="2025-09-30",
+                filing_date="2025-11-14",
+                total_value=600_000.0,
+                holdings_count=3,
+            ),
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0041",
+                    ticker="LOW_WT",
+                    company_name="Low Weight Co",
+                    value=60_000.0,
+                    shares=100.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=10.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="QOQ0042",
+                    ticker="HIGH_WT",
+                    company_name="High Weight Co",
+                    value=540_000.0,
+                    shares=900.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=90.0,
+                ),
+            ],
+        )
+
+        result = find_holding_history_by_guru(test_session, guru.id)
+
+        assert result[0]["ticker"] == "HIGH_WT"
+        assert result[1]["ticker"] == "LOW_WT"
+
+    def test_varying_quarter_counts_per_ticker(self, test_session: Session):
+        """Ticker held across all 3 filings has 3 quarters; one held in only 2 has 2.
+
+        Confirms the backend returns varying-length quarters lists — the frontend
+        is responsible for padding empty cells when rendering the aligned table.
+        """
+        guru = _make_guru(
+            test_session, cik="5000000005", display_name="Varying QoQ Guru"
+        )
+        filing1 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F1",
+                report_date="2024-03-31",
+                filing_date="2024-05-14",
+                total_value=400_000.0,
+                holdings_count=1,
+            ),
+        )
+        filing2 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F2",
+                report_date="2024-06-30",
+                filing_date="2024-08-14",
+                total_value=500_000.0,
+                holdings_count=2,
+            ),
+        )
+        filing3 = save_filing(
+            test_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="QOQ-005-F3",
+                report_date="2024-09-30",
+                filing_date="2024-11-14",
+                total_value=600_000.0,
+                holdings_count=2,
+            ),
+        )
+        # AAPL held in all 3 filings
+        for filing, shares in [(filing1, 1000.0), (filing2, 1100.0), (filing3, 1200.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0051",
+                        ticker="AAPL",
+                        company_name="Apple Inc",
+                        value=300_000.0,
+                        shares=shares,
+                        action=HoldingAction.UNCHANGED.value,
+                        weight_pct=50.0,
+                    )
+                ],
+            )
+        # NVDA only in filing2 and filing3 (not filing1)
+        for filing, shares in [(filing2, 500.0), (filing3, 600.0)]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=filing.id,
+                        guru_id=guru.id,
+                        cusip="QOQ0052",
+                        ticker="NVDA",
+                        company_name="Nvidia Corp",
+                        value=200_000.0,
+                        shares=shares,
+                        action=HoldingAction.NEW_POSITION.value,
+                        weight_pct=40.0,
+                    )
+                ],
+            )
+
+        result = find_holding_history_by_guru(test_session, guru.id, quarters=3)
+
+        aapl = next(item for item in result if item["ticker"] == "AAPL")
+        nvda = next(item for item in result if item["ticker"] == "NVDA")
+
+        # AAPL has data in all 3 filings
+        assert len(aapl["quarters"]) == 3
+        # NVDA only has data from 2 filings
+        assert len(nvda["quarters"]) == 2
+        # NVDA quarters should be from filing2 and filing3
+        nvda_dates = {q["report_date"] for q in nvda["quarters"]}
+        assert nvda_dates == {"2024-06-30", "2024-09-30"}
+
+
+# ===========================================================================
+# find_grand_portfolio tests
+# ===========================================================================
+
+
+class TestFindGrandPortfolio:
+    """Tests for find_grand_portfolio repository function."""
+
+    def test_aggregates_values_across_gurus(self, test_session: Session):
+        """combined_weight_pct should sum values across all gurus."""
+        guru1 = _make_guru(test_session, cik="GP0001", display_name="Grand Guru1")
+        guru2 = _make_guru(test_session, cik="GP0002", display_name="Grand Guru2")
+
+        filing1 = _make_filing(test_session, guru1.id, "GP-ACC-001", "2024-12-31")
+        filing2 = _make_filing(test_session, guru2.id, "GP-ACC-002", "2024-12-31")
+
+        # Both gurus hold AAPL
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing1.id,
+                    guru_id=guru1.id,
+                    cusip="GP-C001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    sector="Technology",
+                    value=200_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=50.0,
+                ),
+                GuruHolding(
+                    filing_id=filing2.id,
+                    guru_id=guru2.id,
+                    cusip="GP-C002",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    sector="Technology",
+                    value=100_000.0,
+                    shares=500.0,
+                    action=HoldingAction.INCREASED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        items = result["items"]
+        assert len(items) >= 1
+        aapl = next(i for i in items if i["ticker"] == "AAPL")
+
+        # total_value for AAPL: 200000 + 100000 = 300000
+        assert aapl["total_value"] == pytest.approx(300_000.0)
+        assert aapl["guru_count"] == 2
+        assert aapl["combined_weight_pct"] == pytest.approx(100.0)
+
+    def test_combined_weight_pct_sums_to_100(self, test_session: Session):
+        """combined_weight_pct for all items should sum to ~100%."""
+        guru = _make_guru(test_session, cik="GP0003", display_name="Grand Guru3")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-003", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C010",
+                    ticker="MSFT",
+                    company_name="Microsoft",
+                    sector="Technology",
+                    value=600_000.0,
+                    shares=2000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=60.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C011",
+                    ticker="GOOGL",
+                    company_name="Alphabet",
+                    sector="Technology",
+                    value=400_000.0,
+                    shares=1500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=40.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        items = [i for i in result["items"] if i["ticker"] in ("MSFT", "GOOGL")]
+        total_weight = sum(i["combined_weight_pct"] for i in items)
+        assert total_weight == pytest.approx(100.0, abs=0.01)
+
+    def test_excludes_sold_out_positions(self, test_session: Session):
+        """SOLD_OUT holdings must not appear in grand portfolio results."""
+        guru = _make_guru(test_session, cik="GP0004", display_name="Grand Guru4")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-004", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C020",
+                    ticker="SOLD_STOCK",
+                    company_name="Sold Corp",
+                    sector="Finance",
+                    value=0.0,
+                    shares=0.0,
+                    action=HoldingAction.SOLD_OUT.value,
+                    weight_pct=0.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C021",
+                    ticker="KEPT_STOCK",
+                    company_name="Kept Corp",
+                    sector="Finance",
+                    value=500_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=50.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        tickers = {i["ticker"] for i in result["items"]}
+        assert "SOLD_STOCK" not in tickers
+        assert "KEPT_STOCK" in tickers
+
+    def test_sector_breakdown_is_correct(self, test_session: Session):
+        """sector_breakdown should aggregate total_value by sector."""
+        guru = _make_guru(test_session, cik="GP0005", display_name="Grand Guru5")
+        filing = _make_filing(test_session, guru.id, "GP-ACC-005", "2024-12-31")
+
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C030",
+                    ticker="TECH1",
+                    company_name="Tech One",
+                    sector="Technology",
+                    value=700_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=70.0,
+                ),
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="GP-C031",
+                    ticker="FIN1",
+                    company_name="Finance One",
+                    sector="Finance",
+                    value=300_000.0,
+                    shares=500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=30.0,
+                ),
+            ],
+        )
+
+        result = find_grand_portfolio(test_session)
+        breakdown = {b["sector"]: b for b in result["sector_breakdown"]}
+        assert breakdown["Technology"]["total_value"] == pytest.approx(700_000.0)
+        assert breakdown["Technology"]["weight_pct"] == pytest.approx(70.0)
+        assert breakdown["Finance"]["total_value"] == pytest.approx(300_000.0)
+        assert breakdown["Finance"]["holding_count"] == 1
+
+    def test_returns_empty_when_no_active_filings(self, test_session: Session):
+        """With no filings in the database, grand portfolio should return empty results."""
+        result = find_grand_portfolio(test_session)
+        assert result["items"] == []
+        assert result["total_value"] == 0.0
+        assert result["unique_tickers"] == 0
+        assert result["sector_breakdown"] == []

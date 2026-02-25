@@ -207,6 +207,14 @@ class Guru(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         description="建立時間",
     )
+    style: str | None = Field(
+        default=None,
+        description="投資風格 (VALUE, GROWTH, MACRO, QUANT, ACTIVIST, MULTI_STRATEGY)",
+    )
+    tier: str | None = Field(
+        default=None,
+        description="等級排名 (TIER_1, TIER_2, TIER_3)",
+    )
 
 
 class GuruFiling(SQLModel, table=True):

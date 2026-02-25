@@ -112,6 +112,40 @@ class TestSeedDefaultGurus:
 
         assert all(g.is_default for g in active)
 
+    def test_seed_default_gurus_should_set_style_and_tier(self, db_session: Session):
+        from application.guru.guru_service import seed_default_gurus
+        from domain.core.constants import DEFAULT_GURUS
+
+        seed_default_gurus(db_session)
+        active = find_all_active_gurus(db_session)
+
+        assert len(active) == len(DEFAULT_GURUS)
+        assert all(g.style is not None for g in active)
+        assert all(g.tier is not None for g in active)
+
+    def test_seed_default_gurus_should_backfill_style_tier_on_second_call(
+        self, db_session: Session
+    ):
+        from application.guru.guru_service import seed_default_gurus
+        from infrastructure.repositories import find_guru_by_cik, update_guru
+
+        seed_default_gurus(db_session)
+
+        # Wipe style/tier for one guru to simulate pre-existing data
+        buffett = find_guru_by_cik(db_session, "0001067983")
+        assert buffett is not None
+        buffett.style = None
+        buffett.tier = None
+        update_guru(db_session, buffett)
+
+        # Second seed should backfill
+        seed_default_gurus(db_session)
+
+        refreshed = find_guru_by_cik(db_session, "0001067983")
+        assert refreshed is not None
+        assert refreshed.style == "VALUE"
+        assert refreshed.tier == "TIER_1"
+
 
 class TestListGurus:
     """Tests for list_gurus()."""
@@ -1174,3 +1208,183 @@ class TestGetTopHoldings:
         result = get_top_holdings(db_session, guru.id)
 
         assert len(result) == 10
+
+
+# ===========================================================================
+# TestGetDashboardSummary
+# ===========================================================================
+
+
+class TestGetDashboardSummary:
+    """Test that get_dashboard_summary includes activity_feed key."""
+
+    def test_dashboard_summary_includes_activity_feed_key(
+        self, db_session: Session
+    ) -> None:
+        from application.stock.filing_service import get_dashboard_summary
+
+        result = get_dashboard_summary(db_session)
+
+        assert "activity_feed" in result
+        assert "most_bought" in result["activity_feed"]
+        assert "most_sold" in result["activity_feed"]
+
+    def test_activity_feed_most_bought_contains_buy_actions(
+        self, db_session: Session
+    ) -> None:
+        from application.stock.filing_service import get_dashboard_summary
+        from domain.entities import Guru, GuruFiling, GuruHolding
+
+        guru = save_guru(
+            db_session,
+            Guru(
+                name="Dashboard Test Guru",
+                cik="5555555555",
+                display_name="Dashboard Guru",
+                is_active=True,
+            ),
+        )
+        filing = save_filing(
+            db_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="DASH-001",
+                report_date="2025-12-31",
+                filing_date="2026-02-14",
+                total_value=500_000.0,
+                holdings_count=1,
+            ),
+        )
+        save_holdings_batch(
+            db_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="DASHHCUSIP1",
+                    ticker="DASH_TICKER",
+                    company_name="Dashboard Co",
+                    value=500_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.NEW_POSITION.value,
+                    weight_pct=100.0,
+                )
+            ],
+        )
+
+        result = get_dashboard_summary(db_session)
+
+        bought_tickers = [
+            item["ticker"] for item in result["activity_feed"]["most_bought"]
+        ]
+        assert "DASH_TICKER" in bought_tickers
+
+
+# ===========================================================================
+# Phase 7 — enrich_holdings_with_performance tests
+# ===========================================================================
+
+
+class TestEnrichHoldingsWithPerformance:
+    """Unit tests for enrich_holdings_with_performance."""
+
+    ENRICH_TARGET = "infrastructure.market_data.fetch_price_pair"
+
+    def test_computes_positive_price_change_correctly(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "AAPL", "company_name": "Apple"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"AAPL": {"report_price": 100.0, "current_price": 110.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] == pytest.approx(10.0)
+
+    def test_computes_negative_price_change_correctly(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "TSLA", "company_name": "Tesla"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"TSLA": {"report_price": 200.0, "current_price": 190.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] == pytest.approx(-5.0)
+
+    def test_sets_none_when_ticker_is_missing(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": None, "company_name": "Unknown Co"}]
+        with patch(self.ENRICH_TARGET, return_value={}):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_sets_none_when_price_map_has_none_prices(self):
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "NVDA", "company_name": "Nvidia"}]
+        with patch(
+            self.ENRICH_TARGET,
+            return_value={"NVDA": {"report_price": None, "current_price": 500.0}},
+        ):
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_never_raises_when_fetch_price_pair_throws(self):
+        """enrich_holdings_with_performance must not propagate exceptions."""
+        from application.stock.filing_service import enrich_holdings_with_performance
+
+        holdings = [{"ticker": "BAD", "company_name": "Bad Co"}]
+        with patch(self.ENRICH_TARGET, side_effect=RuntimeError("network error")):
+            # Should not raise; price_change_pct remains None
+            result = enrich_holdings_with_performance(holdings, "2024-12-31")
+
+        assert result[0]["price_change_pct"] is None
+
+    def test_include_performance_false_does_not_call_enrich(self, db_session: Session):
+        """get_holding_changes with include_performance=False must skip enrichment."""
+        from application.stock.filing_service import (
+            get_holding_changes,
+        )
+
+        guru = save_guru(
+            db_session,
+            Guru(name="PerfTestGuru", cik="0009900001", display_name="Perf Test"),
+        )
+        filing = save_filing(
+            db_session,
+            GuruFiling(
+                guru_id=guru.id,
+                accession_number="PERF-ACC-001",
+                report_date="2024-12-31",
+                filing_date="2025-02-14",
+            ),
+        )
+        save_holdings_batch(
+            db_session,
+            [
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru.id,
+                    cusip="PERFCUSIP1",
+                    ticker="PERF",
+                    company_name="Perf Co",
+                    value=100_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.NEW_POSITION.value,
+                    weight_pct=100.0,
+                )
+            ],
+        )
+
+        enrich_path = (
+            "application.stock.filing_service.enrich_holdings_with_performance"
+        )
+        with patch(enrich_path) as mock_enrich:
+            get_holding_changes(db_session, guru.id, include_performance=False)
+            mock_enrich.assert_not_called()

@@ -3873,6 +3873,56 @@
         }
       }
     },
+    "/gurus/grand-portfolio": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "Aggregated portfolio across all active gurus' latest 13F filings",
+        "description": "\u8de8\u6240\u6709\u555f\u7528\u4e2d\u5927\u5e2b\u7684\u6700\u65b0 13F \u6301\u5009\u805a\u5408\u8996\u5716\u3002",
+        "operationId": "get_grand_portfolio_endpoint_gurus_grand_portfolio_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrandPortfolioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/gurus/{guru_id}/filing": {
       "get": {
         "tags": [
@@ -3965,6 +4015,16 @@
             "description": "Max number of changes to return (sorted by abs(change_pct) then weight_pct)"
           },
           {
+            "name": "include_performance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Performance"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,
@@ -4042,6 +4102,16 @@
             "description": "Top N holdings"
           },
           {
+            "name": "include_performance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Performance"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,
@@ -4069,6 +4139,77 @@
                     "$ref": "#/components/schemas/GuruHoldingResponse"
                   },
                   "title": "Response Get Top Holdings Gurus  Guru Id  Top Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gurus/{guru_id}/qoq": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "Quarter-over-quarter holding history for a guru",
+        "description": "\u53d6\u5f97\u6307\u5b9a\u5927\u5e2b\u8de8\u5b63\u5ea6\u6301\u5009\u6b77\u53f2\uff08\u9810\u8a2d\u6700\u8fd1 3 \u5b63\uff09\u3002",
+        "operationId": "get_guru_qoq_gurus__guru_id__qoq_get",
+        "parameters": [
+          {
+            "name": "guru_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Guru Id"
+            }
+          },
+          {
+            "name": "quarters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 8,
+              "minimum": 2,
+              "default": 3,
+              "title": "Quarters"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QoQResponse"
                 }
               }
             }
@@ -4663,6 +4804,66 @@
         "title": "AcceptedResponse",
         "description": "\u975e\u540c\u6b65\u64cd\u4f5c\u5df2\u63a5\u53d7\u56de\u61c9\u3002"
       },
+      "ActivityFeed": {
+        "properties": {
+          "most_bought": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedItem"
+            },
+            "type": "array",
+            "title": "Most Bought",
+            "default": []
+          },
+          "most_sold": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedItem"
+            },
+            "type": "array",
+            "title": "Most Sold",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "ActivityFeed",
+        "description": "\u672c\u5b63\u6700\u591a\u8cb7\u5165\u8207\u6700\u591a\u8ce3\u51fa\u80a1\u7968\u6392\u884c\u3002"
+      },
+      "ActivityFeedItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "guru_count": {
+            "type": "integer",
+            "title": "Guru Count"
+          },
+          "gurus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gurus",
+            "default": []
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "guru_count"
+        ],
+        "title": "ActivityFeedItem",
+        "description": "\u55ae\u4e00\u80a1\u7968\u7684\u8cb7\u5165\u6216\u8ce3\u51fa\u6d3b\u52d5\u6458\u8981\u3002"
+      },
       "CNNFearGreedData": {
         "properties": {
           "score": {
@@ -4779,11 +4980,46 @@
         "title": "CategoryUpdateRequest",
         "description": "PATCH /ticker/{ticker}/category \u8acb\u6c42 Body\u3002"
       },
+      "ConsensusGuruDetail": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name",
+          "action"
+        ],
+        "title": "ConsensusGuruDetail",
+        "description": "\u5171\u8b58\u80a1\u7968\u4e2d\u55ae\u4e00\u5927\u5e2b\u7684\u6301\u5009\u7d30\u7bc0\u3002"
+      },
       "ConsensusStockItem": {
         "properties": {
           "ticker": {
             "type": "string",
             "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "default": ""
           },
           "guru_count": {
             "type": "integer",
@@ -4791,7 +5027,7 @@
           },
           "gurus": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ConsensusGuruDetail"
             },
             "type": "array",
             "title": "Gurus",
@@ -4801,6 +5037,28 @@
             "type": "number",
             "title": "Total Value",
             "default": 0.0
+          },
+          "avg_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Weight Pct"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
           }
         },
         "type": "object",
@@ -4956,6 +5214,13 @@
             "type": "array",
             "title": "Sector Breakdown",
             "default": []
+          },
+          "activity_feed": {
+            "$ref": "#/components/schemas/ActivityFeed",
+            "default": {
+              "most_bought": [],
+              "most_sold": []
+            }
           }
         },
         "type": "object",
@@ -5521,6 +5786,117 @@
         "title": "FilingHistoryResponse",
         "description": "GET /gurus/{guru_id}/filings \u5b8c\u6574\u56de\u61c9\u3002"
       },
+      "GrandPortfolioItem": {
+        "properties": {
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "guru_count": {
+            "type": "integer",
+            "title": "Guru Count"
+          },
+          "gurus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gurus"
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value"
+          },
+          "avg_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Weight Pct"
+          },
+          "combined_weight_pct": {
+            "type": "number",
+            "title": "Combined Weight Pct"
+          },
+          "dominant_action": {
+            "type": "string",
+            "title": "Dominant Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "sector",
+          "guru_count",
+          "gurus",
+          "total_value",
+          "avg_weight_pct",
+          "combined_weight_pct",
+          "dominant_action"
+        ],
+        "title": "GrandPortfolioItem",
+        "description": "\u55ae\u4e00\u80a1\u7968\u5728 Grand Portfolio \u4e2d\u7684\u805a\u5408\u6301\u5009\u3002"
+      },
+      "GrandPortfolioResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GrandPortfolioItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value",
+            "default": 0.0
+          },
+          "unique_tickers": {
+            "type": "integer",
+            "title": "Unique Tickers",
+            "default": 0
+          },
+          "sector_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/SectorBreakdownItem"
+            },
+            "type": "array",
+            "title": "Sector Breakdown",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "GrandPortfolioResponse",
+        "description": "GET /gurus/grand-portfolio \u5b8c\u6574\u56de\u61c9\u3002"
+      },
       "GreatMindsEntryResponse": {
         "properties": {
           "ticker": {
@@ -5591,6 +5967,43 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Display Name"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "VALUE",
+                  "GROWTH",
+                  "MACRO",
+                  "QUANT",
+                  "ACTIVIST",
+                  "MULTI_STRATEGY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style",
+            "description": "\u6295\u8cc7\u98a8\u683c"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "TIER_1",
+                  "TIER_2",
+                  "TIER_3"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier",
+            "description": "\u7b49\u7d1a\u6392\u540d"
           }
         },
         "type": "object",
@@ -5773,6 +6186,17 @@
               }
             ],
             "title": "Filing Date"
+          },
+          "price_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Change Pct"
           }
         },
         "type": "object",
@@ -5812,6 +6236,28 @@
           "is_default": {
             "type": "boolean",
             "title": "Is Default"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           }
         },
         "type": "object",
@@ -5878,6 +6324,50 @@
             "type": "integer",
             "title": "Filing Count",
             "default": 0
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          },
+          "top5_concentration_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top5 Concentration Pct"
+          },
+          "turnover_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnover Pct"
           }
         },
         "type": "object",
@@ -6652,6 +7142,106 @@
         "type": "object",
         "title": "ProfileUpdateRequest",
         "description": "PUT /profiles/{id} \u8acb\u6c42 Body\u3002"
+      },
+      "QoQHoldingItem": {
+        "properties": {
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "quarters": {
+            "items": {
+              "$ref": "#/components/schemas/QoQQuarterSnapshot"
+            },
+            "type": "array",
+            "title": "Quarters"
+          },
+          "trend": {
+            "type": "string",
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_name",
+          "quarters",
+          "trend"
+        ],
+        "title": "QoQHoldingItem",
+        "description": "\u8de8\u5b63\u5ea6\u7684\u55ae\u4e00\u80a1\u7968\u6301\u5009\u6b77\u53f2\u8a18\u9304\u3002"
+      },
+      "QoQQuarterSnapshot": {
+        "properties": {
+          "report_date": {
+            "type": "string",
+            "title": "Report Date"
+          },
+          "shares": {
+            "type": "number",
+            "title": "Shares"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_date",
+          "shares",
+          "value",
+          "action"
+        ],
+        "title": "QoQQuarterSnapshot",
+        "description": "\u55ae\u5b63\u6301\u5009\u5feb\u7167\uff08QoQ \u6bd4\u8f03\u7528\uff09\u3002"
+      },
+      "QoQResponse": {
+        "properties": {
+          "guru_id": {
+            "type": "integer",
+            "title": "Guru Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QoQHoldingItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "guru_id"
+        ],
+        "title": "QoQResponse",
+        "description": "GET /gurus/{guru_id}/qoq \u5b8c\u6574\u56de\u61c9\u3002"
       },
       "ReactivateRequest": {
         "properties": {

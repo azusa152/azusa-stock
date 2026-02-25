@@ -238,8 +238,11 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/gurus/sync` | 觸發所有大師 13F 批次同步（SEC EDGAR，帶 mutex 防重複；申報季自動呼叫） |
 | `POST` | `/gurus/{guru_id}/sync` | 觸發單一大師 13F 同步，回傳 `{"status": "synced"\|"skipped", "message": "..."}` |
 | `GET` | `/gurus/{guru_id}/filing` | 最新 13F 申報摘要：report_date, filing_date, total_value, holdings_count, new_positions, sold_out, increased, decreased |
-| `GET` | `/gurus/{guru_id}/holdings` | 所有持倉（含 action: NEW_POSITION/SOLD_OUT/INCREASED/DECREASED/UNCHANGED，ticker, value, shares, change_pct, weight_pct） |
-| `GET` | `/gurus/{guru_id}/top` | 前 N 大持倉（按 weight_pct 排序），支援 `?n=10` |
+| `GET` | `/gurus/{guru_id}/filings` | 歷次 13F 申報紀錄清單（report_date, filing_date, holdings_count, total_value），含完整歷史 |
+| `GET` | `/gurus/{guru_id}/holdings` | 所有持倉（含 action: NEW_POSITION/SOLD_OUT/INCREASED/DECREASED/UNCHANGED，ticker, value, shares, change_pct, weight_pct）；加上 `?include_performance=true` 回傳 `price_change_pct`（申報後漲跌幅 %，歷史收盤價永久磁碟快取） |
+| `GET` | `/gurus/{guru_id}/top` | 前 N 大持倉（按 weight_pct 排序），支援 `?n=10`；加上 `?include_performance=true` 回傳 `price_change_pct`（申報後漲跌幅 %） |
+| `GET` | `/gurus/{guru_id}/qoq` | 跨季度持倉歷史，支援 `?quarters=N`（預設 3）；每筆含 ticker / company_name / 各季快照（shares, value, weight_pct, action）/ trend（increasing/decreasing/new/exited/stable） |
+| `GET` | `/gurus/grand-portfolio` | 跨所有大師最新 13F 聚合視圖 — 回傳 items（ticker, combined_weight_pct, avg_weight_pct, dominant_action, sector, guru_count, gurus[]）+ total_value + unique_tickers + sector_breakdown[] |
 | `GET` | `/resonance` | 投資組合共鳴總覽 — 所有大師 vs 觀察清單/持倉的重疊，回傳 `{results: [{guru_display_name, overlapping_tickers, overlap_count, holdings: [{ticker, action, weight_pct, ...}]}], total_gurus, gurus_with_overlap}` |
 | `GET` | `/resonance/{ticker}` | 特定股票的大師持有情況 — 哪些大師持有此股票及其動作 |
 
@@ -315,6 +318,9 @@ The following endpoints now include daily change fields calculated from yfinance
 - Use `PATCH /alerts/{alert_id}/toggle` to pause or resume an individual price alert without deleting it — useful for silencing an alert during earnings season or a known volatile period
 - Use `make backup` before any destructive operation (e.g., `docker compose down -v`)
 - When users report errors after an upgrade, check `docker compose logs backend --tail 50` first
+- Use `GET /gurus/grand-portfolio` to see the **aggregated portfolio** across all tracked gurus — combined weight, sector breakdown, and dominant action per ticker. Answers "what would I own if I split equally across all tracked superinvestors?" The `dominant_action` field reflects the most common action (NEW_POSITION / INCREASED / DECREASED / UNCHANGED / SOLD_OUT) across all gurus holding that ticker.
+- Use `GET /gurus/{id}/qoq?quarters=4` to see a guru's **quarter-over-quarter holding history** — useful for detecting conviction builds (consistent increasing trend) vs. position exits (decreasing → exited). The `trend` field per ticker can be `increasing`, `decreasing`, `new`, `exited`, or `stable`.
+- Use `GET /gurus/{id}/holdings?include_performance=true` or `GET /gurus/{id}/top?include_performance=true` to see **price performance since the filing's report date** (`price_change_pct`). Historical close prices are cached permanently on disk (immutable), so subsequent calls are fast. Positive values mean the guru's pick has gained since disclosure, negative means it has lost ground.
 - Use `GET /resonance` to check which gurus hold the same stocks as the user — response is guru-centric; invert on client side to get per-ticker guru list
 - Use `POST /gurus/{guru_id}/sync` to fetch the latest 13F data from SEC EDGAR for a specific guru — status `"synced"` means new data was fetched, `"skipped"` means already up to date
 - During 13F filing seasons (February, May, August, November), the cron service automatically calls `POST /gurus/sync` daily; off-season it runs weekly

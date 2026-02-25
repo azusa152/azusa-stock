@@ -2,7 +2,14 @@
 API — Guru / Resonance / Dashboard / Filing Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+GuruStyleLiteral = Literal[
+    "VALUE", "GROWTH", "MACRO", "QUANT", "ACTIVIST", "MULTI_STRATEGY"
+]
+GuruTierLiteral = Literal["TIER_1", "TIER_2", "TIER_3"]
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -15,6 +22,8 @@ class GuruCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     cik: str = Field(..., min_length=1, max_length=20, description="SEC CIK 代碼")
     display_name: str = Field(..., min_length=1, max_length=100)
+    style: GuruStyleLiteral | None = Field(default=None, description="投資風格")
+    tier: GuruTierLiteral | None = Field(default=None, description="等級排名")
 
 
 # ---------------------------------------------------------------------------
@@ -31,6 +40,8 @@ class GuruResponse(BaseModel):
     display_name: str
     is_active: bool
     is_default: bool
+    style: str | None = None
+    tier: str | None = None
 
 
 class GuruFilingResponse(BaseModel):
@@ -64,6 +75,7 @@ class GuruHoldingResponse(BaseModel):
     weight_pct: float | None = None
     report_date: str | None = None
     filing_date: str | None = None
+    price_change_pct: float | None = None
 
 
 class SyncResponse(BaseModel):
@@ -148,6 +160,10 @@ class GuruSummaryItem(BaseModel):
     total_value: float | None = None
     holdings_count: int = 0
     filing_count: int = 0
+    style: str | None = None
+    tier: str | None = None
+    top5_concentration_pct: float | None = None
+    turnover_pct: float | None = None
 
 
 class SeasonHighlightItem(BaseModel):
@@ -169,13 +185,24 @@ class SeasonHighlights(BaseModel):
     sold_outs: list[SeasonHighlightItem] = []
 
 
+class ConsensusGuruDetail(BaseModel):
+    """共識股票中單一大師的持倉細節。"""
+
+    display_name: str
+    action: str
+    weight_pct: float | None = None
+
+
 class ConsensusStockItem(BaseModel):
     """被多位大師同時持有的共識股票。"""
 
     ticker: str
+    company_name: str = ""
     guru_count: int
-    gurus: list[str] = []
+    gurus: list[ConsensusGuruDetail] = []
     total_value: float = 0.0
+    avg_weight_pct: float | None = None
+    sector: str | None = None
 
 
 class SectorBreakdownItem(BaseModel):
@@ -187,6 +214,23 @@ class SectorBreakdownItem(BaseModel):
     weight_pct: float
 
 
+class ActivityFeedItem(BaseModel):
+    """單一股票的買入或賣出活動摘要。"""
+
+    ticker: str
+    company_name: str
+    guru_count: int
+    gurus: list[str] = []
+    total_value: float = 0.0
+
+
+class ActivityFeed(BaseModel):
+    """本季最多買入與最多賣出股票排行。"""
+
+    most_bought: list[ActivityFeedItem] = []
+    most_sold: list[ActivityFeedItem] = []
+
+
 class DashboardResponse(BaseModel):
     """GET /gurus/dashboard 完整回應。"""
 
@@ -194,6 +238,7 @@ class DashboardResponse(BaseModel):
     season_highlights: SeasonHighlights = SeasonHighlights()
     consensus: list[ConsensusStockItem] = []
     sector_breakdown: list[SectorBreakdownItem] = []
+    activity_feed: ActivityFeed = ActivityFeed()
 
 
 class FilingHistoryItem(BaseModel):
@@ -211,3 +256,62 @@ class FilingHistoryResponse(BaseModel):
     """GET /gurus/{guru_id}/filings 完整回應。"""
 
     filings: list[FilingHistoryItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Response Schemas — Quarter-over-Quarter (QoQ)
+# ---------------------------------------------------------------------------
+
+
+class QoQQuarterSnapshot(BaseModel):
+    """單季持倉快照（QoQ 比較用）。"""
+
+    report_date: str
+    shares: float
+    value: float
+    weight_pct: float | None = None
+    action: str
+
+
+class QoQHoldingItem(BaseModel):
+    """跨季度的單一股票持倉歷史記錄。"""
+
+    ticker: str | None = None
+    company_name: str
+    quarters: list[QoQQuarterSnapshot]  # newest first
+    trend: str  # "increasing" | "decreasing" | "new" | "exited" | "stable"
+
+
+class QoQResponse(BaseModel):
+    """GET /gurus/{guru_id}/qoq 完整回應。"""
+
+    guru_id: int
+    items: list[QoQHoldingItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Response Schemas — Grand Portfolio
+# ---------------------------------------------------------------------------
+
+
+class GrandPortfolioItem(BaseModel):
+    """單一股票在 Grand Portfolio 中的聚合持倉。"""
+
+    ticker: str | None
+    company_name: str
+    sector: str | None
+    guru_count: int
+    gurus: list[str]
+    total_value: float
+    avg_weight_pct: float | None
+    combined_weight_pct: float
+    dominant_action: str
+
+
+class GrandPortfolioResponse(BaseModel):
+    """GET /gurus/grand-portfolio 完整回應。"""
+
+    items: list[GrandPortfolioItem] = []
+    total_value: float = 0.0
+    unique_tickers: int = 0
+    sector_breakdown: list[SectorBreakdownItem] = []

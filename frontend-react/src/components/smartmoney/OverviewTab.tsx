@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useGuruDashboard } from "@/api/hooks/useSmartMoney"
 import { GuruStatusCards } from "./GuruStatusCards"
 import { SeasonHighlights } from "./SeasonHighlights"
+import { ActivityFeed } from "./ActivityFeed"
 import { ConsensusStocks } from "./ConsensusStocks"
 import { SectorChart } from "./SectorChart"
 
@@ -41,6 +42,12 @@ export function OverviewTab() {
       <section>
         <p className="text-sm font-semibold mb-2">{t("smart_money.overview.highlights_header")}</p>
         <SeasonHighlights data={data.season_highlights} />
+      </section>
+
+      {/* Activity feed */}
+      <section>
+        <p className="text-sm font-semibold mb-2">{t("smart_money.overview.activity_header")}</p>
+        <ActivityFeed data={data.activity_feed} />
       </section>
 
       {/* Consensus holdings */}

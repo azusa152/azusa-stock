@@ -11,6 +11,8 @@ Routes:
   GET    /gurus/{guru_id}/filing   — Latest filing summary
   GET    /gurus/{guru_id}/holdings — All holdings with actions
   GET    /gurus/{guru_id}/top      — Top N holdings by weight
+  GET    /gurus/{guru_id}/qoq      — Quarter-over-quarter holding history
+  GET    /gurus/grand-portfolio    — Aggregated portfolio across all active gurus
   GET    /resonance                — Portfolio resonance overview
   GET    /resonance/great-minds    — Great Minds Think Alike list
   GET    /resonance/{ticker}       — Which gurus hold this ticker
@@ -28,6 +30,7 @@ from api.schemas import (
     DashboardResponse,
     FilingHistoryItem,
     FilingHistoryResponse,
+    GrandPortfolioResponse,
     GreatMindsEntryResponse,
     GreatMindsResponse,
     GuruCreate,
@@ -35,6 +38,7 @@ from api.schemas import (
     GuruHoldingResponse,
     GuruResponse,
     GuruSummaryItem,
+    QoQResponse,
     ResonanceEntryResponse,
     ResonanceResponse,
     ResonanceTickerResponse,
@@ -54,8 +58,10 @@ from application.messaging.notification_service import send_filing_season_digest
 from application.stock.filing_service import (
     get_dashboard_summary,
     get_filing_summary,
+    get_grand_portfolio,
     get_guru_filing_history,
     get_holding_changes,
+    get_holding_qoq,
     sync_all_gurus,
     sync_guru_filing,
 )
@@ -96,6 +102,8 @@ def get_gurus(session: Session = Depends(get_session)) -> list[GuruResponse]:
             display_name=g.display_name,
             is_active=g.is_active,
             is_default=g.is_default,
+            style=g.style,
+            tier=g.tier,
         )
         for g in gurus
     ]
@@ -113,7 +121,12 @@ def create_guru(
 ) -> GuruResponse:
     """新增自訂大師。若 CIK 已存在且為停用狀態則重新啟用。"""
     guru = add_guru(
-        session, name=body.name, cik=body.cik, display_name=body.display_name
+        session,
+        name=body.name,
+        cik=body.cik,
+        display_name=body.display_name,
+        style=body.style,
+        tier=body.tier,
     )
     return GuruResponse(
         id=guru.id,
@@ -122,6 +135,8 @@ def create_guru(
         display_name=guru.display_name,
         is_active=guru.is_active,
         is_default=guru.is_default,
+        style=guru.style,
+        tier=guru.tier,
     )
 
 
@@ -222,6 +237,24 @@ def sync_one(
 
 
 # ===========================================================================
+# Grand Portfolio
+# ===========================================================================
+
+
+@router.get(
+    "/grand-portfolio",
+    response_model=GrandPortfolioResponse,
+    summary="Aggregated portfolio across all active gurus' latest 13F filings",
+)
+def get_grand_portfolio_endpoint(
+    session: Session = Depends(get_session),
+) -> GrandPortfolioResponse:
+    """跨所有啟用中大師的最新 13F 持倉聚合視圖。"""
+    data = get_grand_portfolio(session)
+    return GrandPortfolioResponse(**data)
+
+
+# ===========================================================================
 # Filing & Holdings Data
 # ===========================================================================
 
@@ -271,6 +304,7 @@ def get_holdings(
         le=200,
         description="Max number of changes to return (sorted by abs(change_pct) then weight_pct)",
     ),
+    include_performance: bool = Query(default=False),
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
     """
@@ -278,7 +312,9 @@ def get_holdings(
 
     結果依變動幅度 abs(change_pct) 降序排列，再依 weight_pct 降序，最多回傳 limit 筆。
     """
-    changes = get_holding_changes(session, guru_id, limit=limit)
+    changes = get_holding_changes(
+        session, guru_id, limit=limit, include_performance=include_performance
+    )
     return [
         GuruHoldingResponse(
             guru_id=guru_id,
@@ -292,6 +328,7 @@ def get_holdings(
             weight_pct=h.get("weight_pct"),
             report_date=h.get("report_date"),
             filing_date=h.get("filing_date"),
+            price_change_pct=h.get("price_change_pct"),
         )
         for h in changes
     ]
@@ -307,10 +344,13 @@ def get_top_holdings(
     n: int = Query(
         default=GURU_TOP_HOLDINGS_COUNT, ge=1, le=50, description="Top N holdings"
     ),
+    include_performance: bool = Query(default=False),
     session: Session = Depends(get_session),
 ) -> list[GuruHoldingResponse]:
     """取得指定大師持倉權重最高的前 N 支股票（預設 Top 10，最多 50）。"""
-    top = filing_get_top_holdings(session, guru_id, n)
+    top = filing_get_top_holdings(
+        session, guru_id, n, include_performance=include_performance
+    )
     if not top:
         raise HTTPException(
             status_code=404,
@@ -329,9 +369,25 @@ def get_top_holdings(
             weight_pct=h.get("weight_pct"),
             report_date=h.get("report_date"),
             filing_date=h.get("filing_date"),
+            price_change_pct=h.get("price_change_pct"),
         )
         for h in top
     ]
+
+
+@router.get(
+    "/{guru_id}/qoq",
+    response_model=QoQResponse,
+    summary="Quarter-over-quarter holding history for a guru",
+)
+def get_guru_qoq(
+    guru_id: int,
+    quarters: int = Query(default=3, ge=2, le=8),
+    session: Session = Depends(get_session),
+) -> QoQResponse:
+    """取得指定大師跨季度持倉歷史（預設最近 3 季）。"""
+    data = get_holding_qoq(session, guru_id, quarters=quarters)
+    return QoQResponse(**data)
 
 
 # ===========================================================================

@@ -1098,12 +1098,32 @@
       "report_date": "持仓基准日",
       "filing_date": "公告日",
       "total_value": "持仓总市值",
-      "holdings_count": "持仓数量"
+      "holdings_count": "持仓数量",
+      "concentration": "前5大持仓比重",
+      "high_conviction": "高度集中",
+      "diversified": "分散型",
+      "turnover": "季度换手率"
     },
     "tab": {
       "changes": "📊 持仓变动",
       "top": "🏆 前10大持仓",
-      "great_minds": "🤝 英雄所见略同"
+      "great_minds": "🤝 英雄所见略同",
+      "qoq": "📅 季度比较",
+      "grand_portfolio": "🌐 大师总仓位"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 大师总仓位",
+      "no_data": "无持仓数据",
+      "total_aum": "合计AUM",
+      "unique_tickers": "不重复股票数",
+      "top20_header": "合计权重前20大持仓",
+      "combined_weight": "合计权重",
+      "table_header": "全部持仓"
+    },
+    "qoq": {
+      "trend": "趋势",
+      "no_data": "无历史数据",
+      "loading": "加载中..."
     },
     "action": {
       "new_position": "新建仓",
@@ -1120,7 +1140,9 @@
       "change_pct": "变动%",
       "weight_pct": "权重%",
       "rank": "#",
-      "action": "操作"
+      "action": "操作",
+      "sector": "板块",
+      "perf_since_filing": "申报以来涨跌"
     },
     "changes": {
       "no_changes": "📭 本季无持仓变动（前10中无NEW/SOLD/INCREASED/DECREASED）。",
@@ -1169,6 +1191,7 @@
       "new_positions_header": "新建仓",
       "sold_outs_header": "清仓",
       "highlights_empty": "📭 本季尚无新建仓或清仓记录。",
+      "activity_header": "📈 本季申报动态",
       "consensus_header": "🤝 共识持股",
       "consensus_empty": "📭 目前无多位大师同时持有的股票。",
       "consensus_gurus": "持有大师",
@@ -1184,7 +1207,8 @@
       "sync_button": "🔄 同步",
       "filing_history_expander": "📅 申报历史 ({{count}} 笔)",
       "filing_history_row": "📄 {{report_date}}  ·  公告：{{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} 笔",
-      "sector_weight_axis": "配置比重 (%)"
+      "sector_weight_axis": "配置比重 (%)",
+      "avg_weight_label": "平均"
     },
     "add_guru": {
       "title": "➕ 添加自定义大师",
@@ -1197,7 +1221,34 @@
       "display_placeholder": "例如 Warren Buffett",
       "submit_button": "添加大师",
       "required_warning": "⚠️ 请填写所有字段。",
-      "success": "✅ 已添加 {{display_name}}，请切换至总览页面查看。"
+      "success": "✅ 已添加 {{display_name}}，请切换至总览页面查看。",
+      "style_label": "投资风格（可选）",
+      "style_placeholder": "选择风格",
+      "tier_label": "等级（可选）",
+      "tier_placeholder": "选择等级"
+    },
+    "filter": {
+      "all_styles": "所有风格"
+    },
+    "activity": {
+      "most_bought": "最多买入",
+      "most_sold": "最多卖出",
+      "guru_count_label": "位大师",
+      "empty_bought": "本季无买入活动",
+      "empty_sold": "本季无卖出活动"
     }
+  },
+  "guru_style": {
+    "value": "价值",
+    "growth": "成长",
+    "macro": "宏观",
+    "quant": "量化",
+    "activist": "维权",
+    "multi_strategy": "多策略"
+  },
+  "guru_tier": {
+    "tier_1": "传奇",
+    "tier_2": "精英",
+    "tier_3": "值得关注"
   }
 }

@@ -1098,12 +1098,32 @@
       "report_date": "持倉基準日",
       "filing_date": "公告日",
       "total_value": "持倉總市值",
-      "holdings_count": "持倉檔數"
+      "holdings_count": "持倉檔數",
+      "concentration": "前5大持倉比重",
+      "high_conviction": "高度集中",
+      "diversified": "分散型",
+      "turnover": "季度換手率"
     },
     "tab": {
       "changes": "📊 持倉異動",
       "top": "🏆 前 10 大持倉",
-      "great_minds": "🤝 英雄所見略同"
+      "great_minds": "🤝 英雄所見略同",
+      "qoq": "📅 季度比較",
+      "grand_portfolio": "🌐 大師總倉位"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 大師總倉位",
+      "no_data": "無持倉資料",
+      "total_aum": "合計 AUM",
+      "unique_tickers": "不重複股票數",
+      "top20_header": "合計權重前 20 大持倉",
+      "combined_weight": "合計權重",
+      "table_header": "全部持倉"
+    },
+    "qoq": {
+      "trend": "趨勢",
+      "no_data": "無歷史資料",
+      "loading": "載入中..."
     },
     "action": {
       "new_position": "新建倉",
@@ -1120,7 +1140,9 @@
       "change_pct": "變動%",
       "weight_pct": "權重%",
       "rank": "#",
-      "action": "操作"
+      "action": "操作",
+      "sector": "板塊",
+      "perf_since_filing": "申報以來漲跌"
     },
     "changes": {
       "no_changes": "📭 本季無持倉異動（Top 10 中無 NEW/SOLD/INCREASED/DECREASED）。",
@@ -1169,6 +1191,7 @@
       "new_positions_header": "新建倉",
       "sold_outs_header": "清倉",
       "highlights_empty": "📭 本季尚無新建倉或清倉記錄。",
+      "activity_header": "📈 本季申報動態",
       "consensus_header": "🤝 共識持股",
       "consensus_empty": "📭 目前無多位大師同時持有的股票。",
       "consensus_gurus": "持有大師",
@@ -1184,7 +1207,8 @@
       "sync_button": "🔄 同步",
       "filing_history_expander": "📅 申報歷史 ({{count}} 筆)",
       "filing_history_row": "📄 {{report_date}}  ·  公告：{{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} 筆",
-      "sector_weight_axis": "配置比重 (%)"
+      "sector_weight_axis": "配置比重 (%)",
+      "avg_weight_label": "平均"
     },
     "add_guru": {
       "title": "➕ 新增自訂大師",
@@ -1197,7 +1221,34 @@
       "display_placeholder": "例如 Warren Buffett",
       "submit_button": "新增大師",
       "required_warning": "⚠️ 請填寫所有欄位。",
-      "success": "✅ 已新增 {{display_name}}，請切換至總覽頁面查看。"
+      "success": "✅ 已新增 {{display_name}}，請切換至總覽頁面查看。",
+      "style_label": "投資風格（選填）",
+      "style_placeholder": "選擇風格",
+      "tier_label": "等級（選填）",
+      "tier_placeholder": "選擇等級"
+    },
+    "filter": {
+      "all_styles": "所有風格"
+    },
+    "activity": {
+      "most_bought": "最多買入",
+      "most_sold": "最多賣出",
+      "guru_count_label": "位大師",
+      "empty_bought": "本季無買入活動",
+      "empty_sold": "本季無賣出活動"
     }
+  },
+  "guru_style": {
+    "value": "價值",
+    "growth": "成長",
+    "macro": "總體宏觀",
+    "quant": "量化",
+    "activist": "維權",
+    "multi_strategy": "多策略"
+  },
+  "guru_tier": {
+    "tier_1": "傳奇",
+    "tier_2": "菁英",
+    "tier_3": "值得關注"
   }
 }

@@ -1098,12 +1098,32 @@
       "report_date": "Snapshot Date",
       "filing_date": "Filed Date",
       "total_value": "Total Value",
-      "holdings_count": "# Holdings"
+      "holdings_count": "# Holdings",
+      "concentration": "Top-5 Weight",
+      "high_conviction": "high conviction",
+      "diversified": "diversified",
+      "turnover": "Quarterly Turnover"
     },
     "tab": {
       "changes": "📊 Holding Changes",
       "top": "🏆 Top 10 Holdings",
-      "great_minds": "🤝 Great Minds Think Alike"
+      "great_minds": "🤝 Great Minds Think Alike",
+      "qoq": "📅 Quarter-over-Quarter",
+      "grand_portfolio": "🌐 Grand Portfolio"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 Grand Portfolio",
+      "no_data": "No holdings data available",
+      "total_aum": "Combined AUM",
+      "unique_tickers": "Unique Tickers",
+      "top20_header": "Top 20 Holdings by Combined Weight",
+      "combined_weight": "Combined Weight",
+      "table_header": "All Holdings"
+    },
+    "qoq": {
+      "trend": "Trend",
+      "no_data": "No historical data available",
+      "loading": "Loading..."
     },
     "action": {
       "new_position": "New Position",
@@ -1120,7 +1140,9 @@
       "change_pct": "Chg%",
       "weight_pct": "Wt%",
       "rank": "#",
-      "action": "Action"
+      "action": "Action",
+      "sector": "Sector",
+      "perf_since_filing": "Since Filing"
     },
     "changes": {
       "no_changes": "📭 No holding changes this quarter (no NEW/SOLD/INCREASED/DECREASED in Top 10).",
@@ -1169,6 +1191,7 @@
       "new_positions_header": "New Positions",
       "sold_outs_header": "Sold Outs",
       "highlights_empty": "📭 No new positions or sold outs this season.",
+      "activity_header": "📈 Filing Season Activity",
       "consensus_header": "🤝 Consensus Holdings",
       "consensus_empty": "📭 No stocks held by multiple gurus yet.",
       "consensus_gurus": "Gurus holding",
@@ -1184,7 +1207,8 @@
       "sync_button": "🔄 Sync",
       "filing_history_expander": "📅 Filing History ({{count}})",
       "filing_history_row": "📄 {{report_date}}  ·  Filed: {{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} holdings",
-      "sector_weight_axis": "Weight (%)"
+      "sector_weight_axis": "Weight (%)",
+      "avg_weight_label": "avg"
     },
     "add_guru": {
       "title": "➕ Add Custom Guru",
@@ -1197,7 +1221,34 @@
       "display_placeholder": "e.g. Warren Buffett",
       "submit_button": "Add Guru",
       "required_warning": "⚠️ Please fill in all fields.",
-      "success": "✅ Added {{display_name}}. Switch to the Overview tab to see it."
+      "success": "✅ Added {{display_name}}. Switch to the Overview tab to see it.",
+      "style_label": "Investment Style (optional)",
+      "style_placeholder": "Select a style",
+      "tier_label": "Tier (optional)",
+      "tier_placeholder": "Select a tier"
+    },
+    "filter": {
+      "all_styles": "All Styles"
+    },
+    "activity": {
+      "most_bought": "Most Bought",
+      "most_sold": "Most Sold",
+      "guru_count_label": "gurus",
+      "empty_bought": "No buy activity this season",
+      "empty_sold": "No sell activity this season"
     }
+  },
+  "guru_style": {
+    "value": "Value",
+    "growth": "Growth",
+    "macro": "Macro",
+    "quant": "Quant",
+    "activist": "Activist",
+    "multi_strategy": "Multi-Strategy"
+  },
+  "guru_tier": {
+    "tier_1": "Legendary",
+    "tier_2": "Elite",
+    "tier_3": "Notable"
   }
 }

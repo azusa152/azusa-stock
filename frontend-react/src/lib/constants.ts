@@ -86,6 +86,24 @@ export const MARKET_HOURS: Record<string, { tz: string; open: string; close: str
   HK: { tz: "Asia/Hong_Kong", open: "09:30", close: "16:00", lunch: ["12:00", "13:00"] },
 }
 
+export const GURU_STYLE_CONFIG: Record<string, { color: string }> = {
+  VALUE:          { color: "#2563eb" },
+  GROWTH:         { color: "#16a34a" },
+  MACRO:          { color: "#9333ea" },
+  QUANT:          { color: "#ea580c" },
+  ACTIVIST:       { color: "#dc2626" },
+  MULTI_STRATEGY: { color: "#6b7280" },
+}
+
+export const GURU_TIER_STARS: Record<string, number> = {
+  TIER_1: 3,
+  TIER_2: 2,
+  TIER_3: 1,
+}
+
+export const HIGH_CONVICTION_THRESHOLD = 60
+export const DIVERSIFIED_THRESHOLD = 30
+
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [
   { key: "US", labelKey: "config.market.us", suffix: "", currency: "USD" },

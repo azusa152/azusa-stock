@@ -65,11 +65,13 @@ from domain.constants import (
     DISK_KEY_FOREX_HISTORY_LONG,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
+    DISK_KEY_PRICE_PAIR,
     DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
+    DISK_PRICE_PAIR_TTL,
     DISK_ROGUE_WAVE_TTL,
     DISK_SECTOR_TTL,
     DISK_SIGNALS_TTL,
@@ -2049,3 +2051,110 @@ def get_ticker_sector_cached(ticker: str) -> str | None:
     if cached is not None:
         return None if cached == _SECTOR_NOT_FOUND else cached
     return None
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 — Performance Since Filing (price pair fetch with disk cache)
+# ---------------------------------------------------------------------------
+
+
+def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
+    """Fetch (report_date close, current close) for each ticker using yfinance.
+
+    Uses L2 disk cache with permanent TTL for historical close prices — they are
+    immutable once the market closes. Current prices are never cached (always live).
+    Returns {ticker: {report_price: float|None, current_price: float|None}}.
+    All failures are silently set to None (never raises).
+    """
+    from datetime import timedelta
+
+    result: dict[str, dict] = {
+        t: {"report_price": None, "current_price": None} for t in tickers
+    }
+
+    if not tickers:
+        return result
+
+    # Load historical (report_date) close prices — try disk cache first
+    uncached_tickers: list[str] = []
+    report_prices: dict[str, float | None] = {}
+    for ticker in tickers:
+        disk_key = f"{DISK_KEY_PRICE_PAIR}:{report_date}:{ticker}"
+        cached = _disk_get(disk_key)
+        if cached is not None:
+            report_prices[ticker] = cached.get("report_price")
+        else:
+            uncached_tickers.append(ticker)
+
+    # Batch-fetch historical prices for uncached tickers
+    if uncached_tickers:
+        try:
+            _rate_limiter.wait()
+            end_date = (
+                (datetime.fromisoformat(report_date) + timedelta(days=5))
+                .date()
+                .isoformat()
+            )
+            hist = yf.download(
+                uncached_tickers,
+                start=report_date,
+                end=end_date,
+                auto_adjust=True,
+                progress=False,
+                threads=True,
+            )
+            for ticker in uncached_tickers:
+                rp: float | None = None
+                try:
+                    if len(uncached_tickers) == 1:
+                        rp = float(hist["Close"].iloc[0]) if not hist.empty else None
+                    else:
+                        col = hist["Close"].get(ticker)
+                        if col is not None:
+                            dropped = col.dropna()
+                            rp = float(dropped.iloc[0]) if not dropped.empty else None
+                except Exception:
+                    rp = None
+                report_prices[ticker] = rp
+                # Persist to disk cache permanently (historical prices are immutable)
+                disk_key = f"{DISK_KEY_PRICE_PAIR}:{report_date}:{ticker}"
+                _disk_set(disk_key, {"report_price": rp}, DISK_PRICE_PAIR_TTL)
+        except Exception:
+            # Leave all uncached tickers with None
+            for ticker in uncached_tickers:
+                report_prices[ticker] = None
+
+    # Fetch current prices (never cached — always live)
+    current_prices: dict[str, float | None] = {t: None for t in tickers}
+    try:
+        _rate_limiter.wait()
+        current = yf.download(
+            tickers,
+            period="5d",
+            auto_adjust=True,
+            progress=False,
+            threads=True,
+        )
+        for ticker in tickers:
+            cp: float | None = None
+            try:
+                if len(tickers) == 1:
+                    cp = float(current["Close"].iloc[-1]) if not current.empty else None
+                else:
+                    col = current["Close"].get(ticker)
+                    if col is not None:
+                        dropped = col.dropna()
+                        cp = float(dropped.iloc[-1]) if not dropped.empty else None
+            except Exception:
+                cp = None
+            current_prices[ticker] = cp
+    except Exception:
+        pass  # leave all current_prices as None
+
+    for ticker in tickers:
+        result[ticker] = {
+            "report_price": report_prices.get(ticker),
+            "current_price": current_prices.get(ticker),
+        }
+
+    return result

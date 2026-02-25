@@ -1098,12 +1098,32 @@
       "report_date": "基準日",
       "filing_date": "申告日",
       "total_value": "総保有額",
-      "holdings_count": "保有銘柄数"
+      "holdings_count": "保有銘柄数",
+      "concentration": "上位5銘柄比率",
+      "high_conviction": "高確信度",
+      "diversified": "分散型",
+      "turnover": "四半期回転率"
     },
     "tab": {
       "changes": "📊 保有変動",
       "top": "🏆 上位10保有",
-      "great_minds": "🤝 達人も注目"
+      "great_minds": "🤝 達人も注目",
+      "qoq": "📅 四半期比較",
+      "grand_portfolio": "🌐 グランドポートフォリオ"
+    },
+    "grand_portfolio": {
+      "tab": "🌐 グランドポートフォリオ",
+      "no_data": "保有データがありません",
+      "total_aum": "合計AUM",
+      "unique_tickers": "ユニーク銘柄数",
+      "top20_header": "合計ウェイト上位20銘柄",
+      "combined_weight": "合計ウェイト",
+      "table_header": "全保有"
+    },
+    "qoq": {
+      "trend": "トレンド",
+      "no_data": "過去データがありません",
+      "loading": "読込中..."
     },
     "action": {
       "new_position": "新規取得",
@@ -1120,7 +1140,9 @@
       "change_pct": "変動%",
       "weight_pct": "比重%",
       "rank": "#",
-      "action": "アクション"
+      "action": "アクション",
+      "sector": "セクター",
+      "perf_since_filing": "申告来騰落"
     },
     "changes": {
       "no_changes": "📭 今四半期の保有変動なし（上位10の中にNEW/SOLD/INCREASED/DECREASEDなし）。",
@@ -1169,6 +1191,7 @@
       "new_positions_header": "新規取得",
       "sold_outs_header": "全売却",
       "highlights_empty": "📭 今季の新規取得・全売却はありません。",
+      "activity_header": "📈 今季のフィリング動向",
       "consensus_header": "🤝 コンセンサス銘柄",
       "consensus_empty": "📭 複数のグルが同時保有する銘柄はまだありません。",
       "consensus_gurus": "保有グル",
@@ -1184,7 +1207,8 @@
       "sync_button": "🔄 同期",
       "filing_history_expander": "📅 申告履歴 ({{count}} 件)",
       "filing_history_row": "📄 {{report_date}}  ·  申告日：{{filing_date}}  ·  {{total_value}}  ·  {{holdings_count}} 件",
-      "sector_weight_axis": "配分比重 (%)"
+      "sector_weight_axis": "配分比重 (%)",
+      "avg_weight_label": "平均"
     },
     "add_guru": {
       "title": "➕ カスタムグルを追加",
@@ -1197,7 +1221,34 @@
       "display_placeholder": "例: Warren Buffett",
       "submit_button": "グルを追加",
       "required_warning": "⚠️ すべての欄を入力してください。",
-      "success": "✅ {{display_name}} を追加しました。概要タブに切り替えて確認してください。"
+      "success": "✅ {{display_name}} を追加しました。概要タブに切り替えて確認してください。",
+      "style_label": "投資スタイル（任意）",
+      "style_placeholder": "スタイルを選択",
+      "tier_label": "ティア（任意）",
+      "tier_placeholder": "ティアを選択"
+    },
+    "filter": {
+      "all_styles": "すべてのスタイル"
+    },
+    "activity": {
+      "most_bought": "最多買入",
+      "most_sold": "最多売却",
+      "guru_count_label": "グル",
+      "empty_bought": "今季の買い活動はありません",
+      "empty_sold": "今季の売り活動はありません"
     }
+  },
+  "guru_style": {
+    "value": "バリュー",
+    "growth": "グロース",
+    "macro": "マクロ",
+    "quant": "クオンツ",
+    "activist": "アクティビスト",
+    "multi_strategy": "マルチストラテジー"
+  },
+  "guru_tier": {
+    "tier_1": "レジェンド",
+    "tier_2": "エリート",
+    "tier_3": "注目"
   }
 }

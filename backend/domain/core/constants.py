@@ -487,31 +487,99 @@ DEFAULT_GURUS = [
         "name": "Berkshire Hathaway Inc",
         "cik": "0001067983",
         "display_name": "Warren Buffett",
+        "style": "VALUE",
+        "tier": "TIER_1",
     },
     {
         "name": "Bridgewater Associates, LP",
         "cik": "0001350694",
         "display_name": "Ray Dalio",
+        "style": "MACRO",
+        "tier": "TIER_1",
+    },
+    {
+        "name": "Citadel Advisors LLC",
+        "cik": "0001423053",
+        "display_name": "Ken Griffin",
+        "style": "QUANT",
+        "tier": "TIER_1",
+    },
+    {
+        "name": "Renaissance Technologies LLC",
+        "cik": "0001037389",
+        "display_name": "Renaissance Technologies",
+        "style": "QUANT",
+        "tier": "TIER_1",
+    },
+    {
+        "name": "Baupost Group LLC",
+        "cik": "0001061768",
+        "display_name": "Seth Klarman",
+        "style": "VALUE",
+        "tier": "TIER_1",
     },
     {
         "name": "Oaktree Capital Management, L.P.",
         "cik": "0001535581",
         "display_name": "Howard Marks",
+        "style": "VALUE",
+        "tier": "TIER_1",
     },
     {
         "name": "ARK Investment Management LLC",
         "cik": "0001603466",
         "display_name": "Cathie Wood",
+        "style": "GROWTH",
+        "tier": "TIER_2",
     },
     {
         "name": "Pershing Square Capital Management",
         "cik": "0001336528",
         "display_name": "Bill Ackman",
+        "style": "ACTIVIST",
+        "tier": "TIER_2",
     },
     {
         "name": "Scion Asset Management, LLC",
         "cik": "0001649339",
         "display_name": "Michael Burry",
+        "style": "VALUE",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Appaloosa Management LP",
+        "cik": "0001656456",
+        "display_name": "David Tepper",
+        "style": "MULTI_STRATEGY",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Himalaya Capital Management LLC",
+        "cik": "0001598220",
+        "display_name": "Li Lu",
+        "style": "VALUE",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Gotham Asset Management, LLC",
+        "cik": "0001452934",
+        "display_name": "Joel Greenblatt",
+        "style": "QUANT",
+        "tier": "TIER_2",
+    },
+    {
+        "name": "Soros Fund Management LLC",
+        "cik": "0001029160",
+        "display_name": "George Soros",
+        "style": "MACRO",
+        "tier": "TIER_1",
+    },
+    {
+        "name": "Social Capital Holdings Inc.",
+        "cik": "0001705696",
+        "display_name": "Chamath Palihapitiya",
+        "style": "GROWTH",
+        "tier": "TIER_3",
     },
 ]
 
@@ -528,6 +596,8 @@ DISK_GURU_FILING_TTL = 604800  # 7 days
 DISK_KEY_GURU_FILING = "guru_filing"
 DISK_SECTOR_TTL = 2592000  # 30 days (sectors change very rarely)
 DISK_KEY_SECTOR = "sector"
+DISK_KEY_PRICE_PAIR = "price_pair"
+DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 
 # ---------------------------------------------------------------------------
 # Equity Categories (used by sector exposure, X-Ray, etc.)

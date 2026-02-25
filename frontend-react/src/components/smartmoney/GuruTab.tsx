@@ -10,27 +10,18 @@ import {
   useGuruHoldingChanges,
   useGuruTopHoldings,
   useGreatMinds,
+  useGuruQoQ,
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
+import { ActionBadge } from "./ActionBadge"
+import { QoQTable } from "./QoQTable"
 import type { GuruHolding } from "@/api/types/smartMoney"
 
 interface Props {
   guruId: number
   guruName: string
   enabled: boolean
-}
-
-function ActionBadge({ action }: { action: string }) {
-  const { t } = useTranslation()
-  const color = ACTION_COLORS[action] ?? ACTION_COLORS.UNCHANGED
-  const icon = ACTION_ICONS[action] ?? "⚪"
-  const labelKey = `smart_money.action.${action.toLowerCase()}`
-  return (
-    <span style={{ color }} className="text-xs font-medium whitespace-nowrap">
-      {icon} {t(labelKey, { defaultValue: action })}
-    </span>
-  )
 }
 
 function groupByAction(holdings: GuruHolding[]): Map<string, GuruHolding[]> {
@@ -45,10 +36,25 @@ function groupByAction(holdings: GuruHolding[]): Map<string, GuruHolding[]> {
 
 const ACTION_ORDER = ["NEW_POSITION", "SOLD_OUT", "INCREASED", "DECREASED", "UNCHANGED"]
 
+function PerfCell({ value }: { value: number | null | undefined }) {
+  if (value == null) return <span className="text-muted-foreground">—</span>
+  return (
+    <span
+      className={
+        value >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+      }
+    >
+      {value >= 0 ? "+" : ""}
+      {value.toFixed(1)}%
+    </span>
+  )
+}
+
 export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [qoqOpen, setQoqOpen] = useState(false)
   const [greatMindsOpen, setGreatMindsOpen] = useState(false)
 
   const syncMutation = useSyncGuru()
@@ -58,6 +64,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
   const { data: filingsResp } = useGuruFilings(guruId, enabled && historyOpen)
   const { data: changes, isLoading: changesLoading } = useGuruHoldingChanges(guruId, enabled)
   const { data: topHoldings, isLoading: topLoading } = useGuruTopHoldings(guruId, enabled)
+  const { data: qoqData } = useGuruQoQ(guruId, enabled && qoqOpen)
   const { data: greatMinds } = useGreatMinds()
 
   if (!enabled) return null
@@ -220,7 +227,8 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                         <th className="text-right py-0.5 pr-2">{t("smart_money.col.value")}</th>
                         <th className="text-right py-0.5 pr-2">{t("smart_money.col.shares")}</th>
                         <th className="text-right py-0.5 pr-2">{t("smart_money.col.change_pct")}</th>
-                        <th className="text-right py-0.5">{t("smart_money.col.weight_pct")}</th>
+                        <th className="text-right py-0.5 pr-2">{t("smart_money.col.weight_pct")}</th>
+                        <th className="text-right py-0.5">{t("smart_money.col.perf_since_filing")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -235,8 +243,11 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                           <td className="py-0.5 pr-2 text-right">
                             {h.change_pct != null ? `${h.change_pct.toFixed(1)}%` : "—"}
                           </td>
-                          <td className="py-0.5 text-right">
+                          <td className="py-0.5 pr-2 text-right">
                             {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
+                          </td>
+                          <td className="py-0.5 text-right">
+                            <PerfCell value={h.price_change_pct} />
                           </td>
                         </tr>
                       ))}
@@ -325,7 +336,8 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                   <th className="text-left py-0.5 pr-2">{t("smart_money.col.action")}</th>
                   <th className="text-right py-0.5 pr-2">{t("smart_money.col.weight_pct")}</th>
                   <th className="text-right py-0.5 pr-2">{t("smart_money.col.value")}</th>
-                  <th className="text-right py-0.5">{t("smart_money.col.shares")}</th>
+                  <th className="text-right py-0.5 pr-2">{t("smart_money.col.shares")}</th>
+                  <th className="text-right py-0.5">{t("smart_money.col.perf_since_filing")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,7 +355,10 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                       {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
                     </td>
                     <td className="py-0.5 pr-2 text-right">{formatValue(h.value)}</td>
-                    <td className="py-0.5 text-right">{formatShares(h.shares)}</td>
+                    <td className="py-0.5 pr-2 text-right">{formatShares(h.shares)}</td>
+                    <td className="py-0.5 text-right">
+                      <PerfCell value={h.price_change_pct} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -405,11 +420,34 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
     </section>
   )
 
+  // -------------------------------------------------------------------------
+  // QoQ section
+  // -------------------------------------------------------------------------
+  const qoqSection = (
+    <section className="space-y-2">
+      <button
+        onClick={() => setQoqOpen((v) => !v)}
+        className="flex items-center gap-1 text-sm font-semibold"
+      >
+        {t("smart_money.tab.qoq")}
+        <span className="text-muted-foreground text-xs">{qoqOpen ? "▲" : "▼"}</span>
+      </button>
+      {qoqOpen &&
+        (qoqData ? (
+          <QoQTable data={qoqData} />
+        ) : (
+          <p className="text-xs text-muted-foreground">{t("smart_money.qoq.loading")}</p>
+        ))}
+    </section>
+  )
+
   return (
     <div className="space-y-6">
       {filingSection}
       <hr className="border-border" />
       {holdingChangesSection}
+      <hr className="border-border" />
+      {qoqSection}
       <hr className="border-border" />
       {topHoldingsSection}
       <hr className="border-border" />

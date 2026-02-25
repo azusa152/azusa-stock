@@ -1,23 +1,50 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { useGurus, useSyncAllGurus } from "@/api/hooks/useSmartMoney"
 import { OverviewTab } from "@/components/smartmoney/OverviewTab"
 import { GuruTab } from "@/components/smartmoney/GuruTab"
+import { GrandPortfolioTab } from "@/components/smartmoney/GrandPortfolioTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
+import { cn } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
+const GRAND_PORTFOLIO_TAB = "grand_portfolio"
 const ADD_GURU_TAB = "add_guru"
 
 export default function SmartMoney() {
   const { t } = useTranslation()
   const [sopOpen, setSopOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(OVERVIEW_TAB)
+  const [styleFilter, setStyleFilter] = useState<string | null>(null)
 
   const { data: gurus, isLoading, isError } = useGurus()
   const syncAllMutation = useSyncAllGurus()
+  const tabsListRef = useRef<HTMLDivElement>(null)
+
+  const activeGurus = gurus?.filter((g) => g.is_active) ?? []
+  const filteredGurus = activeGurus.filter(
+    (g) => styleFilter == null || g.style === styleFilter,
+  )
+  const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
+  const resolvedTab =
+    activeTab !== OVERVIEW_TAB &&
+    activeTab !== GRAND_PORTFOLIO_TAB &&
+    activeTab !== ADD_GURU_TAB &&
+    !filteredGuruIds.has(activeTab)
+      ? OVERVIEW_TAB
+      : activeTab
+
+  useEffect(() => {
+    if (!tabsListRef.current) return
+    const activeEl = tabsListRef.current.querySelector<HTMLElement>(
+      `[data-state="active"]`,
+    )
+    activeEl?.scrollIntoView({ inline: "nearest", block: "nearest" })
+  }, [resolvedTab])
 
   if (isLoading) {
     return (
@@ -39,7 +66,9 @@ export default function SmartMoney() {
     )
   }
 
-  const activeGurus = gurus.filter((g) => g.is_active)
+  const availableStyles: string[] = Array.from(
+    new Set(activeGurus.map((g) => g.style).filter((s): s is string => !!s)),
+  )
 
   return (
     <div className="p-6 space-y-4">
@@ -90,17 +119,50 @@ export default function SmartMoney() {
         </p>
       )}
 
-      {/* Tab bar: Overview + per-guru + Add Guru */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
-          {activeGurus.map((guru) => (
-            <TabsTrigger key={guru.id} value={String(guru.id)}>
-              {guru.display_name}
-            </TabsTrigger>
+      {/* Style filter chips */}
+      {availableStyles.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setStyleFilter(null)}
+            className={cn(
+              "text-xs px-2 py-0.5 rounded-full border transition-colors",
+              styleFilter == null ? "bg-foreground text-background" : "hover:bg-muted/50",
+            )}
+          >
+            {t("smart_money.filter.all_styles")}
+          </button>
+          {availableStyles.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStyleFilter(s === styleFilter ? null : s)}
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                s === styleFilter ? "bg-foreground text-background" : "hover:bg-muted/50",
+              )}
+            >
+              {t(`guru_style.${s.toLowerCase()}`, { defaultValue: s })}
+            </button>
           ))}
-          <TabsTrigger value={ADD_GURU_TAB}>{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
-        </TabsList>
+        </div>
+      )}
+
+      {/* Tab bar: Overview + Grand Portfolio + per-guru + Add Guru */}
+      <Tabs value={resolvedTab} onValueChange={setActiveTab}>
+        <ScrollArea className="w-full">
+          <TabsList ref={tabsListRef} className="inline-flex w-max gap-1">
+            <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
+            <TabsTrigger value={GRAND_PORTFOLIO_TAB}>
+              {t("smart_money.grand_portfolio.tab")}
+            </TabsTrigger>
+            {filteredGurus.map((guru) => (
+              <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)}>
+                {guru.display_name}
+              </TabsTrigger>
+            ))}
+            <TabsTrigger value={ADD_GURU_TAB}>{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Overview tab */}
         <TabsContent value={OVERVIEW_TAB} className="mt-4">
@@ -111,10 +173,15 @@ export default function SmartMoney() {
           )}
         </TabsContent>
 
+        {/* Grand Portfolio tab */}
+        <TabsContent value={GRAND_PORTFOLIO_TAB} className="mt-4">
+          <GrandPortfolioTab />
+        </TabsContent>
+
         {/* Per-guru tabs */}
-        {activeGurus.map((guru) => (
+        {filteredGurus.map((guru) => (
           <TabsContent key={guru.id} value={String(guru.id)} className="mt-4">
-            <GuruTab guruId={guru.id} guruName={guru.display_name} enabled={activeTab === String(guru.id)} />
+            <GuruTab guruId={guru.id} guruName={guru.display_name} enabled={resolvedTab === String(guru.id)} />
           </TabsContent>
         ))}
 

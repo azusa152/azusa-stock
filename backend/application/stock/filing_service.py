@@ -30,6 +30,7 @@ from domain.smart_money import (
 )
 from infrastructure.market_data import get_ticker_sector
 from infrastructure.repositories import (
+    find_activity_feed,
     find_all_active_gurus,
     find_all_guru_summaries,
     find_consensus_stocks,
@@ -245,7 +246,10 @@ def get_filing_summary(session: Session, guru_id: int) -> dict | None:
 
 
 def get_holding_changes(
-    session: Session, guru_id: int, limit: int | None = None
+    session: Session,
+    guru_id: int,
+    limit: int | None = None,
+    include_performance: bool = False,
 ) -> list[dict]:
     """
     取得指定大師最新申報中有動作的持倉（action != UNCHANGED）。
@@ -285,7 +289,10 @@ def get_holding_changes(
     if limit is not None and limit > 0:
         changes_sorted = changes_sorted[:limit]
 
-    return [_holding_to_dict(h, filing) for h in changes_sorted]
+    result = [_holding_to_dict(h, filing) for h in changes_sorted]
+    if include_performance:
+        result = enrich_holdings_with_performance(result, filing.report_date)
+    return result
 
 
 def get_dashboard_summary(session: Session) -> dict:
@@ -304,6 +311,7 @@ def get_dashboard_summary(session: Session) -> dict:
         "season_highlights": find_notable_changes_all_gurus(session),
         "consensus": find_consensus_stocks(session),
         "sector_breakdown": find_sector_breakdown(session),
+        "activity_feed": find_activity_feed(session),
     }
 
 
@@ -333,14 +341,19 @@ def get_guru_filing_history(session: Session, guru_id: int) -> list[dict]:
     ]
 
 
-def get_top_holdings(session: Session, guru_id: int, n: int = 10) -> list[dict]:
+def get_top_holdings(
+    session: Session,
+    guru_id: int,
+    n: int = 10,
+    include_performance: bool = False,
+) -> list[dict]:
     """Get top N holdings for a guru's latest filing, including report/filing dates."""
     filing = find_latest_filing_by_guru(session, guru_id)
     if not filing:
         return []
     holdings = find_holdings_by_filing(session, filing.id)
     sorted_holdings = sorted(holdings, key=lambda h: h.weight_pct or 0, reverse=True)
-    return [
+    result = [
         {
             **h.model_dump(),
             "report_date": filing.report_date,
@@ -348,6 +361,69 @@ def get_top_holdings(session: Session, guru_id: int, n: int = 10) -> list[dict]:
         }
         for h in sorted_holdings[:n]
     ]
+    if include_performance:
+        result = enrich_holdings_with_performance(result, filing.report_date)
+    return result
+
+
+def get_holding_qoq(session: Session, guru_id: int, quarters: int = 3) -> dict:
+    """Return QoQ holding history for a guru.
+
+    quarters: number of past filings to include (default 3 = ~9 months).
+    Returns: {guru_id, items: list[QoQHoldingItem]}.
+    """
+    from infrastructure.persistence.repositories import find_holding_history_by_guru
+
+    guru = find_guru_by_id(session, guru_id)
+    if not guru:
+        return {"guru_id": guru_id, "items": []}
+
+    items = find_holding_history_by_guru(session, guru_id, quarters=quarters)
+    return {"guru_id": guru_id, "items": items}
+
+
+def get_grand_portfolio(session: Session) -> dict:
+    """Return the aggregated Grand Portfolio across all active gurus."""
+    from infrastructure.persistence.repositories import find_grand_portfolio
+
+    return find_grand_portfolio(session)
+
+
+def enrich_holdings_with_performance(
+    holdings: list[dict], report_date: str
+) -> list[dict]:
+    """For each holding with a ticker, compute price change since report_date.
+
+    Delegates price fetching to infrastructure.market_data.fetch_price_pair,
+    which uses L2 disk cache for immutable historical prices.
+    Adds 'price_change_pct: float | None' to each holding dict in-place.
+    Handles missing tickers gracefully (sets None). Never raises.
+    """
+    from infrastructure.market_data import fetch_price_pair
+
+    tickers = list({h["ticker"] for h in holdings if h.get("ticker")})
+    if not tickers:
+        for h in holdings:
+            h["price_change_pct"] = None
+        return holdings
+
+    try:
+        price_map = fetch_price_pair(tickers, report_date)
+    except Exception:
+        price_map = {}
+
+    for h in holdings:
+        ticker = h.get("ticker")
+        pct = None
+        if ticker and ticker in price_map:
+            prices = price_map[ticker]
+            report_price = prices.get("report_price")
+            current_price = prices.get("current_price")
+            if report_price and current_price and report_price > 0:
+                pct = round((current_price - report_price) / report_price * 100, 2)
+        h["price_change_pct"] = pct
+
+    return holdings
 
 
 # ---------------------------------------------------------------------------

@@ -119,6 +119,25 @@ class TestGetGurus:
         assert "cik" in data[0]
         assert "is_default" in data[0]
 
+    def test_response_includes_style_and_tier_fields(self, client):
+        with Session(test_engine) as session:
+            save_guru(
+                session,
+                Guru(
+                    name="Berkshire Hathaway",
+                    cik="0001067983",
+                    display_name="Buffett",
+                    style="VALUE",
+                    tier="TIER_1",
+                ),
+            )
+
+        resp = client.get("/gurus")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[0]["style"] == "VALUE"
+        assert data[0]["tier"] == "TIER_1"
+
 
 # ===========================================================================
 # POST /gurus — GuruCreate validation
@@ -558,9 +577,19 @@ _DASHBOARD_DATA = {
     "consensus": [
         {
             "ticker": "AAPL",
+            "company_name": "Apple Inc",
             "guru_count": 2,
-            "gurus": ["Warren Buffett", "Ray Dalio"],
+            "gurus": [
+                {
+                    "display_name": "Warren Buffett",
+                    "action": "UNCHANGED",
+                    "weight_pct": 5.0,
+                },
+                {"display_name": "Ray Dalio", "action": "INCREASED", "weight_pct": 3.0},
+            ],
             "total_value": 200_000_000.0,
+            "avg_weight_pct": 4.0,
+            "sector": "Technology",
         }
     ],
     "sector_breakdown": [
@@ -571,6 +600,10 @@ _DASHBOARD_DATA = {
             "weight_pct": 45.0,
         }
     ],
+    "activity_feed": {
+        "most_bought": [],
+        "most_sold": [],
+    },
 }
 
 
@@ -630,6 +663,7 @@ class TestGetDashboard:
             "season_highlights": {"new_positions": [], "sold_outs": []},
             "consensus": [],
             "sector_breakdown": [],
+            "activity_feed": {"most_bought": [], "most_sold": []},
         }
         with patch(DASHBOARD_TARGET, return_value=empty_data):
             resp = client.get("/gurus/dashboard")
@@ -686,3 +720,172 @@ class TestGetFilingHistory:
         assert "filing_date" in filing
         assert "total_value" in filing
         assert "holdings_count" in filing
+
+
+# ===========================================================================
+# GET /gurus/{guru_id}/qoq
+# ===========================================================================
+
+
+class TestGetGuruQoQ:
+    def test_returns_200_with_guru_id_and_items_fields(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000001")
+            guru_id = guru.id
+            _make_filing(session, guru_id, report_date="2024-12-31")
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "guru_id" in body
+        assert "items" in body
+        assert body["guru_id"] == guru_id
+
+    def test_returns_empty_items_when_no_filings(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000002")
+            guru_id = guru.id
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        assert resp.json()["items"] == []
+
+    def test_returns_200_for_nonexistent_guru(self, client):
+        resp = client.get("/gurus/99999/qoq")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+
+    def test_quarters_param_is_accepted(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000003")
+            guru_id = guru.id
+
+        resp = client.get(f"/gurus/{guru_id}/qoq?quarters=5")
+        assert resp.status_code == 200
+
+    def test_items_contain_correct_shape(self, client):
+        with Session(test_engine) as session:
+            guru = _make_guru(session, cik="0010000004")
+            guru_id = guru.id
+            filing = _make_filing(session, guru_id, report_date="2024-12-31")
+            session.add(
+                GuruHolding(
+                    filing_id=filing.id,
+                    guru_id=guru_id,
+                    cusip="QOQ00001",
+                    ticker="AAPL",
+                    company_name="Apple Inc",
+                    value=300_000.0,
+                    shares=2000.0,
+                    action="UNCHANGED",
+                    weight_pct=60.0,
+                )
+            )
+            session.commit()
+
+        resp = client.get(f"/gurus/{guru_id}/qoq")
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) == 1
+        item = items[0]
+        assert item["ticker"] == "AAPL"
+        assert "company_name" in item
+        assert "quarters" in item
+        assert "trend" in item
+        assert len(item["quarters"]) == 1
+        q = item["quarters"][0]
+        assert q["report_date"] == "2024-12-31"
+        assert q["shares"] == 2000.0
+        assert q["weight_pct"] == 60.0
+
+
+# ===========================================================================
+# GET /gurus/grand-portfolio
+# ===========================================================================
+
+GRAND_PORTFOLIO_TARGET = "api.routes.guru_routes.get_grand_portfolio"
+
+_GRAND_PORTFOLIO_DATA = {
+    "items": [
+        {
+            "ticker": "AAPL",
+            "company_name": "Apple Inc",
+            "sector": "Technology",
+            "guru_count": 2,
+            "gurus": ["Warren Buffett", "Ray Dalio"],
+            "total_value": 300_000_000.0,
+            "avg_weight_pct": 5.5,
+            "combined_weight_pct": 12.5,
+            "dominant_action": "UNCHANGED",
+        }
+    ],
+    "total_value": 2_400_000_000.0,
+    "unique_tickers": 1,
+    "sector_breakdown": [
+        {
+            "sector": "Technology",
+            "total_value": 300_000_000.0,
+            "holding_count": 1,
+            "weight_pct": 12.5,
+        }
+    ],
+}
+
+
+class TestGetGrandPortfolio:
+    def test_returns_200_with_correct_shape(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "total_value" in body
+        assert "unique_tickers" in body
+        assert "sector_breakdown" in body
+
+    def test_items_contain_required_fields(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        item = resp.json()["items"][0]
+        assert item["ticker"] == "AAPL"
+        assert item["guru_count"] == 2
+        assert item["combined_weight_pct"] == 12.5
+        assert item["dominant_action"] == "UNCHANGED"
+        assert "gurus" in item
+        assert "total_value" in item
+
+    def test_sector_breakdown_is_present(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        breakdown = resp.json()["sector_breakdown"]
+        assert len(breakdown) == 1
+        assert breakdown[0]["sector"] == "Technology"
+        assert breakdown[0]["weight_pct"] == 12.5
+
+    def test_returns_empty_items_when_no_data(self, client):
+        empty_data = {
+            "items": [],
+            "total_value": 0.0,
+            "unique_tickers": 0,
+            "sector_breakdown": [],
+        }
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=empty_data):
+            resp = client.get("/gurus/grand-portfolio")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+        assert body["total_value"] == 0.0
+        assert body["unique_tickers"] == 0
+
+    def test_total_value_and_unique_tickers_are_returned(self, client):
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA):
+            resp = client.get("/gurus/grand-portfolio")
+
+        body = resp.json()
+        assert body["total_value"] == 2_400_000_000.0
+        assert body["unique_tickers"] == 1
