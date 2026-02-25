@@ -6,6 +6,7 @@ Infrastructure — 加密工具（Fernet 對稱加密）。
 import os
 
 from cryptography.fernet import Fernet, InvalidToken
+
 from logging_config import get_logger
 
 logger = get_logger(__name__)

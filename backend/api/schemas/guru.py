@@ -2,10 +2,7 @@
 API — Guru / Resonance / Dashboard / Filing Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -41,9 +38,9 @@ class GuruFilingResponse(BaseModel):
 
     guru_id: int
     guru_display_name: str
-    report_date: Optional[str] = None
-    filing_date: Optional[str] = None
-    total_value: Optional[float] = None
+    report_date: str | None = None
+    filing_date: str | None = None
+    total_value: float | None = None
     holdings_count: int = 0
     filing_url: str = ""
     new_positions: int = 0
@@ -58,22 +55,22 @@ class GuruHoldingResponse(BaseModel):
 
     guru_id: int
     cusip: str
-    ticker: Optional[str] = None
+    ticker: str | None = None
     company_name: str
     value: float
     shares: float
     action: str
-    change_pct: Optional[float] = None
-    weight_pct: Optional[float] = None
-    report_date: Optional[str] = None
-    filing_date: Optional[str] = None
+    change_pct: float | None = None
+    weight_pct: float | None = None
+    report_date: str | None = None
+    filing_date: str | None = None
 
 
 class SyncResponse(BaseModel):
     """POST /gurus/{guru_id}/sync 回傳的同步結果。"""
 
     status: str
-    guru_id: Optional[int] = None
+    guru_id: int | None = None
     message: str = ""
     new_positions: int = 0
     sold_out: int = 0
@@ -146,9 +143,9 @@ class GuruSummaryItem(BaseModel):
 
     id: int
     display_name: str
-    latest_report_date: Optional[str] = None
-    latest_filing_date: Optional[str] = None
-    total_value: Optional[float] = None
+    latest_report_date: str | None = None
+    latest_filing_date: str | None = None
+    total_value: float | None = None
     holdings_count: int = 0
     filing_count: int = 0
 
@@ -156,13 +153,13 @@ class GuruSummaryItem(BaseModel):
 class SeasonHighlightItem(BaseModel):
     """本季重點變動（新建倉或清倉）的單筆記錄。"""
 
-    ticker: Optional[str] = None
+    ticker: str | None = None
     company_name: str = ""
     guru_id: int
     guru_display_name: str
     value: float = 0.0
-    weight_pct: Optional[float] = None
-    change_pct: Optional[float] = None
+    weight_pct: float | None = None
+    change_pct: float | None = None
 
 
 class SeasonHighlights(BaseModel):
@@ -205,7 +202,7 @@ class FilingHistoryItem(BaseModel):
     id: int
     report_date: str
     filing_date: str
-    total_value: Optional[float] = None
+    total_value: float | None = None
     holdings_count: int = 0
     filing_url: str = ""
 

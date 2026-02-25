@@ -347,7 +347,7 @@ def main() -> None:
         with open(path, "w", encoding="utf-8") as f:
             f.write(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
 
-        print(f"Updated {locale_file}")
+        print(f"Updated {locale_file}")  # noqa: T201
 
 
 if __name__ == "__main__":

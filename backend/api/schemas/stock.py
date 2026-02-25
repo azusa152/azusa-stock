@@ -2,12 +2,9 @@
 API — Stock / Ticker / Thesis / Import Schemas。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from domain.enums import ScanSignal, StockCategory
-
 
 # ---------------------------------------------------------------------------
 # Request Schemas
@@ -21,7 +18,7 @@ class TickerCreateRequest(BaseModel):
     category: StockCategory
     thesis: str
     tags: list[str] = []
-    is_etf: Optional[bool] = None
+    is_etf: bool | None = None
 
 
 class ThesisCreateRequest(BaseModel):
@@ -63,7 +60,7 @@ class StockImportItem(BaseModel):
     category: str = Field(..., min_length=1, max_length=50)
     thesis: str = Field(default="", max_length=5000)
     tags: list[str] = Field(default_factory=list, max_length=20)
-    is_etf: Optional[bool] = None
+    is_etf: bool | None = None
 
     @field_validator("ticker")
     @classmethod
@@ -97,7 +94,7 @@ class StockResponse(BaseModel):
     last_scan_signal: ScanSignal = ScanSignal.NORMAL
     is_active: bool
     is_etf: bool = False
-    signals: Optional[dict] = None
+    signals: dict | None = None
 
 
 class RemovedStockResponse(BaseModel):
@@ -107,7 +104,7 @@ class RemovedStockResponse(BaseModel):
     category: StockCategory
     current_thesis: str
     removal_reason: str
-    removed_at: Optional[str] = None
+    removed_at: str | None = None
 
 
 class ThesisLogResponse(BaseModel):

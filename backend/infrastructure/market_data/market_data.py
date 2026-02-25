@@ -5,11 +5,13 @@ Infrastructure — 市場資料適配器 (yfinance)。
 含 tenacity 重試機制，針對暫時性網路 / DNS 錯誤自動指數退避重試。
 """
 
+import contextlib
 import math
 import threading
 import time
-from datetime import datetime, timezone
-from typing import Callable, Optional, TypeVar
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import TypeVar
 
 import diskcache
 import yfinance as yf
@@ -23,7 +25,6 @@ from tenacity import (
     wait_exponential,
 )
 
-from domain.formatters import build_moat_details, build_signal_status
 from domain.analysis import (
     classify_vix,
     compute_bias,
@@ -36,12 +37,12 @@ from domain.analysis import (
     determine_moat_status,
 )
 from domain.constants import (
-    DEFAULT_LANGUAGE,
     BETA_CACHE_MAXSIZE,
     BETA_CACHE_TTL,
     CNN_FG_API_URL,
     CNN_FG_REQUEST_TIMEOUT,
     CURL_CFFI_IMPERSONATE,
+    DEFAULT_LANGUAGE,
     DISK_BETA_TTL,
     DISK_CACHE_DIR,
     DISK_CACHE_SIZE_LIMIT,
@@ -90,13 +91,18 @@ from domain.constants import (
     FX_HISTORY_PERIOD,
     FX_LONG_TERM_PERIOD,
     INSTITUTIONAL_HOLDERS_TOP_N,
-    MA200_WINDOW,
     MA60_WINDOW,
+    MA200_WINDOW,
     MARGIN_TREND_QUARTERS,
     MIN_CLOSE_PRICES_FOR_CHANGE,
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
+    NIKKEI_VI_EXTREME_FEAR,
+    NIKKEI_VI_FEAR,
+    NIKKEI_VI_GREED,
+    NIKKEI_VI_NEUTRAL_LOW,
+    NIKKEI_VI_TICKER,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
     ROGUE_WAVE_CACHE_MAXSIZE,
@@ -106,18 +112,13 @@ from domain.constants import (
     SCAN_THREAD_POOL_SIZE,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
-    VIX_HISTORY_PERIOD,
-    VIX_TICKER,
-    NIKKEI_VI_TICKER,
-    NIKKEI_VI_EXTREME_FEAR,
-    NIKKEI_VI_FEAR,
-    NIKKEI_VI_NEUTRAL_LOW,
-    NIKKEI_VI_GREED,
     TWII_TICKER,
     TWII_VOL_EXTREME_FEAR,
     TWII_VOL_FEAR,
-    TWII_VOL_NEUTRAL_LOW,
     TWII_VOL_GREED,
+    TWII_VOL_NEUTRAL_LOW,
+    VIX_HISTORY_PERIOD,
+    VIX_TICKER,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
@@ -125,6 +126,7 @@ from domain.constants import (
     YFINANCE_RETRY_WAIT_MIN,
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
+from domain.formatters import build_moat_details, build_signal_status
 from i18n import t
 from logging_config import get_logger
 
@@ -284,10 +286,8 @@ def _disk_get(key: str):
 
 def _disk_set(key: str, value, ttl: int) -> None:
     """寫入磁碟快取 (L2)。失敗時靜默跳過（非致命）。"""
-    try:
+    with contextlib.suppress(Exception):
         _disk_cache.set(key, value, expire=ttl)
-    except Exception:
-        pass
 
 
 def clear_all_caches() -> dict:
@@ -320,7 +320,7 @@ def _cached_fetch(
     disk_prefix: str,
     disk_ttl: int,
     fetcher: Callable[[str], T],
-    is_error: Optional[Callable[[T], bool]] = None,
+    is_error: Callable[[T], bool] | None = None,
 ) -> T:
     """
     通用二層快取取得函式。
@@ -578,7 +578,7 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
             "bias_200": bias_200,
             "volume_ratio": volume_ratio,
             "institutional_holders": institutional_holders,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
         return {**raw_signals, "status": build_signal_status(raw_signals)}
 
@@ -594,7 +594,7 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
         }
 
 
-def get_technical_signals(ticker: str) -> Optional[dict]:
+def get_technical_signals(ticker: str) -> dict | None:
     """
     取得技術面訊號：RSI(14)、現價、200MA、60MA、Bias(%)、Volume Ratio。
     結果快取 5 分鐘。錯誤結果僅寫入 L1（短暫），不寫入 L2/磁碟。
@@ -776,7 +776,7 @@ def get_price_history(ticker: str) -> list[dict] | None:
 # ===========================================================================
 
 
-def _safe_loc(df, row_labels: list[str], col) -> Optional[float]:
+def _safe_loc(df, row_labels: list[str], col) -> float | None:
     """Try multiple row labels and return the first non-null value."""
     import math
 
@@ -817,7 +817,7 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
         _operating_profit_labels = ["Operating Profit"]
         _revenue_labels = ["Total Revenue", "Operating Revenue", "Revenue", "Net Sales"]
 
-        def _get_gross_margin(col) -> tuple[Optional[float], str]:
+        def _get_gross_margin(col) -> tuple[float | None, str]:
             """Return (margin_pct, margin_type) where margin_type is 'gross' or 'operating'."""
             gross_profit = _safe_loc(financials, _gross_profit_labels, col)
             margin_type = "gross"
@@ -1098,7 +1098,7 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
             try:
                 if isinstance(ex_date_raw, (int, float)):
                     ex_dividend_date = datetime.fromtimestamp(
-                        ex_date_raw, tz=timezone.utc
+                        ex_date_raw, tz=UTC
                     ).strftime("%Y-%m-%d")
                 else:
                     ex_dividend_date = str(ex_date_raw)[:10]
@@ -1110,7 +1110,7 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
         ytd_dividend_per_share: float | None = None
         try:
             if dividends is not None and not dividends.empty:
-                current_year = datetime.now(tz=timezone.utc).year
+                current_year = datetime.now(tz=UTC).year
                 ytd_divs = dividends[dividends.index.year == current_year]
                 ytd_dividend_per_share = (
                     round(float(ytd_divs.sum()), 6) if not ytd_divs.empty else 0.0
@@ -1612,7 +1612,7 @@ def get_vix_data() -> dict:
                 "value": None,
                 "change_1d": None,
                 "level": FearGreedLevel.NOT_AVAILABLE.value,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "fetched_at": datetime.now(UTC).isoformat(),
             }
 
         closes = hist["Close"].dropna().tolist()
@@ -1621,7 +1621,7 @@ def get_vix_data() -> dict:
                 "value": None,
                 "change_1d": None,
                 "level": FearGreedLevel.NOT_AVAILABLE.value,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "fetched_at": datetime.now(UTC).isoformat(),
             }
 
         current_vix = round(float(closes[-1]), 2)
@@ -1642,7 +1642,7 @@ def get_vix_data() -> dict:
             "value": current_vix,
             "change_1d": change_1d,
             "level": vix_level.value,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
@@ -1651,7 +1651,7 @@ def get_vix_data() -> dict:
             "value": None,
             "change_1d": None,
             "level": FearGreedLevel.NOT_AVAILABLE.value,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
 
 
@@ -1688,7 +1688,7 @@ def get_cnn_fear_greed() -> dict | None:
             "score": score,
             "label": label,
             "level": level.value,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
@@ -1714,7 +1714,7 @@ def _fetch_fear_greed(_key: str) -> dict:
         "composite_level": level.value,
         "vix": vix_data,
         "cnn": cnn_data,
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -1742,7 +1742,7 @@ def get_fear_greed_index() -> dict:
     )
 
 
-def get_jp_volatility_index() -> Optional[dict]:
+def get_jp_volatility_index() -> dict | None:
     """
     Fetch Nikkei VI as JP market fear indicator.
     Returns {"value": float, "level": str, "source": "Nikkei VI"} or None on failure.
@@ -1780,7 +1780,7 @@ def get_jp_volatility_index() -> Optional[dict]:
         return None
 
 
-def get_tw_volatility_index() -> Optional[dict]:
+def get_tw_volatility_index() -> dict | None:
     """
     Calculate TW market fear indicator from ^TWII realized volatility.
     Fetches 1 month of TAIEX daily closes and computes annualized realized vol.
@@ -1954,7 +1954,7 @@ def _fetch_bias_distribution_from_yf(ticker: str) -> dict:
             "historical_biases": biases,
             "count": len(biases),
             "p95": round(p95, 2),
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:

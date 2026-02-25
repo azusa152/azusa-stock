@@ -12,6 +12,7 @@ Covers:
 
 from __future__ import annotations
 
+from datetime import UTC
 from unittest.mock import patch
 
 from sqlmodel import Session
@@ -19,7 +20,6 @@ from sqlmodel import Session
 from application.scan.scan_service import run_scan
 from domain.entities import PriceAlert, Stock
 from domain.enums import ScanSignal, StockCategory
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -418,12 +418,12 @@ class TestCheckPriceAlerts:
     def test_should_not_send_notification_within_cooldown(
         self, mock_telegram, db_session: Session
     ) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from application.scan.scan_service import _check_price_alerts
 
         alert = self._make_alert()
-        alert.last_triggered_at = datetime.now(timezone.utc)
+        alert.last_triggered_at = datetime.now(UTC)
         db_session.add(alert)
         db_session.commit()
 
@@ -436,13 +436,13 @@ class TestCheckPriceAlerts:
         self, mock_telegram, db_session: Session
     ) -> None:
         """Regression: SQLite may return naive datetimes; comparison must not raise TypeError."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from application.scan.scan_service import _check_price_alerts
 
         alert = self._make_alert()
         # Simulate what SQLite returns after a round-trip: naive datetime
-        alert.last_triggered_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        alert.last_triggered_at = datetime.now(UTC).replace(tzinfo=None)
         db_session.add(alert)
         db_session.commit()
 

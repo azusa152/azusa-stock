@@ -8,6 +8,14 @@ from unittest.mock import patch
 from sqlmodel import Session
 
 from domain.entities import Guru, GuruFiling, GuruHolding
+from infrastructure.external.sec_edgar import (
+    _discover_infotable_filename,
+    _parse_13f_xml,
+    fetch_13f_filing_detail,
+    fetch_company_filings,
+    get_latest_13f_filings,
+    map_cusip_to_ticker,
+)
 from infrastructure.repositories import (
     deactivate_guru,
     find_all_active_gurus,
@@ -24,15 +32,6 @@ from infrastructure.repositories import (
     save_holdings_batch,
     update_guru,
 )
-from infrastructure.external.sec_edgar import (
-    _discover_infotable_filename,
-    _parse_13f_xml,
-    fetch_13f_filing_detail,
-    fetch_company_filings,
-    get_latest_13f_filings,
-    map_cusip_to_ticker,
-)
-
 
 # ---------------------------------------------------------------------------
 # Helpers

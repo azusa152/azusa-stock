@@ -35,7 +35,6 @@ from infrastructure.market_data import (  # noqa: E402
     prime_signals_cache_batch,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -268,9 +267,11 @@ class TestPrimeSignalsCacheBatchWrite:
         hist = _make_hist()
         l1 = _fresh_signals_l1()
 
-        with patch("infrastructure.market_data.market_data._signals_cache", l1):
-            with patch("infrastructure.market_data.market_data._disk_set"):
-                prime_signals_cache_batch({"AAPL": hist})
+        with (
+            patch("infrastructure.market_data.market_data._signals_cache", l1),
+            patch("infrastructure.market_data.market_data._disk_set"),
+        ):
+            prime_signals_cache_batch({"AAPL": hist})
 
         # Assert — pre_fetched_hist was passed
         mock_fetch.assert_called_once_with("AAPL", pre_fetched_hist=hist)

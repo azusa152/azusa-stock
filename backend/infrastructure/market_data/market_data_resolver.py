@@ -1,5 +1,3 @@
-from typing import Optional
-
 from domain.enums import MoatStatus
 from logging_config import get_logger
 
@@ -59,16 +57,16 @@ class MarketDataResolver:
         except ImportError:
             self._finmind = None
 
-    def get_technical_signals(self, ticker: str) -> Optional[dict]:
+    def get_technical_signals(self, ticker: str) -> dict | None:
         return self._yf.get_technical_signals(ticker)
 
-    def get_price_history(self, ticker: str) -> Optional[list[dict]]:
+    def get_price_history(self, ticker: str) -> list[dict] | None:
         return self._yf.get_price_history(ticker)
 
-    def get_earnings_date(self, ticker: str) -> Optional[str]:
+    def get_earnings_date(self, ticker: str) -> str | None:
         return self._yf.get_earnings_date(ticker)
 
-    def get_dividend_info(self, ticker: str) -> Optional[dict]:
+    def get_dividend_info(self, ticker: str) -> dict | None:
         return self._yf.get_dividend_info(ticker)
 
     def analyze_moat_trend(self, ticker: str) -> dict:
@@ -118,10 +116,10 @@ class MarketDataResolver:
 
         return result
 
-    def get_stock_beta(self, ticker: str) -> Optional[float]:
+    def get_stock_beta(self, ticker: str) -> float | None:
         return self._yf.get_stock_beta(ticker)
 
-    def get_ticker_sector(self, ticker: str) -> Optional[str]:
+    def get_ticker_sector(self, ticker: str) -> str | None:
         return self._yf.get_ticker_sector(ticker)
 
     def get_exchange_rate(self, display_cur: str, holding_cur: str) -> float:

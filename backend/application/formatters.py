@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 from domain.formatters import build_moat_details, build_signal_status  # noqa: F401
 from i18n import t
 
-
 # ---------------------------------------------------------------------------
 # 恐懼與貪婪指數格式化
 # ---------------------------------------------------------------------------

@@ -31,7 +31,6 @@ from application.portfolio.rebalance_service import calculate_rebalance  # noqa:
 from domain.entities import Holding, UserInvestmentProfile  # noqa: E402
 from domain.enums import StockCategory  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

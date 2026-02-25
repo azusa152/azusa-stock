@@ -58,9 +58,11 @@ def test_decrypt_empty_string_returns_empty(fernet_key):
 
 def test_encrypt_without_fernet_key_raises_error():
     """Encrypt without FERNET_KEY raises ValueError."""
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError, match="FERNET_KEY 環境變數未設定"):
-            encrypt_token("test_token")
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        pytest.raises(ValueError, match="FERNET_KEY 環境變數未設定"),
+    ):
+        encrypt_token("test_token")
 
 
 def test_decrypt_with_wrong_key_returns_empty(fernet_key):
@@ -118,7 +120,7 @@ def test_roundtrip_encryption_multiple_tokens(fernet_key):
         decrypted_tokens = [decrypt_token(e) for e in encrypted_tokens]
 
     assert decrypted_tokens == tokens
-    assert all(e != t for e, t in zip(encrypted_tokens, tokens))
+    assert all(e != t for e, t in zip(encrypted_tokens, tokens, strict=True))
 
 
 def test_telegram_settings_without_fernet_key_stores_plaintext(client):

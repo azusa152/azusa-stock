@@ -5,7 +5,6 @@ Domain — 純粹的分析計算函式。
 """
 
 import bisect
-from typing import Optional
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
@@ -45,13 +44,12 @@ from domain.constants import (
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus, ScanSignal
 
-
 # ---------------------------------------------------------------------------
 # 技術指標計算
 # ---------------------------------------------------------------------------
 
 
-def compute_rsi(closes: list[float], period: int = RSI_PERIOD) -> Optional[float]:
+def compute_rsi(closes: list[float], period: int = RSI_PERIOD) -> float | None:
     """
     以 Wilder's Smoothed Method 計算 RSI。
     需要至少 period+1 筆收盤價。純函式，無副作用。
@@ -79,21 +77,21 @@ def compute_rsi(closes: list[float], period: int = RSI_PERIOD) -> Optional[float
     return round(100.0 - (100.0 / (1.0 + rs)), 2)
 
 
-def compute_bias(price: float, ma: float) -> Optional[float]:
+def compute_bias(price: float, ma: float) -> float | None:
     """計算乖離率 (%)：(現價 - MA) / MA * 100。可用於任意移動平均線（MA60、MA200 等）。"""
     if ma and ma != 0:
         return round((price - ma) / ma * 100, 2)
     return None
 
 
-def compute_daily_change_pct(current: float, previous: float) -> Optional[float]:
+def compute_daily_change_pct(current: float, previous: float) -> float | None:
     """計算日漲跌百分比。previous 為 0 時回傳 None。"""
     if previous <= 0:
         return None
     return round((current - previous) / previous * 100, 2)
 
 
-def compute_volume_ratio(volumes: list[float]) -> Optional[float]:
+def compute_volume_ratio(volumes: list[float]) -> float | None:
     """計算量比：近 5 日均量 / 近 20 日均量。需至少 20 筆資料。"""
     if len(volumes) < VOLUME_RATIO_LONG_DAYS:
         return None
@@ -104,7 +102,7 @@ def compute_volume_ratio(volumes: list[float]) -> Optional[float]:
     return None
 
 
-def compute_moving_average(values: list[float], window: int) -> Optional[float]:
+def compute_moving_average(values: list[float], window: int) -> float | None:
     """計算簡單移動平均線。需至少 window 筆資料。"""
     if len(values) < window:
         return None
@@ -119,7 +117,7 @@ def compute_moving_average(values: list[float], window: int) -> Optional[float]:
 def compute_bias_percentile(
     current_bias: float,
     historical_biases: list[float],
-) -> Optional[float]:
+) -> float | None:
     """
     計算當前乖離率在歷史分佈中的百分位數（0.0–100.0）。
 
@@ -138,8 +136,8 @@ def compute_bias_percentile(
 
 
 def detect_rogue_wave(
-    bias_percentile: Optional[float],
-    volume_ratio: Optional[float],
+    bias_percentile: float | None,
+    volume_ratio: float | None,
 ) -> bool:
     """
     偵測瘋狗浪訊號：乖離率達歷史極端高位 AND 成交量明顯放大。
@@ -165,8 +163,8 @@ def detect_rogue_wave(
 
 
 def determine_moat_status(
-    current_margin: Optional[float],
-    previous_margin: Optional[float],
+    current_margin: float | None,
+    previous_margin: float | None,
 ) -> tuple[MoatStatus, float]:
     """
     根據毛利率變化判定護城河狀態。
@@ -229,10 +227,10 @@ def determine_market_sentiment(
 
 def determine_scan_signal(
     moat: str,
-    rsi: Optional[float],
-    bias: Optional[float],
-    bias_200: Optional[float] = None,
-    category: Optional[str] = None,
+    rsi: float | None,
+    bias: float | None,
+    bias_200: float | None = None,
+    category: str | None = None,
 ) -> ScanSignal:
     """
     9 優先級掃描訊號決策引擎（兩階段架構）。
@@ -349,9 +347,11 @@ def determine_scan_signal(
                 signal = ScanSignal.CONTRARIAN_BUY
 
         # 賣側：顯著高於 MA200 → 升級至過熱（+20% 非對稱：市場長期向上偏移）
-        elif bias_200 > MA200_HIGH_DEVIATION_THRESHOLD:
-            if signal == ScanSignal.CAUTION_HIGH:
-                signal = ScanSignal.OVERHEATED
+        elif (
+            bias_200 > MA200_HIGH_DEVIATION_THRESHOLD
+            and signal == ScanSignal.CAUTION_HIGH
+        ):
+            signal = ScanSignal.OVERHEATED
 
     return signal
 
@@ -361,7 +361,7 @@ def determine_scan_signal(
 # ---------------------------------------------------------------------------
 
 
-def classify_vix(vix_value: Optional[float]) -> FearGreedLevel:
+def classify_vix(vix_value: float | None) -> FearGreedLevel:
     """
     根據 VIX 值判定恐懼與貪婪等級。
     VIX > 30 極度恐懼, 20–30 恐懼, 15–20 中性, 10–15 貪婪, < 10 極度貪婪。
@@ -380,7 +380,7 @@ def classify_vix(vix_value: Optional[float]) -> FearGreedLevel:
     return FearGreedLevel.EXTREME_GREED
 
 
-def classify_cnn_fear_greed(score: Optional[int]) -> FearGreedLevel:
+def classify_cnn_fear_greed(score: int | None) -> FearGreedLevel:
     """
     根據 CNN Fear & Greed Index（0–100）判定等級。
     0–25 極度恐懼, 25–45 恐懼, 45–55 中性, 55–75 貪婪, 75–100 極度貪婪。
@@ -399,7 +399,7 @@ def classify_cnn_fear_greed(score: Optional[int]) -> FearGreedLevel:
     return FearGreedLevel.EXTREME_GREED
 
 
-def _vix_to_score(vix_value: Optional[float]) -> int:
+def _vix_to_score(vix_value: float | None) -> int:
     """
     將 VIX 值以分段線性映射至 0–100 恐懼貪婪分數。
     對齊 VIX 區間與 CNN 分數分級閾值，確保 VIX 分類與分數區間一致。
@@ -433,8 +433,8 @@ def _vix_to_score(vix_value: Optional[float]) -> int:
 
 
 def compute_composite_fear_greed(
-    vix_value: Optional[float],
-    cnn_score: Optional[int],
+    vix_value: float | None,
+    cnn_score: int | None,
 ) -> tuple[FearGreedLevel, int]:
     """
     恐懼與貪婪指數：CNN 優先，VIX 備援。
@@ -462,7 +462,7 @@ def compute_composite_fear_greed(
 # ---------------------------------------------------------------------------
 
 
-def compute_twr(snapshots: list[dict]) -> Optional[float]:
+def compute_twr(snapshots: list[dict]) -> float | None:
     """
     以連鎖法計算時間加權報酬率（TWR）。
 

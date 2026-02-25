@@ -8,7 +8,6 @@ from sqlmodel import Session
 
 from domain.entities import PortfolioSnapshot
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

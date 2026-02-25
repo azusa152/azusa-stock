@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-
 MOCK_HISTORY = [
     {"date": "2026-02-08", "close": 30.0},
     {"date": "2026-02-09", "close": 30.5},

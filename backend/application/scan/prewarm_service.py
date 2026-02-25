@@ -19,18 +19,18 @@ from domain.constants import (
 )
 from domain.entities import Holding, Stock
 from infrastructure.database import engine
-from infrastructure.repositories import find_all_active_gurus
 from infrastructure.market_data import (
     batch_download_history,
     get_etf_sector_weights,
     get_fear_greed_index,
     get_ticker_sector,
-    prime_signals_cache_batch,
     prewarm_beta_batch,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
+    prime_signals_cache_batch,
 )
+from infrastructure.repositories import find_all_active_gurus
 from logging_config import get_logger
 
 logger = get_logger(__name__)

@@ -47,9 +47,8 @@ def _collect_imports(filepath: Path) -> list[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 imports.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.append(node.module)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imports.append(node.module)
     return imports
 
 
@@ -111,9 +110,8 @@ class TestApiControllerBoundary:
         for filepath in api_files:
             imports = _collect_imports(filepath)
             for imp in imports:
-                if imp.startswith("infrastructure"):
-                    if imp not in allowed:
-                        violations.append(f"{filepath.name}: imports {imp}")
+                if imp.startswith("infrastructure") and imp not in allowed:
+                    violations.append(f"{filepath.name}: imports {imp}")
         assert violations == [], "API layer infrastructure violations:\n" + "\n".join(
             violations
         )

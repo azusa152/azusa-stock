@@ -9,7 +9,10 @@ from sqlmodel import Session
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
 from infrastructure.repositories import (
+    find_all_guru_summaries,
+    find_consensus_stocks,
     find_notable_changes_all_gurus,
+    find_sector_breakdown,
     save_filing,
     save_guru,
     save_holdings_batch,
@@ -296,3 +299,213 @@ class TestSeasonHighlightsColdStartExclusion:
         # Assert
         assert result["new_positions"] == []
         assert result["sold_outs"] == []
+
+
+# ===========================================================================
+# find_all_guru_summaries
+# ===========================================================================
+
+
+class TestFindAllGuruSummaries:
+    def test_returns_active_guru_with_filing_info(self, test_session: Session):
+        """Active guru with a filing should appear in summaries with correct counts."""
+        guru = _make_guru(test_session, cik="1000000001", display_name="Summary Guru")
+        _make_filing(
+            test_session,
+            guru.id,
+            accession_number="SUM-001",
+            report_date="2025-12-31",
+        )
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Summary Guru"), None
+        )
+        assert match is not None
+        assert match["filing_count"] == 1
+        assert match["latest_report_date"] == "2025-12-31"
+
+    def test_guru_with_multiple_filings_shows_latest(self, test_session: Session):
+        """Guru with 2 filings: latest_report_date should be the most recent one."""
+        guru = _make_guru(
+            test_session, cik="1000000002", display_name="Multi Summary Guru"
+        )
+        _make_filing(test_session, guru.id, "SUM-002-F1", "2025-09-30")
+        _make_filing(test_session, guru.id, "SUM-002-F2", "2025-12-31")
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "Multi Summary Guru"), None
+        )
+        assert match is not None
+        assert match["latest_report_date"] == "2025-12-31"
+        assert match["filing_count"] == 2
+
+    def test_returns_list_of_dicts(self, test_session: Session):
+        result = find_all_guru_summaries(test_session)
+        assert isinstance(result, list)
+
+    def test_guru_without_filings_shows_zeros(self, test_session: Session):
+        """Guru with no filings should still appear with filing_count=0 and None dates."""
+        guru = _make_guru(test_session, cik="1000000003", display_name="No Filing Guru")
+        # Explicitly set is_active=True (already the default)
+        assert guru.is_active is True
+
+        summaries = find_all_guru_summaries(test_session)
+
+        match = next(
+            (s for s in summaries if s["display_name"] == "No Filing Guru"), None
+        )
+        assert match is not None
+        assert match["filing_count"] == 0
+        assert match["latest_report_date"] is None
+
+
+# ===========================================================================
+# find_consensus_stocks
+# ===========================================================================
+
+
+class TestFindConsensusStocks:
+    def _make_holding_with_ticker(
+        self,
+        session: Session,
+        filing_id: int,
+        guru_id: int,
+        cusip: str,
+        ticker: str,
+    ) -> None:
+        holding = GuruHolding(
+            filing_id=filing_id,
+            guru_id=guru_id,
+            cusip=cusip,
+            ticker=ticker,
+            company_name=f"Company {ticker}",
+            value=500_000.0,
+            shares=1000.0,
+            action=HoldingAction.UNCHANGED.value,
+            weight_pct=5.0,
+        )
+        save_holdings_batch(session, [holding])
+
+    def test_ticker_held_by_multiple_gurus_appears_in_consensus(
+        self, test_session: Session
+    ):
+        """A ticker held in both gurus' latest filings should appear in consensus."""
+        guru_a = _make_guru(
+            test_session, cik="2000000001", display_name="Consensus Guru A"
+        )
+        guru_b = _make_guru(
+            test_session, cik="2000000002", display_name="Consensus Guru B"
+        )
+
+        filing_a = _make_filing(test_session, guru_a.id, "CON-001", "2025-12-31")
+        filing_b = _make_filing(test_session, guru_b.id, "CON-002", "2025-12-31")
+
+        self._make_holding_with_ticker(
+            test_session, filing_a.id, guru_a.id, "CUSIP-CA1", "META"
+        )
+        self._make_holding_with_ticker(
+            test_session, filing_b.id, guru_b.id, "CUSIP-CB1", "META"
+        )
+
+        result = find_consensus_stocks(test_session)
+
+        meta_entry = next((r for r in result if r["ticker"] == "META"), None)
+        assert meta_entry is not None
+        assert meta_entry["guru_count"] == 2
+        assert len(meta_entry["gurus"]) == 2
+
+    def test_ticker_held_by_single_guru_not_in_consensus(self, test_session: Session):
+        """A ticker held by only one guru should NOT appear (consensus requires 2+)."""
+        guru = _make_guru(test_session, cik="2000000003", display_name="Solo Guru")
+        filing = _make_filing(test_session, guru.id, "CON-003", "2025-12-31")
+        self._make_holding_with_ticker(
+            test_session, filing.id, guru.id, "CUSIP-SG1", "SOLO_TICKER"
+        )
+
+        result = find_consensus_stocks(test_session)
+
+        assert not any(r["ticker"] == "SOLO_TICKER" for r in result)
+
+    def test_returns_list(self, test_session: Session):
+        assert isinstance(find_consensus_stocks(test_session), list)
+
+
+# ===========================================================================
+# find_sector_breakdown
+# ===========================================================================
+
+
+class TestFindSectorBreakdown:
+    def _make_sector_holding(
+        self,
+        session: Session,
+        filing_id: int,
+        guru_id: int,
+        cusip: str,
+        ticker: str,
+        sector: str,
+        value: float,
+    ) -> None:
+        holding = GuruHolding(
+            filing_id=filing_id,
+            guru_id=guru_id,
+            cusip=cusip,
+            ticker=ticker,
+            company_name=f"Company {ticker}",
+            value=value,
+            shares=100.0,
+            action=HoldingAction.UNCHANGED.value,
+            weight_pct=10.0,
+            sector=sector,
+        )
+        save_holdings_batch(session, [holding])
+
+    def test_sector_breakdown_aggregates_by_sector(self, test_session: Session):
+        """Holdings with the same sector should be summed under one entry."""
+        guru = _make_guru(test_session, cik="3000000001", display_name="Sector Guru")
+        filing = _make_filing(test_session, guru.id, "SEC-001", "2025-12-31")
+
+        self._make_sector_holding(
+            test_session, filing.id, guru.id, "CUSIP-SE1", "AAPL", "Technology", 800_000
+        )
+        self._make_sector_holding(
+            test_session, filing.id, guru.id, "CUSIP-SE2", "MSFT", "Technology", 200_000
+        )
+        self._make_sector_holding(
+            test_session, filing.id, guru.id, "CUSIP-SE3", "JPM", "Financials", 500_000
+        )
+
+        result = find_sector_breakdown(test_session)
+
+        sectors = {r["sector"]: r for r in result}
+        assert "Technology" in sectors
+        assert "Financials" in sectors
+        assert sectors["Technology"]["holding_count"] == 2
+        assert sectors["Technology"]["total_value"] == pytest.approx(1_000_000)
+
+    def test_weight_pct_sums_to_100(self, test_session: Session):
+        """weight_pct across all sectors should sum to ~100%."""
+        guru = _make_guru(test_session, cik="3000000002", display_name="Weight Guru")
+        filing = _make_filing(test_session, guru.id, "SEC-002", "2025-12-31")
+
+        for i, sector in enumerate(["Tech", "Health", "Energy"]):
+            self._make_sector_holding(
+                test_session,
+                filing.id,
+                guru.id,
+                f"CUSIP-W{i}",
+                f"TICKER{i}",
+                sector,
+                1_000_000,
+            )
+
+        result = find_sector_breakdown(test_session)
+        total_weight = sum(r["weight_pct"] for r in result)
+        assert total_weight == pytest.approx(100.0, rel=0.01)
+
+    def test_returns_list(self, test_session: Session):
+        assert isinstance(find_sector_breakdown(test_session), list)

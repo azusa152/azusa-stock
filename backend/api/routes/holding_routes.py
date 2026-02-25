@@ -234,7 +234,7 @@ def calculate_withdraw_route(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e
 
 
 # ---------------------------------------------------------------------------
@@ -333,4 +333,4 @@ def get_stress_test(
         raise HTTPException(
             status_code=404,
             detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": str(e)},
-        )
+        ) from e

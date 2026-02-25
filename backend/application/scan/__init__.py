@@ -1,5 +1,11 @@
 """application.scan sub-package — re-exports public API for backward compatibility."""
 
+from application.scan.prewarm_service import (  # noqa: F401
+    _batch_prewarm_signals,
+    _collect_tickers,
+    is_prewarm_ready,
+    prewarm_all_caches,
+)
 from application.scan.scan_service import (  # noqa: F401
     create_price_alert,
     delete_price_alert,
@@ -10,10 +16,4 @@ from application.scan.scan_service import (  # noqa: F401
     list_price_alerts,
     run_scan,
     toggle_price_alert,
-)
-from application.scan.prewarm_service import (  # noqa: F401
-    _batch_prewarm_signals,
-    _collect_tickers,
-    is_prewarm_ready,
-    prewarm_all_caches,
 )

@@ -1,11 +1,9 @@
 """Tests for FX Watch application service (orchestration logic)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-
 from domain.fx_analysis import FXTimingResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -372,7 +370,7 @@ class TestSendFXWatchAlerts:
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # last_alerted_at was 1 hour ago, cooldown is 24 hours -> still in cooldown
         watch = _make_watch(
             last_alerted_at=now - timedelta(hours=1),
@@ -397,9 +395,7 @@ class TestSendFXWatchAlerts:
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         # Naive datetime (no tzinfo) — simulates SQLite returning without tz
-        naive_last_alerted = datetime.now(timezone.utc).replace(
-            tzinfo=None
-        ) - timedelta(hours=1)
+        naive_last_alerted = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1)
         assert naive_last_alerted.tzinfo is None  # confirm it's truly naive
 
         watch = _make_watch(
@@ -434,7 +430,7 @@ class TestSendFXWatchAlerts:
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # last_alerted_at was 25 hours ago, cooldown is 24 hours -> expired
         watch = _make_watch(
             last_alerted_at=now - timedelta(hours=25),

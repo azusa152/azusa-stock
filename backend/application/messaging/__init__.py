@@ -6,12 +6,12 @@ from application.messaging.notification_service import (  # noqa: F401
     send_resonance_alerts,
     send_weekly_digest,
 )
-from application.messaging.webhook_service import (  # noqa: F401
-    handle_webhook,
-)
 from application.messaging.telegram_settings_service import (  # noqa: F401
     _mask_token,
     get_settings,
     send_test_message,
     update_settings,
+)
+from application.messaging.webhook_service import (  # noqa: F401
+    handle_webhook,
 )

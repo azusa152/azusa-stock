@@ -20,7 +20,8 @@ from api.dependencies import require_api_key
 from api.rate_limit import limiter
 from api.routes.forex_routes import router as forex_router
 from api.routes.fx_watch_routes import router as fx_watch_router
-from api.routes.guru_routes import resonance_router, router as guru_router
+from api.routes.guru_routes import resonance_router
+from api.routes.guru_routes import router as guru_router
 from api.routes.holding_routes import router as holding_router
 from api.routes.persona_routes import router as persona_router
 from api.routes.preferences_routes import router as preferences_router
@@ -30,8 +31,8 @@ from api.routes.stock_routes import router as stock_router
 from api.routes.telegram_routes import router as telegram_router
 from api.routes.thesis_routes import router as thesis_router
 from api.schemas import HealthResponse
-from infrastructure.database import create_db_and_tables
 from config.settings import init_settings
+from infrastructure.database import create_db_and_tables
 from logging_config import get_logger
 
 # Load environment variables from .env file

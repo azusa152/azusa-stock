@@ -1,6 +1,6 @@
 """Tests for FX Watch repository functions."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlmodel import Session
@@ -182,7 +182,7 @@ class TestFXWatchRepository:
         assert created.last_alerted_at is None
 
         # Act
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         update_fx_watch_last_alerted(test_session, created.id, now)
 
         # Assert
@@ -190,7 +190,7 @@ class TestFXWatchRepository:
         assert updated.last_alerted_at is not None
         # Ensure both datetimes are timezone-aware for comparison
         updated_time = (
-            updated.last_alerted_at.replace(tzinfo=timezone.utc)
+            updated.last_alerted_at.replace(tzinfo=UTC)
             if updated.last_alerted_at.tzinfo is None
             else updated.last_alerted_at
         )
@@ -201,7 +201,7 @@ class TestFXWatchRepository:
         self, test_session: Session
     ):
         # Act & Assert (should not raise)
-        update_fx_watch_last_alerted(test_session, 9999, datetime.now(timezone.utc))
+        update_fx_watch_last_alerted(test_session, 9999, datetime.now(UTC))
 
     def test_update_fx_watch_should_persist_changes_and_update_timestamp(
         self, test_session: Session

@@ -1,0 +1,44 @@
+[tool.pytest.ini_options]
+filterwarnings = [
+    # StaticPool (in-memory SQLite) connections are intentionally kept alive across
+    # tests; the GC-triggered ResourceWarning is harmless and expected.
+    "ignore:unclosed database:ResourceWarning",
+    # jquantsapi V2 uses a completely different method/column API; migration is
+    # tracked separately. The V1 client still functions correctly.
+    "ignore:Client \\(V1\\) is deprecated:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["api", "application", "domain", "infrastructure"]
+omit = ["tests/*", "**/conftest.py"]
+relative_files = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade (Python 3.12+ idioms)
+    "B",   # flake8-bugbear (common bugs)
+    "SIM", # flake8-simplify
+    "T20", # flake8-print (catch stray print() calls)
+]
+ignore = [
+    "E501",  # line-too-long — pre-existing, requires separate cleanup pass
+    "B008",  # function-call-in-default-argument — FastAPI Depends() is the standard pattern
+    "UP047", # non-pep695-generic-function — PEP 695 syntax not yet widely adopted
+]

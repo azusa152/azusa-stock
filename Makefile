@@ -116,9 +116,10 @@ backend-lint: .venv-check ## Ruff check + format --check (backend only)
 	$(RUFF) check --fix $(BACKEND_DIR)/
 	$(RUFF) format --check $(BACKEND_DIR)/
 
-backend-test: .venv-check ## Run pytest with in-memory SQLite (backend only)
+backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend only)
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short
+		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
+		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing
 
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
@@ -147,8 +148,8 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 
 lint: backend-lint frontend-lint ## Lint entire project (backend + frontend)
 
-frontend-test: .node-check ## Run frontend tests (Vitest)
-	cd $(FRONTEND_DIR) && npm test
+frontend-test: .node-check ## Run frontend tests with coverage (Vitest)
+	cd $(FRONTEND_DIR) && npm run test:coverage
 
 test: backend-test frontend-test ## Test entire project (backend + frontend)
 

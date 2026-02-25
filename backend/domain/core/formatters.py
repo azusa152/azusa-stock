@@ -5,8 +5,6 @@ Domain — 純格式化函式（無副作用，僅依賴 domain 常數與 i18n�
 
 from __future__ import annotations
 
-from typing import Optional
-
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
     BIAS_OVERSOLD_THRESHOLD,
@@ -72,8 +70,8 @@ def build_signal_status(signals: dict, lang: str = "zh-TW") -> list[str]:
 
 def build_moat_details(
     moat_status_value: str,
-    current_margin: Optional[float],
-    previous_margin: Optional[float],
+    current_margin: float | None,
+    previous_margin: float | None,
     change: float,
     lang: str = "zh-TW",
 ) -> str:

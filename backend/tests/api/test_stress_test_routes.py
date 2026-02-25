@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from application.stock.stock_service import StockNotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Mock Data
 # ---------------------------------------------------------------------------

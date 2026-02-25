@@ -4,7 +4,7 @@ Application — Portfolio Snapshot Service：每日快照的建立與查詢。
 """
 
 import json as _json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlmodel import Session, select
 
@@ -47,7 +47,7 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
     except Exception as exc:
         logger.warning("無法取得 S&P 500 基準價格：%s", exc)
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
 
     # Upsert: check for existing snapshot on today's date
     existing = session.exec(
@@ -59,7 +59,7 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         existing.category_values = _json.dumps(category_values)
         existing.display_currency = display_currency
         existing.benchmark_value = benchmark_value
-        existing.created_at = datetime.now(timezone.utc)
+        existing.created_at = datetime.now(UTC)
         session.add(existing)
         session.commit()
         session.refresh(existing)
@@ -100,7 +100,7 @@ def get_snapshots(session: Session, days: int = 30) -> list[PortfolioSnapshot]:
     """
     from datetime import timedelta
 
-    cutoff = datetime.now(timezone.utc).date() - timedelta(days=days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=days)
     return list(
         session.exec(
             select(PortfolioSnapshot)

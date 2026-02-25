@@ -6,7 +6,7 @@ Infrastructure — 資料庫連線與 Session 管理。
 import os
 from collections.abc import Generator
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from logging_config import get_logger
 
@@ -137,7 +137,7 @@ def _encrypt_plaintext_tokens() -> None:
         from infrastructure.external.crypto import encrypt_token, is_encrypted
 
         with Session(engine) as session:
-            settings_list = session.query(UserTelegramSettings).all()
+            settings_list = session.exec(select(UserTelegramSettings)).all()
             encrypted_count = 0
 
             for settings in settings_list:

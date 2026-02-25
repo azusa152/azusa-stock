@@ -14,5 +14,23 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/test/**",
+        "src/**/*.test.{ts,tsx}",
+        "src/api/types/**",
+        "src/components/ui/**",
+        "src/vite-env.d.ts",
+      ],
+      reporter: ["text", "text-summary"],
+      thresholds: {
+        lines: 4,
+        branches: 60,
+        functions: 25,
+        statements: 4,
+      },
+    },
   },
 });

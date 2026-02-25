@@ -25,8 +25,10 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
 
 import pytest  # noqa: E402
 
-from infrastructure.market_data.market_data import _deduped_fetch, _inflight_events  # noqa: E402
-
+from infrastructure.market_data.market_data import (  # noqa: E402
+    _deduped_fetch,
+    _inflight_events,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers

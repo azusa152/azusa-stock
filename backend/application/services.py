@@ -13,6 +13,50 @@ Application — Service Layer (Use Cases) — 相容性 facade。
 # ---------------------------------------------------------------------------
 # Stock Service (CRUD, thesis, import/export, moat)
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Notification Service (weekly digest, portfolio summary)
+# ---------------------------------------------------------------------------
+from application.messaging.notification_service import (  # noqa: F401
+    get_portfolio_summary,
+    send_weekly_digest,
+)
+
+# ---------------------------------------------------------------------------
+# Webhook Service
+# ---------------------------------------------------------------------------
+from application.messaging.webhook_service import handle_webhook  # noqa: F401
+
+# ---------------------------------------------------------------------------
+# Rebalance Service (rebalance, currency exposure, X-Ray, FX alerts)
+# ---------------------------------------------------------------------------
+from application.portfolio.rebalance_service import (  # noqa: F401
+    _compute_holding_market_values,
+    calculate_currency_exposure,
+    calculate_rebalance,
+    calculate_withdrawal,
+    check_fx_alerts,
+    send_fx_alerts,
+    send_xray_warnings,
+)
+
+# ---------------------------------------------------------------------------
+# Stress Test Service (portfolio stress testing)
+# ---------------------------------------------------------------------------
+from application.portfolio.stress_test_service import (
+    calculate_stress_test,  # noqa: F401
+)
+
+# ---------------------------------------------------------------------------
+# Scan Service (scanning, price alerts, scan history)
+# ---------------------------------------------------------------------------
+from application.scan.scan_service import (  # noqa: F401
+    create_price_alert,
+    delete_price_alert,
+    get_latest_scan_logs,
+    get_scan_history,
+    list_price_alerts,
+    run_scan,
+)
 from application.stock.stock_service import (  # noqa: F401
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -38,46 +82,3 @@ from application.stock.stock_service import (  # noqa: F401
     update_display_order,
     update_stock_category,
 )
-
-# ---------------------------------------------------------------------------
-# Scan Service (scanning, price alerts, scan history)
-# ---------------------------------------------------------------------------
-from application.scan.scan_service import (  # noqa: F401
-    create_price_alert,
-    delete_price_alert,
-    get_latest_scan_logs,
-    get_scan_history,
-    list_price_alerts,
-    run_scan,
-)
-
-# ---------------------------------------------------------------------------
-# Rebalance Service (rebalance, currency exposure, X-Ray, FX alerts)
-# ---------------------------------------------------------------------------
-from application.portfolio.rebalance_service import (  # noqa: F401
-    _compute_holding_market_values,
-    calculate_currency_exposure,
-    calculate_rebalance,
-    calculate_withdrawal,
-    check_fx_alerts,
-    send_fx_alerts,
-    send_xray_warnings,
-)
-
-# ---------------------------------------------------------------------------
-# Webhook Service
-# ---------------------------------------------------------------------------
-from application.messaging.webhook_service import handle_webhook  # noqa: F401
-
-# ---------------------------------------------------------------------------
-# Notification Service (weekly digest, portfolio summary)
-# ---------------------------------------------------------------------------
-from application.messaging.notification_service import (  # noqa: F401
-    get_portfolio_summary,
-    send_weekly_digest,
-)
-
-# ---------------------------------------------------------------------------
-# Stress Test Service (portfolio stress testing)
-# ---------------------------------------------------------------------------
-from application.portfolio.stress_test_service import calculate_stress_test  # noqa: F401

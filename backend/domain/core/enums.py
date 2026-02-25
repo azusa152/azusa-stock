@@ -3,10 +3,10 @@ Domain — 列舉定義。
 業務規則中使用的分類與狀態常數。
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class StockCategory(str, Enum):
+class StockCategory(StrEnum):
     """股票分類：風向球 / 護城河 / 成長夢想 / 債券 / 現金"""
 
     TREND_SETTER = "Trend_Setter"
@@ -16,7 +16,7 @@ class StockCategory(str, Enum):
     CASH = "Cash"
 
 
-class MoatStatus(str, Enum):
+class MoatStatus(StrEnum):
     """護城河趨勢狀態"""
 
     DETERIORATING = "DETERIORATING"
@@ -24,7 +24,7 @@ class MoatStatus(str, Enum):
     NOT_AVAILABLE = "N/A"
 
 
-class MarketSentiment(str, Enum):
+class MarketSentiment(StrEnum):
     """市場情緒判定（5 階段，基於風向球跌破 60MA 之比例）"""
 
     STRONG_BULLISH = "STRONG_BULLISH"
@@ -34,7 +34,7 @@ class MarketSentiment(str, Enum):
     STRONG_BEARISH = "STRONG_BEARISH"
 
 
-class ScanSignal(str, Enum):
+class ScanSignal(StrEnum):
     """掃描決策訊號"""
 
     THESIS_BROKEN = "THESIS_BROKEN"
@@ -48,7 +48,7 @@ class ScanSignal(str, Enum):
     NORMAL = "NORMAL"
 
 
-class FearGreedLevel(str, Enum):
+class FearGreedLevel(StrEnum):
     """恐懼與貪婪指數等級（VIX + CNN Fear & Greed 綜合）"""
 
     EXTREME_FEAR = "EXTREME_FEAR"
@@ -78,7 +78,7 @@ CATEGORY_LABEL: dict[str, str] = {
 }
 
 
-class FXAlertType(str, Enum):
+class FXAlertType(StrEnum):
     """匯率變動警報類型"""
 
     DAILY_SPIKE = "daily_spike"
@@ -93,7 +93,7 @@ FX_ALERT_LABEL: dict[str, str] = {
 }
 
 
-class HoldingAction(str, Enum):
+class HoldingAction(StrEnum):
     """大師持倉的變動類型"""
 
     NEW_POSITION = "NEW_POSITION"  # 本季新建倉

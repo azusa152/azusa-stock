@@ -1,6 +1,7 @@
 # Folio — 智能資產配置
 
 [![CI](https://github.com/azusa152/azusa-stock/actions/workflows/ci.yml/badge.svg)](https://github.com/azusa152/azusa-stock/actions/workflows/ci.yml)
+![Coverage](https://raw.githubusercontent.com/azusa152/azusa-stock/python-coverage-comment-action-data/badge.svg)
 
 > 不是教你買什麼，而是幫你建立一套**有紀律的觀察流程** — 記錄觀點、追蹤訊號、自動提醒，讓你不再憑感覺做決定。
 
@@ -409,15 +410,24 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 
 | GitHub CI Job | 對應的 make 指令 |
 |---|---|
-| Backend Tests | `backend-test` |
+| Backend Tests (含 coverage ≥ 85%) | `backend-test` |
 | Lint (ruff) | `backend-lint` |
 | OpenAPI Spec Freshness | `check-api-spec` |
 | Frontend Lint | `frontend-lint` |
 | Frontend Build | `frontend-build` |
-| Frontend Tests | `frontend-test` |
+| Frontend Tests (含 coverage ≥ 4% lines / 60% branches / 25% functions) | `frontend-test` |
 | Frontend Security (npm audit) | `frontend-security` |
 | Backend/Frontend Constant Sync | `check-constants` |
 | Security Audit (pip-audit) | `backend-security` |
+| CI Gate | (aggregates all jobs above — blocks PR merge on failure) |
+
+**測試覆蓋率（Coverage）：**
+
+- 測試覆蓋率採 **Ratchet 策略** — 閾值只升不降，防止回退
+- **Backend 閾值**：85%（設定於 `backend/pyproject.toml` `[tool.coverage.report] fail_under`）
+- **Frontend 閾值**：lines 4% / branches 60% / functions 25%（設定於 `frontend-react/vitest.config.ts` `coverage.thresholds`；`src/components/ui/` 為 shadcn 第三方元件，已從分母排除）
+- 提升覆蓋率後，手動調高閾值並提交，使新數值成為新的最低基準
+- Backend 覆蓋率 badge 由 py-cov-action 自動更新（每次合併至 `main` 時）
 
 <details>
 <summary>手動執行（不使用 Make）</summary>
@@ -435,6 +445,7 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 
 > 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
 > CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
+> **Merge Protection:** `CI Gate` 是 GitHub branch protection 的唯一必要狀態檢查。任何 CI job 失敗都會阻止 PR 合併。設定路徑：GitHub repo → Settings → Branches → Branch protection rules → `main` → Require status checks → 加入 `CI Gate`。
 
 ## 安全性 (Security)
 

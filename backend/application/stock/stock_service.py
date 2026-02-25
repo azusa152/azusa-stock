@@ -2,9 +2,9 @@
 Application — Stock Service：股票 CRUD、匯入匯出、護城河查詢。
 """
 
-from sqlmodel import Session
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
 from domain.constants import (
@@ -27,9 +27,11 @@ from infrastructure.market_data import (
     get_earnings_date,
     get_fear_greed_index,
     get_jp_volatility_index,
-    get_tw_volatility_index,
-    get_price_history as _get_price_history,
     get_technical_signals,
+    get_tw_volatility_index,
+)
+from infrastructure.market_data import (
+    get_price_history as _get_price_history,
 )
 from logging_config import get_logger
 

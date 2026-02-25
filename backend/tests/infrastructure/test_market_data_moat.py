@@ -1,11 +1,11 @@
 import datetime
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from unittest.mock import patch
 
-from infrastructure.market_data.market_data import _safe_loc, _fetch_moat_from_yf
 from domain.enums import MoatStatus
+from infrastructure.market_data.market_data import _fetch_moat_from_yf, _safe_loc
 
 NOT_AVAILABLE = MoatStatus.NOT_AVAILABLE.value
 

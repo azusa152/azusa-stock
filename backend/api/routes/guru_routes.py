@@ -44,21 +44,23 @@ from api.schemas import (
     SyncAllResponse,
     SyncResponse,
 )
+from application.guru.guru_service import add_guru, list_gurus, remove_guru
+from application.guru.resonance_service import (
+    compute_portfolio_resonance,
+    get_great_minds_list,
+    get_resonance_for_ticker,
+)
+from application.messaging.notification_service import send_filing_season_digest
 from application.stock.filing_service import (
     get_dashboard_summary,
     get_filing_summary,
     get_guru_filing_history,
     get_holding_changes,
-    get_top_holdings as filing_get_top_holdings,
     sync_all_gurus,
     sync_guru_filing,
 )
-from application.guru.guru_service import add_guru, list_gurus, remove_guru
-from application.messaging.notification_service import send_filing_season_digest
-from application.guru.resonance_service import (
-    compute_portfolio_resonance,
-    get_great_minds_list,
-    get_resonance_for_ticker,
+from application.stock.filing_service import (
+    get_top_holdings as filing_get_top_holdings,
 )
 from domain.constants import GURU_HOLDING_CHANGES_DISPLAY_LIMIT, GURU_TOP_HOLDINGS_COUNT
 from infrastructure.database import get_session

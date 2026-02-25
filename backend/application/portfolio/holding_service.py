@@ -5,7 +5,7 @@ Application — Holding Service。
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlmodel import Session
@@ -74,10 +74,7 @@ def list_holdings(session: Session) -> list[dict]:
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a new holding. Returns the created holding dict."""
     currency = payload["currency"].strip().upper()
-    if currency != "USD":
-        purchase_fx_rate = get_exchange_rate("USD", currency)
-    else:
-        purchase_fx_rate = 1.0
+    purchase_fx_rate = get_exchange_rate("USD", currency) if currency != "USD" else 1.0
     holding = Holding(
         user_id=DEFAULT_USER_ID,
         ticker=payload["ticker"].strip().upper(),
@@ -136,7 +133,7 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
         holding.account_type = payload["account_type"]
     if "is_cash" in payload:
         holding.is_cash = payload["is_cash"]
-    holding.updated_at = datetime.now(timezone.utc)
+    holding.updated_at = datetime.now(UTC)
     saved = repo.save_holding(session, holding)
     return _holding_to_dict(saved)
 

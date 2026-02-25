@@ -3,15 +3,13 @@ Domain — Smart Money Tracker 純函數。
 無任何外部依賴，所有業務邏輯可單獨測試。
 """
 
-from typing import Optional
-
 from domain.constants import GURU_HOLDING_CHANGE_THRESHOLD_PCT
 from domain.enums import HoldingAction
 
 
 def classify_holding_change(
     current_shares: float,
-    previous_shares: Optional[float],
+    previous_shares: float | None,
     threshold_pct: float = GURU_HOLDING_CHANGE_THRESHOLD_PCT,
 ) -> HoldingAction:
     """判斷大師持倉的變動類型。
@@ -46,7 +44,7 @@ def classify_holding_change(
 def compute_change_pct(
     current: float,
     previous: float,
-) -> Optional[float]:
+) -> float | None:
     """計算持股數量的百分比變動。
 
     Args:

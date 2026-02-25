@@ -1,6 +1,6 @@
 """Tests for scan routes (GET /scan/last, GET /scan/status)."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlmodel import Session
 
@@ -35,7 +35,7 @@ class TestGetLastScan:
 
         from domain.entities import ScanLog
 
-        scan_time = datetime(2025, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
+        scan_time = datetime(2025, 6, 15, 10, 30, 0, tzinfo=UTC)
         scan_log = ScanLog(
             stock_ticker="AAPL",
             signal="NORMAL",
@@ -78,7 +78,7 @@ class TestGetLastScan:
             market_status="BULLISH",
             market_status_details="風向球整體穩健（0/4 跌破 60MA）",
             details="",
-            scanned_at=datetime(2025, 6, 14, 10, 0, 0, tzinfo=timezone.utc),
+            scanned_at=datetime(2025, 6, 14, 10, 0, 0, tzinfo=UTC),
         )
         newer_scan = ScanLog(
             stock_ticker="MSFT",
@@ -86,7 +86,7 @@ class TestGetLastScan:
             market_status="BEARISH",
             market_status_details="風向球偏空（3/4 跌破 60MA）",
             details="",
-            scanned_at=datetime(2025, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+            scanned_at=datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC),
         )
         with Session(test_engine) as session:
             session.add(older_scan)

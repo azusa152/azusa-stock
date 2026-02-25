@@ -73,7 +73,7 @@ class TestCalculateRebalanceDrift:
         params = _advice_params(result)
         assert "rebalance.advice_over" in keys
         over_params = next(
-            p for k, p in zip(keys, params) if k == "rebalance.advice_over"
+            p for k, p in zip(keys, params, strict=True) if k == "rebalance.advice_over"
         )
         assert over_params["category"] == "Growth"
         assert over_params["drift"] == "30.0"
@@ -94,7 +94,9 @@ class TestCalculateRebalanceDrift:
         params = _advice_params(result)
         assert "rebalance.advice_under" in keys
         under_params = next(
-            p for k, p in zip(keys, params) if k == "rebalance.advice_under"
+            p
+            for k, p in zip(keys, params, strict=True)
+            if k == "rebalance.advice_under"
         )
         assert under_params["category"] == "Bond"
         assert under_params["drift"] == "30.0"
