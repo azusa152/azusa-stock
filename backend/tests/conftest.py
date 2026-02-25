@@ -41,6 +41,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 from sqlmodel import Session, SQLModel, create_engine  # noqa: E402
 
+from infrastructure.database import engine as _db_engine  # noqa: E402
 from infrastructure.database import get_session  # noqa: E402
 from main import app  # noqa: E402
 
@@ -207,6 +208,9 @@ def client() -> Generator[TestClient, None, None]:
         p.stop()
 
     app.dependency_overrides.clear()
+
+    # Dispose global engine connections to prevent ResourceWarning from GC
+    _db_engine.dispose()
 
     # Clear rate limiter state between tests to prevent cross-test contamination
     if hasattr(app.state, "limiter") and hasattr(app.state.limiter, "_storage"):

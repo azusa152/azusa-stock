@@ -61,6 +61,6 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 Coverage is enforced in CI via a ratchet approach — thresholds only ever increase.
 
-- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold (`fail_under = 80`) is in `backend/pyproject.toml` under `[tool.coverage.report]`. CI fails if coverage drops below it.
+- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold (`fail_under = 85`) is in `backend/pyproject.toml` under `[tool.coverage.report]`. CI fails if coverage drops below it.
 - **Frontend**: `make frontend-test` runs `vitest run --coverage`. Thresholds are in `frontend-react/vitest.config.ts` under `coverage.thresholds` (lines: 4%, branches: 60%, functions: 25%). `src/components/ui/` is excluded — those are third-party shadcn wrappers.
 - To raise the floor: improve coverage, confirm locally, then bump the threshold value and commit it as the new baseline.

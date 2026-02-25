@@ -1,10 +1,20 @@
+[tool.pytest.ini_options]
+filterwarnings = [
+    # StaticPool (in-memory SQLite) connections are intentionally kept alive across
+    # tests; the GC-triggered ResourceWarning is harmless and expected.
+    "ignore:unclosed database:ResourceWarning",
+    # jquantsapi V2 uses a completely different method/column API; migration is
+    # tracked separately. The V1 client still functions correctly.
+    "ignore:Client \\(V1\\) is deprecated:DeprecationWarning",
+]
+
 [tool.coverage.run]
 source = ["api", "application", "domain", "infrastructure"]
 omit = ["tests/*", "**/conftest.py"]
 relative_files = true
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 85
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
