@@ -26,7 +26,7 @@ from unittest.mock import patch  # noqa: E402
 
 from cachetools import TTLCache  # noqa: E402
 
-from infrastructure.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (  # noqa: E402
     _BETA_NOT_AVAILABLE,
     _fetch_beta_from_yf,
     get_stock_beta,
@@ -52,7 +52,7 @@ def _fresh_beta_l1() -> TTLCache:
 class TestFetchBetaFromYf:
     """Verify _fetch_beta_from_yf returns Beta or sentinel value."""
 
-    @patch("infrastructure.market_data._yf_info")
+    @patch("infrastructure.market_data.market_data._yf_info")
     def test_should_return_beta_when_yfinance_provides_it(self, mock_yf_info):
         # Arrange
         mock_yf_info.return_value = {"beta": 1.23456}
@@ -64,7 +64,7 @@ class TestFetchBetaFromYf:
         assert result == 1.23  # Rounded to 2 decimals
         mock_yf_info.assert_called_once_with("NVDA")
 
-    @patch("infrastructure.market_data._yf_info")
+    @patch("infrastructure.market_data.market_data._yf_info")
     def test_should_return_sentinel_when_beta_is_none(self, mock_yf_info):
         # Arrange
         mock_yf_info.return_value = {"beta": None}
@@ -76,7 +76,7 @@ class TestFetchBetaFromYf:
         assert result == _BETA_NOT_AVAILABLE
         mock_yf_info.assert_called_once_with("BTC-USD")
 
-    @patch("infrastructure.market_data._yf_info")
+    @patch("infrastructure.market_data.market_data._yf_info")
     def test_should_return_sentinel_when_beta_key_missing(self, mock_yf_info):
         # Arrange — info dict doesn't contain "beta" key
         mock_yf_info.return_value = {"shortName": "Some Stock"}
@@ -88,7 +88,7 @@ class TestFetchBetaFromYf:
         assert result == _BETA_NOT_AVAILABLE
         mock_yf_info.assert_called_once_with("UNKNOWN")
 
-    @patch("infrastructure.market_data._yf_info")
+    @patch("infrastructure.market_data.market_data._yf_info")
     def test_should_return_sentinel_when_yf_info_raises_exception(self, mock_yf_info):
         # Arrange
         mock_yf_info.side_effect = Exception("yfinance failed")
@@ -100,7 +100,7 @@ class TestFetchBetaFromYf:
         assert result == _BETA_NOT_AVAILABLE
         mock_yf_info.assert_called_once_with("FAIL")
 
-    @patch("infrastructure.market_data._yf_info")
+    @patch("infrastructure.market_data.market_data._yf_info")
     def test_should_round_beta_to_two_decimals(self, mock_yf_info):
         # Arrange
         mock_yf_info.return_value = {"beta": 1.987654321}
@@ -120,7 +120,7 @@ class TestFetchBetaFromYf:
 class TestGetStockBeta:
     """Verify get_stock_beta caching and sentinel-to-None conversion."""
 
-    @patch("infrastructure.market_data._cached_fetch")
+    @patch("infrastructure.market_data.market_data._cached_fetch")
     def test_should_return_beta_when_available(self, mock_cached_fetch):
         # Arrange
         mock_cached_fetch.return_value = 1.25
@@ -132,7 +132,7 @@ class TestGetStockBeta:
         assert result == 1.25
         mock_cached_fetch.assert_called_once()
 
-    @patch("infrastructure.market_data._cached_fetch")
+    @patch("infrastructure.market_data.market_data._cached_fetch")
     def test_should_convert_sentinel_to_none(self, mock_cached_fetch):
         # Arrange — _cached_fetch returns sentinel
         mock_cached_fetch.return_value = _BETA_NOT_AVAILABLE
@@ -144,9 +144,9 @@ class TestGetStockBeta:
         assert result is None
         mock_cached_fetch.assert_called_once()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_cache_sentinel_in_l1_and_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -155,7 +155,9 @@ class TestGetStockBeta:
         mock_fetch.return_value = _BETA_NOT_AVAILABLE
 
         # Patch the actual _beta_cache to observe L1 behavior
-        with patch("infrastructure.market_data._beta_cache", _fresh_beta_l1()) as l1:
+        with patch(
+            "infrastructure.market_data.market_data._beta_cache", _fresh_beta_l1()
+        ) as l1:
             # Act
             result = get_stock_beta("CRYPTO")
 
@@ -168,9 +170,9 @@ class TestGetStockBeta:
             call_args = mock_disk_set.call_args
             assert call_args[0][1] == _BETA_NOT_AVAILABLE  # value argument
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_cache_success_beta_in_l1_and_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -178,7 +180,9 @@ class TestGetStockBeta:
         mock_disk_get.return_value = None
         mock_fetch.return_value = 1.45
 
-        with patch("infrastructure.market_data._beta_cache", _fresh_beta_l1()) as l1:
+        with patch(
+            "infrastructure.market_data.market_data._beta_cache", _fresh_beta_l1()
+        ) as l1:
             # Act
             result = get_stock_beta("NVDA")
 
@@ -189,14 +193,14 @@ class TestGetStockBeta:
             call_args = mock_disk_set.call_args
             assert call_args[0][1] == 1.45
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
         l1 = _fresh_beta_l1()
         l1["MSFT"] = 1.12
 
-        with patch("infrastructure.market_data._beta_cache", l1):
+        with patch("infrastructure.market_data.market_data._beta_cache", l1):
             # Act
             result = get_stock_beta("MSFT")
 
@@ -205,16 +209,18 @@ class TestGetStockBeta:
             mock_fetch.assert_not_called()
             mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_promote_l2_to_l1_without_fetching(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
         # Arrange — L1 empty, L2 has data
         mock_disk_get.return_value = 0.88
 
-        with patch("infrastructure.market_data._beta_cache", _fresh_beta_l1()) as l1:
+        with patch(
+            "infrastructure.market_data.market_data._beta_cache", _fresh_beta_l1()
+        ) as l1:
             # Act
             result = get_stock_beta("TLT")
 
@@ -227,13 +233,15 @@ class TestGetStockBeta:
             # Assert — disk_set not called (already in L2)
             mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_convert_l2_sentinel_to_none(self, mock_fetch, mock_disk_get):
         # Arrange — L2 contains sentinel
         mock_disk_get.return_value = _BETA_NOT_AVAILABLE
 
-        with patch("infrastructure.market_data._beta_cache", _fresh_beta_l1()) as l1:
+        with patch(
+            "infrastructure.market_data.market_data._beta_cache", _fresh_beta_l1()
+        ) as l1:
             # Act
             result = get_stock_beta("OLD-CRYPTO")
 
@@ -253,7 +261,7 @@ class TestGetStockBeta:
 class TestPrewarmBetaBatch:
     """Verify prewarm_beta_batch fetches multiple tickers concurrently."""
 
-    @patch("infrastructure.market_data.get_stock_beta")
+    @patch("infrastructure.market_data.market_data.get_stock_beta")
     def test_should_fetch_all_tickers(self, mock_get_beta):
         # Arrange
         mock_get_beta.side_effect = lambda t: {
@@ -269,7 +277,7 @@ class TestPrewarmBetaBatch:
         assert results == {"NVDA": 1.5, "AAPL": 1.2, "TLT": 0.3}
         assert mock_get_beta.call_count == 3
 
-    @patch("infrastructure.market_data.get_stock_beta")
+    @patch("infrastructure.market_data.market_data.get_stock_beta")
     def test_should_return_none_for_unavailable_beta(self, mock_get_beta):
         # Arrange — some tickers have no Beta
         mock_get_beta.side_effect = lambda t: {"NVDA": 1.5, "BTC-USD": None}.get(t, 1.0)
@@ -280,7 +288,7 @@ class TestPrewarmBetaBatch:
         # Assert
         assert results == {"NVDA": 1.5, "BTC-USD": None}
 
-    @patch("infrastructure.market_data.get_stock_beta")
+    @patch("infrastructure.market_data.market_data.get_stock_beta")
     def test_should_handle_exception_gracefully(self, mock_get_beta):
         # Arrange — one ticker raises exception
         def side_effect(ticker):
@@ -296,7 +304,7 @@ class TestPrewarmBetaBatch:
         # Assert — failed ticker gets None
         assert results == {"NVDA": 1.0, "FAIL": None, "AAPL": 1.0}
 
-    @patch("infrastructure.market_data.get_stock_beta")
+    @patch("infrastructure.market_data.market_data.get_stock_beta")
     def test_should_return_empty_dict_for_empty_input(self, mock_get_beta):
         # Act
         results = prewarm_beta_batch([])
@@ -305,7 +313,7 @@ class TestPrewarmBetaBatch:
         assert results == {}
         mock_get_beta.assert_not_called()
 
-    @patch("infrastructure.market_data.get_stock_beta")
+    @patch("infrastructure.market_data.market_data.get_stock_beta")
     def test_should_fetch_concurrently_with_custom_max_workers(self, mock_get_beta):
         # Arrange
         mock_get_beta.side_effect = lambda t: 1.0
@@ -326,9 +334,9 @@ class TestPrewarmBetaBatch:
 class TestBetaSentinelCaching:
     """Verify that sentinel values are properly cached to avoid repeated fetches."""
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_not_refetch_when_sentinel_in_l1(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -336,7 +344,7 @@ class TestBetaSentinelCaching:
         l1 = _fresh_beta_l1()
         l1["BTC-USD"] = _BETA_NOT_AVAILABLE
 
-        with patch("infrastructure.market_data._beta_cache", l1):
+        with patch("infrastructure.market_data.market_data._beta_cache", l1):
             # Act — call get_stock_beta twice
             result1 = get_stock_beta("BTC-USD")
             result2 = get_stock_beta("BTC-USD")
@@ -348,16 +356,18 @@ class TestBetaSentinelCaching:
             mock_fetch.assert_not_called()
             mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_beta_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_not_refetch_when_sentinel_in_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
         # Arrange — L2 has sentinel, L1 empty
         mock_disk_get.return_value = _BETA_NOT_AVAILABLE
 
-        with patch("infrastructure.market_data._beta_cache", _fresh_beta_l1()) as l1:
+        with patch(
+            "infrastructure.market_data.market_data._beta_cache", _fresh_beta_l1()
+        ) as l1:
             # Act — call get_stock_beta twice
             result1 = get_stock_beta("ETH-USD")
             result2 = get_stock_beta("ETH-USD")

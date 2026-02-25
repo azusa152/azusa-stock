@@ -86,10 +86,10 @@ class TestBatchDownloadHistoryEmpty:
         assert result == {}
 
     @patch(
-        "infrastructure.market_data.yf.download",
+        "infrastructure.market_data.market_data.yf.download",
         side_effect=RuntimeError("network error"),
     )
-    @patch("infrastructure.market_data._rate_limiter")
+    @patch("infrastructure.market_data.market_data._rate_limiter")
     def test_should_return_empty_dict_when_yf_download_raises(self, _mock_rl, _mock_dl):
         # Act — exception must be swallowed
         result = batch_download_history(["AAPL"])
@@ -101,8 +101,8 @@ class TestBatchDownloadHistoryEmpty:
 class TestBatchDownloadHistoryFiltering:
     """batch_download_history should filter tickers with insufficient data."""
 
-    @patch("infrastructure.market_data._rate_limiter")
-    @patch("infrastructure.market_data.yf.download")
+    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.market_data.yf.download")
     def test_should_exclude_ticker_with_insufficient_rows(self, mock_dl, _mock_rl):
         # Arrange — only 10 rows, below MIN_HISTORY_DAYS_FOR_SIGNALS=60
         short_hist = _make_hist(rows=10)
@@ -114,8 +114,8 @@ class TestBatchDownloadHistoryFiltering:
         # Assert
         assert "AAPL" not in result
 
-    @patch("infrastructure.market_data._rate_limiter")
-    @patch("infrastructure.market_data.yf.download")
+    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.market_data.yf.download")
     def test_should_include_ticker_with_sufficient_rows(self, mock_dl, _mock_rl):
         # Arrange — exactly MIN_HISTORY_DAYS_FOR_SIGNALS rows
         hist = _make_hist(rows=_MIN_ROWS)
@@ -132,8 +132,8 @@ class TestBatchDownloadHistoryFiltering:
 class TestBatchDownloadHistoryMultiTicker:
     """batch_download_history extracts per-ticker slices from multi-ticker download."""
 
-    @patch("infrastructure.market_data._rate_limiter")
-    @patch("infrastructure.market_data.yf.download")
+    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.market_data.yf.download")
     def test_should_return_per_ticker_dataframes_for_multi_ticker(
         self, mock_dl, _mock_rl
     ):
@@ -149,8 +149,8 @@ class TestBatchDownloadHistoryMultiTicker:
         assert "Close" in result["AAPL"].columns
         assert "Close" in result["MSFT"].columns
 
-    @patch("infrastructure.market_data._rate_limiter")
-    @patch("infrastructure.market_data.yf.download")
+    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.market_data.yf.download")
     def test_should_skip_ticker_missing_from_download_result(self, mock_dl, _mock_rl):
         # Arrange — AAPL present, MSFT causes KeyError
         data = _make_multi_ticker_data(["AAPL"])
@@ -171,14 +171,14 @@ class TestBatchDownloadHistoryMultiTicker:
 class TestPrimeSignalsCacheBatchSkip:
     """prime_signals_cache_batch should skip tickers already in L1 cache."""
 
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_skip_ticker_already_in_l1_cache(self, mock_fetch):
         # Arrange — AAPL already in L1
         l1 = _fresh_signals_l1()
         l1["AAPL"] = {"ticker": "AAPL", "price": 200.0, "rsi": 55.0}
         hist_map = {"AAPL": _make_hist()}
 
-        with patch("infrastructure.market_data._signals_cache", l1):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
@@ -186,7 +186,7 @@ class TestPrimeSignalsCacheBatchSkip:
         assert primed == 0
         mock_fetch.assert_not_called()
 
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_return_zero_when_all_tickers_already_cached(self, mock_fetch):
         # Arrange — two tickers, both cached
         l1 = _fresh_signals_l1()
@@ -194,7 +194,7 @@ class TestPrimeSignalsCacheBatchSkip:
         l1["MSFT"] = {"ticker": "MSFT", "price": 400.0}
         hist_map = {"AAPL": _make_hist(), "MSFT": _make_hist()}
 
-        with patch("infrastructure.market_data._signals_cache", l1):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
             primed = prime_signals_cache_batch(hist_map)
 
         assert primed == 0
@@ -204,8 +204,8 @@ class TestPrimeSignalsCacheBatchSkip:
 class TestPrimeSignalsCacheBatchWrite:
     """prime_signals_cache_batch should write successful results to L1 and L2."""
 
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_write_success_result_to_l1_and_l2(self, mock_fetch, mock_disk_set):
         # Arrange — L1 empty, fetcher returns valid signals
         signals = {"ticker": "AAPL", "price": 200.0, "rsi": 55.0}
@@ -213,7 +213,7 @@ class TestPrimeSignalsCacheBatchWrite:
         l1 = _fresh_signals_l1()
         hist_map = {"AAPL": _make_hist()}
 
-        with patch("infrastructure.market_data._signals_cache", l1):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
@@ -224,8 +224,8 @@ class TestPrimeSignalsCacheBatchWrite:
         key_arg = mock_disk_set.call_args[0][0]
         assert "AAPL" in key_arg
 
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_not_write_error_result_to_l2(self, mock_fetch, mock_disk_set):
         # Arrange — fetcher returns error dict
         error_result = {"error": "市場資料取得失敗"}
@@ -233,7 +233,7 @@ class TestPrimeSignalsCacheBatchWrite:
         l1 = _fresh_signals_l1()
         hist_map = {"AAPL": _make_hist()}
 
-        with patch("infrastructure.market_data._signals_cache", l1):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
@@ -242,8 +242,8 @@ class TestPrimeSignalsCacheBatchWrite:
         assert l1.get("AAPL") == error_result
         mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_return_count_of_primed_tickers(self, mock_fetch, mock_disk_set):
         # Arrange — three tickers, all miss L1
         mock_fetch.return_value = {"ticker": "X", "price": 100.0, "rsi": 50.0}
@@ -254,13 +254,13 @@ class TestPrimeSignalsCacheBatchWrite:
             "GOOGL": _make_hist(),
         }
 
-        with patch("infrastructure.market_data._signals_cache", l1):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
             primed = prime_signals_cache_batch(hist_map)
 
         # Assert — all three primed
         assert primed == 3
 
-    @patch("infrastructure.market_data._fetch_signals_from_yf")
+    @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
     def test_should_pass_pre_fetched_hist_to_fetch_signals(self, mock_fetch):
         # Arrange — verify the hist is forwarded as pre_fetched_hist kwarg
         signals = {"ticker": "AAPL", "price": 200.0, "rsi": 55.0}
@@ -268,8 +268,8 @@ class TestPrimeSignalsCacheBatchWrite:
         hist = _make_hist()
         l1 = _fresh_signals_l1()
 
-        with patch("infrastructure.market_data._signals_cache", l1):
-            with patch("infrastructure.market_data._disk_set"):
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            with patch("infrastructure.market_data.market_data._disk_set"):
                 prime_signals_cache_batch({"AAPL": hist})
 
         # Assert — pre_fetched_hist was passed

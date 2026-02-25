@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from application.persona_service import (
+from application.settings.persona_service import (
     create_profile,
     deactivate_profile,
     get_active_profile,

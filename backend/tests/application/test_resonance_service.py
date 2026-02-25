@@ -18,8 +18,8 @@ from infrastructure.repositories import (
     save_holdings_batch,
 )
 
-RESONANCE_MODULE = "application.resonance_service"
-NOTIFICATION_MODULE = "application.notification_service"
+RESONANCE_MODULE = "application.guru.resonance_service"
+NOTIFICATION_MODULE = "application.messaging.notification_service"
 FORMATTERS_MODULE = "application.formatters"
 
 # ---------------------------------------------------------------------------
@@ -107,14 +107,14 @@ def _add_holding(session: Session, ticker: str) -> Holding:
 
 class TestComputePortfolioResonance:
     def test_should_return_empty_when_no_gurus(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         _add_watchlist_stock(db_session, "AAPL")
         result = compute_portfolio_resonance(db_session)
         assert result == []
 
     def test_should_return_empty_overlap_when_no_user_stocks(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000001")
         filing = _make_filing(db_session, guru.id, accession="ACC-R001")
@@ -127,7 +127,7 @@ class TestComputePortfolioResonance:
         assert result[0]["overlapping_tickers"] == []
 
     def test_should_detect_watchlist_overlap(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000002", display_name="Buffett")
         filing = _make_filing(db_session, guru.id, accession="ACC-R002")
@@ -142,7 +142,7 @@ class TestComputePortfolioResonance:
         assert "MSFT" not in result[0]["overlapping_tickers"]
 
     def test_should_detect_holding_overlap(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000003")
         filing = _make_filing(db_session, guru.id, accession="ACC-R003")
@@ -154,7 +154,7 @@ class TestComputePortfolioResonance:
         assert "NVDA" in result[0]["overlapping_tickers"]
 
     def test_should_combine_watchlist_and_holding_tickers(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000004")
         filing = _make_filing(db_session, guru.id, accession="ACC-R004")
@@ -168,7 +168,7 @@ class TestComputePortfolioResonance:
         assert set(result[0]["overlapping_tickers"]) == {"AAPL", "NVDA"}
 
     def test_should_sort_by_overlap_count_descending(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         g1 = _make_guru(db_session, cik="0001000005", display_name="G1")
         g2 = _make_guru(db_session, cik="0001000006", display_name="G2")
@@ -185,7 +185,7 @@ class TestComputePortfolioResonance:
         assert result[0]["overlap_count"] >= result[1]["overlap_count"]
 
     def test_should_include_action_in_holdings(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000007")
         filing = _make_filing(db_session, guru.id, accession="ACC-R006")
@@ -204,7 +204,7 @@ class TestComputePortfolioResonance:
         assert holdings[0]["action"] == HoldingAction.INCREASED.value
 
     def test_should_skip_holdings_with_no_ticker(self, db_session: Session):
-        from application.resonance_service import compute_portfolio_resonance
+        from application.guru.resonance_service import compute_portfolio_resonance
 
         guru = _make_guru(db_session, cik="0001000008")
         filing = _make_filing(db_session, guru.id, accession="ACC-R007")
@@ -233,13 +233,13 @@ class TestComputePortfolioResonance:
 
 class TestGetResonanceForTicker:
     def test_should_return_empty_when_no_guru_holds_ticker(self, db_session: Session):
-        from application.resonance_service import get_resonance_for_ticker
+        from application.guru.resonance_service import get_resonance_for_ticker
 
         result = get_resonance_for_ticker(db_session, "AAPL")
         assert result == []
 
     def test_should_return_guru_info_when_ticker_held(self, db_session: Session):
-        from application.resonance_service import get_resonance_for_ticker
+        from application.guru.resonance_service import get_resonance_for_ticker
 
         guru = _make_guru(db_session, cik="0002000001", display_name="Dalio")
         filing = _make_filing(db_session, guru.id, accession="ACC-T001")
@@ -260,7 +260,7 @@ class TestGetResonanceForTicker:
         assert result[0]["weight_pct"] == pytest.approx(3.5)
 
     def test_should_include_report_date_and_filing_date(self, db_session: Session):
-        from application.resonance_service import get_resonance_for_ticker
+        from application.guru.resonance_service import get_resonance_for_ticker
 
         guru = _make_guru(db_session, cik="0002000002")
         filing = _make_filing(
@@ -276,7 +276,7 @@ class TestGetResonanceForTicker:
         assert result[0]["filing_date"] == "2025-02-14"
 
     def test_should_return_multiple_gurus(self, db_session: Session):
-        from application.resonance_service import get_resonance_for_ticker
+        from application.guru.resonance_service import get_resonance_for_ticker
 
         g1 = _make_guru(db_session, cik="0002000003")
         g2 = _make_guru(db_session, cik="0002000004")
@@ -299,13 +299,13 @@ class TestGetResonanceForTicker:
 
 class TestGetGreatMindsList:
     def test_should_return_empty_when_no_resonance(self, db_session: Session):
-        from application.resonance_service import get_great_minds_list
+        from application.guru.resonance_service import get_great_minds_list
 
         result = get_great_minds_list(db_session)
         assert result == []
 
     def test_should_aggregate_by_ticker(self, db_session: Session):
-        from application.resonance_service import get_great_minds_list
+        from application.guru.resonance_service import get_great_minds_list
 
         g1 = _make_guru(db_session, cik="0003000001", display_name="A")
         g2 = _make_guru(db_session, cik="0003000002", display_name="B")
@@ -321,7 +321,7 @@ class TestGetGreatMindsList:
         assert result[0]["guru_count"] == 2
 
     def test_should_sort_by_guru_count_descending(self, db_session: Session):
-        from application.resonance_service import get_great_minds_list
+        from application.guru.resonance_service import get_great_minds_list
 
         g1 = _make_guru(db_session, cik="0003000003", display_name="G1")
         g2 = _make_guru(db_session, cik="0003000004", display_name="G2")
@@ -340,7 +340,7 @@ class TestGetGreatMindsList:
         assert result[-1]["guru_count"] <= result[0]["guru_count"]
 
     def test_should_include_guru_action_in_result(self, db_session: Session):
-        from application.resonance_service import get_great_minds_list
+        from application.guru.resonance_service import get_great_minds_list
 
         guru = _make_guru(db_session, cik="0003000005")
         filing = _make_filing(db_session, guru.id, accession="ACC-GM005")
@@ -367,7 +367,7 @@ class TestGetGreatMindsList:
 class TestSendFilingSeasonDigest:
     @patch(f"{NOTIFICATION_MODULE}.send_telegram_message_dual")
     def test_should_send_when_filings_available(self, mock_send, db_session: Session):
-        from application.notification_service import send_filing_season_digest
+        from application.messaging.notification_service import send_filing_season_digest
 
         guru = _make_guru(db_session, cik="0004000001", display_name="Buffett")
         filing = _make_filing(db_session, guru.id, accession="ACC-N001")
@@ -380,7 +380,7 @@ class TestSendFilingSeasonDigest:
         mock_send.assert_called_once()
 
     def test_should_return_no_data_when_no_filings(self, db_session: Session):
-        from application.notification_service import send_filing_season_digest
+        from application.messaging.notification_service import send_filing_season_digest
 
         _make_guru(db_session, cik="0004000002")
         result = send_filing_season_digest(db_session)
@@ -391,7 +391,7 @@ class TestSendFilingSeasonDigest:
     def test_should_skip_when_guru_alerts_disabled(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_filing_season_digest
+        from application.messaging.notification_service import send_filing_season_digest
         from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES
         from domain.entities import UserPreferences
 
@@ -408,7 +408,7 @@ class TestSendFilingSeasonDigest:
         mock_send.assert_not_called()
 
     def test_should_return_no_data_when_no_gurus(self, db_session: Session):
-        from application.notification_service import send_filing_season_digest
+        from application.messaging.notification_service import send_filing_season_digest
 
         result = send_filing_season_digest(db_session)
         assert result["status"] == "no_data"
@@ -424,7 +424,7 @@ class TestSendResonanceAlerts:
     def test_should_send_alert_for_new_position_overlap(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
 
         guru = _make_guru(db_session, cik="0005000001", display_name="Burry")
         filing = _make_filing(db_session, guru.id, accession="ACC-RA001")
@@ -448,7 +448,7 @@ class TestSendResonanceAlerts:
     def test_should_send_alert_for_sold_out_overlap(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
 
         guru = _make_guru(db_session, cik="0005000002")
         filing = _make_filing(db_session, guru.id, accession="ACC-RA002")
@@ -471,7 +471,7 @@ class TestSendResonanceAlerts:
     def test_should_not_send_alert_for_unchanged_overlap(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
 
         guru = _make_guru(db_session, cik="0005000003")
         filing = _make_filing(db_session, guru.id, accession="ACC-RA003")
@@ -493,7 +493,7 @@ class TestSendResonanceAlerts:
     def test_should_not_send_alert_for_increased_or_decreased(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
 
         guru = _make_guru(db_session, cik="0005000004")
         filing = _make_filing(db_session, guru.id, accession="ACC-RA004")
@@ -523,7 +523,7 @@ class TestSendResonanceAlerts:
     def test_should_skip_when_guru_alerts_disabled(
         self, mock_send, db_session: Session
     ):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
         from domain.constants import DEFAULT_NOTIFICATION_PREFERENCES
         from domain.entities import UserPreferences
 
@@ -553,7 +553,7 @@ class TestSendResonanceAlerts:
 
     @patch(f"{NOTIFICATION_MODULE}.send_telegram_message_dual")
     def test_should_return_empty_when_no_overlap(self, mock_send, db_session: Session):
-        from application.notification_service import send_resonance_alerts
+        from application.messaging.notification_service import send_resonance_alerts
 
         guru = _make_guru(db_session, cik="0005000006")
         filing = _make_filing(db_session, guru.id, accession="ACC-RA006")

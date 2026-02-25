@@ -16,7 +16,7 @@ def test_rate_limiter_enforces_limits_on_admin_endpoint(client):
             response = client.post(
                 "/admin/cache/clear", headers={"X-API-Key": test_key}
             )
-            assert response.status_code == 200, f"Request {i+1} should succeed"
+            assert response.status_code == 200, f"Request {i + 1} should succeed"
 
         # 11th request should be rate limited
         response = client.post("/admin/cache/clear", headers={"X-API-Key": test_key})
@@ -60,7 +60,7 @@ def test_scan_endpoint_enforces_rate_limit(client):
             assert response.status_code in [
                 200,
                 409,
-            ], f"Request {i+1} should succeed or conflict"
+            ], f"Request {i + 1} should succeed or conflict"
 
         # 6th request should be rate limited
         response = client.post("/scan", headers={"X-API-Key": test_key})
@@ -80,7 +80,7 @@ def test_webhook_endpoint_enforces_rate_limit(client):
                 headers={"X-API-Key": test_key},
                 json={"action": "help"},
             )
-            assert response.status_code == 200, f"Request {i+1} should succeed"
+            assert response.status_code == 200, f"Request {i + 1} should succeed"
 
         # 6th request should be rate limited
         response = client.post(
@@ -101,7 +101,7 @@ def test_digest_endpoint_enforces_rate_limit(client):
             assert response.status_code in [
                 200,
                 409,
-            ], f"Request {i+1} should succeed or conflict"
+            ], f"Request {i + 1} should succeed or conflict"
 
         # 6th request should be rate limited
         response = client.post("/digest", headers={"X-API-Key": test_key})

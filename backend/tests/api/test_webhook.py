@@ -86,7 +86,7 @@ class TestWebhookScan:
 
     def test_scan_should_accept_background_job(self, client):
         # Act — mock run_scan so it doesn't actually run the scan in the background
-        with patch("application.webhook_service.run_scan"):
+        with patch("application.messaging.webhook_service.run_scan"):
             resp = client.post("/webhook", json={"action": "scan"})
 
         # Assert
@@ -210,9 +210,9 @@ class TestWebhookAddStock:
 class TestWebhookFXWatch:
     """Tests for the 'fx_watch' webhook action — AI agent entry point for FX alerts."""
 
-    @patch("application.fx_watch_service.send_telegram_message_dual")
-    @patch("application.fx_watch_service.get_forex_history_long")
-    @patch("application.fx_watch_service.is_notification_enabled")
+    @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_fx_watch_should_return_success_with_counts(
         self, mock_notif, mock_history, mock_telegram, client
     ):
@@ -263,7 +263,7 @@ class TestWebhookFXWatch:
         assert body["data"]["sent_alerts"] == 0
 
     @patch(
-        "application.webhook_service.send_fx_watch_alerts",
+        "application.messaging.webhook_service.send_fx_watch_alerts",
         side_effect=RuntimeError("DB connection lost"),
     )
     def test_fx_watch_should_return_failure_on_service_exception(
@@ -296,9 +296,9 @@ class TestWebhookDiscoverability:
         # Also verify no extra actions beyond registry
         assert set(actions.keys()) == set(WEBHOOK_ACTION_REGISTRY.keys())
 
-    @patch("application.fx_watch_service.send_telegram_message_dual")
-    @patch("application.fx_watch_service.get_forex_history_long")
-    @patch("application.fx_watch_service.is_notification_enabled")
+    @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_fx_watch_response_data_should_have_required_keys(
         self, mock_notif, mock_history, mock_telegram, client
     ):
@@ -317,9 +317,9 @@ class TestWebhookDiscoverability:
         assert resp.status_code == 200
         data = resp.json()["data"]
         required_keys = {"total_watches", "triggered_alerts", "sent_alerts", "alerts"}
-        assert (
-            required_keys == set(data.keys())
-        ), f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
+        assert required_keys == set(data.keys()), (
+            f"Response data keys mismatch: expected {required_keys}, got {set(data.keys())}"
+        )
 
 
 class TestWebhookUnknownAction:

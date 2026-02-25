@@ -16,7 +16,7 @@ def test_health_check_should_return_ok(client):
 
 def test_prewarm_status_should_return_not_ready_by_default(client):
     # Arrange — prewarm flag not yet set
-    with patch("api.scan_routes.is_prewarm_ready", return_value=False):
+    with patch("api.routes.scan_routes.is_prewarm_ready", return_value=False):
         # Act
         resp = client.get("/prewarm-status")
 
@@ -27,7 +27,7 @@ def test_prewarm_status_should_return_not_ready_by_default(client):
 
 def test_prewarm_status_should_return_ready_after_prewarm_completes(client):
     # Arrange — prewarm flag set to True
-    with patch("api.scan_routes.is_prewarm_ready", return_value=True):
+    with patch("api.routes.scan_routes.is_prewarm_ready", return_value=True):
         # Act
         resp = client.get("/prewarm-status")
 

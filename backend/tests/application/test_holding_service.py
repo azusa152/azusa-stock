@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from application.holding_service import (
+from application.portfolio.holding_service import (
     create_cash_holding,
     create_holding,
     delete_holding,

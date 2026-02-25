@@ -11,7 +11,7 @@ def test_not_available_without_env():
         assert jquants_adapter.get_financials("7203") is None
 
 
-@patch("infrastructure.jquants_adapter._get_client")
+@patch("infrastructure.market_data.jquants_adapter._get_client")
 def test_get_financials_returns_data(mock_get_client):
     """When client is available, returns financial data."""
     mock_row = MagicMock()
@@ -36,7 +36,7 @@ def test_get_financials_returns_data(mock_get_client):
     assert result["revenue"] == 10000000
 
 
-@patch("infrastructure.jquants_adapter._get_client")
+@patch("infrastructure.market_data.jquants_adapter._get_client")
 def test_get_financials_returns_none_when_empty(mock_get_client):
     """When statements DataFrame is empty, returns None."""
     mock_statements = MagicMock()
@@ -52,7 +52,7 @@ def test_get_financials_returns_none_when_empty(mock_get_client):
     assert result is None
 
 
-@patch("infrastructure.jquants_adapter._get_client")
+@patch("infrastructure.market_data.jquants_adapter._get_client")
 def test_get_financials_returns_none_on_exception(mock_get_client):
     """When client raises, returns None without crashing."""
     mock_client = MagicMock()
@@ -65,7 +65,7 @@ def test_get_financials_returns_none_on_exception(mock_get_client):
     assert result is None
 
 
-@patch("infrastructure.jquants_adapter._get_client")
+@patch("infrastructure.market_data.jquants_adapter._get_client")
 def test_get_financials_strips_t_suffix(mock_get_client):
     """Ticker suffix .T is stripped and 0 appended for J-Quants code."""
     mock_statements = MagicMock()

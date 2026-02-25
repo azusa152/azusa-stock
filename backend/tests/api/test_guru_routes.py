@@ -17,11 +17,13 @@ from domain.entities import Guru, GuruFiling, GuruHolding
 from infrastructure.repositories import save_filing, save_guru, save_holdings_batch
 from tests.conftest import test_engine
 
-SYNC_ALL_TARGET = "api.guru_routes.sync_all_gurus"
-SYNC_ONE_TARGET = "api.guru_routes.sync_guru_filing"
-SEND_DIGEST_TARGET = "api.guru_routes.send_filing_season_digest"
-WEBHOOK_SYNC_TARGET = "application.webhook_service.sync_all_gurus"
-WEBHOOK_DIGEST_TARGET = "application.webhook_service.send_filing_season_digest"
+SYNC_ALL_TARGET = "api.routes.guru_routes.sync_all_gurus"
+SYNC_ONE_TARGET = "api.routes.guru_routes.sync_guru_filing"
+SEND_DIGEST_TARGET = "api.routes.guru_routes.send_filing_season_digest"
+WEBHOOK_SYNC_TARGET = "application.messaging.webhook_service.sync_all_gurus"
+WEBHOOK_DIGEST_TARGET = (
+    "application.messaging.webhook_service.send_filing_season_digest"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +222,7 @@ class TestDeleteGuru:
 
 class TestSyncAll:
     def test_should_return_429_when_sync_lock_held(self, client):
-        from api.guru_routes import _sync_lock
+        from api.routes.guru_routes import _sync_lock
 
         # Acquire the lock before the request to simulate a concurrent sync
         _sync_lock.acquire()
@@ -515,7 +517,7 @@ class TestWebhookGuruSummary:
 # GET /gurus/dashboard
 # ===========================================================================
 
-DASHBOARD_TARGET = "api.guru_routes.get_dashboard_summary"
+DASHBOARD_TARGET = "api.routes.guru_routes.get_dashboard_summary"
 
 _DASHBOARD_DATA = {
     "gurus": [

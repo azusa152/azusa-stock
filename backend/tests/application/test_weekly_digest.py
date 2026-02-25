@@ -1,6 +1,6 @@
 """
 Unit tests for send_weekly_digest() and get_portfolio_summary()
-in application.notification_service.
+in application.messaging.notification_service.
 
 All external I/O is mocked — no Telegram calls, no yfinance requests.
 """
@@ -14,7 +14,7 @@ from domain.entities import ScanLog, Stock
 from domain.enums import ScanSignal, StockCategory
 from tests.conftest import MOCK_FEAR_GREED
 
-NOTIFICATION_MODULE = "application.notification_service"
+NOTIFICATION_MODULE = "application.messaging.notification_service"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,9 +56,9 @@ def _add_scan_log(
 _FG_PATCH = f"{NOTIFICATION_MODULE}.get_fear_greed_index"
 _TG_PATCH = f"{NOTIFICATION_MODULE}.send_telegram_message_dual"
 _NOTIF_PATCH = f"{NOTIFICATION_MODULE}.is_notification_enabled"
-_REBALANCE_PATCH = "application.rebalance_service.calculate_rebalance"
+_REBALANCE_PATCH = "application.portfolio.rebalance_service.calculate_rebalance"
 _SP500_PATCH = f"{NOTIFICATION_MODULE}.get_technical_signals"
-_RESONANCE_PATCH = "application.resonance_service.compute_portfolio_resonance"
+_RESONANCE_PATCH = "application.guru.resonance_service.compute_portfolio_resonance"
 _WOW_LOAD_PATCH = f"{NOTIFICATION_MODULE}._load_wow_state"
 _WOW_SAVE_PATCH = f"{NOTIFICATION_MODULE}._save_wow_state"
 
@@ -114,7 +114,7 @@ MOCK_RESONANCE = [
 class TestSendWeeklyDigest:
     def test_should_include_health_score(self, db_session: Session):
         """Message must contain health score when stocks are present."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "MSFT", ScanSignal.NORMAL.value)
@@ -137,7 +137,7 @@ class TestSendWeeklyDigest:
 
     def test_should_list_abnormal_stocks(self, db_session: Session):
         """Non-normal stocks must appear in the Telegram message."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "BABA", ScanSignal.THESIS_BROKEN.value)
@@ -161,7 +161,7 @@ class TestSendWeeklyDigest:
 
     def test_should_report_signal_changes(self, db_session: Session):
         """Tickers with signal changes must appear with correct count, not raw keys."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "NIO", ScanSignal.OVERSOLD.value)
         # Two scan logs with different signals → one change detected
@@ -190,7 +190,7 @@ class TestSendWeeklyDigest:
 
     def test_should_handle_empty_portfolio(self, db_session: Session):
         """When watchlist is empty the no_stocks key must render as real text."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         with patch(_TG_PATCH) as mock_send:
             result = send_weekly_digest(db_session)
@@ -205,7 +205,7 @@ class TestSendWeeklyDigest:
 
     def test_should_skip_when_notification_disabled(self, db_session: Session):
         """When weekly_digest notification is disabled, Telegram must not be called."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -225,7 +225,7 @@ class TestSendWeeklyDigest:
 
     def test_should_report_all_normal(self, db_session: Session):
         """When all stocks are normal the all_normal translation must appear verbatim."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
         _add_stock(db_session, "MSFT", ScanSignal.NORMAL.value)
@@ -257,7 +257,7 @@ class TestSendWeeklyDigest:
 class TestSendWeeklyDigestEnriched:
     def test_should_include_portfolio_value_with_wow(self, db_session: Session):
         """When previous total exists, WoW line must be in the message."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -285,7 +285,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_include_portfolio_value_no_prev(self, db_session: Session):
         """When no previous total, just the current value must appear (no WoW %)."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -306,7 +306,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_include_top_movers(self, db_session: Session):
         """Top movers section must list gainers and losers by ticker."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
 
@@ -331,7 +331,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_include_drift_when_over_threshold(self, db_session: Session):
         """Drift section must appear when a category exceeds DRIFT_THRESHOLD_PCT."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -357,7 +357,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_skip_drift_when_under_threshold(self, db_session: Session):
         """Drift section must NOT appear when all categories are within threshold."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -397,7 +397,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_include_smart_money_new_position(self, db_session: Session):
         """Smart Money section must show guru NEW_POSITION alert."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -420,7 +420,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_omit_smart_money_when_only_unchanged(self, db_session: Session):
         """Smart Money section must be absent when no NEW_POSITION/SOLD_OUT actions."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -458,7 +458,7 @@ class TestSendWeeklyDigestEnriched:
 
     def test_should_gracefully_handle_rebalance_failure(self, db_session: Session):
         """When rebalance data is unavailable, digest must still send without crashing."""
-        from application.notification_service import send_weekly_digest
+        from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -486,7 +486,7 @@ class TestSendWeeklyDigestEnriched:
 class TestGetPortfolioSummary:
     def test_should_include_categories(self, db_session: Session):
         """Summary must group stocks by category and not echo raw i18n keys."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(
             db_session, "AAPL", ScanSignal.NORMAL.value, StockCategory.TREND_SETTER
@@ -504,7 +504,7 @@ class TestGetPortfolioSummary:
 
     def test_should_handle_empty(self, db_session: Session):
         """Empty portfolio must return a real string, not a raw i18n key."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         summary = get_portfolio_summary(db_session)
 
@@ -515,7 +515,7 @@ class TestGetPortfolioSummary:
         self, db_session: Session
     ):
         """Stocks with active signals must appear in the abnormal section."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value, StockCategory.MOAT)
         _add_stock(
@@ -543,7 +543,7 @@ class TestGetPortfolioSummary:
         self, db_session: Session
     ):
         """Portfolio value line with total value and daily change % must appear."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
 
@@ -563,7 +563,7 @@ class TestGetPortfolioSummary:
 
     def test_should_include_top_movers(self, db_session: Session):
         """Top movers (gainers + losers) must appear when rebalance holdings have change_pct."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
 
@@ -586,7 +586,7 @@ class TestGetPortfolioSummary:
         self, db_session: Session
     ):
         """Drift section must appear when a category exceeds DRIFT_THRESHOLD_PCT."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -604,7 +604,7 @@ class TestGetPortfolioSummary:
 
     def test_should_omit_drift_when_under_threshold(self, db_session: Session):
         """Drift section must NOT appear when all categories are within threshold."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -631,7 +631,7 @@ class TestGetPortfolioSummary:
 
     def test_should_include_smart_money_alert(self, db_session: Session):
         """Smart Money section must appear when guru has a NEW_POSITION action."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -649,7 +649,7 @@ class TestGetPortfolioSummary:
 
     def test_should_omit_smart_money_when_no_alert_actions(self, db_session: Session):
         """Smart Money section must be absent when no NEW_POSITION/SOLD_OUT actions."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
@@ -681,7 +681,7 @@ class TestGetPortfolioSummary:
 
     def test_should_handle_rebalance_failure_gracefully(self, db_session: Session):
         """When rebalance raises, summary must still return without value/movers/drift sections."""
-        from application.notification_service import get_portfolio_summary
+        from application.messaging.notification_service import get_portfolio_summary
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 

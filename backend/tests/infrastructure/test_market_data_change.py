@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from infrastructure.market_data import _fetch_signals_from_yf
+from infrastructure.market_data.market_data import _fetch_signals_from_yf
 
 
 class TestDailyChangeCalculation:
     """Tests for daily change (previous_close, change_pct) calculation."""
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_include_change_when_sufficient_history(self, mock_yf):
         # Arrange: Need at least MIN_HISTORY_DAYS_FOR_SIGNALS (60) data points
         mock_stock = MagicMock()
@@ -35,7 +35,7 @@ class TestDailyChangeCalculation:
             4.35, rel=0.01
         )  # (120-115)/115*100
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_return_error_when_insufficient_history(self, mock_yf):
         # Arrange: Only 1 day of history (< MIN_HISTORY_DAYS_FOR_SIGNALS)
         mock_stock = MagicMock()
@@ -54,7 +54,7 @@ class TestDailyChangeCalculation:
         assert "error" in result
         assert "price" not in result
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_handle_zero_previous_close(self, mock_yf):
         # Arrange: Previous close is 0 (edge case), need 60+ data points
         mock_stock = MagicMock()
@@ -76,7 +76,7 @@ class TestDailyChangeCalculation:
         assert result["previous_close"] == 0.0
         assert result["change_pct"] is None  # Should not calculate with 0 divisor
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_calculate_positive_change(self, mock_yf):
         # Arrange: Price increased, need 60+ data points
         mock_stock = MagicMock()
@@ -98,7 +98,7 @@ class TestDailyChangeCalculation:
             10.0, rel=0.01
         )  # (110-100)/100*100
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_calculate_negative_change(self, mock_yf):
         # Arrange: Price decreased, need 60+ data points
         mock_stock = MagicMock()
@@ -120,7 +120,7 @@ class TestDailyChangeCalculation:
             -9.09, rel=0.01
         )  # (100-110)/110*100
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_fetch_signals_should_round_change_to_two_decimals(self, mock_yf):
         # Arrange: Change results in many decimals, need 60+ data points
         mock_stock = MagicMock()

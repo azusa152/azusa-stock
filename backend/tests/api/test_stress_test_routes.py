@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from application.stock_service import StockNotFoundError
+from application.stock.stock_service import StockNotFoundError
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ MOCK_STRESS_TEST_RESULT = {
 class TestGetStressTestHappyPath:
     """Tests for stress test endpoint happy path."""
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_return_200_with_default_params(
         self, mock_service, client: TestClient
     ):
@@ -89,7 +89,7 @@ class TestGetStressTestHappyPath:
         assert call_args[1]["scenario_drop_pct"] == -20.0
         assert call_args[1]["display_currency"] == "USD"
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_accept_custom_scenario(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
@@ -108,7 +108,7 @@ class TestGetStressTestHappyPath:
         call_args = mock_service.call_args
         assert call_args[1]["scenario_drop_pct"] == -30.0
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_accept_custom_display_currency(
         self, mock_service, client: TestClient
     ):
@@ -129,7 +129,7 @@ class TestGetStressTestHappyPath:
         call_args = mock_service.call_args
         assert call_args[1]["display_currency"] == "TWD"
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_uppercase_display_currency(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
@@ -146,7 +146,7 @@ class TestGetStressTestHappyPath:
         call_args = mock_service.call_args
         assert call_args[1]["display_currency"] == "TWD"
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_handle_extreme_drop_scenario(
         self, mock_service, client: TestClient
     ):
@@ -169,7 +169,7 @@ class TestGetStressTestHappyPath:
         assert data["scenario_drop_pct"] == -50.0
         assert data["pain_level"]["level"] == "panic"
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_handle_mild_drop_scenario(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
@@ -201,7 +201,7 @@ class TestGetStressTestHappyPath:
 class TestGetStressTestErrorHandling:
     """Tests for stress test endpoint error handling."""
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_return_404_when_no_holdings(self, mock_service, client: TestClient):
         # Arrange
         mock_service.side_effect = StockNotFoundError(
@@ -268,7 +268,7 @@ class TestGetStressTestErrorHandling:
 class TestGetStressTestBoundary:
     """Tests for stress test endpoint boundary conditions."""
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_accept_scenario_at_minus_50(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
@@ -281,7 +281,7 @@ class TestGetStressTestBoundary:
         # Assert
         assert response.status_code == 200
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_should_accept_scenario_at_zero(self, mock_service, client: TestClient):
         # Arrange
         mock_result = MOCK_STRESS_TEST_RESULT.copy()
@@ -307,7 +307,7 @@ class TestGetStressTestBoundary:
 class TestGetStressTestSchemaValidation:
     """Tests for response schema validation."""
 
-    @patch("api.holding_routes.calculate_stress_test")
+    @patch("api.routes.holding_routes.calculate_stress_test")
     def test_response_should_match_schema(self, mock_service, client: TestClient):
         # Arrange
         mock_service.return_value = MOCK_STRESS_TEST_RESULT

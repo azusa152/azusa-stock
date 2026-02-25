@@ -116,7 +116,7 @@ class TestGetScanStatus:
         assert data["is_running"] is False
 
     def test_scan_status_should_return_running_when_lock_is_held(self, client):
-        from api.scan_routes import _scan_lock
+        from api.routes.scan_routes import _scan_lock
 
         # Arrange — acquire the lock to simulate an in-progress scan
         _scan_lock.acquire()

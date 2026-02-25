@@ -27,7 +27,7 @@ from unittest.mock import MagicMock, patch  # noqa: E402
 import pandas as pd  # noqa: E402
 from cachetools import TTLCache  # noqa: E402
 
-from infrastructure.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (  # noqa: E402
     _fetch_bias_distribution_from_yf,
     _rogue_wave_cache,
     clear_all_caches,
@@ -64,7 +64,7 @@ def _fresh_rogue_wave_l1() -> TTLCache:
 class TestFetchBiasDistributionFromYf:
     """Unit tests for the raw yfinance fetcher."""
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_sorted_bias_array(self, mock_yf_history):
         # Arrange: 300 trading days — enough to compute ≥200 MA60-eligible rows
         hist = _make_hist(300)
@@ -78,7 +78,7 @@ class TestFetchBiasDistributionFromYf:
         biases = result["historical_biases"]
         assert biases == sorted(biases), "historical_biases must be sorted ascending"
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_correct_count(self, mock_yf_history):
         hist = _make_hist(300)
         mock_yf_history.return_value = (MagicMock(), hist)
@@ -87,7 +87,7 @@ class TestFetchBiasDistributionFromYf:
 
         assert result["count"] == len(result["historical_biases"])
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_p95_as_95th_percentile(self, mock_yf_history):
         hist = _make_hist(300)
         mock_yf_history.return_value = (MagicMock(), hist)
@@ -99,7 +99,7 @@ class TestFetchBiasDistributionFromYf:
         expected_p95 = round(biases[min(expected_idx, len(biases) - 1)], 2)
         assert result["p95"] == expected_p95
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_include_fetched_at_timestamp(self, mock_yf_history):
         hist = _make_hist(300)
         mock_yf_history.return_value = (MagicMock(), hist)
@@ -109,7 +109,7 @@ class TestFetchBiasDistributionFromYf:
         assert "fetched_at" in result
         assert result["fetched_at"]  # non-empty string
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_empty_dict_when_history_empty(self, mock_yf_history):
         mock_yf_history.return_value = (MagicMock(), pd.DataFrame())
 
@@ -117,7 +117,7 @@ class TestFetchBiasDistributionFromYf:
 
         assert result == {}
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_empty_dict_when_insufficient_data(self, mock_yf_history):
         # Only 100 rows — MA60 gives ~40 bias points, below MIN_HISTORY_DAYS=200
         hist = _make_hist(100)
@@ -127,7 +127,7 @@ class TestFetchBiasDistributionFromYf:
 
         assert result == {}
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_empty_dict_on_yfinance_exception(self, mock_yf_history):
         mock_yf_history.side_effect = Exception("network error")
 
@@ -135,7 +135,7 @@ class TestFetchBiasDistributionFromYf:
 
         assert result == {}
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_return_floats_in_bias_array(self, mock_yf_history):
         hist = _make_hist(300)
         mock_yf_history.return_value = (MagicMock(), hist)
@@ -144,7 +144,7 @@ class TestFetchBiasDistributionFromYf:
 
         assert all(isinstance(b, float) for b in result["historical_biases"])
 
-    @patch("infrastructure.market_data._yf_history")
+    @patch("infrastructure.market_data.market_data._yf_history")
     def test_should_call_yf_history_with_3y_period(self, mock_yf_history):
         hist = _make_hist(300)
         mock_yf_history.return_value = (MagicMock(), hist)
@@ -162,24 +162,24 @@ class TestFetchBiasDistributionFromYf:
 class TestGetBiasDistribution:
     """Verify get_bias_distribution uses _cached_fetch correctly."""
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._fetch_bias_distribution_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
         cached_data = {"historical_biases": [1.0, 2.0], "count": 2, "p95": 2.0}
         l1 = _fresh_rogue_wave_l1()
         l1["AAPL"] = cached_data
 
-        with patch("infrastructure.market_data._rogue_wave_cache", l1):
+        with patch("infrastructure.market_data.market_data._rogue_wave_cache", l1):
             result = get_bias_distribution("AAPL")
 
         assert result == cached_data
         mock_fetch.assert_not_called()
         mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_bias_distribution_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_promote_l2_to_l1_without_fetching(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -188,7 +188,8 @@ class TestGetBiasDistribution:
         mock_disk_get.return_value = l2_data
 
         with patch(
-            "infrastructure.market_data._rogue_wave_cache", _fresh_rogue_wave_l1()
+            "infrastructure.market_data.market_data._rogue_wave_cache",
+            _fresh_rogue_wave_l1(),
         ):
             result = get_bias_distribution("NVDA")
 
@@ -196,9 +197,9 @@ class TestGetBiasDistribution:
         mock_fetch.assert_not_called()
         mock_disk_set.assert_not_called()  # already in L2, no re-write needed
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_bias_distribution_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_write_l1_and_l2_on_cache_miss(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -213,7 +214,8 @@ class TestGetBiasDistribution:
         mock_fetch.return_value = fresh_data
 
         with patch(
-            "infrastructure.market_data._rogue_wave_cache", _fresh_rogue_wave_l1()
+            "infrastructure.market_data.market_data._rogue_wave_cache",
+            _fresh_rogue_wave_l1(),
         ):
             result = get_bias_distribution("MSFT")
 
@@ -224,9 +226,9 @@ class TestGetBiasDistribution:
         disk_key_arg = mock_disk_set.call_args[0][0]
         assert "rogue_wave" in disk_key_arg
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_bias_distribution_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_not_write_l2_when_fetcher_returns_empty(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -235,7 +237,8 @@ class TestGetBiasDistribution:
         mock_fetch.return_value = {}
 
         with patch(
-            "infrastructure.market_data._rogue_wave_cache", _fresh_rogue_wave_l1()
+            "infrastructure.market_data.market_data._rogue_wave_cache",
+            _fresh_rogue_wave_l1(),
         ):
             result = get_bias_distribution("FAIL")
 
@@ -243,9 +246,9 @@ class TestGetBiasDistribution:
         # is_error guard: empty result must NOT be persisted to L2
         mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data._disk_get")
-    @patch("infrastructure.market_data._disk_set")
-    @patch("infrastructure.market_data._fetch_bias_distribution_from_yf")
+    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_cache_error_result_in_l1(
         self, mock_fetch, mock_disk_set, mock_disk_get
     ):
@@ -254,7 +257,8 @@ class TestGetBiasDistribution:
         mock_fetch.return_value = {}
 
         with patch(
-            "infrastructure.market_data._rogue_wave_cache", _fresh_rogue_wave_l1()
+            "infrastructure.market_data.market_data._rogue_wave_cache",
+            _fresh_rogue_wave_l1(),
         ) as l1:
             get_bias_distribution("FAIL")
             # L1 should have the empty dict stored

@@ -24,7 +24,7 @@ from infrastructure.repositories import (
     save_holdings_batch,
     update_guru,
 )
-from infrastructure.sec_edgar import (
+from infrastructure.external.sec_edgar import (
     _discover_infotable_filename,
     _parse_13f_xml,
     fetch_13f_filing_detail,
@@ -183,7 +183,7 @@ class TestFetchCompanyFilings:
 
     def test_fetch_company_filings_should_return_submissions_on_success(self):
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             return_value=_SAMPLE_SUBMISSIONS,
         ):
             result = fetch_company_filings("0001067983")
@@ -191,18 +191,18 @@ class TestFetchCompanyFilings:
 
     def test_fetch_company_filings_should_return_error_dict_on_http_failure(self):
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             side_effect=Exception("connection refused"),
         ):
             # Clear cache so the mock is actually called
-            from infrastructure.sec_edgar import _filing_cache
+            from infrastructure.external.sec_edgar import _filing_cache
 
             _filing_cache.clear()
             result = fetch_company_filings("0000000001")
         assert "error" in result
 
     def test_fetch_company_filings_should_cache_result_in_l1(self):
-        from infrastructure.sec_edgar import _filing_cache
+        from infrastructure.external.sec_edgar import _filing_cache
 
         # Use a CIK that is unlikely to be in any persistent cache
         cik = "TEST_CACHE_CIK_XYZ"
@@ -210,14 +210,14 @@ class TestFetchCompanyFilings:
 
         with (
             patch(
-                "infrastructure.sec_edgar._disk_get",
+                "infrastructure.external.sec_edgar._disk_get",
                 return_value=None,  # force L2 miss
             ),
             patch(
-                "infrastructure.sec_edgar._disk_set",
+                "infrastructure.external.sec_edgar._disk_set",
             ),
             patch(
-                "infrastructure.sec_edgar._http_get_json",
+                "infrastructure.external.sec_edgar._http_get_json",
                 return_value=_SAMPLE_SUBMISSIONS,
             ) as mock_get,
         ):
@@ -238,7 +238,7 @@ class TestGetLatest13fFilings:
 
     def test_get_latest_13f_filings_should_return_two_records(self):
         with patch(
-            "infrastructure.sec_edgar.fetch_company_filings",
+            "infrastructure.external.sec_edgar.fetch_company_filings",
             return_value=_SAMPLE_SUBMISSIONS,
         ):
             result = get_latest_13f_filings("0001067983", count=2)
@@ -246,7 +246,7 @@ class TestGetLatest13fFilings:
 
     def test_get_latest_13f_filings_should_only_include_13f_hr_forms(self):
         with patch(
-            "infrastructure.sec_edgar.fetch_company_filings",
+            "infrastructure.external.sec_edgar.fetch_company_filings",
             return_value=_SAMPLE_SUBMISSIONS,
         ):
             result = get_latest_13f_filings("0001067983", count=10)
@@ -255,7 +255,7 @@ class TestGetLatest13fFilings:
 
     def test_get_latest_13f_filings_should_include_required_keys(self):
         with patch(
-            "infrastructure.sec_edgar.fetch_company_filings",
+            "infrastructure.external.sec_edgar.fetch_company_filings",
             return_value=_SAMPLE_SUBMISSIONS,
         ):
             result = get_latest_13f_filings("0001067983", count=1)
@@ -265,7 +265,7 @@ class TestGetLatest13fFilings:
 
     def test_get_latest_13f_filings_should_return_empty_on_error(self):
         with patch(
-            "infrastructure.sec_edgar.fetch_company_filings",
+            "infrastructure.external.sec_edgar.fetch_company_filings",
             return_value={"error": "timeout"},
         ):
             result = get_latest_13f_filings("0001067983")
@@ -273,7 +273,7 @@ class TestGetLatest13fFilings:
 
     def test_get_latest_13f_filings_should_respect_count_limit(self):
         with patch(
-            "infrastructure.sec_edgar.fetch_company_filings",
+            "infrastructure.external.sec_edgar.fetch_company_filings",
             return_value=_SAMPLE_SUBMISSIONS,
         ):
             result = get_latest_13f_filings("0001067983", count=1)
@@ -300,7 +300,7 @@ class TestDiscoverInfotableFilename:
         }
 
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             return_value=mock_index_json,
         ):
             result = _discover_infotable_filename("000119312526054580", "0001067983")
@@ -318,7 +318,7 @@ class TestDiscoverInfotableFilename:
         }
 
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             return_value=mock_index_json,
         ):
             result = _discover_infotable_filename("000000000000000000", "0000000000")
@@ -327,7 +327,7 @@ class TestDiscoverInfotableFilename:
 
     def test_discover_infotable_filename_should_return_none_on_http_error(self):
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             side_effect=Exception("network error"),
         ):
             result = _discover_infotable_filename("000000000000000000", "0000000000")
@@ -345,7 +345,7 @@ class TestDiscoverInfotableFilename:
         }
 
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             return_value=mock_index_json,
         ):
             result = _discover_infotable_filename("000000000000000000", "0000000000")
@@ -356,7 +356,7 @@ class TestDiscoverInfotableFilename:
         mock_index_json = {"some_unexpected_key": "value"}
 
         with patch(
-            "infrastructure.sec_edgar._http_get_json",
+            "infrastructure.external.sec_edgar._http_get_json",
             return_value=mock_index_json,
         ):
             result = _discover_infotable_filename("000000000000000000", "0000000000")
@@ -373,18 +373,18 @@ class TestFetch13fFilingDetail:
     """Tests for fetch_13f_filing_detail()."""
 
     def test_fetch_13f_filing_detail_should_return_holdings_on_success(self):
-        from infrastructure.sec_edgar import _disk_cache
+        from infrastructure.external.sec_edgar import _disk_cache
 
         # Clear disk cache to force HTTP call
         _disk_cache.clear()
 
         with (
             patch(
-                "infrastructure.sec_edgar._discover_infotable_filename",
+                "infrastructure.external.sec_edgar._discover_infotable_filename",
                 return_value="50240.xml",
             ),
             patch(
-                "infrastructure.sec_edgar._http_get_text",
+                "infrastructure.external.sec_edgar._http_get_text",
                 return_value=_SAMPLE_13F_XML,
             ),
         ):
@@ -394,17 +394,17 @@ class TestFetch13fFilingDetail:
         assert result[0]["cusip"] in ("037833100", "025816109")
 
     def test_fetch_13f_filing_detail_should_return_empty_on_http_error(self):
-        from infrastructure.sec_edgar import _disk_cache
+        from infrastructure.external.sec_edgar import _disk_cache
 
         _disk_cache.clear()
 
         with (
             patch(
-                "infrastructure.sec_edgar._discover_infotable_filename",
+                "infrastructure.external.sec_edgar._discover_infotable_filename",
                 return_value="infotable.xml",
             ),
             patch(
-                "infrastructure.sec_edgar._http_get_text",
+                "infrastructure.external.sec_edgar._http_get_text",
                 side_effect=Exception("network error"),
             ),
         ):
@@ -413,17 +413,17 @@ class TestFetch13fFilingDetail:
         assert result == []
 
     def test_fetch_13f_filing_detail_should_fallback_when_discovery_fails(self):
-        from infrastructure.sec_edgar import _disk_cache
+        from infrastructure.external.sec_edgar import _disk_cache
 
         _disk_cache.clear()
 
         with (
             patch(
-                "infrastructure.sec_edgar._discover_infotable_filename",
+                "infrastructure.external.sec_edgar._discover_infotable_filename",
                 return_value=None,  # Discovery failed
             ),
             patch(
-                "infrastructure.sec_edgar._http_get_text",
+                "infrastructure.external.sec_edgar._http_get_text",
                 return_value=_SAMPLE_13F_XML,
             ) as mock_get_text,
         ):

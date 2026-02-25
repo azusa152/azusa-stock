@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from sqlmodel import Session, select
 
-from application.snapshot_service import (
+from application.portfolio.snapshot_service import (
     get_snapshot_range,
     get_snapshots,
     take_daily_snapshot,
@@ -22,7 +22,7 @@ from domain.entities import PortfolioSnapshot
 # Shared mock data
 # ---------------------------------------------------------------------------
 
-_REBALANCE_PATCH = "application.rebalance_service.calculate_rebalance"
+_REBALANCE_PATCH = "application.portfolio.rebalance_service.calculate_rebalance"
 _SP500_PATCH = "infrastructure.market_data.get_technical_signals"
 
 MOCK_REBALANCE = {

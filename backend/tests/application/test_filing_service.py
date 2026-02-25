@@ -22,8 +22,8 @@ from infrastructure.repositories import (
     save_holdings_batch,
 )
 
-GURU_MODULE = "application.guru_service"
-FILING_MODULE = "application.filing_service"
+GURU_MODULE = "application.guru.guru_service"
+FILING_MODULE = "application.stock.filing_service"
 
 # ---------------------------------------------------------------------------
 # Shared test data
@@ -86,7 +86,7 @@ class TestSeedDefaultGurus:
     """Tests for seed_default_gurus()."""
 
     def test_seed_default_gurus_should_insert_all_defaults(self, db_session: Session):
-        from application.guru_service import seed_default_gurus
+        from application.guru.guru_service import seed_default_gurus
 
         count = seed_default_gurus(db_session)
 
@@ -95,7 +95,7 @@ class TestSeedDefaultGurus:
         assert len(active) == len(DEFAULT_GURUS)
 
     def test_seed_default_gurus_should_be_idempotent(self, db_session: Session):
-        from application.guru_service import seed_default_gurus
+        from application.guru.guru_service import seed_default_gurus
 
         seed_default_gurus(db_session)
         count_second = seed_default_gurus(db_session)
@@ -105,7 +105,7 @@ class TestSeedDefaultGurus:
         assert len(active) == len(DEFAULT_GURUS)
 
     def test_seed_default_gurus_should_mark_as_is_default(self, db_session: Session):
-        from application.guru_service import seed_default_gurus
+        from application.guru.guru_service import seed_default_gurus
 
         seed_default_gurus(db_session)
         active = find_all_active_gurus(db_session)
@@ -117,7 +117,11 @@ class TestListGurus:
     """Tests for list_gurus()."""
 
     def test_list_gurus_should_return_active_only(self, db_session: Session):
-        from application.guru_service import list_gurus, remove_guru, seed_default_gurus
+        from application.guru.guru_service import (
+            list_gurus,
+            remove_guru,
+            seed_default_gurus,
+        )
 
         seed_default_gurus(db_session)
         all_active = find_all_active_gurus(db_session)
@@ -130,7 +134,7 @@ class TestListGurus:
         assert all(g.is_active for g in result)
 
     def test_list_gurus_should_return_empty_when_none(self, db_session: Session):
-        from application.guru_service import list_gurus
+        from application.guru.guru_service import list_gurus
 
         result = list_gurus(db_session)
         assert result == []
@@ -140,7 +144,7 @@ class TestAddGuru:
     """Tests for add_guru()."""
 
     def test_add_guru_should_persist_and_return(self, db_session: Session):
-        from application.guru_service import add_guru
+        from application.guru.guru_service import add_guru
 
         guru = add_guru(
             db_session, name="Test Corp", cik="0000000099", display_name="Test"
@@ -153,7 +157,7 @@ class TestAddGuru:
         assert guru.is_default is False
 
     def test_add_guru_should_reactivate_deactivated_guru(self, db_session: Session):
-        from application.guru_service import add_guru, remove_guru
+        from application.guru.guru_service import add_guru, remove_guru
 
         original = add_guru(
             db_session, name="Corp", cik="0000000098", display_name="Old"
@@ -169,7 +173,7 @@ class TestAddGuru:
         assert reactivated.display_name == "New"
 
     def test_add_guru_should_not_create_duplicate_cik(self, db_session: Session):
-        from application.guru_service import add_guru
+        from application.guru.guru_service import add_guru
 
         add_guru(db_session, name="Corp A", cik="0000000097", display_name="A")
         add_guru(db_session, name="Corp A v2", cik="0000000097", display_name="A v2")
@@ -184,7 +188,7 @@ class TestRemoveGuru:
     """Tests for remove_guru()."""
 
     def test_remove_guru_should_return_true_and_deactivate(self, db_session: Session):
-        from application.guru_service import add_guru, remove_guru
+        from application.guru.guru_service import add_guru, remove_guru
 
         guru = add_guru(db_session, name="Corp", cik="0000000096", display_name="Mgr")
         result = remove_guru(db_session, guru.id)
@@ -194,7 +198,7 @@ class TestRemoveGuru:
         assert not any(g.id == guru.id for g in active)
 
     def test_remove_guru_should_return_false_when_not_found(self, db_session: Session):
-        from application.guru_service import remove_guru
+        from application.guru.guru_service import remove_guru
 
         result = remove_guru(db_session, 9999)
 
@@ -219,7 +223,7 @@ class TestSyncGuruFiling:
     def test_sync_should_return_synced_status(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         result = sync_guru_filing(db_session, guru.id)
@@ -243,7 +247,7 @@ class TestSyncGuruFiling:
     def test_sync_should_persist_filing_to_db(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         sync_guru_filing(db_session, guru.id)
@@ -265,7 +269,7 @@ class TestSyncGuruFiling:
     def test_sync_should_persist_holdings_to_db(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         sync_guru_filing(db_session, guru.id)
@@ -283,7 +287,7 @@ class TestSyncGuruFiling:
     def test_sync_should_return_skipped_when_already_synced(
         self, _mock_cusip, _mock_get, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         # Pre-insert the filing to simulate already synced
@@ -305,7 +309,7 @@ class TestSyncGuruFiling:
     def test_sync_should_return_error_when_no_edgar_filings(
         self, _mock_get, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         result = sync_guru_filing(db_session, guru.id)
@@ -314,7 +318,7 @@ class TestSyncGuruFiling:
         assert "no 13F filings" in result["error"]
 
     def test_sync_should_return_error_when_guru_not_found(self, db_session: Session):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         result = sync_guru_filing(db_session, 9999)
 
@@ -328,7 +332,7 @@ class TestSyncGuruFiling:
     def test_sync_should_return_error_when_infotable_empty(
         self, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         result = sync_guru_filing(db_session, guru.id)
@@ -346,7 +350,7 @@ class TestSyncGuruFiling:
     def test_sync_should_be_idempotent(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session)
         result1 = sync_guru_filing(db_session, guru.id)
@@ -399,7 +403,7 @@ class TestSyncHoldingDiff:
     def test_new_position_should_be_classified_when_no_previous(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         new_holdings = [
             {
@@ -430,7 +434,7 @@ class TestSyncHoldingDiff:
     def test_sold_out_should_be_classified_when_current_shares_zero(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001111112")
         self._setup_previous_holding(db_session, guru, cusip="OLDCUSIP1", shares=1000.0)
@@ -460,7 +464,7 @@ class TestSyncHoldingDiff:
     def test_increased_should_be_classified_when_shares_up_by_threshold(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001111113")
         self._setup_previous_holding(db_session, guru, cusip="INCR001", shares=1000.0)
@@ -491,7 +495,7 @@ class TestSyncHoldingDiff:
     def test_decreased_should_be_classified_when_shares_down_by_threshold(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001111114")
         self._setup_previous_holding(db_session, guru, cusip="DECR001", shares=1000.0)
@@ -522,7 +526,7 @@ class TestSyncHoldingDiff:
     def test_sold_out_should_be_created_when_cusip_absent_from_current_filing(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001111116")
         self._setup_previous_holding(db_session, guru, cusip="GONE001", shares=5000.0)
@@ -558,7 +562,7 @@ class TestSyncHoldingDiff:
     def test_unchanged_should_be_classified_when_change_below_threshold(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001111115")
         self._setup_previous_holding(db_session, guru, cusip="SAME001", shares=1000.0)
@@ -600,7 +604,7 @@ class TestSyncWeightAndTopHoldings:
     def test_weight_pct_should_sum_to_100(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         guru = _make_guru(db_session, cik="0001222221")
         sync_guru_filing(db_session, guru.id)
@@ -619,7 +623,7 @@ class TestSyncWeightAndTopHoldings:
     def test_top_holdings_should_be_limited_to_top_n(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         # Generate more holdings than GURU_TOP_HOLDINGS_COUNT
         many_holdings = [
@@ -646,7 +650,7 @@ class TestSyncWeightAndTopHoldings:
     def test_top_holdings_should_be_ordered_by_weight_desc(
         self, _mock_get, _mock_cusip, db_session: Session
     ):
-        from application.filing_service import sync_guru_filing
+        from application.stock.filing_service import sync_guru_filing
 
         many_holdings = [
             {
@@ -689,7 +693,7 @@ class TestSyncAllGurus:
     def test_sync_all_should_return_result_for_each_active_guru(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import sync_all_gurus
+        from application.stock.filing_service import sync_all_gurus
 
         save_guru(db_session, Guru(name="G1", cik="0002000001", display_name="G1"))
         save_guru(db_session, Guru(name="G2", cik="0002000002", display_name="G2"))
@@ -702,7 +706,7 @@ class TestSyncAllGurus:
     def test_sync_all_should_handle_individual_errors_without_crashing(
         self, _mock_get, db_session: Session
     ):
-        from application.filing_service import sync_all_gurus
+        from application.stock.filing_service import sync_all_gurus
 
         save_guru(db_session, Guru(name="G1", cik="0002000003", display_name="G1"))
 
@@ -714,7 +718,7 @@ class TestSyncAllGurus:
     def test_sync_all_should_return_empty_when_no_active_gurus(
         self, db_session: Session
     ):
-        from application.filing_service import sync_all_gurus
+        from application.stock.filing_service import sync_all_gurus
 
         results = sync_all_gurus(db_session)
 
@@ -765,7 +769,7 @@ class TestGetFilingSummaryAndChanges:
     def test_get_filing_summary_should_return_none_when_guru_not_found(
         self, db_session: Session
     ):
-        from application.filing_service import get_filing_summary
+        from application.stock.filing_service import get_filing_summary
 
         result = get_filing_summary(db_session, 9999)
         assert result is None
@@ -773,7 +777,7 @@ class TestGetFilingSummaryAndChanges:
     def test_get_filing_summary_should_return_none_when_no_filing(
         self, db_session: Session
     ):
-        from application.filing_service import get_filing_summary
+        from application.stock.filing_service import get_filing_summary
 
         guru = save_guru(
             db_session, Guru(name="Corp", cik="0003000099", display_name="Mgr")
@@ -782,7 +786,7 @@ class TestGetFilingSummaryAndChanges:
         assert result is None
 
     def test_get_filing_summary_should_include_action_counts(self, db_session: Session):
-        from application.filing_service import get_filing_summary
+        from application.stock.filing_service import get_filing_summary
 
         guru, _ = self._seed_guru_and_holding(
             db_session, HoldingAction.NEW_POSITION.value
@@ -795,7 +799,7 @@ class TestGetFilingSummaryAndChanges:
         assert result["holdings_count"] == 1
 
     def test_get_holding_changes_should_exclude_unchanged(self, db_session: Session):
-        from application.filing_service import get_holding_changes
+        from application.stock.filing_service import get_holding_changes
 
         guru = save_guru(
             db_session, Guru(name="Corp", cik="0003000002", display_name="Mgr")
@@ -842,7 +846,7 @@ class TestGetFilingSummaryAndChanges:
     def test_get_holding_changes_should_include_filing_metadata(
         self, db_session: Session
     ):
-        from application.filing_service import get_holding_changes
+        from application.stock.filing_service import get_holding_changes
 
         guru, _ = self._seed_guru_and_holding(
             db_session, HoldingAction.NEW_POSITION.value, cik="0003000004"
@@ -857,7 +861,7 @@ class TestGetFilingSummaryAndChanges:
     def test_get_holding_changes_should_return_empty_when_no_filing(
         self, db_session: Session
     ):
-        from application.filing_service import get_holding_changes
+        from application.stock.filing_service import get_holding_changes
 
         guru = save_guru(
             db_session, Guru(name="Corp", cik="0003000003", display_name="Mgr")
@@ -919,7 +923,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_sync_all_in_window_filings(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000001")
         result = backfill_guru_filings(
@@ -944,7 +948,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_be_idempotent(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000002")
         result1 = backfill_guru_filings(
@@ -969,16 +973,16 @@ class TestBackfillGuruFilings:
     def test_backfill_should_persist_all_filings_to_db(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000003")
         backfill_guru_filings(db_session, guru.id, years=5, _today=_BACKFILL_TODAY)
 
         for edgar in _BACKFILL_EDGAR_FILINGS:
             filing = find_filing_by_accession(db_session, edgar["accession_number"])
-            assert (
-                filing is not None
-            ), f"Filing {edgar['accession_number']} not found in DB"
+            assert filing is not None, (
+                f"Filing {edgar['accession_number']} not found in DB"
+            )
 
     @patch(
         f"{FILING_MODULE}.get_latest_13f_filings",
@@ -988,7 +992,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_filter_out_filings_outside_window(
         self, _mock_cusip, _mock_get, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         # years=0 → cutoff == _BACKFILL_TODAY; all sample report_dates are before that
         guru = _make_guru(db_session, cik="0004000004")
@@ -1003,7 +1007,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_return_zeros_when_no_edgar_filings(
         self, _mock_get, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         guru = _make_guru(db_session, cik="0004000005")
         result = backfill_guru_filings(db_session, guru.id)
@@ -1016,7 +1020,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_return_error_when_guru_not_found(
         self, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         result = backfill_guru_filings(db_session, 9999)
 
@@ -1034,7 +1038,7 @@ class TestBackfillGuruFilings:
     def test_backfill_should_continue_after_single_filing_error(
         self, _mock_cusip, _mock_get, _mock_detail, db_session: Session
     ):
-        from application.filing_service import backfill_guru_filings
+        from application.stock.filing_service import backfill_guru_filings
 
         call_count = 0
 
@@ -1097,7 +1101,7 @@ class TestGetTopHoldings:
         return guru
 
     def test_returns_empty_list_when_no_filing(self, db_session: Session) -> None:
-        from application.filing_service import get_top_holdings
+        from application.stock.filing_service import get_top_holdings
 
         guru = save_guru(
             db_session, Guru(name="Corp", cik="0005000001", display_name="Mgr")
@@ -1106,7 +1110,7 @@ class TestGetTopHoldings:
         assert result == []
 
     def test_returns_holdings_sorted_by_weight_desc(self, db_session: Session) -> None:
-        from application.filing_service import get_top_holdings
+        from application.stock.filing_service import get_top_holdings
 
         holdings_data = [
             {
@@ -1136,7 +1140,7 @@ class TestGetTopHoldings:
         assert weights == sorted(weights, reverse=True)
 
     def test_limits_to_n_holdings(self, db_session: Session) -> None:
-        from application.filing_service import get_top_holdings
+        from application.stock.filing_service import get_top_holdings
 
         holdings_data = [
             {
@@ -1154,7 +1158,7 @@ class TestGetTopHoldings:
         assert len(result) == 5
 
     def test_default_n_is_10(self, db_session: Session) -> None:
-        from application.filing_service import get_top_holdings
+        from application.stock.filing_service import get_top_holdings
 
         holdings_data = [
             {

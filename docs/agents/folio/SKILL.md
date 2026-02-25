@@ -1,12 +1,12 @@
 ---
 name: folio
 description: Folio 智能資產配置 — 股票追蹤、掃描、警報與外匯監控系統（多市場支援：US / JP / TW / HK）
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Folio Skill
 
-Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、外匯換匯時機監控、以及 Telegram 通知。支援美股、台股、日股、港股多市場，持倉匯率快照與 FX 報酬拆解，以及 JP Nikkei VI 市場情緒指標。
+Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、外匯換匯時機監控、以及 Telegram 通知。支援美股、台股、日股、港股多市場，持倉匯率快照與 FX 報酬拆解，JP Nikkei VI 市場情緒指標，以及 TW ^TWII 實現波動率情緒指標。
 
 ## Prerequisites
 
@@ -292,7 +292,7 @@ The following endpoints now include daily change fields calculated from yfinance
 
 ## Usage Tips
 
-- Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful"). For JP market users (holding `.T` tickers), the system also returns a `"JP"` key with Nikkei VI data — interpret using JP thresholds: ≥35 Extreme Fear, 25–35 Fear, 18–25 Neutral, 14–18 Greed, <14 Extreme Greed
+- Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful"). For JP market users (holding `.T` tickers), the system also returns a `"JP"` key with Nikkei VI data — interpret using JP thresholds: ≥35 Extreme Fear, 25–35 Fear, 18–25 Neutral, 14–18 Greed, <14 Extreme Greed. For TW market users (holding `.TW` tickers), the system returns a `"TW"` key with TAIEX realized volatility — interpret using TW thresholds: >30% Extreme Fear, 22–30% Fear, 15–22% Neutral, 10–15% Greed, <10% Extreme Greed
 - Use `summary` first to get a rich plain-text overview: portfolio value + daily change, category groups, active signals, top movers, allocation drift warnings, and Smart Money highlights
 - Use `signals` to check a stock's technical indicators; interpret the scan signal using the **Signal Taxonomy** section below
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
@@ -388,6 +388,20 @@ When the user holds `.T` (Japan) tickers, multi-market sentiment returns a `"JP"
 | 18–25 | Neutral | JP market balanced — normal positioning |
 | 14–18 | Greed | JP market confident — watch for overheating |
 | < 14 | Extreme Greed | JP market euphoric — reduce exposure |
+
+### TW Market Sentiment (^TWII Realized Volatility)
+
+When the user holds `.TW` (Taiwan) tickers, multi-market sentiment returns a `"TW"` key using the **TAIEX Weighted Index** (`^TWII`) 20-day annualized realized volatility as the TW fear indicator. Realized vol is computed as `std(log_returns) × √252 × 100` (percentage). This is the industry-standard proxy when implied VIX is unavailable programmatically.
+
+| Realized Vol | Level | Guidance |
+|-------------|-------|----------|
+| > 30% | Extreme Fear | TW market panic — contrarian opportunity zone |
+| 22–30% | Fear | TW market cautious — selective accumulation |
+| 15–22% | Neutral | TW market balanced — normal positioning |
+| 10–15% | Greed | TW market confident — watch for overheating |
+| < 10% | Extreme Greed | TW market euphoric — reduce exposure |
+
+The `"TW"` key is absent when no `.TW` tickers are tracked. The `source` field returns `"TAIEX Realized Vol"`.
 
 ## Service Operations
 

@@ -18,9 +18,37 @@ env:
   NODE_VERSION: "20"
 
 jobs:
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'scripts/**'
+            frontend:
+              - 'frontend-react/**'
+            shared:
+              - 'Makefile'
+              - 'docker-compose.yml'
+              - 'docker/**'
+              - '.github/**'
+              - 'pyproject.toml'
+              - '.pre-commit-config.yaml'
+
   test:
     name: Backend Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:
@@ -48,6 +76,8 @@ jobs:
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:
@@ -75,6 +105,8 @@ jobs:
   api-spec:
     name: OpenAPI Spec Freshness
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +133,8 @@ jobs:
   frontend-lint:
     name: Frontend Lint
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:
@@ -124,6 +158,8 @@ jobs:
   frontend-build:
     name: Frontend Build (TypeScript + Vite)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:
@@ -147,6 +183,8 @@ jobs:
   frontend-test:
     name: Frontend Tests (Vitest)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:
@@ -167,9 +205,36 @@ jobs:
       - name: Run tests
         run: npm test
 
+  frontend-security:
+    name: Frontend Security (npm audit)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
+
+    defaults:
+      run:
+        working-directory: frontend-react
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
   constant-sync:
     name: Backend/Frontend Constant Sync
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -181,9 +246,30 @@ jobs:
       - name: Check constant sync
         run: python scripts/check_constant_sync.py
 
+  ci-completeness:
+    name: CI Completeness Check
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.shared == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pyyaml
+        run: pip install pyyaml
+
+      - name: Check make ci covers all pipeline jobs
+        run: python scripts/check_ci_completeness.py
+
   security:
     name: Security Audit (pip-audit)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
 
     defaults:
       run:

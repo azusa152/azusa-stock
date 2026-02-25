@@ -52,7 +52,8 @@
       "us": "🇺🇸 US Market",
       "tw": "🇹🇼 Taiwan Market",
       "jp": "🇯🇵 Japan Market",
-      "hk": "🇭🇰 Hong Kong Market"
+      "hk": "🇭🇰 Hong Kong Market",
+      "tw_sentiment": "🇹🇼 TW Market (TAIEX Realized Volatility)"
     },
     "sentiment": {
       "strong_bullish": "☀️ Sunny",

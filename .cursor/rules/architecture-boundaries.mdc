@@ -9,10 +9,10 @@ alwaysApply: true
 
 | If editing a file in... | MAY import from | MUST NOT import from |
 |---|---|---|
-| `domain/` | stdlib, `domain.*` | `application`, `infrastructure`, `api` |
-| `application/` | `domain.*`, `infrastructure.*`, `i18n`, `logging_config` | `api` |
-| `infrastructure/` | `domain.*`, `i18n`, `logging_config`, stdlib | `application`, `api` |
-| `api/` | `application.*`, `domain.*`, `api.*`, `i18n`, `logging_config` | `infrastructure.*` (except `infrastructure.database`) |
+| `domain/` (`core/`, `analysis/`, `portfolio/`) | stdlib, `domain.*` | `application`, `infrastructure`, `api` |
+| `application/` (`stock/`, `scan/`, `portfolio/`, `guru/`, `messaging/`, `settings/`) | `domain.*`, `infrastructure.*`, `i18n`, `logging_config` | `api` |
+| `infrastructure/` (`market_data/`, `persistence/`, `external/`) | `domain.*`, `i18n`, `logging_config`, stdlib | `application`, `api` |
+| `api/` (`routes/`, `schemas/`) | `application.*`, `domain.*`, `api.*`, `i18n`, `logging_config` | `infrastructure.*` (except `infrastructure.database`) |
 
 ## API Route Pattern — Delegate to Services
 
@@ -20,29 +20,32 @@ ALLOWED in `api/` files:
 
 ```python
 from infrastructure.database import get_session, engine
-from application.stock_service import StockService
+from application.stock.stock_service import StockService
+# or via sub-package re-export:
+from application.stock import create_stock, get_enriched_stocks
 ```
 
 FORBIDDEN in `api/` files:
 
 ```python
-from infrastructure.repositories import ...   # Use application service
-from infrastructure.market_data import ...     # Use application service
-from infrastructure.crypto import ...          # Use application service
-from infrastructure.notification import ...    # Use application service
-session.exec(select(...))                      # Use application service
+from infrastructure.persistence.repositories import ...   # Use application service
+from infrastructure.market_data.market_data import ...    # Use application service
+from infrastructure.market_data import ...                # Use application service
+from infrastructure.external.crypto import ...            # Use application service
+from infrastructure.external.notification import ...      # Use application service
+session.exec(select(...))                                 # Use application service
 ```
 
 ## When Adding a New Endpoint
 
-1. Create or extend the service method in `application/` first
-2. The route in `api/` calls the service — never touches infrastructure directly
+1. Create or extend the service method in the appropriate `application/<domain>/` sub-package first
+2. The route in `api/routes/` calls the service — never touches infrastructure directly
 3. Add a **contract test** in `backend/tests/` that calls the endpoint with the expected minimal payload and asserts a 2xx response. This catches schema mismatches between frontend expectations and backend request validation.
 4. Run `make ci` to verify boundaries and contract tests pass
 
 ## When Adding a New Feature (Research-Plan-Implement)
 
-1. **Research**: Check existing files in the same layer for patterns before writing
+1. **Research**: Check existing files in the same sub-package (e.g., `application/stock/`, `api/routes/`) for patterns before writing
 2. **Plan**: Identify which layers need changes and verify imports will be clean
 3. **Implement**: Write code following the patterns found in step 1
 4. **Verify**: Run `make ci` — architecture tests MUST pass before committing

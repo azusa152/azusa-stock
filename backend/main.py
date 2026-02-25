@@ -17,19 +17,19 @@ from slowapi.errors import RateLimitExceeded
 from sqlmodel import Session
 
 from api.dependencies import require_api_key
-from api.forex_routes import router as forex_router
-from api.fx_watch_routes import router as fx_watch_router
-from api.guru_routes import resonance_router, router as guru_router
-from api.holding_routes import router as holding_router
-from api.persona_routes import router as persona_router
-from api.preferences_routes import router as preferences_router
 from api.rate_limit import limiter
-from api.scan_routes import router as scan_router
-from api.snapshot_routes import router as snapshot_router
+from api.routes.forex_routes import router as forex_router
+from api.routes.fx_watch_routes import router as fx_watch_router
+from api.routes.guru_routes import resonance_router, router as guru_router
+from api.routes.holding_routes import router as holding_router
+from api.routes.persona_routes import router as persona_router
+from api.routes.preferences_routes import router as preferences_router
+from api.routes.scan_routes import router as scan_router
+from api.routes.snapshot_routes import router as snapshot_router
+from api.routes.stock_routes import router as stock_router
+from api.routes.telegram_routes import router as telegram_router
+from api.routes.thesis_routes import router as thesis_router
 from api.schemas import HealthResponse
-from api.stock_routes import router as stock_router
-from api.telegram_routes import router as telegram_router
-from api.thesis_routes import router as thesis_router
 from infrastructure.database import create_db_and_tables
 from config.settings import init_settings
 from logging_config import get_logger
@@ -53,14 +53,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("資料庫初始化完成，服務就緒。")
 
     # 種入系統預設大師（冪等）
-    from application.guru_service import seed_default_gurus
+    from application.guru.guru_service import seed_default_gurus
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
-    from application.prewarm_service import prewarm_all_caches
+    from application.scan.prewarm_service import prewarm_all_caches
 
     threading.Thread(target=prewarm_all_caches, daemon=True).start()
     logger.info("背景快取預熱已啟動。")
