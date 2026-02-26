@@ -516,7 +516,12 @@
         "fx_watch_alerts": "📡 FX Watch Timing Alerts",
         "fx_watch_alerts_help": "When FX rate approaches a recent high or rises consecutively (every 6h cron)",
         "guru_alerts": "🧠 Guru 13F Filing Alerts",
-        "guru_alerts_help": "New guru filing digest and watchlist resonance alerts"
+        "guru_alerts_help": "New guru filing digest and watchlist resonance alerts",
+        "rate_limit_label": "Max {{max_count}} alert(s) per {{window_hours}} hours",
+        "rate_limit_max": "Max alerts",
+        "rate_limit_window": "Per (hours)",
+        "rate_limit_unlimited": "Unlimited",
+        "rate_limit_caption": "Limit how often this notification can send within a time window. Set to 0 for unlimited."
       },
       "save_notif": "💾 Save Notification Preferences"
     },

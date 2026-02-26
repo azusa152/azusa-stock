@@ -1,9 +1,19 @@
-"""Tests for notification infrastructure — _split_message and _send."""
+"""Tests for notification infrastructure — _split_message, _send, rate limiting."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
+
+import pytest
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.pool import StaticPool
 
 from domain.constants import TELEGRAM_MAX_MESSAGE_LENGTH
 from infrastructure.external.notification import _split_message
+
+
+def _utcnow_naive() -> datetime:
+    """Return current UTC time as naive datetime (consistent with SQLite storage)."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class TestSplitMessage:
@@ -118,3 +128,182 @@ class TestSend:
         _send("token", "chat", text)
 
         assert mock_post.call_count == 2  # aborted after exception on second chunk
+
+
+# ---------------------------------------------------------------------------
+# Rate Limit Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def rate_limit_session():
+    """In-memory SQLite session with all tables for rate limit tests."""
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
+
+
+class TestIsWithinRateLimit:
+    """Tests for is_within_rate_limit."""
+
+    def test_returns_true_when_no_preferences_exist(self, rate_limit_session):
+        from infrastructure.external.notification import is_within_rate_limit
+
+        result = is_within_rate_limit(rate_limit_session, "fx_alerts")
+        assert result is True
+
+    def test_returns_true_when_no_rate_limit_configured(self, rate_limit_session):
+        from domain.entities import UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        rate_limit_session.add(prefs)
+        rate_limit_session.commit()
+
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is True
+
+    def test_returns_true_when_max_count_is_zero(self, rate_limit_session):
+        from domain.entities import UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        prefs.set_notification_rate_limits(
+            {"fx_alerts": {"max_count": 0, "window_hours": 24}}
+        )
+        rate_limit_session.add(prefs)
+        rate_limit_session.commit()
+
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is True
+
+    def test_returns_true_when_under_limit(self, rate_limit_session):
+        from domain.entities import NotificationLog, UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        prefs.set_notification_rate_limits(
+            {"fx_alerts": {"max_count": 3, "window_hours": 24}}
+        )
+        rate_limit_session.add(prefs)
+
+        # Add 2 recent logs (under the limit of 3)
+        for _ in range(2):
+            rate_limit_session.add(
+                NotificationLog(notification_type="fx_alerts", sent_at=_utcnow_naive())
+            )
+        rate_limit_session.commit()
+
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is True
+
+    def test_returns_false_when_at_limit(self, rate_limit_session):
+        from domain.entities import NotificationLog, UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        prefs.set_notification_rate_limits(
+            {"fx_alerts": {"max_count": 2, "window_hours": 24}}
+        )
+        rate_limit_session.add(prefs)
+
+        # Add exactly 2 recent logs — at the limit
+        for _ in range(2):
+            rate_limit_session.add(
+                NotificationLog(notification_type="fx_alerts", sent_at=_utcnow_naive())
+            )
+        rate_limit_session.commit()
+
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is False
+
+    def test_old_logs_outside_window_are_not_counted(self, rate_limit_session):
+        from domain.entities import NotificationLog, UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        prefs.set_notification_rate_limits(
+            {"fx_alerts": {"max_count": 1, "window_hours": 24}}
+        )
+        rate_limit_session.add(prefs)
+
+        # Add a log from 48 hours ago — outside the 24h window
+        old_time = _utcnow_naive() - timedelta(hours=48)
+        rate_limit_session.add(
+            NotificationLog(notification_type="fx_alerts", sent_at=old_time)
+        )
+        rate_limit_session.commit()
+
+        # Should be True since no recent logs exist within the window
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is True
+
+    def test_different_types_are_counted_separately(self, rate_limit_session):
+        from domain.entities import NotificationLog, UserPreferences
+        from infrastructure.external.notification import is_within_rate_limit
+
+        prefs = UserPreferences()
+        prefs.set_notification_rate_limits(
+            {
+                "fx_alerts": {"max_count": 1, "window_hours": 24},
+            }
+        )
+        rate_limit_session.add(prefs)
+
+        # Max out fx_alerts but not fx_watch_alerts
+        rate_limit_session.add(
+            NotificationLog(notification_type="fx_alerts", sent_at=_utcnow_naive())
+        )
+        rate_limit_session.commit()
+
+        assert is_within_rate_limit(rate_limit_session, "fx_alerts") is False
+        assert is_within_rate_limit(rate_limit_session, "fx_watch_alerts") is True
+
+
+class TestLogNotificationSent:
+    """Tests for log_notification_sent and count_recent_notifications."""
+
+    def test_log_notification_sent_creates_record(self, rate_limit_session):
+        from infrastructure.persistence.repositories import (
+            count_recent_notifications,
+            log_notification_sent,
+        )
+
+        log_notification_sent(rate_limit_session, "fx_alerts")
+
+        count = count_recent_notifications(
+            rate_limit_session, "fx_alerts", _utcnow_naive() - timedelta(hours=1)
+        )
+        assert count == 1
+
+    def test_count_excludes_other_types(self, rate_limit_session):
+        from infrastructure.persistence.repositories import (
+            count_recent_notifications,
+            log_notification_sent,
+        )
+
+        log_notification_sent(rate_limit_session, "fx_alerts")
+        log_notification_sent(rate_limit_session, "fx_watch_alerts")
+
+        count = count_recent_notifications(
+            rate_limit_session, "fx_alerts", _utcnow_naive() - timedelta(hours=1)
+        )
+        assert count == 1  # fx_watch_alerts entry not counted
+
+    def test_count_excludes_records_before_since(self, rate_limit_session):
+        from domain.entities import NotificationLog
+        from infrastructure.persistence.repositories import count_recent_notifications
+
+        old_log = NotificationLog(
+            notification_type="fx_alerts",
+            sent_at=_utcnow_naive() - timedelta(hours=48),
+        )
+        rate_limit_session.add(old_log)
+        rate_limit_session.commit()
+
+        count = count_recent_notifications(
+            rate_limit_session,
+            "fx_alerts",
+            _utcnow_naive() - timedelta(hours=24),
+        )
+        assert count == 0

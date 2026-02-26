@@ -47,8 +47,10 @@ from infrastructure.market_data import (
 )
 from infrastructure.notification import (
     is_notification_enabled,
+    is_within_rate_limit,
     send_telegram_message_dual,
 )
+from infrastructure.repositories import log_notification_sent
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -889,15 +891,19 @@ def send_fx_alerts(session: Session) -> list[str]:
     alerts = check_fx_alerts(session)
 
     if alerts:
-        if is_notification_enabled(session, "fx_alerts"):
+        if not is_notification_enabled(session, "fx_alerts"):
+            logger.info("匯率曝險通知已被使用者停用，跳過發送。")
+        elif not is_within_rate_limit(session, "fx_alerts"):
+            logger.info("匯率曝險通知已達頻率上限，跳過發送。")
+        else:
             full_msg = "💱 匯率曝險監控\n\n" + "\n\n".join(alerts)
             try:
                 send_telegram_message_dual(full_msg, session)
-                logger.info("已發送匯率曝險警報（%d 筆）", len(alerts))
             except Exception as e:
                 logger.warning("匯率曝險 Telegram 警報發送失敗：%s", e)
-        else:
-            logger.info("匯率曝險通知已被使用者停用，跳過發送。")
+            else:
+                log_notification_sent(session, "fx_alerts")
+                logger.info("已發送匯率曝險警報（%d 筆）", len(alerts))
 
     return alerts
 

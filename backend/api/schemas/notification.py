@@ -36,6 +36,7 @@ class PreferencesRequest(BaseModel):
     language: str | None = None
     privacy_mode: bool
     notification_preferences: dict[str, bool] | None = None
+    notification_rate_limits: dict[str, dict[str, int]] | None = None
 
 
 class PreferencesResponse(BaseModel):
@@ -44,6 +45,7 @@ class PreferencesResponse(BaseModel):
     language: str
     privacy_mode: bool
     notification_preferences: dict[str, bool]
+    notification_rate_limits: dict[str, dict[str, int]]
 
 
 # ---------------------------------------------------------------------------

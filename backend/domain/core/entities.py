@@ -11,6 +11,7 @@ from sqlmodel import Column, Field, SQLModel, String
 from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
+    DEFAULT_NOTIFICATION_RATE_LIMITS,
     DEFAULT_USER_ID,
 )
 from domain.enums import HoldingAction, ScanSignal, StockCategory
@@ -175,6 +176,11 @@ class UserPreferences(SQLModel, table=True):
         sa_column=Column(String, default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES)),
         description="通知偏好 JSON（各類通知的啟用/停用）",
     )
+    notification_rate_limits: str = Field(
+        default=_json.dumps(DEFAULT_NOTIFICATION_RATE_LIMITS),
+        sa_column=Column(String, default=_json.dumps(DEFAULT_NOTIFICATION_RATE_LIMITS)),
+        description='通知頻率限制 JSON，格式：{"fx_alerts": {"max_count": 2, "window_hours": 24}}，空 dict 表示無限制',
+    )
 
     def get_notification_prefs(self) -> dict[str, bool]:
         """解析通知偏好 JSON，缺少的 key 以預設值填補。"""
@@ -188,6 +194,20 @@ class UserPreferences(SQLModel, table=True):
         """合併並序列化通知偏好。"""
         merged = {**DEFAULT_NOTIFICATION_PREFERENCES, **prefs}
         self.notification_preferences = _json.dumps(merged)
+
+    def get_notification_rate_limits(self) -> dict[str, dict[str, int]]:
+        """解析通知頻率限制 JSON。空 dict 表示全部無限制。"""
+        try:
+            stored = _json.loads(self.notification_rate_limits)
+        except (TypeError, _json.JSONDecodeError):
+            stored = {}
+        return {**DEFAULT_NOTIFICATION_RATE_LIMITS, **stored}
+
+    def set_notification_rate_limits(self, limits: dict[str, dict[str, int]]) -> None:
+        """合併並序列化通知頻率限制（保留既有的其他類型設定）。"""
+        existing = self.get_notification_rate_limits()
+        merged = {**existing, **limits}
+        self.notification_rate_limits = _json.dumps(merged)
 
 
 # ---------------------------------------------------------------------------
@@ -307,4 +327,23 @@ class FXWatchConfig(SQLModel, table=True):
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="更新時間"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Notification Log (rate-limit tracking)
+# ---------------------------------------------------------------------------
+
+
+class NotificationLog(SQLModel, table=True):
+    """通知發送日誌，用於頻率限制（每段時間最多 N 次）。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    notification_type: str = Field(
+        index=True, description="通知類型，例如 'fx_alerts'、'fx_watch_alerts'"
+    )
+    sent_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+        index=True,
+        description="發送時間（naive UTC，與 SQLite 相容）",
     )

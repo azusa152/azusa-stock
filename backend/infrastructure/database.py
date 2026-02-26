@@ -73,6 +73,8 @@ def _run_migrations() -> None:
         "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
         # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
+        # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
+        "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
     ]
 
     with engine.connect() as conn:

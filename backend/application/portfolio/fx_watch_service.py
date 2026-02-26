@@ -14,6 +14,7 @@ from i18n import get_user_language, t
 from infrastructure.market_data import get_forex_history_long
 from infrastructure.notification import (
     is_notification_enabled,
+    is_within_rate_limit,
     send_telegram_message_dual,
 )
 from infrastructure.repositories import (
@@ -22,6 +23,7 @@ from infrastructure.repositories import (
     find_active_fx_watches,
     find_all_fx_watches,
     find_fx_watch_by_id,
+    log_notification_sent,
     update_fx_watch,
     update_fx_watch_last_alerted,
 )
@@ -371,7 +373,11 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
     # 若有觸發警報，發送 Telegram 通知
     sent_alerts = 0
     if triggered_alerts:
-        if is_notification_enabled(session, "fx_watch_alerts"):
+        if not is_notification_enabled(session, "fx_watch_alerts"):
+            logger.info("外匯換匯警報通知已關閉，跳過發送")
+        elif not is_within_rate_limit(session, "fx_watch_alerts"):
+            logger.info("外匯換匯警報通知已達頻率上限，跳過發送")
+        else:
             lang = get_user_language(session)
             alert_lines = []
             for alert in triggered_alerts:
@@ -396,12 +402,12 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
             full_msg = t("fx_watch.alert_header", lang=lang) + "\n\n".join(alert_lines)
             try:
                 send_telegram_message_dual(full_msg, session)
-                sent_alerts = len(triggered_alerts)
-                logger.info("已發送外匯換匯警報（%d 筆）", sent_alerts)
             except Exception as e:
                 logger.warning("外匯換匯 Telegram 警報發送失敗：%s", e)
-        else:
-            logger.info("外匯換匯警報通知已關閉，跳過發送")
+            else:
+                log_notification_sent(session, "fx_watch_alerts")
+                sent_alerts = len(triggered_alerts)
+                logger.info("已發送外匯換匯警報（%d 筆）", sent_alerts)
 
     return {
         "total_watches": len(watches),

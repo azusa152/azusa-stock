@@ -7076,6 +7076,23 @@
               }
             ],
             "title": "Notification Preferences"
+          },
+          "notification_rate_limits": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Rate Limits"
           }
         },
         "type": "object",
@@ -7101,13 +7118,24 @@
             },
             "type": "object",
             "title": "Notification Preferences"
+          },
+          "notification_rate_limits": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Notification Rate Limits"
           }
         },
         "type": "object",
         "required": [
           "language",
           "privacy_mode",
-          "notification_preferences"
+          "notification_preferences",
+          "notification_rate_limits"
         ],
         "title": "PreferencesResponse",
         "description": "GET /settings/preferences \u56de\u61c9\u3002"

@@ -11,6 +11,7 @@ from sqlmodel import Session
 from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
+    DEFAULT_NOTIFICATION_RATE_LIMITS,
     DEFAULT_USER_ID,
     ERROR_PREFERENCES_UPDATE_FAILED,
     GENERIC_PREFERENCES_ERROR,
@@ -31,11 +32,13 @@ def get_preferences(session: Session) -> dict:
             "language": DEFAULT_LANGUAGE,
             "privacy_mode": False,
             "notification_preferences": DEFAULT_NOTIFICATION_PREFERENCES,
+            "notification_rate_limits": DEFAULT_NOTIFICATION_RATE_LIMITS,
         }
     return {
         "language": prefs.language,
         "privacy_mode": prefs.privacy_mode,
         "notification_preferences": prefs.get_notification_prefs(),
+        "notification_rate_limits": prefs.get_notification_rate_limits(),
     }
 
 
@@ -49,6 +52,8 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             prefs.privacy_mode = payload["privacy_mode"]
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
+            if payload.get("notification_rate_limits") is not None:
+                prefs.set_notification_rate_limits(payload["notification_rate_limits"])
         else:
             prefs = UserPreferences(
                 user_id=DEFAULT_USER_ID,
@@ -57,6 +62,8 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             )
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
+            if payload.get("notification_rate_limits") is not None:
+                prefs.set_notification_rate_limits(payload["notification_rate_limits"])
             session.add(prefs)
 
         session.commit()
@@ -70,6 +77,7 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             "language": prefs.language,
             "privacy_mode": prefs.privacy_mode,
             "notification_preferences": prefs.get_notification_prefs(),
+            "notification_rate_limits": prefs.get_notification_rate_limits(),
         }
     except HTTPException:
         raise

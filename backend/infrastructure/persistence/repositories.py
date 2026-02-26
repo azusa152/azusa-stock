@@ -3,7 +3,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, func, select
 
@@ -18,6 +18,7 @@ from domain.entities import (
     GuruFiling,
     GuruHolding,
     Holding,
+    NotificationLog,
     PriceAlert,
     RemovalLog,
     ScanLog,
@@ -426,6 +427,45 @@ def delete_fx_watch(session: Session, watch: FXWatchConfig) -> None:
     """刪除一筆外匯監控配置。"""
     session.delete(watch)
     session.commit()
+
+
+# ===========================================================================
+# Notification Log Repository (rate-limit tracking)
+# ===========================================================================
+
+
+# Keep at most 7 days of notification logs to prevent unbounded growth.
+_NOTIFICATION_LOG_RETENTION_DAYS = 7
+
+
+def log_notification_sent(session: Session, notification_type: str) -> NotificationLog:
+    """記錄一筆通知發送記錄並清理過期資料（供頻率限制使用）。"""
+    entry = NotificationLog(notification_type=notification_type)
+    session.add(entry)
+
+    cutoff = (
+        datetime.now(UTC) - timedelta(days=_NOTIFICATION_LOG_RETENTION_DAYS)
+    ).replace(tzinfo=None)
+    stale = session.exec(
+        select(NotificationLog).where(NotificationLog.sent_at < cutoff)
+    ).all()
+    for row in stale:
+        session.delete(row)
+
+    session.commit()
+    session.refresh(entry)
+    return entry
+
+
+def count_recent_notifications(
+    session: Session, notification_type: str, since: datetime
+) -> int:
+    """計算指定時間點之後，某通知類型的發送次數。"""
+    statement = select(func.count()).where(
+        NotificationLog.notification_type == notification_type,
+        NotificationLog.sent_at >= since,
+    )
+    return session.exec(statement).one()
 
 
 # ===========================================================================

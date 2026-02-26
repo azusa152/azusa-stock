@@ -516,7 +516,12 @@
         "fx_watch_alerts": "📡 外貨両替タイミングアラート",
         "fx_watch_alerts_help": "為替レートが直近高値に近づくか連続上昇する際に通知（6時間ごとのCron）",
         "guru_alerts": "🧠 グル 13F 申告アラート",
-        "guru_alerts_help": "新しいグル申告ダイジェストとウォッチリスト共鳴アラート"
+        "guru_alerts_help": "新しいグル申告ダイジェストとウォッチリスト共鳴アラート",
+        "rate_limit_label": "最大{{max_count}}回／{{window_hours}}時間",
+        "rate_limit_max": "最大回数",
+        "rate_limit_window": "時間範囲（時間）",
+        "rate_limit_unlimited": "無制限",
+        "rate_limit_caption": "一定時間内に通知が送信される最大回数を設定します。0は無制限を意味します。"
       },
       "save_notif": "💾 通知設定を保存"
     },

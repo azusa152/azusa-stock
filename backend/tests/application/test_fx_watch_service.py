@@ -411,6 +411,8 @@ class TestSendFXWatchAlerts:
         assert result["total_watches"] == 1
         assert result["triggered_alerts"] == 0
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -427,6 +429,8 @@ class TestSendFXWatchAlerts:
         mock_update_alerted,
         _mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -445,6 +449,8 @@ class TestSendFXWatchAlerts:
         mock_history.assert_called_once()
         assert result["triggered_alerts"] == 1
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -461,6 +467,8 @@ class TestSendFXWatchAlerts:
         mock_update_alerted,
         _mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -515,6 +523,7 @@ class TestSendFXWatchAlerts:
         mock_telegram,
         _mock_notif,
     ):
+        # Note: is_within_rate_limit is never reached when is_notification_enabled=False
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
         watch = _make_watch(last_alerted_at=None)
@@ -528,6 +537,8 @@ class TestSendFXWatchAlerts:
         assert result["triggered_alerts"] == 1
         assert result["sent_alerts"] == 0
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -544,6 +555,8 @@ class TestSendFXWatchAlerts:
         _mock_update,
         mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -557,6 +570,8 @@ class TestSendFXWatchAlerts:
         mock_telegram.assert_called_once()
         assert result["sent_alerts"] == 1
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(
         f"{MODULE}.send_telegram_message_dual",
@@ -576,6 +591,8 @@ class TestSendFXWatchAlerts:
         _mock_update,
         _mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -590,6 +607,8 @@ class TestSendFXWatchAlerts:
         assert result["triggered_alerts"] == 1
         assert result["sent_alerts"] == 0
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -606,6 +625,8 @@ class TestSendFXWatchAlerts:
         _mock_update,
         _mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -622,6 +643,8 @@ class TestSendFXWatchAlerts:
         assert result["total_watches"] == 2
         assert result["triggered_alerts"] == 1
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -638,6 +661,8 @@ class TestSendFXWatchAlerts:
         _mock_update,
         mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 
@@ -666,6 +691,8 @@ class TestSendFXWatchAlerts:
         assert "TWD" in msg
         assert "32.1234" in msg
 
+    @patch(f"{MODULE}.log_notification_sent")
+    @patch(f"{MODULE}.is_within_rate_limit", return_value=True)
     @patch(f"{MODULE}.is_notification_enabled", return_value=True)
     @patch(f"{MODULE}.send_telegram_message_dual")
     @patch(f"{MODULE}.update_fx_watch_last_alerted")
@@ -682,6 +709,8 @@ class TestSendFXWatchAlerts:
         _mock_update,
         mock_telegram,
         _mock_notif,
+        _mock_rate_limit,
+        _mock_log,
     ):
         from application.portfolio.fx_watch_service import send_fx_watch_alerts
 

@@ -6,6 +6,7 @@ Infrastructure — 通知適配器 (Telegram Bot API)。
 """
 
 import os
+from datetime import UTC, datetime, timedelta
 
 import requests as http_requests
 from sqlmodel import Session
@@ -20,6 +21,67 @@ from infrastructure.external.crypto import decrypt_token
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def is_notification_enabled(session: Session, notification_type: str) -> bool:
+    """檢查指定類型的通知是否已啟用（依使用者偏好）。
+
+    Args:
+        session: DB session.
+        notification_type: 通知類型 key（如 'scan_alerts', 'price_alerts'）。
+
+    Returns:
+        True 表示應發送通知，False 表示使用者已停用此類通知。
+    """
+    from domain.entities import UserPreferences
+
+    prefs = session.get(UserPreferences, DEFAULT_USER_ID)
+    if not prefs:
+        return True  # 無偏好設定時預設全部啟用
+    return prefs.get_notification_prefs().get(notification_type, True)
+
+
+def is_within_rate_limit(session: Session, notification_type: str) -> bool:
+    """檢查指定類型的通知是否尚未超過使用者設定的頻率上限。
+
+    若使用者未設定頻率限制（max_count == 0 或無設定），預設無限制，回傳 True。
+
+    Args:
+        session: DB session.
+        notification_type: 通知類型 key（如 'fx_alerts', 'fx_watch_alerts'）。
+
+    Returns:
+        True 表示尚未超過限制（可發送），False 表示已達上限（應抑制）。
+    """
+    from domain.entities import UserPreferences
+    from infrastructure.persistence.repositories import count_recent_notifications
+
+    prefs = session.get(UserPreferences, DEFAULT_USER_ID)
+    if not prefs:
+        return True
+
+    rate_limits = prefs.get_notification_rate_limits()
+    limit_config = rate_limits.get(notification_type)
+    if not limit_config:
+        return True
+
+    max_count: int = limit_config.get("max_count", 0)
+    window_hours: int = limit_config.get("window_hours", 24)
+    if max_count <= 0:
+        return True
+
+    since = (datetime.now(UTC) - timedelta(hours=window_hours)).replace(tzinfo=None)
+    recent_count = count_recent_notifications(session, notification_type, since)
+    if recent_count >= max_count:
+        logger.info(
+            "通知頻率限制：%s 在過去 %d 小時內已發送 %d/%d 次，跳過發送",
+            notification_type,
+            window_hours,
+            recent_count,
+            max_count,
+        )
+        return False
+    return True
 
 
 def _split_message(
@@ -58,24 +120,6 @@ def _split_message(
         chunks.append("\n".join(current_lines))
 
     return chunks
-
-
-def is_notification_enabled(session: Session, notification_type: str) -> bool:
-    """檢查指定類型的通知是否已啟用（依使用者偏好）。
-
-    Args:
-        session: DB session.
-        notification_type: 通知類型 key（如 'scan_alerts', 'price_alerts'）。
-
-    Returns:
-        True 表示應發送通知，False 表示使用者已停用此類通知。
-    """
-    from domain.entities import UserPreferences
-
-    prefs = session.get(UserPreferences, DEFAULT_USER_ID)
-    if not prefs:
-        return True  # 無偏好設定時預設全部啟用
-    return prefs.get_notification_prefs().get(notification_type, True)
 
 
 def _send(token: str, chat_id: str, text: str) -> None:

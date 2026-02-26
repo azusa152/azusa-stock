@@ -427,6 +427,14 @@ DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
     k: True for k in NOTIFICATION_TYPES
 }
 
+# Rate limit defaults — 0 means unlimited (no cap)
+NOTIFICATION_RATE_LIMIT_MAX_COUNT_DEFAULT = 1  # 0 = unlimited
+NOTIFICATION_RATE_LIMIT_WINDOW_HOURS_DEFAULT = 24
+# Empty dict means no rate limit is applied by default for any notification type.
+# When a user configures a limit, an entry like {"fx_alerts": {"max_count": 2, "window_hours": 24}}
+# is added. Only notification types present in this dict are throttled.
+DEFAULT_NOTIFICATION_RATE_LIMITS: dict[str, dict[str, int]] = {}
+
 # ---------------------------------------------------------------------------
 # Error Codes — machine-readable slugs for AI agent error handling
 # ---------------------------------------------------------------------------
