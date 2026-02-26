@@ -75,7 +75,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted-foreground">
-                  <th className="text-left font-normal pr-2">Ticker</th>
+                  <th className="text-left font-normal pr-2">{t("dashboard.holdings_table.ticker")}</th>
                   <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_dps")}</th>
                   <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_native")}</th>
                   <th className="text-right font-normal">{t("dashboard.info.dividend_converted")}</th>

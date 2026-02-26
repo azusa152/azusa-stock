@@ -14,6 +14,7 @@ VOLUME_RATIO_LONG_DAYS = 20
 YFINANCE_HISTORY_PERIOD = "1y"
 MIN_HISTORY_DAYS_FOR_SIGNALS = 60
 MIN_CLOSE_PRICES_FOR_CHANGE = 2  # 計算日漲跌所需的最少收盤價數據點（前日 + 當日）
+SECONDS_PER_DAY = 86400  # 判斷訊號是否為「新」（< 24 小時）
 
 # ---------------------------------------------------------------------------
 # Decision Engine Thresholds

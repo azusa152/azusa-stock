@@ -6,6 +6,7 @@ Domain — 純粹的分析計算函式。
 
 import bisect
 import math
+from datetime import UTC, datetime
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
@@ -47,6 +48,7 @@ from domain.constants import (
     RSI_OVERBOUGHT,
     RSI_PERIOD,
     RSI_WEAKENING_THRESHOLD,
+    SECONDS_PER_DAY,
     TW_VOL_BASE,
     TW_VOL_OFFSET,
     TW_VOL_SLOPE,
@@ -709,3 +711,26 @@ def compute_twr(snapshots: list[dict]) -> float | None:
         product *= values[i] / values[i - 1]  # type: ignore[operator]
 
     return round((product - 1) * 100, 2)
+
+
+def compute_signal_duration(
+    signal_since: datetime | None,
+    now: datetime,
+) -> tuple[int | None, bool]:
+    """
+    計算訊號持續天數，並判斷是否為「新」訊號（< 24 小時）。
+
+    自動處理 naive datetime（補 UTC tzinfo）。
+    純函式，無副作用。
+
+    Returns:
+        (duration_days, is_new)
+        - duration_days: 訊號持續天數，signal_since 為 None 時回傳 None
+        - is_new: 訊號持續不足 24 小時時為 True
+    """
+    if signal_since is None:
+        return None, False
+    if signal_since.tzinfo is None:
+        signal_since = signal_since.replace(tzinfo=UTC)
+    delta = now - signal_since
+    return delta.days, delta.total_seconds() < SECONDS_PER_DAY

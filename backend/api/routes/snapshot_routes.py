@@ -18,6 +18,7 @@ from application.portfolio.snapshot_service import (
     get_snapshots,
 )
 from domain.entities import PortfolioSnapshot
+from i18n import get_user_language, t
 from infrastructure.database import engine, get_session
 from logging_config import get_logger
 
@@ -168,6 +169,7 @@ def get_twr(
 @limiter.limit("10/minute")
 async def take_snapshot(
     request: Request,
+    session: Session = Depends(get_session),
 ) -> AcceptedResponse:
     """
     觸發每日快照建立（非同步背景執行）。
@@ -175,9 +177,10 @@ async def take_snapshot(
 
     Rate limited: 10/minute。
     """
+    lang = get_user_language(session)
     logger.info("快照觸發請求已收到，啟動背景執行緒。")
     threading.Thread(target=_run_snapshot_background, daemon=True).start()
-    return AcceptedResponse(message="snapshot triggered")
+    return AcceptedResponse(message=t("api.snapshot_triggered", lang=lang))
 
 
 @router.post(
@@ -188,6 +191,7 @@ async def take_snapshot(
 @limiter.limit("3/minute")
 async def backfill_benchmarks(
     request: Request,
+    session: Session = Depends(get_session),
 ) -> AcceptedResponse:
     """
     既存の空の benchmark_values を持つスナップショットに対して、
@@ -196,6 +200,7 @@ async def backfill_benchmarks(
     背景執行緒で非同步実行。完了までに数秒〜数十秒かかる場合がある。
     Rate limited: 3/minute。
     """
+    lang = get_user_language(session)
     logger.info("基準指數回填請求已收到，啟動背景執行緒。")
     threading.Thread(target=_run_backfill_background, daemon=True).start()
-    return AcceptedResponse(message="benchmark backfill triggered")
+    return AcceptedResponse(message=t("api.backfill_triggered", lang=lang))

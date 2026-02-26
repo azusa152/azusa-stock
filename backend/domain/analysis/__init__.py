@@ -9,6 +9,7 @@ from domain.analysis.analysis import (  # noqa: F401
     compute_daily_change_pct,
     compute_moving_average,
     compute_rsi,
+    compute_signal_duration,
     compute_twr,
     compute_volume_ratio,
     compute_weighted_fear_greed,

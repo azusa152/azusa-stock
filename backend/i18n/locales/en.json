@@ -248,7 +248,9 @@
     "telegram_not_configured": "Telegram Chat ID not configured. Please save settings first.",
     "telegram_test_msg": "✅ <b>Folio — Notifications Active</b>\n\nAll systems operational. Real-time alerts are enabled for scan signal changes, custom price thresholds, and weekly portfolio digests.",
     "telegram_test_sent": "✅ Test message sent. Please check Telegram.",
-    "tag_validation_error": "Each tag must be non-empty and no longer than 50 characters"
+    "tag_validation_error": "Each tag must be non-empty and no longer than 50 characters",
+    "snapshot_triggered": "Snapshot triggered. Building in background.",
+    "backfill_triggered": "Benchmark backfill triggered. Running in background."
   },
   "constants": {
     "removal_reason_unknown": "Unknown",

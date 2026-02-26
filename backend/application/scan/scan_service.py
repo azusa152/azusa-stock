@@ -12,6 +12,7 @@ from application.formatters import format_fear_greed_label
 from application.stock.stock_service import _get_stock_or_raise
 from domain.analysis import (
     compute_bias_percentile,
+    compute_signal_duration,
     detect_rogue_wave,
     determine_scan_signal,
 )
@@ -643,15 +644,7 @@ def get_signal_activity(session: Session) -> list[dict]:
 
     result: list[dict] = []
     for stock in non_normal_stocks:
-        signal_since = stock.signal_since
-        duration_days: int | None = None
-        is_new = False
-        if signal_since is not None:
-            if signal_since.tzinfo is None:
-                signal_since = signal_since.replace(tzinfo=UTC)
-            delta = now - signal_since
-            duration_days = delta.days
-            is_new = delta.total_seconds() < 86400  # < 24 hours
+        duration_days, is_new = compute_signal_duration(stock.signal_since, now)
 
         logs = logs_by_ticker.get(stock.ticker, [])
         current_signal = stock.last_scan_signal
@@ -672,7 +665,9 @@ def get_signal_activity(session: Session) -> list[dict]:
             {
                 "ticker": stock.ticker,
                 "signal": current_signal,
-                "signal_since": signal_since.isoformat() if signal_since else None,
+                "signal_since": stock.signal_since.isoformat()
+                if stock.signal_since
+                else None,
                 "duration_days": duration_days,
                 "previous_signal": prev_signal,
                 "changed_at": changed_at.isoformat() if changed_at else None,

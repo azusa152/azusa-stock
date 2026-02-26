@@ -2,7 +2,7 @@
 API — Notification / Telegram / Preferences / Persona / Snapshot / Webhook Schemas。
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Telegram Settings Schemas
@@ -108,7 +108,9 @@ class SnapshotResponse(BaseModel):
     category_values: dict  # parsed from JSON storage
     display_currency: str = "USD"
     benchmark_value: float | None = None
-    benchmark_values: dict[str, float | None] = {}  # {"^GSPC": 5000, "VT": 120, ...}
+    benchmark_values: dict[str, float | None] = Field(
+        default_factory=dict
+    )  # {"^GSPC": 5000, "VT": 120, ...}
 
 
 class TwrResponse(BaseModel):
@@ -130,7 +132,7 @@ class WebhookRequest(BaseModel):
 
     action: str  # "help", "summary", "signals", "scan", "moat", "alerts", "add_stock"
     ticker: str | None = None
-    params: dict = {}
+    params: dict = Field(default_factory=dict)
 
 
 class WebhookResponse(BaseModel):
@@ -138,4 +140,4 @@ class WebhookResponse(BaseModel):
 
     success: bool
     message: str
-    data: dict = {}
+    data: dict = Field(default_factory=dict)

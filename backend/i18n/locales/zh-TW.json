@@ -248,7 +248,9 @@
     "telegram_not_configured": "尚未設定 Telegram Chat ID，請先儲存設定。",
     "telegram_test_msg": "✅ <b>Folio — 通知已啟用</b>\n\n系統運作正常。掃描訊號變化、自訂價格警報與每週投資摘要的即時通知已就緒。",
     "telegram_test_sent": "✅ 測試訊息已發送，請檢查 Telegram。",
-    "tag_validation_error": "每個標籤必須非空且不超過 50 字元"
+    "tag_validation_error": "每個標籤必須非空且不超過 50 字元",
+    "snapshot_triggered": "快照已觸發，正在背景建立中。",
+    "backfill_triggered": "基準指數回填已觸發，正在背景執行中。"
   },
   "constants": {
     "removal_reason_unknown": "未知",

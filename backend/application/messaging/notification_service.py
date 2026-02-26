@@ -15,6 +15,7 @@ from application.formatters import (
     format_resonance_alert,
     format_weekly_digest_html,
 )
+from domain.analysis import compute_signal_duration
 from domain.constants import (
     CATEGORY_DISPLAY_ORDER,
     DATA_DIR,
@@ -266,15 +267,7 @@ def send_weekly_digest(session: Session) -> dict:
     # --- 組合訊息 ---
     non_normal_dicts: list[dict] = []
     for s in non_normal_stocks:
-        signal_since = s.signal_since
-        duration_days: int | None = None
-        is_new = False
-        if signal_since is not None:
-            if signal_since.tzinfo is None:
-                signal_since = signal_since.replace(tzinfo=UTC)
-            delta = now_ts - signal_since
-            duration_days = delta.days
-            is_new = delta.total_seconds() < 86400
+        duration_days, is_new = compute_signal_duration(s.signal_since, now_ts)
         non_normal_dicts.append(
             {
                 "ticker": s.ticker,

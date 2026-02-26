@@ -184,15 +184,15 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
   // Group by sector; stocks without sector go to "Other"
   const sectorMap = new Map<string, EnrichedStock[]>()
   for (const s of stocks) {
-    const sector = s.sector ?? "Other"
+    const sector = s.sector ?? t("dashboard.heatmap_sector_other")
     if (!sectorMap.has(sector)) sectorMap.set(sector, [])
     sectorMap.get(sector)!.push(s)
   }
 
   // Sort sectors: larger groups first, "Other" always last
   const sortedSectors = [...sectorMap.entries()].sort(([sectorA, stocksA], [sectorB, stocksB]) => {
-    if (sectorA === "Other") return 1
-    if (sectorB === "Other") return -1
+    if (sectorA === t("dashboard.heatmap_sector_other")) return 1
+    if (sectorB === t("dashboard.heatmap_sector_other")) return -1
     return stocksB.length - stocksA.length
   })
 
@@ -219,15 +219,15 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pb-2">
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.strongLoss }} />
-            ≤ −3%
+            {t("dashboard.heatmap_legend_strong_loss")}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.neutral }} />
-            ≈ 0%
+            {t("dashboard.heatmap_legend_neutral")}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.strongGain }} />
-            ≥ +3%
+            {t("dashboard.heatmap_legend_strong_gain")}
           </span>
           <span className="text-muted-foreground/60">· {t("dashboard.heatmap_grouped_by")}</span>
         </div>

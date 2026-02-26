@@ -159,4 +159,4 @@ class TestBackfillBenchmarks:
     def test_should_return_accepted_when_triggered(self, client: TestClient):
         resp = client.post("/snapshots/backfill-benchmarks")
         assert resp.status_code == 200
-        assert resp.json()["message"] == "benchmark backfill triggered"
+        assert resp.json()["message"]  # localized message, non-empty

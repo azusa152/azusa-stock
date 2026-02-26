@@ -248,7 +248,9 @@
     "telegram_not_configured": "Telegram Chat IDが未設定です。先に設定を保存してください。",
     "telegram_test_msg": "✅ <b>Folio — 通知が有効です</b>\n\nシステムは正常に動作しています。スキャンシグナル変化、カスタム価格アラート、週次ポートフォリオレポートのリアルタイム通知が有効です。",
     "telegram_test_sent": "✅ テストメッセージを送信しました。Telegramをご確認ください。",
-    "tag_validation_error": "各タグは空でなく、50文字以内である必要があります"
+    "tag_validation_error": "各タグは空でなく、50文字以内である必要があります",
+    "snapshot_triggered": "スナップショットをトリガーしました。バックグラウンドで構築中です。",
+    "backfill_triggered": "ベンチマーク補完をトリガーしました。バックグラウンドで実行中です。"
   },
   "constants": {
     "removal_reason_unknown": "不明",

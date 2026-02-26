@@ -334,9 +334,9 @@ def plan_withdrawal(
             rank = liquidity_rank.get(cat, 999)
             icon = CATEGORY_ICON.get(cat, "📊")
             if rank <= 1:  # Cash, Bond
-                reason_key = "withdrawal.liquidity_high_reason"
+                reason_key = I18nKey("withdrawal.liquidity_high_reason")
             else:
-                reason_key = "withdrawal.liquidity_default_reason"
+                reason_key = I18nKey("withdrawal.liquidity_default_reason")
 
             rec = _sell_from_holding(
                 h,
