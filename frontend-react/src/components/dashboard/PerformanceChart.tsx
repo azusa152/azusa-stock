@@ -13,6 +13,7 @@ import {
   type MouseEventParams,
 } from "lightweight-charts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import type { Snapshot } from "@/api/types/dashboard"
 
@@ -41,6 +42,7 @@ interface CrosshairData {
 
 interface Props {
   snapshots: Snapshot[]
+  isLoading?: boolean
 }
 
 function formatDate(isoDate: string, locale: string): string {
@@ -71,7 +73,7 @@ function getCommentaryKey(
   return "performance_commentary_underperform_strong"
 }
 
-export function PerformanceChart({ snapshots }: Props) {
+export function PerformanceChart({ snapshots, isLoading = false }: Props) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [selectedKey, setSelectedKey] = useState("1M")
@@ -347,6 +349,19 @@ export function PerformanceChart({ snapshots }: Props) {
   }, [periodStats, benchmarkPeriodReturn, selectedBenchmark, t])
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[280px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">

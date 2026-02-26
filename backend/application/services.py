@@ -78,6 +78,7 @@ from application.stock.stock_service import (  # noqa: F401
     get_removal_history,
     get_thesis_history,
     import_stocks,
+    invalidate_enriched_cache,
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,

@@ -245,7 +245,12 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
 
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, true)
+  // Fetch price history only when the card is expanded. Previously this was always
+  // `true`, causing 20+ parallel yfinance requests on Radar page load.
+  // Trade-off: the collapsed-row sparkline (SparklineHeader) is hidden until first
+  // expand, after which it persists (React Query cache). A small skeleton is shown
+  // in its place so the card layout remains stable.
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded)
   const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
   const showMoatChart = moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
@@ -326,8 +331,10 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
                 )}
               </span>
             )}
-            {!expanded && priceHistory && priceHistory.length >= 5 && (
-              <SparklineHeader data={priceHistory} />
+            {!expanded && (
+              priceHistory && priceHistory.length >= 5
+                ? <SparklineHeader data={priceHistory} />
+                : <Skeleton className="h-8 w-20 shrink-0" />
             )}
             <span className={`text-[10px] ${marketOpen ? "text-green-500" : "text-muted-foreground"}`}>
               {marketOpen ? "●" : "○"}

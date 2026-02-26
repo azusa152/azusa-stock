@@ -44,6 +44,7 @@ from infrastructure.market_data import (
     prewarm_etf_holdings_batch,
     prewarm_etf_sector_weights_batch,
     prewarm_signals_batch,
+    prewarm_ticker_sector_batch,
 )
 from infrastructure.notification import (
     is_notification_enabled,
@@ -419,14 +420,38 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     #   Approach A（後備）：若 B 無資料，分解 top-N 成分股並查詢各自板塊，
     #                       未覆蓋的剩餘比例按已辨識板塊比例分配（避免膨脹 Unknown）。
     #   直接持股：使用 get_ticker_sector() 磁碟快取（30 天 TTL）。
+
+    # 並行預熱所有 equity 持倉及已知 ETF 成分股的 sector 快取，
+    # 讓後續逐一查詢（Approach A 及直接持股）直接命中磁碟快取。
+    # 同時快取 get_etf_top_holdings 結果，避免下方主迴圈重複呼叫。
+    equity_tickers_for_sector = [
+        ticker
+        for ticker, agg in ticker_agg.items()
+        if agg["category"] in EQUITY_CATEGORIES and agg["mv"] > 0
+    ]
+    # Collect constituent results once — reused in sector loop below
+    etf_constituents_cache: dict[str, list[dict]] = {}
+    constituent_symbols_for_sector: list[str] = []
+    for ticker in equity_tickers_for_sector:
+        constituents = get_etf_top_holdings(ticker)
+        if constituents:
+            etf_constituents_cache[ticker] = constituents
+            constituent_symbols_for_sector.extend(c["symbol"] for c in constituents)
+    all_sector_tickers = list(
+        set(equity_tickers_for_sector + constituent_symbols_for_sector)
+    )
+    if all_sector_tickers:
+        logger.info("並行預熱 %d 個 ticker 的 sector 快取...", len(all_sector_tickers))
+        prewarm_ticker_sector_batch(all_sector_tickers)
+
     sector_values: dict[str, float] = {}
     for ticker, agg in ticker_agg.items():
         if agg["category"] not in EQUITY_CATEGORIES or agg["mv"] <= 0:
             continue
         mv = agg["mv"]
 
-        # 判斷是否為 ETF（已由 X-Ray 預熱，直接讀快取）
-        constituents = get_etf_top_holdings(ticker)
+        # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
+        constituents = etf_constituents_cache.get(ticker)
         if constituents:
             # Approach B：使用 ETF 官方板塊權重分佈（涵蓋 100% 資產）
             etf_sector_weights = get_etf_sector_weights(ticker)

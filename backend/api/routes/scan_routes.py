@@ -6,7 +6,7 @@ API — 掃描路由（非同步 fire-and-forget）。
 
 import threading
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import Session
 
 from api.rate_limit import limiter
@@ -93,8 +93,13 @@ def get_prewarm_status() -> PrewarmStatusResponse:
 @router.get(
     "/market/fear-greed", response_model=FearGreedResponse, summary="Fear & Greed Index"
 )
-def get_fear_greed(session: Session = Depends(get_session)) -> FearGreedResponse:
+def get_fear_greed(
+    response: Response, session: Session = Depends(get_session)
+) -> FearGreedResponse:
     """取得恐懼與貪婪指數（VIX + CNN Fear & Greed + 7 項自計算指標綜合分析）。"""
+    response.headers["Cache-Control"] = (
+        "private, max-age=300, stale-while-revalidate=3600"
+    )
     fg = scan_service.get_fear_greed() or {}
     composite_level = fg.get("composite_level", "N/A")
     composite_score = fg.get("composite_score", 50)

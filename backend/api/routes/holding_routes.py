@@ -2,7 +2,7 @@
 API — 持倉 (Holding) 管理與再平衡 (Rebalance) 路由。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
 from api.schemas import (
@@ -165,10 +165,14 @@ def import_holdings(
     summary="Calculate rebalance analysis",
 )
 def get_rebalance(
+    response: Response,
     display_currency: str = "USD",
     session: Session = Depends(get_session),
 ) -> RebalanceResponse:
     """計算再平衡分析（目標 vs 實際配置）。可透過 display_currency 指定顯示幣別。"""
+    response.headers["Cache-Control"] = (
+        "private, max-age=60, stale-while-revalidate=300"
+    )
     try:
         return calculate_rebalance(
             session, display_currency=display_currency.strip().upper()

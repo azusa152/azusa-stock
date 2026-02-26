@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import apiClient from "@/api/client"
 import type {
   Stock,
@@ -25,7 +25,7 @@ export function useStocks() {
   })
 }
 
-export function useEnrichedStocks() {
+export function useEnrichedStocks({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["stocks", "enriched"],
     queryFn: async () => {
@@ -33,6 +33,7 @@ export function useEnrichedStocks() {
       return data
     },
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 
@@ -69,6 +70,8 @@ export function useRebalance(displayCurrency: string) {
       return data
     },
     staleTime: 60 * 1000,
+    // Keep previous currency's data visible while switching display currency
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -83,7 +86,7 @@ export function useProfile() {
   })
 }
 
-export function useFearGreed() {
+export function useFearGreed({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["market", "fear-greed"],
     queryFn: async () => {
@@ -91,6 +94,7 @@ export function useFearGreed() {
       return data
     },
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 
@@ -118,7 +122,7 @@ export function useTwr() {
   })
 }
 
-export function useGreatMinds() {
+export function useGreatMinds({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["resonance", "great-minds"],
     queryFn: async () => {
@@ -126,6 +130,7 @@ export function useGreatMinds() {
       return data
     },
     staleTime: 24 * 60 * 60 * 1000,
+    enabled,
   })
 }
 

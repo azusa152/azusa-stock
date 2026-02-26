@@ -1,13 +1,17 @@
+import { Skeleton } from "@/components/ui/skeleton"
 import type { FxHistoryPoint } from "@/api/types/fxWatch"
 
 interface Props {
-  data: FxHistoryPoint[]
+  data: FxHistoryPoint[] | undefined
   width?: number
   height?: number
 }
 
 export function FxSparkline({ data, width = 80, height = 32 }: Props) {
-  if (!data || data.length < 2) return null
+  if (data === undefined) {
+    return <Skeleton style={{ width, height }} className="rounded" />
+  }
+  if (data.length < 2) return null
 
   const slice = data.slice(-30)
   const values = slice.map((d) => d.close)

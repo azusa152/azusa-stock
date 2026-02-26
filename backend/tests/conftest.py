@@ -135,8 +135,10 @@ def _clean_tables():
         session.commit()
     # Clear in-memory caches that could contaminate subsequent tests
     from application.portfolio.rebalance_service import invalidate_rebalance_cache
+    from application.stock.stock_service import invalidate_enriched_cache
 
     invalidate_rebalance_cache()
+    invalidate_enriched_cache()
 
 
 # All external service patches — collected as a list to avoid Python's

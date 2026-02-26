@@ -1295,10 +1295,28 @@ def get_exchange_rates(
     """
     批次取得匯率：各 holding_currency → display_currency。
     回傳 dict[holding_currency, rate]，rate 表示 1 單位 holding = ? 單位 display。
+    快取命中時直接回傳；快取未命中時並行發起 yfinance 請求，縮短多幣別場景的等待時間。
     """
-    rates: dict[str, float] = {}
-    for cur in set(holding_currencies):
-        rates[cur] = get_exchange_rate(display_currency, cur)
+    # Exclude display_currency itself — its rate is always 1.0
+    foreign = set(holding_currencies) - {display_currency}
+    rates: dict[str, float] = {display_currency: 1.0}
+    if not foreign:
+        return rates
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=len(foreign)) as executor:
+        futures = {
+            executor.submit(get_exchange_rate, display_currency, cur): cur
+            for cur in foreign
+        }
+        for future in as_completed(futures):
+            cur = futures[future]
+            try:
+                rates[cur] = future.result()
+            except Exception as exc:
+                logger.warning("並行取得匯率失敗（%s）：%s，使用 1.0", cur, exc)
+                rates[cur] = 1.0
     return rates
 
 
@@ -2221,6 +2239,30 @@ def get_ticker_sector_cached(ticker: str) -> str | None:
     if cached is not None:
         return None if cached == _SECTOR_NOT_FOUND else cached
     return None
+
+
+def prewarm_ticker_sector_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> None:
+    """
+    並行預熱多檔股票的行業板塊快取。
+    已有磁碟快取的 ticker 直接跳過，避免不必要的 yfinance 請求。
+    用於 Approach A 前的批次預熱，讓後續逐一查詢可命中快取。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{t}") is None]
+    if not uncached:
+        return
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                logger.warning("預熱 %s sector 失敗：%s", ticker, exc)
 
 
 # ---------------------------------------------------------------------------

@@ -37,5 +37,6 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     prewarm_etf_sector_weights_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
+    prewarm_ticker_sector_batch,
     prime_signals_cache_batch,
 )

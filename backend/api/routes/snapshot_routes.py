@@ -7,7 +7,7 @@ import json
 import threading
 from datetime import UTC, date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlmodel import Session
 
 from api.rate_limit import limiter
@@ -82,6 +82,7 @@ def _run_backfill_background() -> None:
     summary="Get historical portfolio snapshots",
 )
 def list_snapshots(
+    response: Response,
     days: int = Query(default=30, ge=1, le=730, description="回溯天數（1–730）"),
     start: date | None = Query(
         default=None, description="起始日期（YYYY-MM-DD，與 days 互斥）"
@@ -98,6 +99,9 @@ def list_snapshots(
     - 若提供 `start` / `end`，則改用日期區間查詢（優先）。
     - 結果依日期升冪排列（最舊在前）。
     """
+    response.headers["Cache-Control"] = (
+        "private, max-age=300, stale-while-revalidate=3600"
+    )
     if start is not None or end is not None:
         if start is None or end is None:
             raise HTTPException(
