@@ -73,14 +73,16 @@ def _configure_root_logger() -> None:
     root.setLevel(LOG_LEVEL)
 
     formatter = _make_formatter()
-
-    # Attach filter to root so all handlers (present and future) receive request_id
-    root.addFilter(_RequestIdFilter())
+    req_id_filter = _RequestIdFilter()
 
     # --- Console Handler ---
     console_handler = logging.StreamHandler()
     console_handler.setLevel(LOG_LEVEL)
     console_handler.setFormatter(formatter)
+    # Filter must be on the handler, not the root logger. Filters on a logger
+    # only run for records originating from that exact logger; child loggers
+    # propagate records directly to handlers, bypassing the parent's filters.
+    console_handler.addFilter(req_id_filter)
     root.addHandler(console_handler)
 
     # --- File Handler：每日輪替，保留 3 天 ---
@@ -96,6 +98,7 @@ def _configure_root_logger() -> None:
     file_handler.suffix = "%Y-%m-%d"
     file_handler.setLevel(LOG_LEVEL)
     file_handler.setFormatter(formatter)
+    file_handler.addFilter(req_id_filter)
     root.addHandler(file_handler)
 
     # 降低第三方套件的 log 等級以減少雜訊
