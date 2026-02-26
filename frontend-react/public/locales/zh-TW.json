@@ -175,6 +175,23 @@
     "ytd_return": "今年報酬",
     "ytd_dividend": "今年股息",
     "ytd_dividend_actual": "（以實際年初至今配息計算）",
+    "info": {
+      "sentiment_thresholds": "等級閾值（趨勢指標股跌破60日均線的比例）：\n≤10% 強勢多頭 · ≤30% 多頭 · ≤50% 中性 · ≤70% 空頭 · >70% 強勢空頭",
+      "sentiment_no_details": "請執行掃描以查看詳情。",
+      "fear_greed_source_cnn": "來源：CNN 恐懼貪婪指數",
+      "fear_greed_source_self": "來源：自行計算（7項指標）",
+      "fear_greed_source_vix": "來源：VIX 衍生分數",
+      "fear_greed_top": "最強訊號：{{name}}（{{score}}）",
+      "fear_greed_bottom": "最弱訊號：{{name}}（{{score}}）",
+      "health_non_normal": "非正常訊號：",
+      "health_all_normal": "所有追蹤股票均為 NORMAL ✅",
+      "health_overflow": "…另有 {{count}} 支",
+      "dividend_breakdown": "各股明細：",
+      "dividend_qty": "數量",
+      "dividend_dps": "每股股息",
+      "dividend_subtotal": "小計",
+      "dividend_currency_note": "金額為各股本地貨幣（未換匯）"
+    },
     "no_holdings": "無持倉資料。",
     "no_holdings_data": "📭 尚無持倉資料。請先新增持倉以查看分析。",
     "resonance": {

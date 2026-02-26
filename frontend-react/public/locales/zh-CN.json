@@ -175,6 +175,23 @@
     "ytd_return": "今年回报",
     "ytd_dividend": "今年股息",
     "ytd_dividend_actual": "（以实际年初至今配息计算）",
+    "info": {
+      "sentiment_thresholds": "等级阈值（趋势指标股跌破60日均线的比例）：\n≤10% 强势看多 · ≤30% 看多 · ≤50% 中性 · ≤70% 看空 · >70% 强势看空",
+      "sentiment_no_details": "请执行扫描以查看详情。",
+      "fear_greed_source_cnn": "来源：CNN 恐惧与贪婪指数",
+      "fear_greed_source_self": "来源：自行计算（7项指标）",
+      "fear_greed_source_vix": "来源：VIX 衍生分数",
+      "fear_greed_top": "最强信号：{{name}}（{{score}}）",
+      "fear_greed_bottom": "最弱信号：{{name}}（{{score}}）",
+      "health_non_normal": "非正常信号：",
+      "health_all_normal": "所有追踪股票均为 NORMAL ✅",
+      "health_overflow": "…另有 {{count}} 支",
+      "dividend_breakdown": "各股明细：",
+      "dividend_qty": "数量",
+      "dividend_dps": "每股股息",
+      "dividend_subtotal": "小计",
+      "dividend_currency_note": "金额为各股本地货币（未换汇）"
+    },
     "no_holdings": "无持仓资料。",
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
     "resonance": {

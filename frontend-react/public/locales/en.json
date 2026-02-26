@@ -175,6 +175,23 @@
     "ytd_return": "YTD Return",
     "ytd_dividend": "YTD Dividends",
     "ytd_dividend_actual": "(based on actual dividends paid YTD)",
+    "info": {
+      "sentiment_thresholds": "Tier thresholds (% of Trend Setters below 60MA):\n≤10% Strongly Bullish · ≤30% Bullish · ≤50% Neutral · ≤70% Bearish · >70% Strongly Bearish",
+      "sentiment_no_details": "Run a scan to see details.",
+      "fear_greed_source_cnn": "Source: CNN Fear & Greed Index",
+      "fear_greed_source_self": "Source: Self-calculated (7 components)",
+      "fear_greed_source_vix": "Source: VIX-derived score",
+      "fear_greed_top": "Strongest signal: {{name}} ({{score}})",
+      "fear_greed_bottom": "Weakest signal: {{name}} ({{score}})",
+      "health_non_normal": "Non-normal signals:",
+      "health_all_normal": "All tracked stocks are NORMAL ✅",
+      "health_overflow": "…and {{count}} more",
+      "dividend_breakdown": "Per-stock breakdown:",
+      "dividend_qty": "Qty",
+      "dividend_dps": "Div/Sh",
+      "dividend_subtotal": "Subtotal",
+      "dividend_currency_note": "Amounts in each stock's native currency (not FX-converted)"
+    },
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {
