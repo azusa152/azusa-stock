@@ -35,6 +35,7 @@ from application.portfolio.rebalance_service import (  # noqa: F401
     calculate_rebalance,
     calculate_withdrawal,
     check_fx_alerts,
+    invalidate_rebalance_cache,
     send_fx_alerts,
     send_xray_warnings,
 )

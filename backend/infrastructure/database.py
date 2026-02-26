@@ -24,6 +24,7 @@ logger.info("資料庫連線位置：%s", DATABASE_URL)
 def _run_migrations() -> None:
     """執行資料庫遷移：為既有資料表新增缺少的欄位。"""
     from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
 
     migrations = [
         "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
@@ -79,9 +80,10 @@ def _run_migrations() -> None:
             try:
                 conn.execute(text(sql))
                 conn.commit()
-                logger.info("Migration 成功：%s", sql.strip())
-            except Exception:
-                # SQLite 會在欄位已存在時拋出 OperationalError，靜默跳過
+                logger.debug("Migration 成功：%s", sql.strip())
+            except OperationalError:
+                # SQLite 在欄位已存在時（duplicate column name）拋出 OperationalError，
+                # 屬預期的冪等行為，靜默跳過。UPDATE 語句零列更新不會觸發此路徑。
                 conn.rollback()
 
 
@@ -177,6 +179,7 @@ def _encrypt_plaintext_tokens() -> None:
 def _run_smart_money_migrations() -> None:
     """Smart Money Tracker 索引遷移（補充查詢效能所需的 index）。"""
     from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
 
     migrations = [
         "CREATE INDEX IF NOT EXISTS ix_gurufiling_guru_id ON gurufiling (guru_id);",
@@ -190,8 +193,8 @@ def _run_smart_money_migrations() -> None:
             try:
                 conn.execute(text(sql))
                 conn.commit()
-                logger.info("Smart Money 索引遷移成功：%s", sql.strip())
-            except Exception:
+                logger.debug("Smart Money 索引遷移成功：%s", sql.strip())
+            except OperationalError:
                 conn.rollback()
 
 
@@ -204,13 +207,20 @@ def _backfill_signal_since() -> None:
     from domain.enums import ScanSignal
 
     with Session(engine) as session:
-        stocks = session.exec(select(Stock)).all()
+        # 先快速查詢是否有任何需要回填的股票，避免每次啟動都進行完整掃描
+        candidates = session.exec(
+            select(Stock).where(
+                Stock.signal_since.is_(None),  # type: ignore[union-attr]
+                Stock.last_scan_signal != ScanSignal.NORMAL.value,
+            )
+        ).all()
+
+        if not candidates:
+            logger.debug("signal_since 無需回填。")
+            return
+
         updated = 0
-        for stock in stocks:
-            if stock.signal_since is not None:
-                continue
-            if stock.last_scan_signal == ScanSignal.NORMAL.value:
-                continue
+        for stock in candidates:
             # Walk ScanLog backwards to find how far back this signal streak goes
             logs = (
                 session.exec(
@@ -243,25 +253,15 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
     logger.info("資料表就緒。")
 
-    logger.info("執行資料庫遷移...")
     _run_migrations()
-    logger.info("遷移完成。")
-
-    logger.info("執行 Smart Money 索引遷移...")
     _run_smart_money_migrations()
-    logger.info("Smart Money 索引遷移完成。")
 
     logger.info("載入系統人格範本...")
     _load_system_personas()
     logger.info("人格範本就緒。")
 
-    logger.info("執行 Token 加密遷移...")
     _encrypt_plaintext_tokens()
-    logger.info("Token 加密遷移完成。")
-
-    logger.info("回填 signal_since...")
     _backfill_signal_since()
-    logger.info("signal_since 回填完成。")
 
 
 def get_session() -> Generator[Session, None, None]:

@@ -149,14 +149,22 @@ def backfill_guru_filings(
     # 升冪排序，讓舊季先同步，diff 鏈方向正確
     in_window.sort(key=lambda f: f["report_date"])
 
-    synced = skipped = errors = 0
-    for edgar_filing in in_window:
+    # 批次查詢已同步的 accession numbers（避免 N 次個別 DB 查詢）
+    existing_filings = find_filings_by_guru(
+        session, guru.id, limit=GURU_BACKFILL_FILING_COUNT
+    )
+    existing_accessions = {f.accession_number for f in existing_filings}
+    new_filings = [
+        f for f in in_window if f["accession_number"] not in existing_accessions
+    ]
+    skipped = len(in_window) - len(new_filings)
+
+    synced = errors = 0
+    for edgar_filing in new_filings:
         try:
             result = _sync_single_filing(session, guru, edgar_filing)
             if result["status"] == "synced":
                 synced += 1
-            elif result["status"] == "skipped":
-                skipped += 1
             else:
                 errors += 1
         except Exception as exc:
@@ -454,7 +462,7 @@ def _sync_single_filing(session: Session, guru: Guru, edgar_filing_dict: dict) -
 
     # 冪等檢查
     if find_filing_by_accession(session, accession_number) is not None:
-        logger.info(
+        logger.debug(
             "13F 申報已存在，跳過同步：%s %s", guru.display_name, accession_number
         )
         return {

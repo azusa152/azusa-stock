@@ -3,8 +3,10 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 """
 
 import json as _json
+import threading
 from datetime import UTC, datetime
 
+from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from application.stock.stock_service import StockNotFoundError
@@ -48,6 +50,18 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# 再平衡計算結果的短效快取（TTL 60 秒，key = (display_currency, lang)）。
+# 避免同一時間多個前端請求（Dashboard + Allocation + 快照觸發）重複執行完整計算。
+_REBALANCE_CACHE_TTL = 60
+_rebalance_cache: TTLCache = TTLCache(maxsize=10, ttl=_REBALANCE_CACHE_TTL)
+_rebalance_cache_lock = threading.Lock()
+
+
+def invalidate_rebalance_cache() -> None:
+    """主動清除再平衡快取（持倉變動後呼叫）。"""
+    with _rebalance_cache_lock:
+        _rebalance_cache.clear()
 
 
 # ===========================================================================
@@ -155,8 +169,18 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     3. 取得匯率，將所有持倉轉換為 display_currency
     4. 對非現金持倉查詢即時價格
     5. 委託 domain.rebalance 純函式計算偏移與建議
+
+    結果以 (display_currency, lang) 為 key 快取 60 秒，避免短時間內重複計算。
+    快取命中時更新 calculated_at 為當前時間，避免回傳過期的計算時間戳。
     """
     lang = get_user_language(session)
+    _cache_key = (display_currency, lang)
+
+    with _rebalance_cache_lock:
+        cached = _rebalance_cache.get(_cache_key)
+        if cached is not None:
+            logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
+            return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
 
     # 1) 取得目標配置
     profile = session.exec(
@@ -219,7 +243,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     total_value_change = round(total_value - previous_total_value, 2)
     total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
 
-    logger.info(
+    logger.debug(
         "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
         previous_total_value,
         total_value,
@@ -462,6 +486,9 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     ]
 
     result["calculated_at"] = datetime.now(UTC).isoformat()
+
+    with _rebalance_cache_lock:
+        _rebalance_cache[_cache_key] = result
 
     return result
 

@@ -28,6 +28,7 @@ from application.services import (
     calculate_rebalance,
     calculate_stress_test,
     calculate_withdrawal,
+    invalidate_rebalance_cache,
     send_fx_alerts,
     send_xray_warnings,
 )
@@ -61,9 +62,11 @@ def create_holding(
 ) -> HoldingResponse:
     """新增持倉。"""
     lang = get_user_language(session)
-    return HoldingResponse(
+    result = HoldingResponse(
         **holding_service.create_holding(session, payload.model_dump(), lang)
     )
+    invalidate_rebalance_cache()
+    return result
 
 
 @router.post(
@@ -75,9 +78,11 @@ def create_cash_holding(
 ) -> HoldingResponse:
     """新增現金持倉（簡化入口）。"""
     lang = get_user_language(session)
-    return HoldingResponse(
+    result = HoldingResponse(
         **holding_service.create_cash_holding(session, payload.model_dump(), lang)
     )
+    invalidate_rebalance_cache()
+    return result
 
 
 @router.put(
@@ -90,11 +95,13 @@ def update_holding(
 ) -> HoldingResponse:
     """更新持倉（部分更新）。"""
     lang = get_user_language(session)
-    return HoldingResponse(
+    result = HoldingResponse(
         **holding_service.update_holding(
             session, holding_id, payload.model_dump(exclude_unset=True), lang
         )
     )
+    invalidate_rebalance_cache()
+    return result
 
 
 @router.delete(
@@ -106,7 +113,9 @@ def delete_holding(
 ) -> dict:
     """刪除持倉。"""
     lang = get_user_language(session)
-    return holding_service.delete_holding(session, holding_id, lang)
+    result = holding_service.delete_holding(session, holding_id, lang)
+    invalidate_rebalance_cache()
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +147,11 @@ def import_holdings(
     - quantity 必須大於 0
     """
     lang = get_user_language(session)
-    return holding_service.import_holdings(
+    result = holding_service.import_holdings(
         session, [item.model_dump() for item in data], lang
     )
+    invalidate_rebalance_cache()
+    return result
 
 
 # ---------------------------------------------------------------------------

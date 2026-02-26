@@ -25,6 +25,9 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
+# 防止快照背景執行緒重疊觸發
+_snapshot_running = threading.Lock()
+
 
 def _to_response(snap: PortfolioSnapshot) -> SnapshotResponse:
     """Convert a PortfolioSnapshot entity to the public API response schema."""
@@ -47,7 +50,10 @@ def _to_response(snap: PortfolioSnapshot) -> SnapshotResponse:
 
 
 def _run_snapshot_background() -> None:
-    """在背景執行緒中建立快照（自建 DB Session）。"""
+    """在背景執行緒中建立快照（自建 DB Session）。防止並發重疊執行。"""
+    if not _snapshot_running.acquire(blocking=False):
+        logger.debug("快照背景執行緒已在運行，跳過重複觸發。")
+        return
     try:
         from application.portfolio.snapshot_service import take_daily_snapshot
 
@@ -55,6 +61,8 @@ def _run_snapshot_background() -> None:
             take_daily_snapshot(session)
     except Exception as exc:
         logger.error("背景快照建立失敗：%s", exc, exc_info=True)
+    finally:
+        _snapshot_running.release()
 
 
 def _run_backfill_background() -> None:

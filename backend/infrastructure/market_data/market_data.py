@@ -496,13 +496,14 @@ def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
 def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
     """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。
     pre_fetched_hist: 若提供，略過 _yf_history 呼叫，直接使用此 DataFrame（批次掃描優化路徑）。
-    機構持倉仍需個別 Ticker 呼叫（best-effort）。
+    機構持倉在批次預熱路徑中跳過（省去每檔一次額外的限流 API 呼叫），待首次 cache miss 時再補抓。
     """
     try:
         if pre_fetched_hist is not None:
             hist = pre_fetched_hist
-            _rate_limiter.wait()
-            stock = yf.Ticker(ticker, session=_get_session())
+            stock = (
+                None  # 批次預熱路徑：跳過 yf.Ticker()，機構持倉留待 cache miss 時再取
+            )
         else:
             stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
 
@@ -561,35 +562,36 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
             volume_ratio,
         )
 
-        # 機構持倉 (best-effort，失敗不影響整體回傳)
+        # 機構持倉 (best-effort；批次預熱路徑 stock=None 故跳過，待首次 cache miss 時再補抓)
         institutional_holders = None
-        try:
-            _rate_limiter.wait()
-            holders_df = stock.institutional_holders
-            if holders_df is not None and not holders_df.empty:
-                top5 = holders_df.head(INSTITUTIONAL_HOLDERS_TOP_N)
-                institutional_holders = []
-                for _, row in top5.iterrows():
-                    holder_entry = {}
-                    for col in top5.columns:
-                        val = row[col]
-                        # 將 Timestamp / NaT 等轉為字串
-                        if hasattr(val, "isoformat"):
-                            holder_entry[col] = val.isoformat()[:10]
-                        elif val is None or (
-                            hasattr(val, "item") and str(val) == "NaT"
-                        ):
-                            holder_entry[col] = "N/A"
-                        else:
-                            holder_entry[col] = (
-                                val if not hasattr(val, "item") else val.item()
-                            )
-                    institutional_holders.append(holder_entry)
-                logger.debug(
-                    "%s 機構持倉：取得 %d 筆", ticker, len(institutional_holders)
-                )
-        except Exception as holder_err:
-            logger.debug("%s 機構持倉取得失敗（非致命）：%s", ticker, holder_err)
+        if stock is not None:
+            try:
+                _rate_limiter.wait()
+                holders_df = stock.institutional_holders
+                if holders_df is not None and not holders_df.empty:
+                    top5 = holders_df.head(INSTITUTIONAL_HOLDERS_TOP_N)
+                    institutional_holders = []
+                    for _, row in top5.iterrows():
+                        holder_entry = {}
+                        for col in top5.columns:
+                            val = row[col]
+                            # 將 Timestamp / NaT 等轉為字串
+                            if hasattr(val, "isoformat"):
+                                holder_entry[col] = val.isoformat()[:10]
+                            elif val is None or (
+                                hasattr(val, "item") and str(val) == "NaT"
+                            ):
+                                holder_entry[col] = "N/A"
+                            else:
+                                holder_entry[col] = (
+                                    val if not hasattr(val, "item") else val.item()
+                                )
+                        institutional_holders.append(holder_entry)
+                    logger.debug(
+                        "%s 機構持倉：取得 %d 筆", ticker, len(institutional_holders)
+                    )
+            except Exception as holder_err:
+                logger.debug("%s 機構持倉取得失敗（非致命）：%s", ticker, holder_err)
 
         raw_signals = {
             "ticker": ticker,
@@ -681,23 +683,26 @@ def prime_signals_cache_batch(
     max_workers: int = SCAN_THREAD_POOL_SIZE,
 ) -> int:
     """
-    從批次下載的歷史資料預熱訊號 L1+L2 快取。
+    從批次下載的歷史資料預熱訊號 L1 快取（僅寫入記憶體，不寫入 L2 磁碟）。
+    預熱路徑結果缺少 institutional_holders；寫入 L2 會讓不完整資料持續 1 小時。
+    L1 過期（5 分鐘）後首次 cache miss 會走正常路徑，補完所有欄位並寫入 L2。
     跳過已在 L1 快取中的 ticker。
-    回傳成功預熱的股票數量。
+    回傳成功預熱的股票數量（不含已在快取中的）。
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    def _prime_one(ticker: str, hist) -> bool:
+    def _prime_one(ticker: str, hist) -> str:
+        """回傳 'primed' | 'cached' | 'failed'。"""
         if _signals_cache.get(ticker) is not None:
             logger.debug("%s 訊號已在 L1 快取，略過預熱。", ticker)
-            return False
+            return "cached"
         result = _fetch_signals_from_yf(ticker, pre_fetched_hist=hist)
         _signals_cache[ticker] = result
-        if not _is_error_dict(result):
-            _disk_set(f"{DISK_KEY_SIGNALS}:{ticker}", result, DISK_SIGNALS_TTL)
-        return True
+        # 預熱路徑刻意不寫入 L2 磁碟快取：結果缺少 institutional_holders（需額外 API 呼叫）。
+        # L1 過期（5 分鐘）後首次 cache miss 會走正常路徑，補完所有欄位並寫入 L2。
+        return "primed"
 
-    primed = 0
+    primed = already_cached = 0
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_prime_one, ticker, hist): ticker
@@ -706,11 +711,19 @@ def prime_signals_cache_batch(
         for future in as_completed(futures):
             ticker = futures[future]
             try:
-                if future.result():
+                outcome = future.result()
+                if outcome == "primed":
                     primed += 1
+                elif outcome == "cached":
+                    already_cached += 1
             except Exception as e:
                 logger.warning("預熱 %s 訊號快取失敗：%s", ticker, e)
-    logger.info("訊號快取預熱完成：%d/%d 檔股票。", primed, len(ticker_hist_map))
+    logger.info(
+        "訊號快取預熱完成：%d 新增，%d 已在快取，共 %d 檔。",
+        primed,
+        already_cached,
+        len(ticker_hist_map),
+    )
     return primed
 
 

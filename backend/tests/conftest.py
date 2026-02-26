@@ -133,6 +133,10 @@ def _clean_tables():
         for table in reversed(SQLModel.metadata.sorted_tables):
             session.exec(table.delete())  # type: ignore[arg-type]
         session.commit()
+    # Clear in-memory caches that could contaminate subsequent tests
+    from application.portfolio.rebalance_service import invalidate_rebalance_cache
+
+    invalidate_rebalance_cache()
 
 
 # All external service patches — collected as a list to avoid Python's

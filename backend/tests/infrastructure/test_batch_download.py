@@ -201,11 +201,18 @@ class TestPrimeSignalsCacheBatchSkip:
 
 
 class TestPrimeSignalsCacheBatchWrite:
-    """prime_signals_cache_batch should write successful results to L1 and L2."""
+    """prime_signals_cache_batch should write successful results to L1 only (not L2).
+
+    Prewarm results intentionally omit institutional_holders (no extra yf.Ticker() call).
+    Writing to L2 (1hr TTL) would lock in that incomplete data. Instead, only L1 (5min)
+    is warmed; the first L1 miss after expiry triggers a full fetch that populates L2.
+    """
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
-    def test_should_write_success_result_to_l1_and_l2(self, mock_fetch, mock_disk_set):
+    def test_should_write_success_result_to_l1_only_not_l2(
+        self, mock_fetch, mock_disk_set
+    ):
         # Arrange — L1 empty, fetcher returns valid signals
         signals = {"ticker": "AAPL", "price": 200.0, "rsi": 55.0}
         mock_fetch.return_value = signals
@@ -216,12 +223,10 @@ class TestPrimeSignalsCacheBatchWrite:
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
-        # Assert
+        # Assert — L1 is warmed, L2 (disk) is intentionally NOT written during prewarm
         assert primed == 1
         assert l1.get("AAPL") == signals
-        mock_disk_set.assert_called_once()
-        key_arg = mock_disk_set.call_args[0][0]
-        assert "AAPL" in key_arg
+        mock_disk_set.assert_not_called()
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")

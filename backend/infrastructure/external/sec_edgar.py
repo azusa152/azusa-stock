@@ -217,7 +217,7 @@ def fetch_company_filings(cik: str) -> dict:
         result = _http_get_json(url)
         _filing_cache[cik] = result
         _disk_set(disk_key, result, DISK_GURU_FILING_TTL)
-        logger.info("EDGAR submissions 已取得並快取：CIK=%s", cik)
+        logger.debug("EDGAR submissions 已取得並快取：CIK=%s", cik)
         return result
     except Exception as exc:
         logger.warning("EDGAR submissions 取得失敗：CIK=%s, error=%s", cik, exc)
@@ -270,7 +270,7 @@ def get_latest_13f_filings(cik: str, count: int = 2) -> list[dict]:
                 if len(results) >= count:
                     break
 
-        logger.info("EDGAR 13F-HR 申報索引取得：CIK=%s, 共 %d 筆", cik, len(results))
+        logger.debug("EDGAR 13F-HR 申報索引取得：CIK=%s, 共 %d 筆", cik, len(results))
         return results
 
     except Exception as exc:

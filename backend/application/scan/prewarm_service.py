@@ -99,9 +99,17 @@ def prewarm_all_caches() -> None:
     _prewarm_phase("signals", lambda: _batch_prewarm_signals(tickers["signals"]))
 
     # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
+    # moat 預熱使用 4 個工作執行緒（預設 SCAN_THREAD_POOL_SIZE=2 限制吞吐量；
+    # 提高並行度讓執行緒在全域限流器釋放時立即接手，縮短整體等待時間）
+    _MOAT_PREWARM_WORKERS = 4
     parallel_phases: list[tuple[str, object]] = [
         ("fear_greed", get_fear_greed_index),
-        ("moat", lambda: prewarm_moat_batch(tickers["moat"])),
+        (
+            "moat",
+            lambda: prewarm_moat_batch(
+                tickers["moat"], max_workers=_MOAT_PREWARM_WORKERS
+            ),
+        ),
         ("guru_backfill", _backfill_all_gurus),
     ]
     if tickers["etf"]:
