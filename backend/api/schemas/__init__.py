@@ -87,6 +87,7 @@ from api.schemas.scan import (  # noqa: F401
     CNNFearGreedData,
     DividendResponse,
     EarningsResponse,
+    FearGreedComponent,
     FearGreedResponse,
     LastScanResponse,
     MoatResponse,

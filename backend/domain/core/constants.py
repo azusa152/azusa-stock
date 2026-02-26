@@ -263,6 +263,69 @@ FEAR_GREED_CACHE_TTL = 1800  # L1: 30 minutes
 DISK_FEAR_GREED_TTL = 7200  # L2: 2 hours
 
 # ---------------------------------------------------------------------------
+# Self-Calculated Fear & Greed Index — 7-Component Weighted Composite
+# Modeled after OnOff.Markets' transparent methodology (https://onoff.markets)
+# ---------------------------------------------------------------------------
+
+# ETF tickers for component data (all available via yfinance)
+FG_SPY_TICKER = "SPY"  # S&P 500 (price strength, momentum, breadth base)
+FG_TLT_TICKER = "TLT"  # 20+ Year Treasury (safe haven, junk bond baseline)
+FG_HYG_TICKER = "HYG"  # High Yield Corporate Bond (junk bond demand)
+FG_RSP_TICKER = "RSP"  # Equal-Weight S&P 500 (market breadth)
+FG_QQQ_TICKER = "QQQ"  # Nasdaq-100 (sector rotation — growth/tech)
+FG_XLP_TICKER = "XLP"  # Consumer Staples (sector rotation — defensive)
+
+# Lookback period for return-based components (days)
+FG_LOOKBACK_DAYS = 14
+
+# MA window for momentum component
+FG_MA_WINDOW = 50
+
+# Component weights (must sum to 1.0)
+FG_COMPONENT_WEIGHTS: dict[str, float] = {
+    "price_strength": 0.20,
+    "vix": 0.20,
+    "momentum": 0.15,
+    "breadth": 0.15,
+    "junk_bond": 0.10,
+    "safe_haven": 0.10,
+    "sector_rotation": 0.10,
+}
+
+# VIX continuous linear formula: score = FG_VIX_BASE - (vix - FG_VIX_OFFSET) * FG_VIX_SLOPE
+# VIX 10 → 90, VIX 20 → 58, VIX 30 → 26, VIX 38+ → 0
+FG_VIX_BASE: float = 90.0
+FG_VIX_OFFSET: float = 10.0
+FG_VIX_SLOPE: float = 3.2
+
+# Price strength multiplier: score = 50 + return_pct * FG_PRICE_STRENGTH_MULT
+# Saturates at ±6.25% (score 0 or 100)
+FG_PRICE_STRENGTH_MULT: float = 8.0
+
+# Momentum MA50 component multiplier: score = 50 + deviation_pct * FG_MOMENTUM_MA_MULT
+# Saturates at ±10% deviation from MA50
+FG_MOMENTUM_MA_MULT: float = 5.0
+
+# Market breadth multiplier: score = 50 + (rsp_ret - spy_ret) * FG_BREADTH_MULT
+# Saturates at ±2.78% divergence
+FG_BREADTH_MULT: float = 18.0
+
+# Junk bond demand multiplier: score = 50 + (hyg_ret - tlt_ret) * FG_JUNK_BOND_MULT
+# Saturates at ±10% divergence
+FG_JUNK_BOND_MULT: float = 5.0
+
+# Safe haven demand multiplier (TLT inverted): score = 50 - tlt_ret * FG_SAFE_HAVEN_MULT
+# Saturates at ±10% TLT move
+FG_SAFE_HAVEN_MULT: float = 5.0
+
+# Sector rotation multiplier: score = 50 + (qqq_ret - xlp_ret) * FG_SECTOR_ROTATION_MULT
+# Saturates at ±10% divergence
+FG_SECTOR_ROTATION_MULT: float = 5.0
+
+# RSI weight within momentum composite (remainder goes to MA50 position)
+FG_MOMENTUM_RSI_WEIGHT: float = 0.70
+
+# ---------------------------------------------------------------------------
 # Disk Cache Key Prefixes
 # ---------------------------------------------------------------------------
 DISK_KEY_SIGNALS = "signals"
@@ -615,6 +678,8 @@ DISK_JQUANTS_FINANCIALS_TTL = 604800  # 7 days
 # JP Market Sentiment (Nikkei VI)
 # ---------------------------------------------------------------------------
 NIKKEI_VI_TICKER = "^JNV"  # Nikkei Volatility Index on yfinance
+
+# Legacy threshold constants (kept for backward compat / test references)
 NIKKEI_VI_EXTREME_FEAR = 35  # Nikkei VI > 35 → 極度恐懼
 NIKKEI_VI_FEAR = 25  # Nikkei VI 25–35 → 恐懼
 NIKKEI_VI_NEUTRAL_HIGH = 25  # Nikkei VI 18–25 → 中性
@@ -622,12 +687,26 @@ NIKKEI_VI_NEUTRAL_LOW = 18
 NIKKEI_VI_GREED = 14  # Nikkei VI 14–18 → 貪婪
 # Nikkei VI < 14 → 極度貪婪
 
+# Continuous linear formula: score = JP_VI_BASE - (nikkei_vi - JP_VI_OFFSET) * JP_VI_SLOPE
+# NKV 12 → ~90, NKV 20 → ~58, NKV 35 → ~10
+JP_VI_BASE: float = 90.0
+JP_VI_OFFSET: float = 12.0
+JP_VI_SLOPE: float = 3.5
+
 # ---------------------------------------------------------------------------
 # TW Market Sentiment (^TWII Realized Volatility)
 # ---------------------------------------------------------------------------
 TWII_TICKER = "^TWII"  # TAIEX Weighted Index on yfinance
+
+# Legacy threshold constants (kept for backward compat / test references)
 TWII_VOL_EXTREME_FEAR = 30  # annualized vol > 30% → 極度恐懼
 TWII_VOL_FEAR = 22  # annualized vol 22–30% → 恐懼
 TWII_VOL_NEUTRAL_LOW = 15  # annualized vol 15–22% → 中性
 TWII_VOL_GREED = 10  # annualized vol 10–15% → 貪婪
 # annualized vol < 10% → 極度貪婪
+
+# Continuous linear formula: score = TW_VOL_BASE - (vol_pct - TW_VOL_OFFSET) * TW_VOL_SLOPE
+# vol 8% → ~90, vol 18% → ~55, vol 30% → ~13
+TW_VOL_BASE: float = 90.0
+TW_VOL_OFFSET: float = 8.0
+TW_VOL_SLOPE: float = 3.5

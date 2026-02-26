@@ -1750,7 +1750,7 @@
     "/market/fear-greed": {
       "get": {
         "summary": "Fear & Greed Index",
-        "description": "\u53d6\u5f97\u6050\u61fc\u8207\u8caa\u5a6a\u6307\u6578\uff08VIX + CNN Fear & Greed \u7d9c\u5408\u5206\u6790\uff09\u3002",
+        "description": "\u53d6\u5f97\u6050\u61fc\u8207\u8caa\u5a6a\u6307\u6578\uff08VIX + CNN Fear & Greed + 7 \u9805\u81ea\u8a08\u7b97\u6307\u6a19\u7d9c\u5408\u5206\u6790\uff09\u3002",
         "operationId": "get_fear_greed_market_fear_greed_get",
         "parameters": [
           {
@@ -5726,6 +5726,36 @@
         "title": "FXWatchUpdateRequest",
         "description": "PATCH /fx-watch/{id} \u8acb\u6c42 Body\uff1a\u66f4\u65b0\u5916\u532f\u76e3\u63a7\u914d\u7f6e\u3002"
       },
+      "FearGreedComponent": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "weight"
+        ],
+        "title": "FearGreedComponent",
+        "description": "Self-calculated Fear & Greed component score."
+      },
       "FearGreedResponse": {
         "properties": {
           "composite_score": {
@@ -5742,6 +5772,25 @@
             "type": "string",
             "title": "Composite Label",
             "default": ""
+          },
+          "self_calculated_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Calculated Score"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/FearGreedComponent"
+            },
+            "type": "array",
+            "title": "Components",
+            "default": []
           },
           "vix": {
             "anyOf": [

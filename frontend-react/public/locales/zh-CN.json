@@ -70,7 +70,16 @@
       "greed": "🤑 贪婪",
       "extreme_greed": "🤯 极度贪婪",
       "na": "⏳ 无数据",
-      "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX"
+      "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX",
+      "components": {
+        "price_strength": "股价强度",
+        "vix": "波动率 (VIX)",
+        "momentum": "动能",
+        "breadth": "市场广度",
+        "junk_bond": "垃圾债需求",
+        "safe_haven": "避险需求",
+        "sector_rotation": "板块轮动"
+      }
     },
     "fx_period": {
       "1month": "1 个月",

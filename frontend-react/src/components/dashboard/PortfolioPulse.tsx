@@ -133,6 +133,57 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
   )
 }
 
+function scoreToColor(score: number): string {
+  if (!Number.isFinite(score)) return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
+  const clamped = Math.max(0, Math.min(100, score))
+  for (const band of FEAR_GREED_BANDS) {
+    if (clamped >= band.range[0] && clamped <= band.range[1]) return band.color
+  }
+  return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
+}
+
+interface ComponentBarsProps {
+  components: FearGreedResponse["components"]
+}
+
+function FearGreedComponentBars({ components }: ComponentBarsProps) {
+  const { t } = useTranslation()
+  if (!components || components.length === 0) return null
+
+  return (
+    <div className="mt-2 space-y-1">
+      {components.map((c) => {
+        const score = c.score
+        const label = t(`config.fear_greed.components.${c.name}`, { defaultValue: c.name })
+        const weightPct = Math.round(c.weight * 100)
+        return (
+          <div key={c.name} className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-right text-[10px] text-muted-foreground leading-none">
+              {label}
+            </span>
+            <div className="relative flex-1 h-2 rounded-full overflow-hidden bg-muted/40">
+              {score != null ? (
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full transition-all"
+                  style={{ width: `${score}%`, backgroundColor: scoreToColor(score) }}
+                />
+              ) : (
+                <div className="absolute left-0 top-0 h-full w-full bg-muted/20" />
+              )}
+            </div>
+            <span className="w-7 shrink-0 text-[10px] text-muted-foreground tabular-nums">
+              {score != null ? score : "–"}
+            </span>
+            <span className="w-7 shrink-0 text-[10px] text-muted-foreground/50 tabular-nums">
+              {weightPct}%
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
   const { recent, isUp } = useMemo(() => {
     const cutoff = new Date()
@@ -301,6 +352,9 @@ export function PortfolioPulse({
                 {vixVal != null && " ｜ "}
                 {cnnScore != null ? `CNN=${cnnScore}` : t("config.fear_greed.cnn_unavailable")}
               </p>
+              {fearGreed.components && fearGreed.components.length > 0 && (
+                <FearGreedComponentBars components={fearGreed.components} />
+              )}
             </>
           ) : (
             <p className="text-center text-muted-foreground text-sm">N/A</p>

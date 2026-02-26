@@ -89,6 +89,16 @@ MOCK_MOAT = {
 MOCK_FEAR_GREED = {
     "composite_score": 38,  # CNN-primary: equals CNN mock score directly
     "composite_level": "FEAR",
+    "self_calculated_score": 42,
+    "components": {
+        "price_strength": 40,
+        "vix": 45,
+        "momentum": 38,
+        "breadth": 48,
+        "junk_bond": 44,
+        "safe_haven": 36,
+        "sector_rotation": 42,
+    },
     "vix": {
         "value": 22.5,
         "change_1d": 1.2,

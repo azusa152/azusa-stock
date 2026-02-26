@@ -26,6 +26,7 @@ from tenacity import (
 )
 
 from domain.analysis import (
+    classify_cnn_fear_greed,
     classify_vix,
     compute_bias,
     compute_composite_fear_greed,
@@ -33,8 +34,18 @@ from domain.analysis import (
     compute_moving_average,
     compute_rsi,
     compute_volume_ratio,
+    compute_weighted_fear_greed,
     determine_market_sentiment,
     determine_moat_status,
+    score_breadth,
+    score_junk_bond_demand,
+    score_momentum_composite,
+    score_nikkei_vi_linear,
+    score_price_strength,
+    score_safe_haven,
+    score_sector_rotation,
+    score_tw_vol_linear,
+    score_vix_linear,
 )
 from domain.constants import (
     BETA_CACHE_MAXSIZE,
@@ -84,6 +95,14 @@ from domain.constants import (
     ETF_TOP_N,
     FEAR_GREED_CACHE_MAXSIZE,
     FEAR_GREED_CACHE_TTL,
+    FG_HYG_TICKER,
+    FG_LOOKBACK_DAYS,
+    FG_MA_WINDOW,
+    FG_QQQ_TICKER,
+    FG_RSP_TICKER,
+    FG_SPY_TICKER,
+    FG_TLT_TICKER,
+    FG_XLP_TICKER,
     FOREX_CACHE_MAXSIZE,
     FOREX_CACHE_TTL,
     FOREX_HISTORY_CACHE_MAXSIZE,
@@ -100,10 +119,6 @@ from domain.constants import (
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
-    NIKKEI_VI_EXTREME_FEAR,
-    NIKKEI_VI_FEAR,
-    NIKKEI_VI_GREED,
-    NIKKEI_VI_NEUTRAL_LOW,
     NIKKEI_VI_TICKER,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
@@ -115,10 +130,6 @@ from domain.constants import (
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
     TWII_TICKER,
-    TWII_VOL_EXTREME_FEAR,
-    TWII_VOL_FEAR,
-    TWII_VOL_GREED,
-    TWII_VOL_NEUTRAL_LOW,
     VIX_HISTORY_PERIOD,
     VIX_TICKER,
     YFINANCE_HISTORY_PERIOD,
@@ -1739,22 +1750,136 @@ def get_cnn_fear_greed() -> dict | None:
         return None
 
 
+@_yf_retry
+def _fetch_fg_component_history(ticker: str) -> list[float] | None:
+    """
+    Fetch recent close prices for a Fear & Greed component ticker.
+    Returns a list of floats (ascending date order) or None on failure.
+    Needs enough history for the lookback period + MA window.
+    Decorated with @_yf_retry for resilience against transient network errors.
+    """
+    hist = _yf_history_short(ticker, "3mo")
+    if hist is None or hist.empty:
+        raise OSError(f"FG component {ticker}: yfinance returned empty history")
+    closes = hist["Close"].dropna().tolist()
+    if not closes:
+        raise OSError(f"FG component {ticker}: no usable close prices")
+    return [float(c) for c in closes]
+
+
+def _fetch_fg_component_history_safe(ticker: str) -> list[float] | None:
+    """Wrapper that catches all errors from _fetch_fg_component_history."""
+    try:
+        return _fetch_fg_component_history(ticker)
+    except Exception as e:
+        logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
+        return None
+
+
 def _fetch_fear_greed(_key: str) -> dict:
     """
-    綜合 VIX 與 CNN Fear & Greed 資料（供 _cached_fetch 使用）。
+    綜合 VIX、CNN Fear & Greed 及 7 項自計算指標（供 _cached_fetch 使用）。
     _key 固定為 "composite"。
+
+    計算流程：
+    1. 取得 VIX（現有）與 CNN（現有）
+    2. 並行取得 6 個 ETF 的近期收盤價（SPY, TLT, HYG, RSP, QQQ, XLP）
+    3. 計算 7 項組件分數（各 0–100）
+    4. 加權平均得自計算分數
+    5. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
     """
+    import concurrent.futures
+
     vix_data = get_vix_data()
     cnn_data = get_cnn_fear_greed()
-
     vix_value = vix_data.get("value")
     cnn_score = cnn_data.get("score") if cnn_data else None
 
-    level, composite_score = compute_composite_fear_greed(vix_value, cnn_score)
+    # Fetch price histories for all 6 component ETFs in parallel
+    _fg_tickers = [
+        FG_SPY_TICKER,
+        FG_TLT_TICKER,
+        FG_HYG_TICKER,
+        FG_RSP_TICKER,
+        FG_QQQ_TICKER,
+        FG_XLP_TICKER,
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {
+            ticker: pool.submit(_fetch_fg_component_history_safe, ticker)
+            for ticker in _fg_tickers
+        }
+        results = {ticker: f.result() for ticker, f in futures.items()}
+
+    spy_prices = results[FG_SPY_TICKER]
+    tlt_prices = results[FG_TLT_TICKER]
+    hyg_prices = results[FG_HYG_TICKER]
+    rsp_prices = results[FG_RSP_TICKER]
+    qqq_prices = results[FG_QQQ_TICKER]
+    xlp_prices = results[FG_XLP_TICKER]
+
+    # Score each component (None = data unavailable)
+    comp_vix = score_vix_linear(vix_value) if vix_value is not None else None
+    comp_price_strength = (
+        score_price_strength(spy_prices, FG_LOOKBACK_DAYS) if spy_prices else None
+    )
+    comp_momentum = (
+        score_momentum_composite(spy_prices, ma_window=FG_MA_WINDOW)
+        if spy_prices
+        else None
+    )
+    comp_breadth = (
+        score_breadth(rsp_prices, spy_prices, FG_LOOKBACK_DAYS)
+        if rsp_prices and spy_prices
+        else None
+    )
+    comp_junk_bond = (
+        score_junk_bond_demand(hyg_prices, tlt_prices, FG_LOOKBACK_DAYS)
+        if hyg_prices and tlt_prices
+        else None
+    )
+    comp_safe_haven = (
+        score_safe_haven(tlt_prices, FG_LOOKBACK_DAYS) if tlt_prices else None
+    )
+    comp_sector = (
+        score_sector_rotation(qqq_prices, xlp_prices, FG_LOOKBACK_DAYS)
+        if qqq_prices and xlp_prices
+        else None
+    )
+
+    components = {
+        "price_strength": comp_price_strength,
+        "vix": comp_vix,
+        "momentum": comp_momentum,
+        "breadth": comp_breadth,
+        "junk_bond": comp_junk_bond,
+        "safe_haven": comp_safe_haven,
+        "sector_rotation": comp_sector,
+    }
+
+    _level, self_calculated_score_val = compute_weighted_fear_greed(components)
+    self_calc = (
+        self_calculated_score_val if _level != FearGreedLevel.NOT_AVAILABLE else None
+    )
+
+    level, composite_score = compute_composite_fear_greed(
+        vix_value, cnn_score, self_calc
+    )
+
+    logger.info(
+        "Fear & Greed — composite=%d（%s）cnn=%s self=%s vix=%s",
+        composite_score,
+        level.value,
+        cnn_score,
+        self_calc,
+        vix_value,
+    )
 
     return {
         "composite_score": composite_score,
         "composite_level": level.value,
+        "self_calculated_score": self_calc,
+        "components": components,
         "vix": vix_data,
         "cnn": cnn_data,
         "fetched_at": datetime.now(UTC).isoformat(),
@@ -1788,7 +1913,8 @@ def get_fear_greed_index() -> dict:
 def get_jp_volatility_index() -> dict | None:
     """
     Fetch Nikkei VI as JP market fear indicator.
-    Returns {"value": float, "level": str, "source": "Nikkei VI"} or None on failure.
+    Returns {"value": float, "score": int, "level": str, "source": "Nikkei VI"} or None on failure.
+    Uses continuous linear scoring (no cliff effects).
     """
     try:
         hist = _yf_history_short(NIKKEI_VI_TICKER, VIX_HISTORY_PERIOD)
@@ -1802,21 +1928,16 @@ def get_jp_volatility_index() -> dict | None:
             return None
 
         current = float(closes[-1])
+        score = score_nikkei_vi_linear(current)
+        level = classify_cnn_fear_greed(score).value
 
-        # Map to fear/greed level using JP thresholds (similar to VIX mapping)
-        if current > NIKKEI_VI_EXTREME_FEAR:
-            level = FearGreedLevel.EXTREME_FEAR.value
-        elif current > NIKKEI_VI_FEAR:
-            level = FearGreedLevel.FEAR.value
-        elif current > NIKKEI_VI_NEUTRAL_LOW:
-            level = FearGreedLevel.NEUTRAL.value
-        elif current > NIKKEI_VI_GREED:
-            level = FearGreedLevel.GREED.value
-        else:
-            level = FearGreedLevel.EXTREME_GREED.value
-
-        logger.info("Nikkei VI = %.2f（等級：%s）", current, level)
-        return {"value": round(current, 2), "level": level, "source": "Nikkei VI"}
+        logger.info("Nikkei VI = %.2f（score=%d，等級：%s）", current, score, level)
+        return {
+            "value": round(current, 2),
+            "score": score,
+            "level": level,
+            "source": "Nikkei VI",
+        }
 
     except Exception as e:
         logger.warning("Nikkei VI 取得失敗：%s", e)
@@ -1827,7 +1948,8 @@ def get_tw_volatility_index() -> dict | None:
     """
     Calculate TW market fear indicator from ^TWII realized volatility.
     Fetches 1 month of TAIEX daily closes and computes annualized realized vol.
-    Returns {"value": float, "level": str, "source": "TAIEX Realized Vol"} or None on failure.
+    Returns {"value": float, "score": int, "level": str, "source": "TAIEX Realized Vol"} or None on failure.
+    Uses continuous linear scoring (no cliff effects).
     """
     try:
         hist = _yf_history_short(TWII_TICKER, "1mo")
@@ -1837,31 +1959,25 @@ def get_tw_volatility_index() -> dict | None:
             return None
 
         closes = hist["Close"].dropna()
-        if len(closes) < 5:
-            logger.warning("TAIEX ^TWII 資料不足（%d 筆），需至少 5 筆。", len(closes))
+        if len(closes) < 15:
+            logger.warning("TAIEX ^TWII 資料不足（%d 筆），需至少 15 筆。", len(closes))
             return None
 
         returns = (closes / closes.shift(1)).apply(math.log).dropna()
         annualized_vol = float(returns.std() * math.sqrt(252) * 100)
 
-        if annualized_vol > TWII_VOL_EXTREME_FEAR:
-            level = FearGreedLevel.EXTREME_FEAR.value
-        elif annualized_vol > TWII_VOL_FEAR:
-            level = FearGreedLevel.FEAR.value
-        elif annualized_vol > TWII_VOL_NEUTRAL_LOW:
-            level = FearGreedLevel.NEUTRAL.value
-        elif annualized_vol > TWII_VOL_GREED:
-            level = FearGreedLevel.GREED.value
-        else:
-            level = FearGreedLevel.EXTREME_GREED.value
+        score = score_tw_vol_linear(annualized_vol)
+        level = classify_cnn_fear_greed(score).value
 
         logger.info(
-            "TAIEX realized vol = %.2f%%（等級：%s，source=twii, market=TW）",
+            "TAIEX realized vol = %.2f%%（score=%d，等級：%s，source=twii, market=TW）",
             annualized_vol,
+            score,
             level,
         )
         return {
             "value": round(annualized_vol, 2),
+            "score": score,
             "level": level,
             "source": "TAIEX Realized Vol",
         }

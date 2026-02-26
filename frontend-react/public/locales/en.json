@@ -70,7 +70,16 @@
       "greed": "🤑 Greed",
       "extreme_greed": "🤯 Extreme Greed",
       "na": "⏳ N/A",
-      "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only"
+      "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only",
+      "components": {
+        "price_strength": "Price Strength",
+        "vix": "Volatility (VIX)",
+        "momentum": "Momentum",
+        "breadth": "Market Breadth",
+        "junk_bond": "Junk Bond Demand",
+        "safe_haven": "Safe Haven Demand",
+        "sector_rotation": "Sector Rotation"
+      }
     },
     "fx_period": {
       "1month": "1 Month",
