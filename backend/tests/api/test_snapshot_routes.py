@@ -160,3 +160,17 @@ class TestBackfillBenchmarks:
         resp = client.post("/snapshots/backfill-benchmarks")
         assert resp.status_code == 200
         assert resp.json()["message"]  # localized message, non-empty
+
+
+# ---------------------------------------------------------------------------
+# POST /snapshots/take
+# ---------------------------------------------------------------------------
+
+
+class TestTakeSnapshot:
+    def test_should_return_200_and_message_when_triggered(self, client: TestClient):
+        resp = client.post("/snapshots/take")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "message" in data
+        assert data["message"]  # localized, non-empty

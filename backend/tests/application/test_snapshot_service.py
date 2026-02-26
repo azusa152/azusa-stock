@@ -1,5 +1,6 @@
 """
-Unit tests for snapshot_service: take_daily_snapshot, get_snapshots, get_snapshot_range.
+Unit tests for snapshot_service: take_daily_snapshot, get_snapshots, get_snapshot_range,
+_needs_backfill, backfill_benchmark_values.
 
 All external I/O is mocked — no yfinance requests, no Telegram calls.
 DB uses the in-memory SQLite engine from conftest.
@@ -12,6 +13,8 @@ from unittest.mock import patch
 from sqlmodel import Session, select
 
 from application.portfolio.snapshot_service import (
+    _needs_backfill,
+    backfill_benchmark_values,
     get_snapshot_range,
     get_snapshots,
     take_daily_snapshot,
@@ -219,3 +222,94 @@ class TestGetSnapshotRange:
             today - timedelta(days=1),
         )
         assert snaps == []
+
+
+# ---------------------------------------------------------------------------
+# _needs_backfill
+# ---------------------------------------------------------------------------
+
+
+class TestNeedsBackfill:
+    """White-box tests for the private _needs_backfill helper."""
+
+    def test_should_return_true_for_invalid_json(self):
+        assert _needs_backfill("not-valid-json") is True
+
+    def test_should_return_true_for_empty_dict(self):
+        assert _needs_backfill("{}") is True
+
+    def test_should_return_true_when_any_value_is_null(self):
+        assert _needs_backfill('{"^GSPC": null, "VT": 120.0}') is True
+
+    def test_should_return_true_when_none_is_stored(self):
+        # None (Python) is serialized to null in JSON
+        assert _needs_backfill("null") is True
+
+    def test_should_return_false_when_all_values_are_present(self):
+        assert _needs_backfill('{"^GSPC": 5000.0, "VT": 120.0}') is False
+
+
+# ---------------------------------------------------------------------------
+# backfill_benchmark_values
+# ---------------------------------------------------------------------------
+
+_BENCHMARK_HISTORY_PATCH = "infrastructure.market_data.get_benchmark_close_history"
+
+
+class TestBackfillBenchmarkValues:
+    def test_should_return_zero_when_no_snapshots_need_backfill(
+        self, db_session: Session
+    ):
+        """If every snapshot already has all benchmark values, nothing is updated."""
+        today = date.today()
+        snap = PortfolioSnapshot(
+            snapshot_date=today,
+            total_value=100_000.0,
+            category_values=json.dumps({"Growth": 100_000.0}),
+            display_currency="USD",
+            benchmark_values=json.dumps({"^GSPC": 5000.0, "VT": 120.0}),
+        )
+        db_session.add(snap)
+        db_session.commit()
+
+        result = backfill_benchmark_values(db_session)
+
+        assert result == 0
+
+    def test_should_return_zero_when_there_are_no_snapshots_at_all(
+        self, db_session: Session
+    ):
+        """Empty table → early-exit path, returns 0."""
+        result = backfill_benchmark_values(db_session)
+        assert result == 0
+
+    def test_should_update_snapshots_with_missing_benchmark_values(
+        self, db_session: Session
+    ):
+        """Snapshots with empty benchmark_values dict should be filled in."""
+        import pandas as pd
+
+        today = date.today()
+        snap = PortfolioSnapshot(
+            snapshot_date=today,
+            total_value=100_000.0,
+            category_values=json.dumps({"Growth": 100_000.0}),
+            display_currency="USD",
+            benchmark_values="{}",  # needs backfill
+        )
+        db_session.add(snap)
+        db_session.commit()
+
+        # Return a one-row Series with a price on `today`
+        mock_series = pd.Series(
+            [5000.0],
+            index=pd.DatetimeIndex([pd.Timestamp(today, tz="UTC")]),
+        )
+
+        with patch(_BENCHMARK_HISTORY_PATCH, return_value=mock_series):
+            result = backfill_benchmark_values(db_session)
+
+        assert result > 0
+        db_session.refresh(snap)
+        bv = json.loads(snap.benchmark_values)
+        assert any(v is not None for v in bv.values())

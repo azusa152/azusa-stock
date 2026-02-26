@@ -451,7 +451,7 @@ def _vix_to_score(vix_value: float | None) -> int:
             ratio = (vix_high - vix_value) / (vix_high - vix_low)
             return round(score_at_high + ratio * (score_at_low - score_at_high))
 
-    return 50  # fallback（理論上不會執行到此）
+    return 50  # fallback（理論上不會執行到此）  # pragma: no cover
 
 
 def compute_composite_fear_greed(
@@ -545,14 +545,14 @@ def score_momentum_composite(
 
     rsi = compute_rsi(prices, rsi_period)
     if rsi is None or not math.isfinite(rsi):
-        return None
+        return None  # pragma: no cover
 
     ma50 = sum(prices[-ma_window:]) / ma_window
     if ma50 == 0 or not math.isfinite(ma50):
-        return None
+        return None  # pragma: no cover
     deviation_pct = (prices[-1] / ma50 - 1) * 100
     if not math.isfinite(deviation_pct):
-        return None
+        return None  # pragma: no cover
     ma_score = _clamp(50.0 + deviation_pct * FG_MOMENTUM_MA_MULT)
 
     composite = FG_MOMENTUM_RSI_WEIGHT * rsi + (1 - FG_MOMENTUM_RSI_WEIGHT) * ma_score
