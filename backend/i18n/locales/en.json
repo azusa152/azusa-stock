@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 thin vol",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Late-stage surge — no leveraged chasing"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Late-stage surge — no leveraged chasing",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "was: {from_signal} → {to_signal}",
+    "resolved_detail": "{ticker} (was {signal}, {days}d)"
   },
   "notification": {
     "change_label": "changes",
     "times_label": "times",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}d]",
+    "signal_change_detail": "  • {ticker}: {from_signal} → {to_signal} ({count} changes)",
     "weekly_digest_title": "📋 Folio Weekly Digest",
     "health_score": "🏥 Health: {score}% ({normal}/{total} normal)",
     "fear_greed": "📊 Fear & Greed: {label} | {vix}",

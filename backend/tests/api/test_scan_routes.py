@@ -103,6 +103,85 @@ class TestGetLastScan:
         assert data["market_status_details"] == "風向球偏空（3/4 跌破 60MA）"
 
 
+class TestGetSignalActivity:
+    """Tests for GET /signals/activity — returns signal activity for non-NORMAL stocks."""
+
+    def test_signal_activity_should_return_empty_when_no_stocks(self, client):
+        # Act
+        resp = client.get("/signals/activity")
+
+        # Assert
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_signal_activity_should_return_only_non_normal_stocks(self, client):
+        # Arrange — create two stocks: one NORMAL, one OVERSOLD
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "AAPL",
+                "category": "Trend_Setter",
+                "thesis": "Normal stock",
+            },
+        )
+        client.post(
+            "/ticker",
+            json={"ticker": "TSLA", "category": "Growth", "thesis": "Oversold stock"},
+        )
+
+        from domain.entities import Stock
+
+        with Session(test_engine) as session:
+            tsla = session.get(Stock, "TSLA")
+            assert tsla is not None
+            tsla.last_scan_signal = "OVERSOLD"
+            tsla.signal_since = datetime(2025, 6, 10, 8, 0, 0, tzinfo=UTC)
+            session.commit()
+
+        # Act
+        resp = client.get("/signals/activity")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        item = data[0]
+        assert item["ticker"] == "TSLA"
+        assert item["signal"] == "OVERSOLD"
+        assert item["signal_since"] is not None
+        assert item["duration_days"] is not None
+        assert item["consecutive_scans"] >= 1
+        assert isinstance(item["is_new"], bool)
+
+    def test_signal_activity_response_schema_has_required_fields(self, client):
+        # Arrange
+        client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "Overheated"},
+        )
+
+        from domain.entities import Stock
+
+        with Session(test_engine) as session:
+            nvda = session.get(Stock, "NVDA")
+            assert nvda is not None
+            nvda.last_scan_signal = "OVERHEATED"
+            session.commit()
+
+        # Act
+        resp = client.get("/signals/activity")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(item["ticker"] == "NVDA" for item in data)
+        for item in data:
+            assert "ticker" in item
+            assert "signal" in item
+            assert "consecutive_scans" in item
+            assert "is_new" in item
+
+
 class TestGetScanStatus:
     """Tests for GET /scan/status — returns whether a scan is running."""
 

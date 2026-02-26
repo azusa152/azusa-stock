@@ -6,6 +6,7 @@ Consumers using ``from infrastructure.repositories import X`` continue to work u
 from infrastructure.persistence.repositories import (  # noqa: F401
     bulk_update_display_order,
     bulk_update_scan_signals,
+    count_consecutive_scans,
     create_fx_watch,
     create_price_alert,
     create_removal_log,
@@ -46,8 +47,10 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_latest_removals_batch,
     find_latest_scan_logs,
     find_notable_changes_all_gurus,
+    find_previous_distinct_signal,
     find_price_alert_by_id,
     find_profile_by_id,
+    find_recent_scan_logs_for_tickers,
     find_removal_history,
     find_scan_history,
     find_scan_logs_since,

@@ -104,15 +104,21 @@ def send_weekly_digest(session: Session) -> dict:
     normal_count = total - len(non_normal_stocks)
     health_score = round(normal_count / total * 100, 1)
 
-    # --- 過去 7 天的訊號變化 ---
-    seven_days_ago = datetime.now(UTC) - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
+    # --- 過去 7 天的訊號變化（含轉換方向）---
+    now_ts = datetime.now(UTC)
+    seven_days_ago = now_ts - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
     recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
     signal_changes: dict[str, int] = {}
+    signal_transitions: dict[str, tuple[str, str]] = {}  # ticker → (earliest, latest)
     prev_signals: dict[str, str] = {}
     for log in reversed(recent_logs):
         tk = log.stock_ticker
         if tk in prev_signals and prev_signals[tk] != log.signal:
             signal_changes[tk] = signal_changes.get(tk, 0) + 1
+            if tk not in signal_transitions:
+                signal_transitions[tk] = (prev_signals[tk], log.signal)
+            else:
+                signal_transitions[tk] = (signal_transitions[tk][0], log.signal)
         prev_signals[tk] = log.signal
 
     # --- 恐懼貪婪指數 ---
@@ -258,14 +264,26 @@ def send_weekly_digest(session: Session) -> dict:
         logger.warning("無法取得 Smart Money 資料：%s", exc)
 
     # --- 組合訊息 ---
-    non_normal_dicts = [
-        {
-            "ticker": s.ticker,
-            "cat_label": CATEGORY_LABEL.get(s.category.value, s.category.value),
-            "signal": s.last_scan_signal,
-        }
-        for s in non_normal_stocks
-    ]
+    non_normal_dicts: list[dict] = []
+    for s in non_normal_stocks:
+        signal_since = s.signal_since
+        duration_days: int | None = None
+        is_new = False
+        if signal_since is not None:
+            if signal_since.tzinfo is None:
+                signal_since = signal_since.replace(tzinfo=UTC)
+            delta = now_ts - signal_since
+            duration_days = delta.days
+            is_new = delta.total_seconds() < 86400
+        non_normal_dicts.append(
+            {
+                "ticker": s.ticker,
+                "cat_label": CATEGORY_LABEL.get(s.category.value, s.category.value),
+                "signal": s.last_scan_signal,
+                "duration_days": duration_days,
+                "is_new": is_new,
+            }
+        )
     message = format_weekly_digest_html(
         lang=lang,
         title=t("notification.weekly_digest_title", lang=lang),
@@ -284,6 +302,7 @@ def send_weekly_digest(session: Session) -> dict:
         top_movers_lines=top_movers_lines,
         non_normal=non_normal_dicts,
         signal_changes=signal_changes,
+        signal_transitions=signal_transitions,
         drift_lines=drift_lines,
         smart_money_lines=smart_money_lines,
         all_normal_line=t("notification.all_normal", lang=lang),

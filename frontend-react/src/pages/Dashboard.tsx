@@ -10,6 +10,7 @@ import {
   useHoldings,
   useRebalance,
   useProfile,
+  useSignalActivity,
   useFearGreed,
   useSnapshots,
   useTwr,
@@ -49,6 +50,7 @@ export default function Dashboard() {
   const { data: stocks, isLoading: stocksLoading } = useStocks()
   const { data: enrichedStocks } = useEnrichedStocks()
   const { data: lastScan } = useLastScan()
+  const { data: signalActivity } = useSignalActivity()
   const { data: holdings } = useHoldings()
   const { data: rebalance, isLoading: rebalanceLoading } = useRebalance(displayCurrency)
   const { data: profile } = useProfile()
@@ -143,6 +145,7 @@ export default function Dashboard() {
         stocks={stocks ?? []}
         enrichedStocks={enrichedStocks ?? []}
         rebalance={rebalance}
+        signalActivity={signalActivity ?? []}
       />
 
       {/* Allocation at a Glance */}

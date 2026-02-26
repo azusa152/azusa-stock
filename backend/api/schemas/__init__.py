@@ -99,6 +99,7 @@ from api.schemas.scan import (  # noqa: F401
     ScanResponse,
     ScanResult,
     ScanStatusResponse,
+    SignalActivityItem,
     SignalsResponse,
     VIXData,
 )

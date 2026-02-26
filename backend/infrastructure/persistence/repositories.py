@@ -98,14 +98,90 @@ def bulk_update_display_order(session: Session, ordered_tickers: list[str]) -> N
     session.commit()
 
 
-def bulk_update_scan_signals(session: Session, updates: dict[str, str]) -> None:
-    """批次更新多檔股票的 last_scan_signal（單一 SELECT + 批次寫入）。"""
+def bulk_update_scan_signals(
+    session: Session,
+    updates: dict[str, str],
+    signal_since_updates: dict[str, datetime | None] | None = None,
+) -> None:
+    """批次更新多檔股票的 last_scan_signal 與 signal_since。"""
     if not updates:
         return
     stocks = session.exec(select(Stock).where(Stock.ticker.in_(updates.keys()))).all()
     for stock in stocks:
         stock.last_scan_signal = updates[stock.ticker]
+        if signal_since_updates and stock.ticker in signal_since_updates:
+            stock.signal_since = signal_since_updates[stock.ticker]
     session.commit()
+
+
+def find_previous_distinct_signal(
+    session: Session, ticker: str, current_signal: str
+) -> tuple[str | None, datetime | None]:
+    """
+    在 ScanLog 中找到緊接在目前連續訊號之前的最後一個不同訊號及其時間。
+    回傳 (previous_signal, changed_at)，若無則回傳 (None, None)。
+    """
+    logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker == ticker)
+            .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+            .limit(100)
+        ).all()
+    )
+    idx = 0
+    while idx < len(logs) and logs[idx].signal == current_signal:
+        idx += 1
+    if idx < len(logs):
+        return logs[idx].signal, logs[idx].scanned_at
+    return None, None
+
+
+def count_consecutive_scans(session: Session, ticker: str, signal: str) -> int:
+    """計算目前訊號連續出現的掃描次數（從最新往回算）。"""
+    logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker == ticker)
+            .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+            .limit(50)
+        ).all()
+    )
+    count = 0
+    for log in logs:
+        if log.signal == signal:
+            count += 1
+        else:
+            break
+    return max(count, 1)
+
+
+def find_recent_scan_logs_for_tickers(
+    session: Session, tickers: list[str], limit_per_ticker: int = 100
+) -> dict[str, list[ScanLog]]:
+    """
+    一次批次取得多檔股票的最新 ScanLog（單一 SQL 查詢）。
+    回傳 ticker → logs（時間降序）的對應表，供呼叫端自行計算統計值。
+    使用 ROW_NUMBER 窗函數或 Python 端分組取 top-N。
+    """
+    if not tickers:
+        return {}
+    all_logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker.in_(tickers))  # type: ignore[union-attr]
+            .order_by(
+                ScanLog.stock_ticker,  # type: ignore[union-attr]
+                ScanLog.scanned_at.desc(),  # type: ignore[union-attr]
+            )
+        ).all()
+    )
+    grouped: dict[str, list[ScanLog]] = {}
+    for log in all_logs:
+        bucket = grouped.setdefault(log.stock_ticker, [])
+        if len(bucket) < limit_per_ticker:
+            bucket.append(log)
+    return grouped
 
 
 # ===========================================================================

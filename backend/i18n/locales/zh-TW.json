@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 量能萎縮",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 派對尾聲浪頭 — 勿追高加槓桿"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 派對尾聲浪頭 — 勿追高加槓桿",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "原訊號：{from_signal} → {to_signal}",
+    "resolved_detail": "{ticker}（原 {signal}，持續 {days} 天）"
   },
   "notification": {
     "change_label": "變化",
     "times_label": "次",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}天]",
+    "signal_change_detail": "  • {ticker}：{from_signal} → {to_signal}（{count} 次變化）",
     "weekly_digest_title": "📋 Folio 每週摘要",
     "health_score": "🏥 健康分數：{score}%（{normal}/{total} 正常）",
     "fear_greed": "📊 恐懼貪婪：{label} | {vix}",

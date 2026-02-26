@@ -11,6 +11,7 @@ export type ScanSignal = components["schemas"]["ScanSignal"]
 
 // Stock (mapped from StockResponse)
 export type Stock = components["schemas"]["StockResponse"]
+export type SignalActivityItem = components["schemas"]["SignalActivityItem"]
 
 export type CategoryAllocation = components["schemas"]["CategoryAllocation"]
 export type HoldingDetail = components["schemas"]["HoldingDetail"]

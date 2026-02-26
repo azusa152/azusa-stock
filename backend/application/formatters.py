@@ -212,6 +212,7 @@ def format_weekly_digest_html(
     top_movers_lines: list[str],
     non_normal: list[dict],
     signal_changes: dict[str, int],
+    signal_transitions: dict[str, tuple[str, str]] | None = None,
     drift_lines: list[str],
     smart_money_lines: list[str],
     all_normal_line: str,
@@ -230,8 +231,9 @@ def format_weekly_digest_html(
         health_line: health-score line
         fear_greed_line: fear & greed line
         top_movers_lines: list of individual mover lines (may be empty)
-        non_normal: list of dicts with keys ticker, cat_label, signal
+        non_normal: list of dicts with keys ticker, cat_label, signal, duration_days, is_new
         signal_changes: mapping of ticker → change count for the period
+        signal_transitions: mapping of ticker → (from_signal, to_signal) for the period
         drift_lines: list of formatted drift lines (may be empty)
         smart_money_lines: list of formatted resonance-alert lines (may be empty)
         all_normal_line: translated "all positions normal" string
@@ -260,22 +262,45 @@ def format_weekly_digest_html(
         parts.extend(top_movers_lines)
         parts.append("")
 
-    # --- Active signals ---
+    # --- Active signals (with duration badges) ---
     if non_normal:
         parts.append(f"<b>{t('notification.abnormal_stocks', lang=lang)}</b>")
         for item in non_normal:
+            duration_days = item.get("duration_days")
+            is_new = item.get("is_new", False)
+            if is_new:
+                badge = t("notification.signal_new_badge", lang=lang)
+            elif duration_days is not None:
+                badge = t("notification.signal_duration", lang=lang, days=duration_days)
+            else:
+                badge = ""
+            badge_suffix = f" {badge}" if badge else ""
             parts.append(
-                f"  • {item['ticker']}（{item['cat_label']}）→ {item['signal']}"
+                f"  • {item['ticker']}（{item['cat_label']}）→ {item['signal']}{badge_suffix}"
             )
         parts.append("")
 
-    # --- Signal changes ---
+    # --- Signal changes (with transition direction) ---
     if signal_changes:
         parts.append(f"<b>{t('notification.signal_changes', lang=lang)}</b>")
-        change_label = t("notification.change_label", lang=lang)
-        times_label = t("notification.times_label", lang=lang)
+        transitions = signal_transitions or {}
         for tk, count in sorted(signal_changes.items(), key=lambda x: -x[1]):
-            parts.append(f"  • {tk}：{change_label} {count} {times_label}")
+            if tk in transitions:
+                from_sig, to_sig = transitions[tk]
+                parts.append(
+                    t(
+                        "notification.signal_change_detail",
+                        lang=lang,
+                        ticker=tk,
+                        from_signal=from_sig,
+                        to_signal=to_sig,
+                        count=count,
+                    )
+                )
+            else:
+                change_label = t("notification.change_label", lang=lang)
+                times_label = t("notification.times_label", lang=lang)
+                parts.append(f"  • {tk}：{change_label} {count} {times_label}")
         parts.append("")
 
     # --- Allocation drift ---

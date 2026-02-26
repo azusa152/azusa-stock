@@ -18,12 +18,13 @@ from api.schemas import (
     LastScanResponse,
     PrewarmStatusResponse,
     ScanStatusResponse,
+    SignalActivityItem,
     VIXData,
 )
 from application.formatters import format_fear_greed_label
 from application.scan import scan_service
 from application.scan.prewarm_service import is_prewarm_ready
-from application.services import run_scan, send_weekly_digest
+from application.services import get_signal_activity, run_scan, send_weekly_digest
 from domain.constants import (
     ERROR_DIGEST_IN_PROGRESS,
     ERROR_SCAN_IN_PROGRESS,
@@ -198,3 +199,16 @@ async def run_digest_route(
         status="accepted",
         message=t("api.digest_started", lang=get_user_language(session)),
     )
+
+
+@router.get(
+    "/signals/activity",
+    response_model=list[SignalActivityItem],
+    summary="Get signal activity for all active non-NORMAL stocks",
+)
+def get_signal_activity_route(
+    session: Session = Depends(get_session),
+) -> list[SignalActivityItem]:
+    """取得所有啟用中且訊號非 NORMAL 的股票之訊號活躍狀態（含持續時間、前訊號、連續掃描次數）。"""
+    items = get_signal_activity(session)
+    return [SignalActivityItem(**item) for item in items]

@@ -11,6 +11,7 @@ import type {
   LastScanResponse,
   Holding,
   ProfileResponse,
+  SignalActivityItem,
 } from "@/api/types/dashboard"
 
 export function useStocks() {
@@ -125,5 +126,16 @@ export function useGreatMinds() {
       return data
     },
     staleTime: 24 * 60 * 60 * 1000,
+  })
+}
+
+export function useSignalActivity() {
+  return useQuery({
+    queryKey: ["signals", "activity"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<SignalActivityItem[]>("/signals/activity")
+      return data
+    },
+    staleTime: 120 * 1000,
   })
 }

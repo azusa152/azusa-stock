@@ -26,30 +26,44 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
     }
   }
 
-  // Note: ytd_dividend_per_share is sourced from yfinance in the stock's native currency.
-  // Without FX conversion the total mixes currencies (e.g. USD + JPY + HKD).
-  // This is a best-effort estimate valid only for single-currency portfolios or portfolios
-  // where most dividends are in the same currency.
+  // ytd_dividend_per_share is in the stock's native currency (from yfinance).
+  // current_fx_rate on each HoldingDetail is the same rate the rebalance service used to convert
+  // that holding's currency → display_currency, so multiplying gives a properly converted total.
   let ytdDivIncome = 0
-  const breakdown: { ticker: string; quantity: number; dps: number; subtotal: number }[] = []
+  const breakdown: {
+    ticker: string
+    quantity: number
+    nativeDps: number
+    nativeSubtotal: number
+    convertedSubtotal: number
+    nativeCurrency: string
+  }[] = []
+
   for (const h of rebalance.holdings_detail) {
-    const ytdDps = divLookup[h.ticker]
-    if (ytdDps) {
-      const subtotal = h.quantity * ytdDps
-      ytdDivIncome += subtotal
-      breakdown.push({ ticker: h.ticker, quantity: h.quantity, dps: ytdDps, subtotal })
+    const nativeDps = divLookup[h.ticker]
+    if (nativeDps) {
+      const fx = h.current_fx_rate ?? 1.0
+      const nativeSubtotal = h.quantity * nativeDps
+      const convertedSubtotal = nativeSubtotal * fx
+      ytdDivIncome += convertedSubtotal
+      breakdown.push({
+        ticker: h.ticker,
+        quantity: h.quantity,
+        nativeDps,
+        nativeSubtotal,
+        convertedSubtotal,
+        nativeCurrency: h.currency ?? "USD",
+      })
     }
   }
 
   if (ytdDivIncome === 0) return null
 
-  // Use ~ prefix to signal that the total is an approximation:
-  // dividend amounts come from yfinance in each stock's native currency and are not FX-converted.
-  const approxFormatted = `~${new Intl.NumberFormat("en-US", {
+  const formatted = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
-  }).format(ytdDivIncome)}`
+  }).format(ytdDivIncome)
 
   return (
     <Card>
@@ -57,38 +71,45 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
         <div className="flex items-center gap-1">
           <p className="text-xs text-muted-foreground">{t("dashboard.ytd_dividend")}</p>
           <InfoPopover align="start">
-            <p className="text-xs font-medium">{t("dashboard.info.dividend_breakdown")}</p>
+            <p className="text-xs font-medium">{t("dashboard.info.dividend_breakdown", { currency })}</p>
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted-foreground">
                   <th className="text-left font-normal pr-2">Ticker</th>
-                  <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_qty")}</th>
                   <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_dps")}</th>
-                  <th className="text-right font-normal">{t("dashboard.info.dividend_subtotal")}</th>
+                  <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_native")}</th>
+                  <th className="text-right font-normal">{t("dashboard.info.dividend_converted")}</th>
                 </tr>
               </thead>
               <tbody>
-                {breakdown.map((row) => (
-                  <tr key={row.ticker}>
-                    <td className="font-medium pr-2">{row.ticker}</td>
-                    <td className="text-right pr-2 tabular-nums">{row.quantity}</td>
-                    <td className="text-right pr-2 tabular-nums">{row.dps.toFixed(4)}</td>
-                    <td className="text-right tabular-nums">{row.subtotal.toFixed(2)}</td>
-                  </tr>
-                ))}
+                {breakdown.map((row) => {
+                  const fmtNative = (v: number) =>
+                    new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: row.nativeCurrency,
+                      minimumFractionDigits: 2,
+                    }).format(v)
+                  return (
+                    <tr key={row.ticker}>
+                      <td className="font-medium pr-2">{row.ticker}</td>
+                      <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
+                      <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
+                      <td className="text-right tabular-nums">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency,
+                          minimumFractionDigits: 2,
+                        }).format(row.convertedSubtotal)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4} className="pt-1 text-muted-foreground/70 italic">
-                    {t("dashboard.info.dividend_currency_note")}
-                  </td>
-                </tr>
-              </tfoot>
             </table>
           </InfoPopover>
         </div>
         <p className="text-2xl font-bold tabular-nums mt-1">
-          {isPrivate ? "***" : approxFormatted}
+          {isPrivate ? "***" : formatted}
         </p>
         <p className="text-xs text-muted-foreground mt-1">{t("dashboard.ytd_dividend_actual")}</p>
       </CardContent>

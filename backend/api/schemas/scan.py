@@ -135,6 +135,19 @@ class PrewarmStatusResponse(BaseModel):
     ready: bool
 
 
+class SignalActivityItem(BaseModel):
+    """GET /signals/activity 單筆訊號活躍狀態。"""
+
+    ticker: str
+    signal: str
+    signal_since: str | None = None
+    duration_days: int | None = None
+    previous_signal: str | None = None
+    changed_at: str | None = None
+    consecutive_scans: int = 1
+    is_new: bool = False
+
+
 class ScanLogResponse(BaseModel):
     """掃描歷史單一紀錄。"""
 

@@ -54,6 +54,7 @@ from application.scan.scan_service import (  # noqa: F401
     delete_price_alert,
     get_latest_scan_logs,
     get_scan_history,
+    get_signal_activity,
     list_price_alerts,
     run_scan,
 )

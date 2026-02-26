@@ -27,6 +27,7 @@ class Stock(SQLModel, table=True):
     last_scan_signal: str = Field(
         default=ScanSignal.NORMAL.value, description="上次掃描訊號"
     )
+    signal_since: datetime | None = Field(default=None, description="目前訊號起始時間")
     is_active: bool = Field(default=True, description="是否追蹤中")
     is_etf: bool = Field(default=False, description="是否為 ETF（市場情緒排除用）")
 

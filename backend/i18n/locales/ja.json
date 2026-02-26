@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 出来高低調",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 終盤の急騰 — レバレッジ追撃は禁物"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 終盤の急騰 — レバレッジ追撃は禁物",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "前シグナル：{from_signal} → {to_signal}",
+    "resolved_detail": "{ticker}（前 {signal}、{days}日間）"
   },
   "notification": {
     "change_label": "変化",
     "times_label": "回",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}日]",
+    "signal_change_detail": "  • {ticker}：{from_signal} → {to_signal}（{count}回変化）",
     "weekly_digest_title": "📋 Folio 週次レポート",
     "health_score": "🏥 健全性：{score}%（{normal}/{total} 正常）",
     "fear_greed": "📊 恐怖・強欲：{label} | {vix}",

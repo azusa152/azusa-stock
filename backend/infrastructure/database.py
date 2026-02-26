@@ -70,6 +70,8 @@ def _run_migrations() -> None:
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
         # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
         "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
+        # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
+        "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
     ]
 
     with engine.connect() as conn:
@@ -193,6 +195,45 @@ def _run_smart_money_migrations() -> None:
                 conn.rollback()
 
 
+def _backfill_signal_since() -> None:
+    """
+    回填 Stock.signal_since：對已有非 NORMAL 訊號但 signal_since 為 NULL 的股票，
+    從 ScanLog 往前找到最早連續同訊號的掃描時間作為起始點。
+    """
+    from domain.entities import ScanLog, Stock
+    from domain.enums import ScanSignal
+
+    with Session(engine) as session:
+        stocks = session.exec(select(Stock)).all()
+        updated = 0
+        for stock in stocks:
+            if stock.signal_since is not None:
+                continue
+            if stock.last_scan_signal == ScanSignal.NORMAL.value:
+                continue
+            # Walk ScanLog backwards to find how far back this signal streak goes
+            logs = (
+                session.exec(
+                    select(ScanLog)
+                    .where(ScanLog.stock_ticker == stock.ticker)
+                    .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+                    .limit(200)
+                )
+            ).all()
+            since = None
+            for log in logs:
+                if log.signal == stock.last_scan_signal:
+                    since = log.scanned_at
+                else:
+                    break
+            if since is not None:
+                stock.signal_since = since
+                updated += 1
+        if updated:
+            session.commit()
+            logger.info("signal_since 回填完成：%d 筆。", updated)
+
+
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移與資料載入。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
@@ -217,6 +258,10 @@ def create_db_and_tables() -> None:
     logger.info("執行 Token 加密遷移...")
     _encrypt_plaintext_tokens()
     logger.info("Token 加密遷移完成。")
+
+    logger.info("回填 signal_since...")
+    _backfill_signal_since()
+    logger.info("signal_since 回填完成。")
 
 
 def get_session() -> Generator[Session, None, None]:
