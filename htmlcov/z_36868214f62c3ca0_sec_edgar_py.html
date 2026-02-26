@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_ceee9273b0a123cb_finmind_adapter_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-25 16:38 +0000
+            created at 2026-02-26 11:31 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -299,7 +299,7 @@
     <p class="run"><span class="n"><a id="t217" href="#t217">217</a></span><span class="t">        <span class="nam">result</span> <span class="op">=</span> <span class="nam">_http_get_json</span><span class="op">(</span><span class="nam">url</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t218" href="#t218">218</a></span><span class="t">        <span class="nam">_filing_cache</span><span class="op">[</span><span class="nam">cik</span><span class="op">]</span> <span class="op">=</span> <span class="nam">result</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t219" href="#t219">219</a></span><span class="t">        <span class="nam">_disk_set</span><span class="op">(</span><span class="nam">disk_key</span><span class="op">,</span> <span class="nam">result</span><span class="op">,</span> <span class="nam">DISK_GURU_FILING_TTL</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t220" href="#t220">220</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">info</span><span class="op">(</span><span class="str">"EDGAR submissions &#24050;&#21462;&#24471;&#20006;&#24555;&#21462;&#65306;CIK=%s"</span><span class="op">,</span> <span class="nam">cik</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t220" href="#t220">220</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">"EDGAR submissions &#24050;&#21462;&#24471;&#20006;&#24555;&#21462;&#65306;CIK=%s"</span><span class="op">,</span> <span class="nam">cik</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t221" href="#t221">221</a></span><span class="t">        <span class="key">return</span> <span class="nam">result</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t222" href="#t222">222</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">exc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t223" href="#t223">223</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span><span class="str">"EDGAR submissions &#21462;&#24471;&#22833;&#25943;&#65306;CIK=%s, error=%s"</span><span class="op">,</span> <span class="nam">cik</span><span class="op">,</span> <span class="nam">exc</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -352,7 +352,7 @@
     <p class="run"><span class="n"><a id="t270" href="#t270">270</a></span><span class="t">                <span class="key">if</span> <span class="nam">len</span><span class="op">(</span><span class="nam">results</span><span class="op">)</span> <span class="op">>=</span> <span class="nam">count</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t271" href="#t271">271</a></span><span class="t">                    <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t272" href="#t272">272</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t273" href="#t273">273</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">info</span><span class="op">(</span><span class="str">"EDGAR 13F-HR &#30003;&#22577;&#32034;&#24341;&#21462;&#24471;&#65306;CIK=%s, &#20849; %d &#31558;"</span><span class="op">,</span> <span class="nam">cik</span><span class="op">,</span> <span class="nam">len</span><span class="op">(</span><span class="nam">results</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t273" href="#t273">273</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">"EDGAR 13F-HR &#30003;&#22577;&#32034;&#24341;&#21462;&#24471;&#65306;CIK=%s, &#20849; %d &#31558;"</span><span class="op">,</span> <span class="nam">cik</span><span class="op">,</span> <span class="nam">len</span><span class="op">(</span><span class="nam">results</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t274" href="#t274">274</a></span><span class="t">        <span class="key">return</span> <span class="nam">results</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t275" href="#t275">275</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t276" href="#t276">276</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">exc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -612,7 +612,7 @@
             <a class="nav" href="z_ceee9273b0a123cb_finmind_adapter_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-25 16:38 +0000
+            created at 2026-02-26 11:31 +0000
         </p>
     </div>
 </footer>
