@@ -146,3 +146,72 @@ class TestNotificationPreferences:
         assert resp.status_code == 200
         notif = resp.json()["notification_preferences"]
         assert notif["weekly_digest"] is False  # Still disabled
+
+
+class TestNotificationRateLimits:
+    """Tests for notification_rate_limits in /settings/preferences."""
+
+    def test_get_should_return_empty_rate_limits_by_default(self, client):
+        resp = client.get("/settings/preferences")
+
+        assert resp.status_code == 200
+        assert resp.json()["notification_rate_limits"] == {}
+
+    def test_update_should_persist_rate_limits(self, client):
+        # Act
+        resp = client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_rate_limits": {
+                    "fx_alerts": {"max_count": 2, "window_hours": 24},
+                },
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        limits = resp.json()["notification_rate_limits"]
+        assert limits["fx_alerts"]["max_count"] == 2
+        assert limits["fx_alerts"]["window_hours"] == 24
+
+    def test_update_rate_limits_persists_on_read_back(self, client):
+        # Arrange
+        client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_rate_limits": {
+                    "fx_watch_alerts": {"max_count": 3, "window_hours": 12},
+                },
+            },
+        )
+
+        # Act
+        resp = client.get("/settings/preferences")
+
+        # Assert
+        assert resp.status_code == 200
+        limits = resp.json()["notification_rate_limits"]
+        assert limits["fx_watch_alerts"]["max_count"] == 3
+        assert limits["fx_watch_alerts"]["window_hours"] == 12
+
+    def test_update_without_rate_limits_should_keep_existing(self, client):
+        # Arrange — set rate limits first
+        client.put(
+            "/settings/preferences",
+            json={
+                "privacy_mode": False,
+                "notification_rate_limits": {
+                    "fx_alerts": {"max_count": 1, "window_hours": 6},
+                },
+            },
+        )
+
+        # Act — update only privacy_mode
+        client.put("/settings/preferences", json={"privacy_mode": True})
+
+        # Assert — rate limits preserved
+        resp = client.get("/settings/preferences")
+        limits = resp.json()["notification_rate_limits"]
+        assert limits["fx_alerts"]["max_count"] == 1

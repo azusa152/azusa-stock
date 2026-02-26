@@ -24,6 +24,7 @@ logger.info("資料庫連線位置：%s", DATABASE_URL)
 def _run_migrations() -> None:
     """執行資料庫遷移：為既有資料表新增缺少的欄位。"""
     from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
 
     migrations = [
         "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
@@ -68,6 +69,12 @@ def _run_migrations() -> None:
         # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
         "ALTER TABLE guru ADD COLUMN style VARCHAR;",
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
+        # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
+        "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
+        # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
+        "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
+        # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
+        "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
     ]
 
     with engine.connect() as conn:
@@ -75,9 +82,10 @@ def _run_migrations() -> None:
             try:
                 conn.execute(text(sql))
                 conn.commit()
-                logger.info("Migration 成功：%s", sql.strip())
-            except Exception:
-                # SQLite 會在欄位已存在時拋出 OperationalError，靜默跳過
+                logger.debug("Migration 成功：%s", sql.strip())
+            except OperationalError:
+                # SQLite 在欄位已存在時（duplicate column name）拋出 OperationalError，
+                # 屬預期的冪等行為，靜默跳過。UPDATE 語句零列更新不會觸發此路徑。
                 conn.rollback()
 
 
@@ -173,6 +181,7 @@ def _encrypt_plaintext_tokens() -> None:
 def _run_smart_money_migrations() -> None:
     """Smart Money Tracker 索引遷移（補充查詢效能所需的 index）。"""
     from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
 
     migrations = [
         "CREATE INDEX IF NOT EXISTS ix_gurufiling_guru_id ON gurufiling (guru_id);",
@@ -186,9 +195,55 @@ def _run_smart_money_migrations() -> None:
             try:
                 conn.execute(text(sql))
                 conn.commit()
-                logger.info("Smart Money 索引遷移成功：%s", sql.strip())
-            except Exception:
+                logger.debug("Smart Money 索引遷移成功：%s", sql.strip())
+            except OperationalError:
                 conn.rollback()
+
+
+def _backfill_signal_since() -> None:
+    """
+    回填 Stock.signal_since：對已有非 NORMAL 訊號但 signal_since 為 NULL 的股票，
+    從 ScanLog 往前找到最早連續同訊號的掃描時間作為起始點。
+    """
+    from domain.entities import ScanLog, Stock
+    from domain.enums import ScanSignal
+
+    with Session(engine) as session:
+        # 先快速查詢是否有任何需要回填的股票，避免每次啟動都進行完整掃描
+        candidates = session.exec(
+            select(Stock).where(
+                Stock.signal_since.is_(None),  # type: ignore[union-attr]
+                Stock.last_scan_signal != ScanSignal.NORMAL.value,
+            )
+        ).all()
+
+        if not candidates:
+            logger.debug("signal_since 無需回填。")
+            return
+
+        updated = 0
+        for stock in candidates:
+            # Walk ScanLog backwards to find how far back this signal streak goes
+            logs = (
+                session.exec(
+                    select(ScanLog)
+                    .where(ScanLog.stock_ticker == stock.ticker)
+                    .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+                    .limit(200)
+                )
+            ).all()
+            since = None
+            for log in logs:
+                if log.signal == stock.last_scan_signal:
+                    since = log.scanned_at
+                else:
+                    break
+            if since is not None:
+                stock.signal_since = since
+                updated += 1
+        if updated:
+            session.commit()
+            logger.info("signal_since 回填完成：%d 筆。", updated)
 
 
 def create_db_and_tables() -> None:
@@ -200,21 +255,15 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
     logger.info("資料表就緒。")
 
-    logger.info("執行資料庫遷移...")
     _run_migrations()
-    logger.info("遷移完成。")
-
-    logger.info("執行 Smart Money 索引遷移...")
     _run_smart_money_migrations()
-    logger.info("Smart Money 索引遷移完成。")
 
     logger.info("載入系統人格範本...")
     _load_system_personas()
     logger.info("人格範本就緒。")
 
-    logger.info("執行 Token 加密遷移...")
     _encrypt_plaintext_tokens()
-    logger.info("Token 加密遷移完成。")
+    _backfill_signal_since()
 
 
 def get_session() -> Generator[Session, None, None]:

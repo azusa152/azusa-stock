@@ -3,7 +3,7 @@ API — 股票管理路由。
 薄控制器：僅負責解析請求、呼叫 Service、回傳回應。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session
 
@@ -44,7 +44,10 @@ from application.services import (
     update_stock_category,
 )
 from application.stock import stock_service
-from application.stock.stock_service import get_enriched_stocks
+from application.stock.stock_service import (
+    get_enriched_stocks,
+    invalidate_enriched_cache,
+)
 from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
@@ -89,6 +92,7 @@ def create_ticker_route(
             detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
         ) from e
 
+    invalidate_enriched_cache()
     return StockResponse(
         ticker=stock.ticker,
         category=stock.category,
@@ -115,9 +119,13 @@ def list_stocks_route(
     summary="Get all active stocks with signals, earnings, and dividends",
 )
 def list_enriched_stocks_route(
+    response: Response,
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """批次取得所有啟用中股票，附帶技術訊號、財報日期、股息資訊。"""
+    response.headers["Cache-Control"] = (
+        "private, max-age=60, stale-while-revalidate=300"
+    )
     return get_enriched_stocks(session)
 
 
@@ -210,7 +218,7 @@ def deactivate_ticker_route(
 ) -> dict:
     """移除追蹤股票。"""
     try:
-        return deactivate_stock(session, ticker, payload.reason)
+        result = deactivate_stock(session, ticker, payload.reason)
     except StockNotFoundError as e:
         raise HTTPException(
             status_code=404,
@@ -221,6 +229,8 @@ def deactivate_ticker_route(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_INACTIVE, "detail": str(e)},
         ) from e
+    invalidate_enriched_cache()
+    return result
 
 
 @router.get(
@@ -263,7 +273,7 @@ def reactivate_ticker_route(
 ) -> dict:
     """重新啟用已移除的股票。"""
     try:
-        return reactivate_stock(session, ticker, payload.category, payload.thesis)
+        result = reactivate_stock(session, ticker, payload.category, payload.thesis)
     except StockNotFoundError as e:
         raise HTTPException(
             status_code=404,
@@ -274,6 +284,8 @@ def reactivate_ticker_route(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_ACTIVE, "detail": str(e)},
         ) from e
+    invalidate_enriched_cache()
+    return result
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
@@ -413,6 +425,7 @@ def import_stocks_route(
     # Convert Pydantic models to dicts for the service layer
     payload_dicts = [item.model_dump() for item in payload]
     result = import_stocks(session, payload_dicts)
+    invalidate_enriched_cache()
 
     # Transform service response to match ImportResponse schema
     return {

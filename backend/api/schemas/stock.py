@@ -92,6 +92,7 @@ class StockResponse(BaseModel):
     current_tags: list[str] = []
     display_order: int = 0
     last_scan_signal: ScanSignal = ScanSignal.NORMAL
+    signal_since: str | None = None
     is_active: bool
     is_etf: bool = False
     signals: dict | None = None

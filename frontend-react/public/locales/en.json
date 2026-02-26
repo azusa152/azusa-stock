@@ -70,7 +70,16 @@
       "greed": "🤑 Greed",
       "extreme_greed": "🤯 Extreme Greed",
       "na": "⏳ N/A",
-      "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only"
+      "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only",
+      "components": {
+        "price_strength": "Price Strength",
+        "vix": "Volatility (VIX)",
+        "momentum": "Momentum",
+        "breadth": "Market Breadth",
+        "junk_bond": "Junk Bond Demand",
+        "safe_haven": "Safe Haven Demand",
+        "sector_rotation": "Sector Rotation"
+      }
     },
     "fx_period": {
       "1month": "1 Month",
@@ -151,6 +160,12 @@
     "signal_alerts_title": "⚠️ Signal Alerts",
     "signal_buy_title": "🟢 Buy Opportunities",
     "signal_risk_title": "🚨 Risk Warnings",
+    "signal_duration_days": "{{count}}d",
+    "signal_duration_weeks": "{{count}}w",
+    "signal_duration_months": "{{count}}mo",
+    "signal_new": "NEW",
+    "signal_was": "was {{signal}}",
+    "signal_consecutive": "{{count}} scans",
     "all_signals_normal": "✅ All tracking stocks have normal signals!",
     "no_tracking_stocks": "📭 No tracking stocks yet. Go to Radar to start tracking.",
     "top_holdings_title": "🏆 Top {{limit}} Holdings",
@@ -166,6 +181,25 @@
     "ytd_return": "YTD Return",
     "ytd_dividend": "YTD Dividends",
     "ytd_dividend_actual": "(based on actual dividends paid YTD)",
+    "info": {
+      "sentiment_thresholds": "Tier thresholds (% of Trend Setters below 60MA):\n≤10% Strongly Bullish · ≤30% Bullish · ≤50% Neutral · ≤70% Bearish · >70% Strongly Bearish",
+      "sentiment_no_details": "Run a scan to see details.",
+      "fear_greed_source_cnn": "Source: CNN Fear & Greed Index",
+      "fear_greed_source_self": "Source: Self-calculated (7 components)",
+      "fear_greed_source_vix": "Source: VIX-derived score",
+      "fear_greed_top": "Strongest signal: {{name}} ({{score}})",
+      "fear_greed_bottom": "Weakest signal: {{name}} ({{score}})",
+      "health_non_normal": "Non-normal signals:",
+      "health_all_normal": "All tracked stocks are NORMAL ✅",
+      "health_overflow": "…and {{count}} more",
+      "dividend_breakdown": "Per-stock breakdown:",
+      "dividend_qty": "Qty",
+      "dividend_dps": "Div/Sh",
+      "dividend_subtotal": "Subtotal",
+      "dividend_currency_note": "Amounts in each stock's native currency (not FX-converted)",
+      "dividend_native": "Native",
+      "dividend_converted": "Converted"
+    },
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",
     "resonance": {
@@ -182,7 +216,6 @@
     "fear_greed_title": "Fear & Greed",
     "performance_title": "📈 Portfolio Performance",
     "performance_no_data": "📭 No snapshot history yet. The daily cron job records a snapshot at 23:00 UTC each day.",
-    "performance_benchmark_label": "S&P 500",
     "performance_period_1w": "1W",
     "performance_period_1m": "1M",
     "performance_period_3m": "3M",
@@ -190,8 +223,35 @@
     "performance_period_ytd": "YTD",
     "performance_period_1y": "1Y",
     "performance_period_all": "ALL",
+    "heatmap_title": "📊 Watchlist Heat Map",
+    "heatmap_empty": "📭 No price data available. Run a scan first.",
+    "heatmap_grouped_by": "grouped by GICS sector",
+    "heatmap_price": "Price",
+    "heatmap_change": "Change",
+    "heatmap_sector_other": "Other",
+    "heatmap_legend_strong_loss": "≤ −3%",
+    "heatmap_legend_neutral": "≈ 0%",
+    "heatmap_legend_strong_gain": "≥ +3%",
     "performance_portfolio_return": "Portfolio",
-    "performance_no_period_data": "No data for this period"
+    "performance_no_period_data": "No data for this period",
+    "performance_data_from": "Data from {{date}}",
+    "performance_benchmark_sp500": "S&P 500",
+    "performance_benchmark_vt": "VT (Global)",
+    "performance_benchmark_n225": "Nikkei 225",
+    "performance_benchmark_twii": "TWII",
+    "performance_commentary_outperform_strong": "Strong alpha — outpacing {{benchmark}} by +{{delta}}%",
+    "performance_commentary_outperform_mild": "Ahead of {{benchmark}} by +{{delta}}%",
+    "performance_commentary_neutral": "Tracking closely with {{benchmark}}",
+    "performance_commentary_underperform_mild": "Trailing {{benchmark}} by {{delta}}% — review positioning",
+    "performance_commentary_underperform_strong": "Significantly behind {{benchmark}} — consider rebalancing",
+    "performance_commentary_positive_no_benchmark": "Portfolio up {{return}}% for the period",
+    "performance_commentary_negative_no_benchmark": "Portfolio down {{return}}% for the period",
+    "performance_commentary_flat_no_benchmark": "Portfolio roughly flat for the period",
+    "performance_no_benchmark_data": "No {{benchmark}} data for this period",
+    "performance_backfill_run": "Run backfill",
+    "performance_backfilling": "Backfilling…",
+    "performance_backfill_complete": "Benchmark data loaded — chart updated",
+    "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page"
   },
   "radar": {
     "title": "📡 Folio",
@@ -346,7 +406,8 @@
       "remove_reason_required": "⚠️ Please enter a removal reason.",
       "current_category_label": "Current: {{cat}}",
       "confirm_switch": "Confirm Switch",
-      "tags_placeholder": "Tags (comma-separated)"
+      "tags_placeholder": "Tags (comma-separated)",
+      "held": "Held"
     }
   },
   "allocation": {
@@ -461,7 +522,12 @@
         "fx_watch_alerts": "📡 FX Watch Timing Alerts",
         "fx_watch_alerts_help": "When FX rate approaches a recent high or rises consecutively (every 6h cron)",
         "guru_alerts": "🧠 Guru 13F Filing Alerts",
-        "guru_alerts_help": "New guru filing digest and watchlist resonance alerts"
+        "guru_alerts_help": "New guru filing digest and watchlist resonance alerts",
+        "rate_limit_label": "Max {{max_count}} alert(s) per {{window_hours}} hours",
+        "rate_limit_max": "Max alerts",
+        "rate_limit_window": "Per (hours)",
+        "rate_limit_unlimited": "Unlimited",
+        "rate_limit_caption": "Limit how often this notification can send within a time window. Set to 0 for unlimited."
       },
       "save_notif": "💾 Save Notification Preferences"
     },

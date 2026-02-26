@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 量能萎缩",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 派对尾声浪头 — 勿追高加杠杆"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 派对尾声浪头 — 勿追高加杠杆",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "原信号：{from_signal} → {to_signal}",
+    "resolved_detail": "{ticker}（原 {signal}，持续 {days} 天）"
   },
   "notification": {
     "change_label": "变化",
     "times_label": "次",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}天]",
+    "signal_change_detail": "  • {ticker}：{from_signal} → {to_signal}（{count} 次变化）",
     "weekly_digest_title": "📋 Folio 每周摘要",
     "health_score": "🏥 健康分数：{score}%（{normal}/{total} 正常）",
     "fear_greed": "📊 恐惧贪婪：{label} | {vix}",
@@ -242,7 +248,9 @@
     "telegram_not_configured": "尚未设定 Telegram Chat ID，请先保存设定。",
     "telegram_test_msg": "✅ <b>Folio — 通知已启用</b>\n\n系统运作正常。扫描信号变化、自定义价格警报与每周投资摘要的实时通知已就绪。",
     "telegram_test_sent": "✅ 测试消息已发送，请检查 Telegram。",
-    "tag_validation_error": "每个标签必须非空且不超过 50 字符"
+    "tag_validation_error": "每个标签必须非空且不超过 50 字符",
+    "snapshot_triggered": "快照已触发，正在后台构建中。",
+    "backfill_triggered": "基准指数回填已触发，正在后台执行中。"
   },
   "constants": {
     "removal_reason_unknown": "未知",
@@ -283,5 +291,13 @@
     "lagging_disclaimer": "⚠️ 此数据为 {days_ago} 天前的持仓快照，非实时数据",
     "report_date_label": "持仓基准日",
     "filing_date_label": "公告日"
+  },
+  "fx": {
+    "period_1d": "单日",
+    "period_5d": "5 日",
+    "period_3m": "3 个月",
+    "alert_type_daily_spike": "单日剧烈波动",
+    "alert_type_short_term_swing": "短期波段变动",
+    "alert_type_long_term_trend": "长期趋势变动"
   }
 }

@@ -6,12 +6,13 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from application.formatters import format_fear_greed_label
 from application.stock.stock_service import _get_stock_or_raise
 from domain.analysis import (
     compute_bias_percentile,
+    compute_signal_duration,
     detect_rogue_wave,
     determine_scan_signal,
 )
@@ -380,11 +381,13 @@ def run_scan(session: Session) -> dict:
 
     # === 差異比對 + 通知 ===
     category_icon = CATEGORY_ICON
+    now = datetime.now(UTC)
 
     # 比對每檔股票的 current signal vs last_scan_signal
     new_or_changed: list[dict] = []  # signal 從 NORMAL→非 NORMAL，或非 NORMAL 類型改變
     resolved: list[dict] = []  # signal 從非 NORMAL→NORMAL
     signal_updates: dict[str, str] = {}
+    signal_since_updates: dict[str, datetime | None] = {}
 
     for r in results:
         ticker = r["ticker"]
@@ -397,14 +400,25 @@ def run_scan(session: Session) -> dict:
         signal_updates[ticker] = current_signal
 
         if current_signal == prev_signal:
+            # 訊號不變，若股票物件存在才保留既有 signal_since（避免 None 覆蓋已存在的值）
+            if stock_obj is not None:
+                signal_since_updates[ticker] = stock_obj.signal_since
             continue  # 無變化，不通知
+        # 訊號改變：重設 signal_since 為當下
+        signal_since_updates[ticker] = now
         if current_signal != ScanSignal.NORMAL.value:
-            new_or_changed.append(r)
+            new_or_changed.append({**r, "_prev_signal": prev_signal})
         else:
-            resolved.append(r)
+            resolved.append(
+                {
+                    **r,
+                    "_prev_signal": prev_signal,
+                    "_prev_since": stock_obj.signal_since if stock_obj else None,
+                }
+            )
 
-    # 持久化所有股票的最新 signal（不論是否有變化）
-    repo.bulk_update_scan_signals(session, signal_updates)
+    # 持久化所有股票的最新 signal 與 signal_since（不論是否有變化）
+    repo.bulk_update_scan_signals(session, signal_updates, signal_since_updates)
 
     has_changes = bool(new_or_changed) or bool(resolved)
 
@@ -421,14 +435,29 @@ def run_scan(session: Session) -> dict:
             fg_label=fg_label,
         )
 
-        # 新增/惡化的股票依類別分組
+        # 新增/惡化的股票依類別分組（含時間徽章與轉換脈絡）
         body_parts: list[str] = []
         if new_or_changed:
             grouped: dict[str, list[str]] = {}
             for r in new_or_changed:
                 cat = r.get("category", DEFAULT_IMPORT_CATEGORY)
                 cat_value = cat.value if hasattr(cat, "value") else str(cat)
-                grouped.setdefault(cat_value, []).extend(r["alerts"])
+                prev = r.get("_prev_signal", ScanSignal.NORMAL.value)
+                enriched_alerts = list(r["alerts"])
+                # [NEW] badge only when transitioning from NORMAL; type-changes need no badge
+                # (the transition line already carries the context)
+                if prev == ScanSignal.NORMAL.value and enriched_alerts:
+                    badge = t("scan.signal_new_badge", lang=lang)
+                    enriched_alerts[-1] = enriched_alerts[-1] + f"  {badge}"
+                # Append transition context line
+                transition = t(
+                    "scan.signal_transition",
+                    lang=lang,
+                    from_signal=prev,
+                    to_signal=r["signal"],
+                )
+                enriched_alerts.append(f"   {transition}")
+                grouped.setdefault(cat_value, []).extend(enriched_alerts)
 
             for cat_key in CATEGORY_DISPLAY_ORDER:
                 if cat_key in grouped:
@@ -438,11 +467,30 @@ def run_scan(session: Session) -> dict:
                     section_lines = "\n".join(grouped[cat_key])
                     body_parts.append(f"{section_header}\n{section_lines}")
 
-        # 恢復正常的股票
+        # 恢復正常的股票（含前訊號與持續時間）
         if resolved:
-            resolved_tickers = ", ".join(r["ticker"] for r in resolved)
+            resolved_parts: list[str] = []
+            for r in resolved:
+                ticker_r = r["ticker"]
+                prev = r.get("_prev_signal", "NORMAL")
+                prev_since: datetime | None = r.get("_prev_since")
+                if prev_since is not None:
+                    days = (now - prev_since).days
+                    resolved_parts.append(
+                        t(
+                            "scan.resolved_detail",
+                            lang=lang,
+                            ticker=ticker_r,
+                            signal=prev,
+                            days=days,
+                        )
+                    )
+                else:
+                    resolved_parts.append(ticker_r)
             resolved_section = t(
-                "scan.resolved_section", lang=lang, tickers=resolved_tickers
+                "scan.resolved_section",
+                lang=lang,
+                tickers=", ".join(resolved_parts),
             )
             body_parts.append(f"\n{resolved_section}")
 
@@ -570,6 +618,65 @@ def get_latest_scan_logs(
         }
         for log in logs
     ]
+
+
+def get_signal_activity(session: Session) -> list[dict]:
+    """
+    取得所有啟用股票中訊號非 NORMAL 者的活躍狀態。
+    包含：訊號起始時間、持續天數、前一訊號、連續掃描次數、是否為新訊號（< 24h）。
+    使用單一批次查詢取得所有 ScanLog，避免 N+1 問題。
+    """
+    now = datetime.now(UTC)
+    non_normal_stocks = [
+        s
+        for s in session.exec(
+            select(Stock).where(Stock.is_active == True)  # noqa: E712
+        ).all()
+        if s.last_scan_signal != ScanSignal.NORMAL.value
+    ]
+    if not non_normal_stocks:
+        return []
+
+    tickers = [s.ticker for s in non_normal_stocks]
+    logs_by_ticker = repo.find_recent_scan_logs_for_tickers(
+        session, tickers, limit_per_ticker=100
+    )
+
+    result: list[dict] = []
+    for stock in non_normal_stocks:
+        duration_days, is_new = compute_signal_duration(stock.signal_since, now)
+
+        logs = logs_by_ticker.get(stock.ticker, [])
+        current_signal = stock.last_scan_signal
+
+        # Compute previous distinct signal from pre-fetched logs
+        prev_signal: str | None = None
+        changed_at = None
+        consecutive_scans = 0
+        for log in logs:
+            if log.signal == current_signal:
+                consecutive_scans += 1
+            elif prev_signal is None:
+                prev_signal = log.signal
+                changed_at = log.scanned_at
+                break
+
+        result.append(
+            {
+                "ticker": stock.ticker,
+                "signal": current_signal,
+                "signal_since": stock.signal_since.isoformat()
+                if stock.signal_since
+                else None,
+                "duration_days": duration_days,
+                "previous_signal": prev_signal,
+                "changed_at": changed_at.isoformat() if changed_at else None,
+                "consecutive_scans": max(consecutive_scans, 1),
+                "is_new": is_new,
+            }
+        )
+
+    return result
 
 
 # ===========================================================================

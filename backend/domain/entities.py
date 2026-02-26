@@ -9,6 +9,7 @@ from domain.core.entities import (  # noqa: F401
     GuruFiling,
     GuruHolding,
     Holding,
+    NotificationLog,
     PortfolioSnapshot,
     PriceAlert,
     RemovalLog,

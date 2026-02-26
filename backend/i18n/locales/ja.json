@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 出来高低調",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 終盤の急騰 — レバレッジ追撃は禁物"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 終盤の急騰 — レバレッジ追撃は禁物",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "前シグナル：{from_signal} → {to_signal}",
+    "resolved_detail": "{ticker}（前 {signal}、{days}日間）"
   },
   "notification": {
     "change_label": "変化",
     "times_label": "回",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}日]",
+    "signal_change_detail": "  • {ticker}：{from_signal} → {to_signal}（{count}回変化）",
     "weekly_digest_title": "📋 Folio 週次レポート",
     "health_score": "🏥 健全性：{score}%（{normal}/{total} 正常）",
     "fear_greed": "📊 恐怖・強欲：{label} | {vix}",
@@ -242,7 +248,9 @@
     "telegram_not_configured": "Telegram Chat IDが未設定です。先に設定を保存してください。",
     "telegram_test_msg": "✅ <b>Folio — 通知が有効です</b>\n\nシステムは正常に動作しています。スキャンシグナル変化、カスタム価格アラート、週次ポートフォリオレポートのリアルタイム通知が有効です。",
     "telegram_test_sent": "✅ テストメッセージを送信しました。Telegramをご確認ください。",
-    "tag_validation_error": "各タグは空でなく、50文字以内である必要があります"
+    "tag_validation_error": "各タグは空でなく、50文字以内である必要があります",
+    "snapshot_triggered": "スナップショットをトリガーしました。バックグラウンドで構築中です。",
+    "backfill_triggered": "ベンチマーク補完をトリガーしました。バックグラウンドで実行中です。"
   },
   "constants": {
     "removal_reason_unknown": "不明",
@@ -283,5 +291,13 @@
     "lagging_disclaimer": "⚠️ このデータは {days_ago} 日前の保有スナップショットです。リアルタイムではありません",
     "report_date_label": "保有基準日",
     "filing_date_label": "申告日"
+  },
+  "fx": {
+    "period_1d": "1日",
+    "period_5d": "5日",
+    "period_3m": "3か月",
+    "alert_type_daily_spike": "日次急騰・急落",
+    "alert_type_short_term_swing": "短期スイング",
+    "alert_type_long_term_trend": "長期トレンド"
   }
 }

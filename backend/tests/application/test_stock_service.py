@@ -322,6 +322,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_dividend),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -332,6 +333,55 @@ class TestGetEnrichedStocks:
         assert result[0]["signals"] == mock_signals
         assert result[0]["earnings"] == mock_earnings
         assert result[0]["dividend"] == mock_dividend
+
+    def test_sector_field_included_in_enriched_response(self, db_session) -> None:
+        """sector field from yfinance cache should be present in each enriched stock dict."""
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category=StockCategory.MOAT))
+
+        mock_signals = {"rsi": 55.0, "bias": 3.0, "price": 195.0, "change_pct": 1.2}
+
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(
+                f"{STOCK_MODULE}.get_ticker_sector_cached", return_value="Technology"
+            ),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert len(result) == 1
+        item = result[0]
+        assert item["sector"] == "Technology"
+        assert item["price"] == 195.0
+        assert item["change_pct"] == 1.2
+        assert item["rsi"] == 55.0
+
+    def test_sector_none_when_cache_miss(self, db_session) -> None:
+        """sector should be None when not yet in disk cache (non-blocking)."""
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="NOCACHE", category=StockCategory.GROWTH))
+
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert result[0]["sector"] is None
 
     def test_thesis_broken_signal_preserved(self, db_session) -> None:
         """Stocks with THESIS_BROKEN last_scan_signal should keep computed_signal='THESIS_BROKEN'."""
@@ -352,6 +402,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -372,6 +423,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 

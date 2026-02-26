@@ -3,7 +3,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, func, select
 
@@ -18,6 +18,7 @@ from domain.entities import (
     GuruFiling,
     GuruHolding,
     Holding,
+    NotificationLog,
     PriceAlert,
     RemovalLog,
     ScanLog,
@@ -98,14 +99,90 @@ def bulk_update_display_order(session: Session, ordered_tickers: list[str]) -> N
     session.commit()
 
 
-def bulk_update_scan_signals(session: Session, updates: dict[str, str]) -> None:
-    """批次更新多檔股票的 last_scan_signal（單一 SELECT + 批次寫入）。"""
+def bulk_update_scan_signals(
+    session: Session,
+    updates: dict[str, str],
+    signal_since_updates: dict[str, datetime | None] | None = None,
+) -> None:
+    """批次更新多檔股票的 last_scan_signal 與 signal_since。"""
     if not updates:
         return
     stocks = session.exec(select(Stock).where(Stock.ticker.in_(updates.keys()))).all()
     for stock in stocks:
         stock.last_scan_signal = updates[stock.ticker]
+        if signal_since_updates and stock.ticker in signal_since_updates:
+            stock.signal_since = signal_since_updates[stock.ticker]
     session.commit()
+
+
+def find_previous_distinct_signal(
+    session: Session, ticker: str, current_signal: str
+) -> tuple[str | None, datetime | None]:
+    """
+    在 ScanLog 中找到緊接在目前連續訊號之前的最後一個不同訊號及其時間。
+    回傳 (previous_signal, changed_at)，若無則回傳 (None, None)。
+    """
+    logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker == ticker)
+            .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+            .limit(100)
+        ).all()
+    )
+    idx = 0
+    while idx < len(logs) and logs[idx].signal == current_signal:
+        idx += 1
+    if idx < len(logs):
+        return logs[idx].signal, logs[idx].scanned_at
+    return None, None
+
+
+def count_consecutive_scans(session: Session, ticker: str, signal: str) -> int:
+    """計算目前訊號連續出現的掃描次數（從最新往回算）。"""
+    logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker == ticker)
+            .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+            .limit(50)
+        ).all()
+    )
+    count = 0
+    for log in logs:
+        if log.signal == signal:
+            count += 1
+        else:
+            break
+    return max(count, 1)
+
+
+def find_recent_scan_logs_for_tickers(
+    session: Session, tickers: list[str], limit_per_ticker: int = 100
+) -> dict[str, list[ScanLog]]:
+    """
+    一次批次取得多檔股票的最新 ScanLog（單一 SQL 查詢）。
+    回傳 ticker → logs（時間降序）的對應表，供呼叫端自行計算統計值。
+    使用 ROW_NUMBER 窗函數或 Python 端分組取 top-N。
+    """
+    if not tickers:
+        return {}
+    all_logs = list(
+        session.exec(
+            select(ScanLog)
+            .where(ScanLog.stock_ticker.in_(tickers))  # type: ignore[union-attr]
+            .order_by(
+                ScanLog.stock_ticker,  # type: ignore[union-attr]
+                ScanLog.scanned_at.desc(),  # type: ignore[union-attr]
+            )
+        ).all()
+    )
+    grouped: dict[str, list[ScanLog]] = {}
+    for log in all_logs:
+        bucket = grouped.setdefault(log.stock_ticker, [])
+        if len(bucket) < limit_per_ticker:
+            bucket.append(log)
+    return grouped
 
 
 # ===========================================================================
@@ -353,6 +430,45 @@ def delete_fx_watch(session: Session, watch: FXWatchConfig) -> None:
 
 
 # ===========================================================================
+# Notification Log Repository (rate-limit tracking)
+# ===========================================================================
+
+
+# Keep at most 7 days of notification logs to prevent unbounded growth.
+_NOTIFICATION_LOG_RETENTION_DAYS = 7
+
+
+def log_notification_sent(session: Session, notification_type: str) -> NotificationLog:
+    """記錄一筆通知發送記錄並清理過期資料（供頻率限制使用）。"""
+    entry = NotificationLog(notification_type=notification_type)
+    session.add(entry)
+
+    cutoff = (
+        datetime.now(UTC) - timedelta(days=_NOTIFICATION_LOG_RETENTION_DAYS)
+    ).replace(tzinfo=None)
+    stale = session.exec(
+        select(NotificationLog).where(NotificationLog.sent_at < cutoff)
+    ).all()
+    for row in stale:
+        session.delete(row)
+
+    session.commit()
+    session.refresh(entry)
+    return entry
+
+
+def count_recent_notifications(
+    session: Session, notification_type: str, since: datetime
+) -> int:
+    """計算指定時間點之後，某通知類型的發送次數。"""
+    statement = select(func.count()).where(
+        NotificationLog.notification_type == notification_type,
+        NotificationLog.sent_at >= since,
+    )
+    return session.exec(statement).one()
+
+
+# ===========================================================================
 # Guru Repository
 # ===========================================================================
 
@@ -508,9 +624,11 @@ def save_holdings_batch(session: Session, holdings: list[GuruHolding]) -> None:
     session.commit()
 
 
-def _latest_filing_ids_subquery():
+def _latest_filing_ids_subquery(style: str | None = None):
     """
     共用子查詢：回傳每位大師最新申報的 filing_id 集合。
+
+    當提供 style 時，僅回傳符合該投資風格大師的最新 filing_id。
 
     使用方式：
         latest_ids = _latest_filing_ids_subquery()
@@ -525,18 +643,26 @@ def _latest_filing_ids_subquery():
         ).group_by(GuruFiling.guru_id)
     ).subquery()
 
-    return (
-        select(GuruFiling.id.label("filing_id")).join(
-            latest_date_subq,
-            (GuruFiling.guru_id == latest_date_subq.c.guru_id)
-            & (GuruFiling.report_date == latest_date_subq.c.max_report),
+    stmt = select(GuruFiling.id.label("filing_id")).join(
+        latest_date_subq,
+        (GuruFiling.guru_id == latest_date_subq.c.guru_id)
+        & (GuruFiling.report_date == latest_date_subq.c.max_report),
+    )
+
+    if style is not None:
+        stmt = stmt.join(Guru, GuruFiling.guru_id == Guru.id).where(
+            Guru.style == style,
+            Guru.is_active == True,  # noqa: E712
         )
-    ).subquery()
+
+    return stmt.subquery()
 
 
-def find_all_guru_summaries(session: Session) -> list[dict]:
+def find_all_guru_summaries(session: Session, style: str | None = None) -> list[dict]:
     """
     查詢所有啟用中大師的最新申報摘要（含申報總筆數）。
+
+    當提供 style 時，僅回傳符合該投資風格的大師。
 
     回傳 list of dict，每筆含：
         id, display_name, latest_report_date, latest_filing_date,
@@ -577,9 +703,10 @@ def find_all_guru_summaries(session: Session) -> list[dict]:
         ).all()
     }
 
-    gurus = session.exec(
-        select(Guru).where(Guru.is_active == True).order_by(Guru.id)  # noqa: E712
-    ).all()
+    guru_stmt = select(Guru).where(Guru.is_active == True).order_by(Guru.id)  # noqa: E712
+    if style is not None:
+        guru_stmt = guru_stmt.where(Guru.style == style)
+    gurus = session.exec(guru_stmt).all()
 
     results = []
     for guru in gurus:
@@ -709,19 +836,22 @@ def _compute_trend(shares_series: list[float]) -> str:
     return "stable"
 
 
-def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
+def find_notable_changes_all_gurus(
+    session: Session, style: str | None = None
+) -> dict[str, list[dict]]:
     """
     查詢所有大師最新申報中的新建倉（NEW_POSITION）和清倉（SOLD_OUT）。
 
     僅包含擁有 >= 2 筆申報的大師（第一筆申報無法計算真實 diff，
     所有持倉皆為 NEW_POSITION 的冷啟動假陽性）。
+    當提供 style 時，僅包含符合該投資風格的大師。
 
     回傳 dict with keys "new_positions" and "sold_outs"，每筆含：
         ticker, company_name, guru_id, guru_display_name, value, weight_pct, change_pct
     """
     from domain.enums import HoldingAction
 
-    latest_filing_ids_subq = _latest_filing_ids_subquery()
+    latest_filing_ids_subq = _latest_filing_ids_subquery(style=style)
 
     # 只包含擁有 >= 2 筆申報的大師（排除冷啟動假陽性）
     multi_filing_gurus = (
@@ -769,15 +899,16 @@ def find_notable_changes_all_gurus(session: Session) -> dict[str, list[dict]]:
     return {"new_positions": new_positions, "sold_outs": sold_outs}
 
 
-def find_consensus_stocks(session: Session) -> list[dict]:
+def find_consensus_stocks(session: Session, style: str | None = None) -> list[dict]:
     """Return tickers held by >1 active guru in their latest filings.
 
     Excludes SOLD_OUT positions. Returns enriched shape with per-guru
     action/weight detail, avg weight, sector, and company name.
+    When style is provided, only includes gurus of that investment style.
     """
     from domain.enums import HoldingAction
 
-    latest_ids = _latest_filing_ids_subquery()
+    latest_ids = _latest_filing_ids_subquery(style=style)
 
     # Single query: all relevant holdings with guru display names
     stmt = (
@@ -839,16 +970,18 @@ def find_consensus_stocks(session: Session) -> list[dict]:
     return result
 
 
-def find_sector_breakdown(session: Session) -> list[dict]:
+def find_sector_breakdown(session: Session, style: str | None = None) -> list[dict]:
     """
     彙總所有大師最新申報中有 sector 資料的持倉，依板塊分組。
+
+    當提供 style 時，僅彙總符合該投資風格大師的持倉。
 
     回傳 list of dict（依 weight_pct 降序），每筆含：
         sector, total_value, holding_count, weight_pct
     """
     from domain.enums import HoldingAction
 
-    latest_filing_ids_subq = _latest_filing_ids_subquery()
+    latest_filing_ids_subq = _latest_filing_ids_subquery(style=style)
 
     holdings_stmt = (
         select(GuruHolding)
@@ -888,7 +1021,9 @@ def find_sector_breakdown(session: Session) -> list[dict]:
     return result
 
 
-def find_activity_feed(session: Session, limit: int = 15) -> dict:
+def find_activity_feed(
+    session: Session, limit: int = 15, style: str | None = None
+) -> dict:
     """Aggregate holdings across all gurus' latest filings.
 
     Returns two ranked lists:
@@ -897,11 +1032,12 @@ def find_activity_feed(session: Session, limit: int = 15) -> dict:
 
     Each item: ticker, company_name, guru_count, gurus (display names), total_value.
     Sorted by guru_count DESC, then total_value DESC.
+    When style is provided, only includes gurus of that investment style.
     Uses a single query + Python aggregation (same pattern as find_consensus_stocks).
     """
     from domain.enums import HoldingAction
 
-    latest_ids = _latest_filing_ids_subquery()
+    latest_ids = _latest_filing_ids_subquery(style=style)
 
     buy_actions = [HoldingAction.NEW_POSITION.value, HoldingAction.INCREASED.value]
     sell_actions = [HoldingAction.SOLD_OUT.value, HoldingAction.DECREASED.value]
@@ -958,16 +1094,17 @@ def find_activity_feed(session: Session, limit: int = 15) -> dict:
     }
 
 
-def find_grand_portfolio(session: Session) -> dict:
+def find_grand_portfolio(session: Session, style: str | None = None) -> dict:
     """Aggregate holdings across all active gurus' latest filings.
 
     Groups by ticker in Python. Excludes SOLD_OUT positions.
     Returns items sorted by combined_weight_pct DESC.
+    When style is provided, only includes gurus of that investment style.
     Uses a single query + Python aggregation (same pattern as find_activity_feed).
     """
     from domain.enums import HoldingAction
 
-    latest_ids = _latest_filing_ids_subquery()
+    latest_ids = _latest_filing_ids_subquery(style=style)
 
     # Single query: fetch all non-SOLD_OUT holdings with guru display names
     stmt = (

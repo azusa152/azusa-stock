@@ -1,7 +1,7 @@
 """Tests for GET /snapshots and GET /snapshots/twr endpoints."""
 
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -46,7 +46,7 @@ class TestListSnapshots:
     def test_should_return_snapshots_ordered_by_date(
         self, client: TestClient, db_session: Session
     ):
-        today = date.today()
+        today = datetime.now(UTC).date()
         _insert_snapshot(db_session, today - timedelta(days=2), 100_000)
         _insert_snapshot(db_session, today - timedelta(days=1), 105_000)
         _insert_snapshot(db_session, today, 110_000)
@@ -97,7 +97,7 @@ class TestGetTwr:
     def test_should_return_none_for_single_snapshot(
         self, client: TestClient, db_session: Session
     ):
-        today = date.today()
+        today = datetime.now(UTC).date()
         _insert_snapshot(db_session, today, 100_000)
         resp = client.get("/snapshots/twr")
         assert resp.status_code == 200
@@ -106,7 +106,7 @@ class TestGetTwr:
         assert data["snapshot_count"] == 1
 
     def test_should_compute_positive_twr(self, client: TestClient, db_session: Session):
-        today = date.today()
+        today = datetime.now(UTC).date()
         start = date(today.year, 1, 1)
         _insert_snapshot(db_session, start, 100_000)
         _insert_snapshot(db_session, start + timedelta(days=30), 110_000)
@@ -126,7 +126,7 @@ class TestGetTwr:
         assert data["end_date"] is not None
 
     def test_should_compute_negative_twr(self, client: TestClient, db_session: Session):
-        today = date.today()
+        today = datetime.now(UTC).date()
         start = date(today.year, 1, 1)
         _insert_snapshot(db_session, start, 100_000)
         _insert_snapshot(db_session, start + timedelta(days=30), 90_000)
@@ -148,3 +148,29 @@ class TestGetTwr:
             params={"start": "2025-06-01", "end": "2025-01-01"},
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /snapshots/backfill-benchmarks
+# ---------------------------------------------------------------------------
+
+
+class TestBackfillBenchmarks:
+    def test_should_return_accepted_when_triggered(self, client: TestClient):
+        resp = client.post("/snapshots/backfill-benchmarks")
+        assert resp.status_code == 200
+        assert resp.json()["message"]  # localized message, non-empty
+
+
+# ---------------------------------------------------------------------------
+# POST /snapshots/take
+# ---------------------------------------------------------------------------
+
+
+class TestTakeSnapshot:
+    def test_should_return_200_and_message_when_triggered(self, client: TestClient):
+        resp = client.post("/snapshots/take")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "message" in data
+        assert data["message"]  # localized, non-empty

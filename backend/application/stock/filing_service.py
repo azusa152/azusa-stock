@@ -149,14 +149,22 @@ def backfill_guru_filings(
     # 升冪排序，讓舊季先同步，diff 鏈方向正確
     in_window.sort(key=lambda f: f["report_date"])
 
-    synced = skipped = errors = 0
-    for edgar_filing in in_window:
+    # 批次查詢已同步的 accession numbers（避免 N 次個別 DB 查詢）
+    existing_filings = find_filings_by_guru(
+        session, guru.id, limit=GURU_BACKFILL_FILING_COUNT
+    )
+    existing_accessions = {f.accession_number for f in existing_filings}
+    new_filings = [
+        f for f in in_window if f["accession_number"] not in existing_accessions
+    ]
+    skipped = len(in_window) - len(new_filings)
+
+    synced = errors = 0
+    for edgar_filing in new_filings:
         try:
             result = _sync_single_filing(session, guru, edgar_filing)
             if result["status"] == "synced":
                 synced += 1
-            elif result["status"] == "skipped":
-                skipped += 1
             else:
                 errors += 1
         except Exception as exc:
@@ -295,9 +303,11 @@ def get_holding_changes(
     return result
 
 
-def get_dashboard_summary(session: Session) -> dict:
+def get_dashboard_summary(session: Session, style: str | None = None) -> dict:
     """
     取得跨大師的聚合儀表板摘要。
+
+    當提供 style 時，僅彙總符合該投資風格的大師資料。
 
     Returns:
         dict with keys:
@@ -307,11 +317,11 @@ def get_dashboard_summary(session: Session) -> dict:
             sector_breakdown: 依行業板塊彙總的持倉分佈
     """
     return {
-        "gurus": find_all_guru_summaries(session),
-        "season_highlights": find_notable_changes_all_gurus(session),
-        "consensus": find_consensus_stocks(session),
-        "sector_breakdown": find_sector_breakdown(session),
-        "activity_feed": find_activity_feed(session),
+        "gurus": find_all_guru_summaries(session, style=style),
+        "season_highlights": find_notable_changes_all_gurus(session, style=style),
+        "consensus": find_consensus_stocks(session, style=style),
+        "sector_breakdown": find_sector_breakdown(session, style=style),
+        "activity_feed": find_activity_feed(session, style=style),
     }
 
 
@@ -382,11 +392,14 @@ def get_holding_qoq(session: Session, guru_id: int, quarters: int = 3) -> dict:
     return {"guru_id": guru_id, "items": items}
 
 
-def get_grand_portfolio(session: Session) -> dict:
-    """Return the aggregated Grand Portfolio across all active gurus."""
+def get_grand_portfolio(session: Session, style: str | None = None) -> dict:
+    """Return the aggregated Grand Portfolio across all active gurus.
+
+    When style is provided, only includes gurus of that investment style.
+    """
     from infrastructure.persistence.repositories import find_grand_portfolio
 
-    return find_grand_portfolio(session)
+    return find_grand_portfolio(session, style=style)
 
 
 def enrich_holdings_with_performance(
@@ -454,7 +467,7 @@ def _sync_single_filing(session: Session, guru: Guru, edgar_filing_dict: dict) -
 
     # 冪等檢查
     if find_filing_by_accession(session, accession_number) is not None:
-        logger.info(
+        logger.debug(
             "13F 申報已存在，跳過同步：%s %s", guru.display_name, accession_number
         )
         return {

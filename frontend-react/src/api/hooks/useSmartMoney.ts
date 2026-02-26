@@ -27,11 +27,12 @@ export function useGurus() {
   })
 }
 
-export function useGuruDashboard() {
+export function useGuruDashboard(style?: string | null) {
   return useQuery<DashboardResponse>({
-    queryKey: ["guruDashboard"],
+    queryKey: ["guruDashboard", style ?? "all"],
     queryFn: async () => {
-      const { data } = await apiClient.get<DashboardResponse>("/gurus/dashboard")
+      const params = style ? { style } : undefined
+      const { data } = await apiClient.get<DashboardResponse>("/gurus/dashboard", { params })
       return data
     },
     staleTime: 5 * 60 * 1000,
@@ -113,12 +114,14 @@ export function useGuruQoQ(id: number, enabled = true) {
   })
 }
 
-export function useGrandPortfolio() {
+export function useGrandPortfolio(style?: string | null) {
   return useQuery<GrandPortfolioResponse>({
-    queryKey: ["grandPortfolio"],
+    queryKey: ["grandPortfolio", style ?? "all"],
     queryFn: () =>
       apiClient
-        .get<GrandPortfolioResponse>("/gurus/grand-portfolio")
+        .get<GrandPortfolioResponse>("/gurus/grand-portfolio", {
+          params: style ? { style } : undefined,
+        })
         .then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   })

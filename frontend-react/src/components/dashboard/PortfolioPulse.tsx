@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
+import { InfoPopover } from "./InfoPopover"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -133,6 +134,57 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
   )
 }
 
+function scoreToColor(score: number): string {
+  if (!Number.isFinite(score)) return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
+  const clamped = Math.max(0, Math.min(100, score))
+  for (const band of FEAR_GREED_BANDS) {
+    if (clamped >= band.range[0] && clamped <= band.range[1]) return band.color
+  }
+  return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
+}
+
+interface ComponentBarsProps {
+  components: FearGreedResponse["components"]
+}
+
+function FearGreedComponentBars({ components }: ComponentBarsProps) {
+  const { t } = useTranslation()
+  if (!components || components.length === 0) return null
+
+  return (
+    <div className="mt-2 space-y-1">
+      {components.map((c) => {
+        const score = c.score
+        const label = t(`config.fear_greed.components.${c.name}`, { defaultValue: c.name })
+        const weightPct = Math.round(c.weight * 100)
+        return (
+          <div key={c.name} className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-right text-[10px] text-muted-foreground leading-none">
+              {label}
+            </span>
+            <div className="relative flex-1 h-2 rounded-full overflow-hidden bg-muted/40">
+              {score != null ? (
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full transition-all"
+                  style={{ width: `${score}%`, backgroundColor: scoreToColor(score) }}
+                />
+              ) : (
+                <div className="absolute left-0 top-0 h-full w-full bg-muted/20" />
+              )}
+            </div>
+            <span className="w-7 shrink-0 text-[10px] text-muted-foreground tabular-nums">
+              {score != null ? score : "–"}
+            </span>
+            <span className="w-7 shrink-0 text-[10px] text-muted-foreground/50 tabular-nums">
+              {weightPct}%
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
   const { recent, isUp } = useMemo(() => {
     const cutoff = new Date()
@@ -243,6 +295,7 @@ export function PortfolioPulse({
     ? t("config.sentiment.not_scanned")
     : t(`config.sentiment.${sentimentKey}`, { defaultValue: marketStatus })
 
+  const displayCurrency = rebalance?.display_currency ?? "USD"
   const totalVal = rebalance?.total_value
   const changePct = rebalance?.total_value_change_pct
   const changeAmt = rebalance?.total_value_change
@@ -253,6 +306,36 @@ export function PortfolioPulse({
   const vixVal = fearGreed?.vix?.value
   const vixChange = fearGreed?.vix?.change_1d
   const cnnScore = fearGreed?.cnn?.score
+
+  const allNonNormalStocks = stocks
+    .filter((s) => s.is_active)
+    .flatMap((s) => {
+      const signal = enrichedSignalMap[s.ticker] ?? s.last_scan_signal ?? "NORMAL"
+      return signal !== "NORMAL" ? [{ ticker: s.ticker, signal }] : []
+    })
+  const NON_NORMAL_CAP = 10
+  const nonNormalStocks = allNonNormalStocks.slice(0, NON_NORMAL_CAP)
+  const nonNormalOverflow = allNonNormalStocks.length - nonNormalStocks.length
+
+  const fearGreedTopBottom = (() => {
+    const components = fearGreed?.components
+    if (!components || components.length === 0) return null
+    const scored = components.filter((c) => c.score != null) as Array<{ name: string; score: number; weight: number }>
+    if (scored.length === 0) return null
+    const sorted = [...scored].sort((a, b) => b.score - a.score)
+    const topName = sorted[0].name
+    const bottomName = sorted[sorted.length - 1].name
+    return {
+      top: {
+        label: t(`config.fear_greed.components.${topName}`, { defaultValue: topName }),
+        score: sorted[0].score,
+      },
+      bottom: {
+        label: t(`config.fear_greed.components.${bottomName}`, { defaultValue: bottomName }),
+        score: sorted[sorted.length - 1].score,
+      },
+    }
+  })()
 
   return (
     <Card>
@@ -267,7 +350,7 @@ export function PortfolioPulse({
                 <p className={`text-sm font-medium ${changePct >= 0 ? "text-green-500" : "text-red-500"}`}>
                   {changePct >= 0 ? "▲" : "▼"}
                   {Math.abs(changePct).toFixed(2)}%
-                  {!isPrivate && ` ($${Math.abs(changeAmt).toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                  {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
                 </p>
               )}
               {ytdTwr != null && (
@@ -287,7 +370,36 @@ export function PortfolioPulse({
 
         {/* Center: Fear & Greed Gauge */}
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground text-center">{t("dashboard.fear_greed_title")}</p>
+          <div className="flex items-center justify-center gap-1">
+            <p className="text-xs text-muted-foreground">{t("dashboard.fear_greed_title")}</p>
+            {fearGreed && (
+              <InfoPopover align="center">
+                <p className="text-xs font-medium">
+                  {fearGreed.cnn?.score != null
+                    ? t("dashboard.info.fear_greed_source_cnn")
+                    : fearGreed.self_calculated_score != null
+                      ? t("dashboard.info.fear_greed_source_self")
+                      : t("dashboard.info.fear_greed_source_vix")}
+                </p>
+                {fearGreedTopBottom && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {t("dashboard.info.fear_greed_top", {
+                        name: fearGreedTopBottom.top.label,
+                        score: fearGreedTopBottom.top.score,
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("dashboard.info.fear_greed_bottom", {
+                        name: fearGreedTopBottom.bottom.label,
+                        score: fearGreedTopBottom.bottom.score,
+                      })}
+                    </p>
+                  </>
+                )}
+              </InfoPopover>
+            )}
+          </div>
           {fearGreed ? (
             <>
               <FearGreedGauge score={fgScore} level={fgLevel} />
@@ -301,6 +413,9 @@ export function PortfolioPulse({
                 {vixVal != null && " ｜ "}
                 {cnnScore != null ? `CNN=${cnnScore}` : t("config.fear_greed.cnn_unavailable")}
               </p>
+              {fearGreed.components && fearGreed.components.length > 0 && (
+                <FearGreedComponentBars components={fearGreed.components} />
+              )}
             </>
           ) : (
             <p className="text-center text-muted-foreground text-sm">N/A</p>
@@ -310,11 +425,47 @@ export function PortfolioPulse({
         {/* Right: Market Sentiment + Health Score + Tracking */}
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.market_sentiment")}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">{t("dashboard.market_sentiment")}</p>
+              <InfoPopover align="end">
+                {lastScan?.market_status_details ? (
+                  <p className="text-xs">{lastScan.market_status_details}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t("dashboard.info.sentiment_no_details")}</p>
+                )}
+                <p className="text-xs text-muted-foreground whitespace-pre-line">
+                  {t("dashboard.info.sentiment_thresholds")}
+                </p>
+              </InfoPopover>
+            </div>
             <p className="text-lg font-semibold">{sentimentLabel}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.health_score")}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">{t("dashboard.health_score")}</p>
+              <InfoPopover align="end">
+                {nonNormalStocks.length > 0 ? (
+                  <>
+                    <p className="text-xs font-medium">{t("dashboard.info.health_non_normal")}</p>
+                    <ul className="space-y-0.5">
+                      {nonNormalStocks.map(({ ticker, signal }) => (
+                        <li key={ticker} className="text-xs flex gap-1.5">
+                          <span className="font-medium">{ticker}</span>
+                          <span className="text-muted-foreground">{signal}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {nonNormalOverflow > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("dashboard.info.health_overflow", { count: nonNormalOverflow })}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs">{t("dashboard.info.health_all_normal")}</p>
+                )}
+              </InfoPopover>
+            </div>
             {totalCnt > 0 ? (
               <>
                 <p className={`text-lg font-semibold ${healthScoreColor(healthPct)}`}>

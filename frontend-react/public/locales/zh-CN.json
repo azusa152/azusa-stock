@@ -70,7 +70,16 @@
       "greed": "🤑 贪婪",
       "extreme_greed": "🤯 极度贪婪",
       "na": "⏳ 无数据",
-      "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX"
+      "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX",
+      "components": {
+        "price_strength": "股价强度",
+        "vix": "波动率 (VIX)",
+        "momentum": "动能",
+        "breadth": "市场广度",
+        "junk_bond": "垃圾债需求",
+        "safe_haven": "避险需求",
+        "sector_rotation": "板块轮动"
+      }
     },
     "fx_period": {
       "1month": "1 个月",
@@ -151,6 +160,12 @@
     "signal_alerts_title": "⚠️ 讯号警报",
     "signal_buy_title": "🟢 买入机会",
     "signal_risk_title": "🚨 风险警示",
+    "signal_duration_days": "{{count}}天",
+    "signal_duration_weeks": "{{count}}周",
+    "signal_duration_months": "{{count}}个月",
+    "signal_new": "NEW",
+    "signal_was": "前信号 {{signal}}",
+    "signal_consecutive": "{{count}} 次扫描",
     "all_signals_normal": "✅ 所有追踪股票讯号正常！",
     "no_tracking_stocks": "📭 尚未追踪任何股票。前往投资雷达开始追踪。",
     "top_holdings_title": "🏆 前 {{limit}} 大持仓",
@@ -166,6 +181,25 @@
     "ytd_return": "今年回报",
     "ytd_dividend": "今年股息",
     "ytd_dividend_actual": "（以实际年初至今配息计算）",
+    "info": {
+      "sentiment_thresholds": "等级阈值（趋势指标股跌破60日均线的比例）：\n≤10% 强势看多 · ≤30% 看多 · ≤50% 中性 · ≤70% 看空 · >70% 强势看空",
+      "sentiment_no_details": "请执行扫描以查看详情。",
+      "fear_greed_source_cnn": "来源：CNN 恐惧与贪婪指数",
+      "fear_greed_source_self": "来源：自行计算（7项指标）",
+      "fear_greed_source_vix": "来源：VIX 衍生分数",
+      "fear_greed_top": "最强信号：{{name}}（{{score}}）",
+      "fear_greed_bottom": "最弱信号：{{name}}（{{score}}）",
+      "health_non_normal": "非正常信号：",
+      "health_all_normal": "所有追踪股票均为 NORMAL ✅",
+      "health_overflow": "…另有 {{count}} 支",
+      "dividend_breakdown": "各股明细：",
+      "dividend_qty": "数量",
+      "dividend_dps": "每股股息",
+      "dividend_subtotal": "小计",
+      "dividend_currency_note": "金额为各股本地货币（未换汇）",
+      "dividend_native": "原币金额",
+      "dividend_converted": "换汇后"
+    },
     "no_holdings": "无持仓资料。",
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
     "resonance": {
@@ -182,7 +216,6 @@
     "fear_greed_title": "恐惧与贪婪",
     "performance_title": "📈 投资组合绩效",
     "performance_no_data": "📭 暂无快照历史。每日 23:00 UTC 自动创建快照。",
-    "performance_benchmark_label": "S&P 500",
     "performance_period_1w": "1W",
     "performance_period_1m": "1M",
     "performance_period_3m": "3M",
@@ -190,8 +223,35 @@
     "performance_period_ytd": "今年",
     "performance_period_1y": "1Y",
     "performance_period_all": "全部",
+    "heatmap_title": "📊 自选股热力图",
+    "heatmap_empty": "📭 暂无价格数据，请先执行扫描。",
+    "heatmap_grouped_by": "按 GICS 行业分组",
+    "heatmap_price": "股价",
+    "heatmap_change": "涨跌幅",
+    "heatmap_sector_other": "其他",
+    "heatmap_legend_strong_loss": "≤ −3%",
+    "heatmap_legend_neutral": "≈ 0%",
+    "heatmap_legend_strong_gain": "≥ +3%",
     "performance_portfolio_return": "投资组合",
-    "performance_no_period_data": "此期间无数据"
+    "performance_no_period_data": "此期间无数据",
+    "performance_data_from": "资料起始 {{date}}",
+    "performance_benchmark_sp500": "S&P 500",
+    "performance_benchmark_vt": "VT（全球）",
+    "performance_benchmark_n225": "日经 225",
+    "performance_benchmark_twii": "台湾加权",
+    "performance_commentary_outperform_strong": "强势超越 {{benchmark}}，领先 +{{delta}}%",
+    "performance_commentary_outperform_mild": "小幅领先 {{benchmark}} +{{delta}}%",
+    "performance_commentary_neutral": "与 {{benchmark}} 走势相近",
+    "performance_commentary_underperform_mild": "落后 {{benchmark}} {{delta}}%，建议检视持仓",
+    "performance_commentary_underperform_strong": "明显落后 {{benchmark}}，考虑重新调整",
+    "performance_commentary_positive_no_benchmark": "本期投资组合上涨 {{return}}%",
+    "performance_commentary_negative_no_benchmark": "本期投资组合下跌 {{return}}%",
+    "performance_commentary_flat_no_benchmark": "本期投资组合几乎持平",
+    "performance_no_benchmark_data": "此期间无 {{benchmark}} 基准数据",
+    "performance_backfill_run": "执行回填",
+    "performance_backfilling": "回填中…",
+    "performance_backfill_complete": "基准数据已加载 — 图表已更新",
+    "performance_backfill_timeout": "回填时间较长，请稍后刷新页面"
   },
   "radar": {
     "title": "📡 Folio",
@@ -346,7 +406,8 @@
       "remove_reason_required": "⚠️ 请输入移除原因。",
       "current_category_label": "当前：{{cat}}",
       "confirm_switch": "确认切换",
-      "tags_placeholder": "标签（逗号分隔）"
+      "tags_placeholder": "标签（逗号分隔）",
+      "held": "持有"
     }
   },
   "allocation": {
@@ -461,7 +522,12 @@
         "fx_watch_alerts": "📡 外汇换汇时机警报",
         "fx_watch_alerts_help": "汇率接近近期高点或连续上涨时通知（每 6 小时扫描）",
         "guru_alerts": "🧠 大师 13F 申报警报",
-        "guru_alerts_help": "新的大师申报摘要与自选股共鸣警报"
+        "guru_alerts_help": "新的大师申报摘要与自选股共鸣警报",
+        "rate_limit_label": "最多 {{max_count}} 次／{{window_hours}} 小时",
+        "rate_limit_max": "最多次数",
+        "rate_limit_window": "时间范围（小时）",
+        "rate_limit_unlimited": "不限制",
+        "rate_limit_caption": "设定此通知在一段时间内最多可发送几次，0 表示不限制。"
       },
       "save_notif": "💾 保存通知偏好"
     },

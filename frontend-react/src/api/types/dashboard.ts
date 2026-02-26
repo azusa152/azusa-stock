@@ -11,6 +11,7 @@ export type ScanSignal = components["schemas"]["ScanSignal"]
 
 // Stock (mapped from StockResponse)
 export type Stock = components["schemas"]["StockResponse"]
+export type SignalActivityItem = components["schemas"]["SignalActivityItem"]
 
 export type CategoryAllocation = components["schemas"]["CategoryAllocation"]
 export type HoldingDetail = components["schemas"]["HoldingDetail"]
@@ -56,6 +57,7 @@ export interface EnrichedStock {
   category?: StockCategory
   last_scan_signal?: ScanSignal
   computed_signal?: ScanSignal
+  sector?: string
   price?: number
   change_pct?: number
   rsi?: number

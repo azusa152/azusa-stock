@@ -13,6 +13,7 @@ from application.scan.scan_service import (  # noqa: F401
     get_last_scan_status,
     get_latest_scan_logs,
     get_scan_history,
+    get_signal_activity,
     list_price_alerts,
     run_scan,
     toggle_price_alert,

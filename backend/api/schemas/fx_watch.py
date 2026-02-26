@@ -77,8 +77,11 @@ class FXTimingResultResponse(BaseModel):
     alert_on_recent_high: bool
     alert_on_consecutive_increase: bool
     should_alert: bool
-    recommendation_zh: str
-    reasoning_zh: str
+    scenario: str
+    scenario_vars: dict
+    # Localised strings — translated to the user's language by the API route.
+    recommendation: str
+    reasoning: str
 
 
 class FXWatchCheckResultItem(BaseModel):

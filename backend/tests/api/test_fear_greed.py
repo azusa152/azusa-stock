@@ -26,6 +26,52 @@ class TestGetFearGreedEndpoint:
         assert data["cnn"] is not None
         assert data["cnn"]["score"] == 38
 
+    def test_fear_greed_should_return_self_calculated_score(self, client):
+        # Act
+        resp = client.get("/market/fear-greed")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["self_calculated_score"] == 42
+
+    def test_fear_greed_should_return_7_components_with_correct_fields(self, client):
+        # Act
+        resp = client.get("/market/fear-greed")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        components = data["components"]
+        assert len(components) == 7
+
+        expected_names = {
+            "price_strength",
+            "vix",
+            "momentum",
+            "breadth",
+            "junk_bond",
+            "safe_haven",
+            "sector_rotation",
+        }
+        returned_names = {c["name"] for c in components}
+        assert returned_names == expected_names
+
+        for comp in components:
+            assert "name" in comp
+            assert "score" in comp
+            assert "weight" in comp
+            assert comp["weight"] > 0
+
+    def test_fear_greed_component_weights_sum_to_1(self, client):
+        # Act
+        resp = client.get("/market/fear-greed")
+
+        # Assert
+        data = resp.json()
+        total_weight = sum(c["weight"] for c in data["components"])
+        assert abs(total_weight - 1.0) < 0.01
+
     def test_fear_greed_should_return_vix_only_when_cnn_unavailable(self, client):
         # Arrange
         mock_fg_vix_only = {
@@ -55,6 +101,25 @@ class TestGetFearGreedEndpoint:
         assert data["composite_level"] == "NEUTRAL"
         assert data["vix"]["value"] == 25.0
         assert data["cnn"] is None
+        # When components key is absent, API must still return 7 items with null scores
+        assert len(data["components"]) == 7
+        assert all(c["score"] is None for c in data["components"])
+        assert data["self_calculated_score"] is None
+
+    def test_fear_greed_handles_scan_service_returning_none(self, client):
+        # Arrange — scan_service.get_fear_greed() returns None (network failure)
+        with patch(
+            "application.scan.scan_service.get_fear_greed_index",
+            return_value=None,
+        ):
+            # Act
+            resp = client.get("/market/fear-greed")
+
+        # Assert — must degrade gracefully, not crash
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["composite_score"] == 50
+        assert len(data["components"]) == 7
 
     def test_fear_greed_should_return_na_when_both_sources_fail(self, client):
         # Arrange

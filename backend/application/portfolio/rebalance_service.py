@@ -3,8 +3,10 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 """
 
 import json as _json
+import threading
 from datetime import UTC, datetime
 
+from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from application.stock.stock_service import StockNotFoundError
@@ -12,10 +14,12 @@ from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    REBALANCE_CACHE_MAXSIZE,
+    REBALANCE_CACHE_TTL,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Holding, UserInvestmentProfile
+from domain.entities import Holding, Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL
 from domain.fx_analysis import (
     FXRateAlert,
@@ -40,14 +44,30 @@ from infrastructure.market_data import (
     prewarm_etf_holdings_batch,
     prewarm_etf_sector_weights_batch,
     prewarm_signals_batch,
+    prewarm_ticker_sector_batch,
 )
 from infrastructure.notification import (
     is_notification_enabled,
+    is_within_rate_limit,
     send_telegram_message_dual,
 )
+from infrastructure.repositories import log_notification_sent
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# 再平衡計算結果的短效快取（key = (display_currency, lang)）。
+# 避免同一時間多個前端請求（Dashboard + Allocation + 快照觸發）重複執行完整計算。
+_rebalance_cache: TTLCache = TTLCache(
+    maxsize=REBALANCE_CACHE_MAXSIZE, ttl=REBALANCE_CACHE_TTL
+)
+_rebalance_cache_lock = threading.Lock()
+
+
+def invalidate_rebalance_cache() -> None:
+    """主動清除再平衡快取（持倉變動後呼叫）。"""
+    with _rebalance_cache_lock:
+        _rebalance_cache.clear()
 
 
 # ===========================================================================
@@ -155,8 +175,18 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     3. 取得匯率，將所有持倉轉換為 display_currency
     4. 對非現金持倉查詢即時價格
     5. 委託 domain.rebalance 純函式計算偏移與建議
+
+    結果以 (display_currency, lang) 為 key 快取 60 秒，避免短時間內重複計算。
+    快取命中時更新 calculated_at 為當前時間，避免回傳過期的計算時間戳。
     """
     lang = get_user_language(session)
+    _cache_key = (display_currency, lang)
+
+    with _rebalance_cache_lock:
+        cached = _rebalance_cache.get(_cache_key)
+        if cached is not None:
+            logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
+            return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
 
     # 1) 取得目標配置
     profile = session.exec(
@@ -219,7 +249,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     total_value_change = round(total_value - previous_total_value, 2)
     total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
 
-    logger.info(
+    logger.debug(
         "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
         previous_total_value,
         total_value,
@@ -292,6 +322,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         prewarm_etf_holdings_batch(xray_tickers)
         prewarm_etf_sector_weights_batch(xray_tickers)
 
+    # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
+    # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
+    known_etf_tickers: set[str] = {
+        s.ticker
+        for s in session.exec(select(Stock).where(Stock.is_etf == True))  # noqa: E712
+    }
+
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
 
     for ticker, agg in ticker_agg.items():
@@ -318,6 +355,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
                 xray_map[sym]["indirect"] += indirect_mv
                 src_pct = round(weight * 100, 2)
                 xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
+        elif ticker in known_etf_tickers:
+            # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
+            # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
+            logger.warning(
+                "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
+                ticker,
+            )
         else:
             # 非 ETF — 記錄為直接持倉
             if ticker not in xray_map:
@@ -376,14 +420,38 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     #   Approach A（後備）：若 B 無資料，分解 top-N 成分股並查詢各自板塊，
     #                       未覆蓋的剩餘比例按已辨識板塊比例分配（避免膨脹 Unknown）。
     #   直接持股：使用 get_ticker_sector() 磁碟快取（30 天 TTL）。
+
+    # 並行預熱所有 equity 持倉及已知 ETF 成分股的 sector 快取，
+    # 讓後續逐一查詢（Approach A 及直接持股）直接命中磁碟快取。
+    # 同時快取 get_etf_top_holdings 結果，避免下方主迴圈重複呼叫。
+    equity_tickers_for_sector = [
+        ticker
+        for ticker, agg in ticker_agg.items()
+        if agg["category"] in EQUITY_CATEGORIES and agg["mv"] > 0
+    ]
+    # Collect constituent results once — reused in sector loop below
+    etf_constituents_cache: dict[str, list[dict]] = {}
+    constituent_symbols_for_sector: list[str] = []
+    for ticker in equity_tickers_for_sector:
+        constituents = get_etf_top_holdings(ticker)
+        if constituents:
+            etf_constituents_cache[ticker] = constituents
+            constituent_symbols_for_sector.extend(c["symbol"] for c in constituents)
+    all_sector_tickers = list(
+        set(equity_tickers_for_sector + constituent_symbols_for_sector)
+    )
+    if all_sector_tickers:
+        logger.info("並行預熱 %d 個 ticker 的 sector 快取...", len(all_sector_tickers))
+        prewarm_ticker_sector_batch(all_sector_tickers)
+
     sector_values: dict[str, float] = {}
     for ticker, agg in ticker_agg.items():
         if agg["category"] not in EQUITY_CATEGORIES or agg["mv"] <= 0:
             continue
         mv = agg["mv"]
 
-        # 判斷是否為 ETF（已由 X-Ray 預熱，直接讀快取）
-        constituents = get_etf_top_holdings(ticker)
+        # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
+        constituents = etf_constituents_cache.get(ticker)
         if constituents:
             # Approach B：使用 ETF 官方板塊權重分佈（涵蓋 100% 資產）
             etf_sector_weights = get_etf_sector_weights(ticker)
@@ -462,6 +530,9 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     ]
 
     result["calculated_at"] = datetime.now(UTC).isoformat()
+
+    with _rebalance_cache_lock:
+        _rebalance_cache[_cache_key] = result
 
     return result
 
@@ -767,7 +838,11 @@ def _generate_fx_advice(
             if cash_amt > 0
             else ""
         )
-        type_label = FX_ALERT_LABEL.get(alert.alert_type.value, alert.alert_type.value)
+        type_label_key = FX_ALERT_LABEL.get(
+            alert.alert_type.value, alert.alert_type.value
+        )
+        type_label = t(type_label_key, lang=lang)
+        period = t(alert.period_label, lang=lang)
         if alert.direction == "up":
             advice.append(
                 t(
@@ -775,7 +850,7 @@ def _generate_fx_advice(
                     lang=lang,
                     pair=alert.pair,
                     type_label=type_label,
-                    period=alert.period_label,
+                    period=period,
                     change_pct=alert.change_pct,
                     rate=alert.current_rate,
                     cash_note=cash_note,
@@ -788,7 +863,7 @@ def _generate_fx_advice(
                     lang=lang,
                     pair=alert.pair,
                     type_label=type_label,
-                    period=alert.period_label,
+                    period=period,
                     change_pct=alert.change_pct,
                     rate=alert.current_rate,
                     cash_note=cash_note,
@@ -803,36 +878,46 @@ def _generate_fx_advice(
 # ===========================================================================
 
 
-def check_fx_alerts(session: Session) -> list[str]:
+def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
     """
     檢查匯率曝險警報：偵測三層級匯率變動，產出 Telegram 通知文字。
+    Alert text is localised to the user's preferred language.
+    Pass `lang` explicitly to avoid a redundant DB read when the caller already holds it.
     """
     exposure = calculate_currency_exposure(session)
     alerts: list[str] = []
-
-    home_cur = exposure["home_currency"]
+    if lang is None:
+        lang = get_user_language(session)
 
     # 匯率變動警報（三層級偵測）
     for alert_data in exposure.get("fx_rate_alerts", []):
         pair = alert_data["pair"]
-        base_cur = pair.split("/")[0]
-        type_label = FX_ALERT_LABEL.get(
+        type_label_key = FX_ALERT_LABEL.get(
             alert_data["alert_type"], alert_data["alert_type"]
         )
-        if alert_data["direction"] == "up":
-            alerts.append(
-                f"📈 {pair} {type_label}：{alert_data['period_label']}升值 "
-                f"{alert_data['change_pct']:+.2f}%"
-                f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 購買力上升。"
-            )
-        else:
-            alerts.append(
-                f"📉 {pair} {type_label}：{alert_data['period_label']}貶值 "
-                f"{alert_data['change_pct']:+.2f}%"
-                f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 資產以 {home_cur} 計價正在縮水。"
-            )
+        type_label = t(type_label_key, lang=lang)
+        period = (
+            t(alert_data["period_label"], lang=lang)
+            if alert_data.get("period_label")
+            else ""
+        )
+        key = (
+            "rebalance.fx_alert_up"
+            if alert_data["direction"] == "up"
+            else "rebalance.fx_alert_down"
+        )
+        alerts.append(
+            t(
+                key,
+                lang=lang,
+                pair=pair,
+                type_label=type_label,
+                period=period,
+                change_pct=alert_data["change_pct"],
+                rate=alert_data["current_rate"],
+                cash_note="",
+            ).rstrip()
+        )
 
     return alerts
 
@@ -842,18 +927,24 @@ def send_fx_alerts(session: Session) -> list[str]:
     執行匯率曝險檢查，若有警報則發送 Telegram 通知。
     回傳已發送的警報列表。
     """
-    alerts = check_fx_alerts(session)
+    lang = get_user_language(session)
+    alerts = check_fx_alerts(session, lang=lang)
 
     if alerts:
-        if is_notification_enabled(session, "fx_alerts"):
-            full_msg = "💱 匯率曝險監控\n\n" + "\n\n".join(alerts)
+        if not is_notification_enabled(session, "fx_alerts"):
+            logger.info("匯率曝險通知已被使用者停用，跳過發送。")
+        elif not is_within_rate_limit(session, "fx_alerts"):
+            logger.info("匯率曝險通知已達頻率上限，跳過發送。")
+        else:
+            title = t("rebalance.fx_exposure_title", lang=lang)
+            full_msg = title + "\n\n" + "\n\n".join(alerts)
             try:
                 send_telegram_message_dual(full_msg, session)
-                logger.info("已發送匯率曝險警報（%d 筆）", len(alerts))
             except Exception as e:
                 logger.warning("匯率曝險 Telegram 警報發送失敗：%s", e)
-        else:
-            logger.info("匯率曝險通知已被使用者停用，跳過發送。")
+            else:
+                log_notification_sent(session, "fx_alerts")
+                logger.info("已發送匯率曝險警報（%d 筆）", len(alerts))
 
     return alerts
 
@@ -971,21 +1062,21 @@ def calculate_withdrawal(
         target_config=target_config,
     )
 
-    # 7) 建立回傳結果
+    # 7) 建立回傳結果（翻譯 reason_key → 使用者語言的 reason 文字）
+    lang = get_user_language(session)
     recs = [
         {
             "ticker": r.ticker,
             "category": r.category,
             "quantity_to_sell": r.quantity_to_sell,
             "sell_value": r.sell_value,
-            "reason": r.reason,
+            "reason": t(r.reason_key, lang=lang, **r.reason_vars),
             "unrealized_pl": r.unrealized_pl,
             "priority": r.priority,
         }
         for r in plan.recommendations
     ]
 
-    lang = get_user_language(session)
     if plan.shortfall > 0:
         message = t(
             "withdrawal.shortfall",

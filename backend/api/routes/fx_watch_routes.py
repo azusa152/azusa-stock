@@ -26,6 +26,7 @@ from application.portfolio.fx_watch_service import (
 )
 from domain.constants import DEFAULT_USER_ID
 from domain.entities import FXWatchConfig
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -58,9 +59,20 @@ def _to_watch_response(w: FXWatchConfig) -> FXWatchResponse:
     )
 
 
-def _to_result_item(r: dict) -> FXWatchCheckResultItem:
-    """Map service result dict to FXWatchCheckResultItem schema."""
+def _to_result_item(r: dict, lang: str) -> FXWatchCheckResultItem:
+    """Map service result dict to FXWatchCheckResultItem schema.
+
+    recommendation and reasoning are translated to the user's language using
+    the scenario code and interpolation vars produced by the domain layer.
+    Emoji prefixes (💡 / 📊) are stripped — they are Telegram-only decoration.
+    """
     timing = r["result"]
+    scenario = timing.scenario or "no_signal"
+    vars_ = timing.scenario_vars or {}
+    recommendation = t(f"fx_watch.rec_{scenario}", lang=lang, **vars_).removeprefix(
+        "💡 "
+    )
+    reasoning = t(f"fx_watch.rea_{scenario}", lang=lang, **vars_).removeprefix("📊 ")
     return FXWatchCheckResultItem(
         watch_id=r["watch_id"],
         pair=r["pair"],
@@ -76,8 +88,10 @@ def _to_result_item(r: dict) -> FXWatchCheckResultItem:
             alert_on_recent_high=timing.alert_on_recent_high,
             alert_on_consecutive_increase=timing.alert_on_consecutive_increase,
             should_alert=timing.should_alert,
-            recommendation_zh=timing.recommendation_zh,
-            reasoning_zh=timing.reasoning_zh,
+            scenario=scenario,
+            scenario_vars=vars_,
+            recommendation=recommendation,
+            reasoning=reasoning,
         ),
     )
 
@@ -236,9 +250,10 @@ def check_fx_watch_alerts(
     - results: 分析結果列表（含配置 ID、貨幣對、分析結果）
     """
     results = check_fx_watches(session, user_id=user_id)
+    lang = get_user_language(session)
     return FXWatchCheckResponse(
         total_watches=len(results),
-        results=[_to_result_item(r) for r in results],
+        results=[_to_result_item(r, lang) for r in results],
     )
 
 
@@ -264,9 +279,10 @@ def send_fx_watch_alert(
     - alerts: 觸發警報的詳細資訊
     """
     result = send_fx_watch_alerts(session, user_id=user_id)
+    lang = get_user_language(session)
     return FXWatchAlertResponse(
         total_watches=result["total_watches"],
         triggered_alerts=result["triggered_alerts"],
         sent_alerts=result["sent_alerts"],
-        alerts=[_to_result_item(a) for a in result["alerts"]],
+        alerts=[_to_result_item(a, lang) for a in result["alerts"]],
     )

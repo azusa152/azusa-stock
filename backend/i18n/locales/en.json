@@ -69,11 +69,17 @@
     "volume_thin": "· 📉 thin vol",
     "moat_stable_alert": "🟢 {ticker} {details}",
     "moat_unavailable_alert": "⚠️ {ticker} {details}",
-    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Late-stage surge — no leveraged chasing"
+    "rogue_wave_alert": "🌊 <b>{ticker}</b>  ROGUE WAVE  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Late-stage surge — no leveraged chasing",
+    "signal_new_badge": "[NEW]",
+    "signal_transition": "was: {from_signal} → {to_signal}",
+    "resolved_detail": "{ticker} (was {signal}, {days}d)"
   },
   "notification": {
     "change_label": "changes",
     "times_label": "times",
+    "signal_new_badge": "[NEW]",
+    "signal_duration": "[{days}d]",
+    "signal_change_detail": "  • {ticker}: {from_signal} → {to_signal} ({count} changes)",
     "weekly_digest_title": "📋 Folio Weekly Digest",
     "health_score": "🏥 Health: {score}% ({normal}/{total} normal)",
     "fear_greed": "📊 Fear & Greed: {label} | {vix}",
@@ -134,8 +140,8 @@
     "non_home_pct": "📊 Non-home currency ({home}) assets: {pct:.1f}%.",
     "foreign_cash_warning": "💵 {pct:.1f}% of your cash is in foreign currency. Largest foreign cash: {currency} (approx. {value:,.0f} {home}), directly impacted by FX movements.",
     "cash_impact": "(including {currency} cash approx. {amount:,.0f} {home} directly affected)",
-    "fx_alert_up": "📈 {pair} {type_label}: {period}appreciated {change_pct:+.2f}%, current rate {rate:.4f}. {cash_note}",
-    "fx_alert_down": "📉 {pair} {type_label}: {period}depreciated {change_pct:+.2f}%, current rate {rate:.4f}. Consider hedging. {cash_note}",
+    "fx_alert_up": "📈 {pair} {type_label}: {period} appreciated {change_pct:+.2f}%, current rate {rate:.4f}. {cash_note}",
+    "fx_alert_down": "📉 {pair} {type_label}: {period} depreciated {change_pct:+.2f}%, current rate {rate:.4f}. Consider hedging. {cash_note}",
     "fx_exposure_title": "💱 Currency Exposure Monitor",
     "withdrawal_insufficient": "⚠️ No holdings entered, cannot calculate withdrawal plan.",
     "withdrawal_shortfall_total": "⚠️ Insufficient portfolio value, shortfall: {amount} {currency}.",
@@ -242,7 +248,9 @@
     "telegram_not_configured": "Telegram Chat ID not configured. Please save settings first.",
     "telegram_test_msg": "✅ <b>Folio — Notifications Active</b>\n\nAll systems operational. Real-time alerts are enabled for scan signal changes, custom price thresholds, and weekly portfolio digests.",
     "telegram_test_sent": "✅ Test message sent. Please check Telegram.",
-    "tag_validation_error": "Each tag must be non-empty and no longer than 50 characters"
+    "tag_validation_error": "Each tag must be non-empty and no longer than 50 characters",
+    "snapshot_triggered": "Snapshot triggered. Building in background.",
+    "backfill_triggered": "Benchmark backfill triggered. Running in background."
   },
   "constants": {
     "removal_reason_unknown": "Unknown",
@@ -283,5 +291,13 @@
     "lagging_disclaimer": "⚠️ This data reflects holdings from {days_ago} days ago — not real-time",
     "report_date_label": "Report Date",
     "filing_date_label": "Filing Date"
+  },
+  "fx": {
+    "period_1d": "1-day",
+    "period_5d": "5-day",
+    "period_3m": "3-month",
+    "alert_type_daily_spike": "Daily Spike",
+    "alert_type_short_term_swing": "Short-term Swing",
+    "alert_type_long_term_trend": "Long-term Trend"
   }
 }

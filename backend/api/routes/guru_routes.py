@@ -26,6 +26,8 @@ from sqlmodel import Session
 
 from api.rate_limit import limiter
 from api.schemas import (
+    ActivityFeed,
+    ActivityFeedItem,
     ConsensusStockItem,
     DashboardResponse,
     FilingHistoryItem,
@@ -37,6 +39,7 @@ from api.schemas import (
     GuruFilingResponse,
     GuruHoldingResponse,
     GuruResponse,
+    GuruStyleLiteral,
     GuruSummaryItem,
     QoQResponse,
     ResonanceEntryResponse,
@@ -247,10 +250,13 @@ def sync_one(
     summary="Aggregated portfolio across all active gurus' latest 13F filings",
 )
 def get_grand_portfolio_endpoint(
+    style: GuruStyleLiteral | None = Query(
+        default=None, description="Filter by guru style"
+    ),
     session: Session = Depends(get_session),
 ) -> GrandPortfolioResponse:
-    """跨所有啟用中大師的最新 13F 持倉聚合視圖。"""
-    data = get_grand_portfolio(session)
+    """跨所有啟用中大師的最新 13F 持倉聚合視圖。當提供 style 時，僅彙總該風格大師的持倉。"""
+    data = get_grand_portfolio(session, style=style)
     return GrandPortfolioResponse(**data)
 
 
@@ -401,10 +407,14 @@ def get_guru_qoq(
     summary="Aggregated dashboard summary across all gurus",
 )
 def get_dashboard(
+    style: GuruStyleLiteral | None = Query(
+        default=None, description="Filter by guru style"
+    ),
     session: Session = Depends(get_session),
 ) -> DashboardResponse:
     """
     取得跨大師的聚合儀表板摘要，供 Smart Money 總覽頁面使用。
+    當提供 style 時，僅彙總符合該投資風格的大師資料。
 
     回傳：
     - gurus: 每位啟用中大師的最新申報摘要（含申報總筆數）
@@ -414,7 +424,7 @@ def get_dashboard(
 
     ⚠️ 基於 13F 申報快照，非即時資料。
     """
-    data = get_dashboard_summary(session)
+    data = get_dashboard_summary(session, style=style)
 
     gurus = [GuruSummaryItem(**g) for g in data["gurus"]]
 
@@ -429,11 +439,18 @@ def get_dashboard(
     consensus = [ConsensusStockItem(**c) for c in data["consensus"]]
     sector_breakdown = [SectorBreakdownItem(**s) for s in data["sector_breakdown"]]
 
+    feed_raw = data["activity_feed"]
+    activity_feed = ActivityFeed(
+        most_bought=[ActivityFeedItem(**i) for i in feed_raw["most_bought"]],
+        most_sold=[ActivityFeedItem(**i) for i in feed_raw["most_sold"]],
+    )
+
     return DashboardResponse(
         gurus=gurus,
         season_highlights=season_highlights,
         consensus=consensus,
         sector_breakdown=sector_breakdown,
+        activity_feed=activity_feed,
     )
 
 

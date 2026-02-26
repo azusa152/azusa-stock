@@ -35,6 +35,7 @@ from application.portfolio.rebalance_service import (  # noqa: F401
     calculate_rebalance,
     calculate_withdrawal,
     check_fx_alerts,
+    invalidate_rebalance_cache,
     send_fx_alerts,
     send_xray_warnings,
 )
@@ -54,6 +55,7 @@ from application.scan.scan_service import (  # noqa: F401
     delete_price_alert,
     get_latest_scan_logs,
     get_scan_history,
+    get_signal_activity,
     list_price_alerts,
     run_scan,
 )
@@ -76,6 +78,7 @@ from application.stock.stock_service import (  # noqa: F401
     get_removal_history,
     get_thesis_history,
     import_stocks,
+    invalidate_enriched_cache,
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,

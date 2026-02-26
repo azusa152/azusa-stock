@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlmodel import Session, select
 
 from domain.constants import (
+    DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
     GURU_BACKFILL_YEARS,
     SCAN_THREAD_POOL_SIZE,
@@ -53,12 +54,6 @@ def _set_prewarm_ready(value: bool) -> None:
         _prewarm_ready = value
 
 
-# ---------------------------------------------------------------------------
-# 常數
-# ---------------------------------------------------------------------------
-_DEFAULT_USER_ID = "default"
-
-
 def prewarm_all_caches() -> None:
     """非阻塞式啟動預熱 — 填充 L1/L2 快取。
 
@@ -85,11 +80,11 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, equity=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
-        len(tickers["equity"]),
+        len(tickers["sector"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
         len(tickers["etf"]),
@@ -99,9 +94,17 @@ def prewarm_all_caches() -> None:
     _prewarm_phase("signals", lambda: _batch_prewarm_signals(tickers["signals"]))
 
     # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
+    # moat 預熱使用 4 個工作執行緒（預設 SCAN_THREAD_POOL_SIZE=2 限制吞吐量；
+    # 提高並行度讓執行緒在全域限流器釋放時立即接手，縮短整體等待時間）
+    _MOAT_PREWARM_WORKERS = 4
     parallel_phases: list[tuple[str, object]] = [
         ("fear_greed", get_fear_greed_index),
-        ("moat", lambda: prewarm_moat_batch(tickers["moat"])),
+        (
+            "moat",
+            lambda: prewarm_moat_batch(
+                tickers["moat"], max_workers=_MOAT_PREWARM_WORKERS
+            ),
+        ),
         ("guru_backfill", _backfill_all_gurus),
     ]
     if tickers["etf"]:
@@ -113,8 +116,8 @@ def prewarm_all_caches() -> None:
         )
     if tickers["beta"]:
         parallel_phases.append(("beta", lambda: prewarm_beta_batch(tickers["beta"])))
-    if tickers["equity"]:
-        parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["equity"])))
+    if tickers["sector"]:
+        parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
 
     with ThreadPoolExecutor(max_workers=min(len(parallel_phases), 4)) as pool:
         phase_futures = {
@@ -158,7 +161,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         holdings = list(
             session.exec(
                 select(Holding).where(
-                    Holding.user_id == _DEFAULT_USER_ID,
+                    Holding.user_id == DEFAULT_USER_ID,
                     Holding.is_cash == False,  # noqa: E712
                 )
             ).all()
@@ -178,11 +181,15 @@ def _collect_tickers() -> dict[str, list[str]]:
         or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
     ]
 
-    # Moat: 排除 Bond/Cash
+    # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）
     moat_tickers = [
         t
         for t in all_tickers
-        if t not in stock_map or stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+        if t not in stock_map
+        or (
+            stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+            and not stock_map[t].is_etf
+        )
     ]
 
     # ETF: 只有追蹤清單中 is_etf=True 的標的
@@ -200,6 +207,15 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
+    # Sector: 熱力圖需要包含 Bond 類標的（Bond 有 GICS 板塊，只是不做訊號/護城河）
+    # SKIP_SIGNALS_CATEGORIES（僅 Cash）排除的標的，其餘均需板塊資訊
+    sector_tickers = [
+        t
+        for t in all_tickers
+        if t not in stock_map
+        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+    ]
+
     return {
         "all": sorted(all_tickers),
         "signals": sorted(signals_tickers),
@@ -207,6 +223,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         "etf": sorted(etf_tickers),
         "beta": sorted(beta_tickers),
         "equity": sorted(equity_tickers),
+        "sector": sorted(sector_tickers),
     }
 
 

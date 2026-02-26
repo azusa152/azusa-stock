@@ -14,6 +14,18 @@ make format              # Format code
 make clean               # Remove build caches
 ```
 
+## Python Version
+
+CI runs **Python 3.12** (pinned in `.python-version` and `.github/workflows/ci.yml`). Your local venv must use the same minor version — the OpenAPI spec generator (`make generate-api`) produces different output on Python 3.13+, causing the `check-api-spec` CI job to fail.
+
+```bash
+pyenv install 3.12        # install if needed
+pyenv local 3.12          # picks up .python-version automatically
+make install              # rebuilds venv with the correct Python
+```
+
+`make generate-api` and `make check-api-spec` will warn if your venv Python doesn't match `.python-version`.
+
 ## Dependency Management (pip-tools)
 
 Backend dependencies use [pip-tools](https://pip-tools.readthedocs.io/) for reproducible builds:
@@ -62,6 +74,7 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 Coverage is enforced in CI via a ratchet approach — thresholds only ever increase.
 
-- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold (`fail_under = 85`) is in `backend/pyproject.toml` under `[tool.coverage.report]`. CI fails if coverage drops below it.
+- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold is enforced via `--cov-fail-under=85` on the pytest command line (in `Makefile` and `.github/workflows/ci.yml`). CI fails if coverage drops below it.
+- **Important**: Do NOT set `fail_under` in `[tool.coverage.report]` in `backend/pyproject.toml`. It affects all `coverage` subcommands including those run internally by third-party GitHub Actions (e.g. `py-cov-action/python-coverage-comment-action`), causing CI failure with exit code 2. Use `--cov-fail-under=N` on the pytest command line only.
 - **Frontend**: `make frontend-test` runs `vitest run --coverage`. Thresholds are in `frontend-react/vitest.config.ts` under `coverage.thresholds` (lines: 4%, branches: 60%, functions: 25%). `src/components/ui/` is excluded — those are third-party shadcn wrappers.
-- To raise the floor: improve coverage, confirm locally, then bump the threshold value and commit it as the new baseline.
+- To raise the floor: improve coverage, confirm locally, then bump the `--cov-fail-under` value in both `Makefile` and `.github/workflows/ci.yml` and commit as the new baseline.

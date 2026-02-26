@@ -70,7 +70,16 @@
       "greed": "🤑 強欲",
       "extreme_greed": "🤯 極度の強欲",
       "na": "⏳ データなし",
-      "cnn_unavailable": "⚠️ CNNデータ取得不可、VIXのみ使用"
+      "cnn_unavailable": "⚠️ CNNデータ取得不可、VIXのみ使用",
+      "components": {
+        "price_strength": "株価強度",
+        "vix": "ボラティリティ (VIX)",
+        "momentum": "モメンタム",
+        "breadth": "市場の広がり",
+        "junk_bond": "ジャンク債需要",
+        "safe_haven": "安全資産需要",
+        "sector_rotation": "セクターローテーション"
+      }
     },
     "fx_period": {
       "1month": "1ヶ月",
@@ -151,6 +160,12 @@
     "signal_alerts_title": "⚠️ シグナルアラート",
     "signal_buy_title": "🟢 買い機会",
     "signal_risk_title": "🚨 リスク警告",
+    "signal_duration_days": "{{count}}日",
+    "signal_duration_weeks": "{{count}}週",
+    "signal_duration_months": "{{count}}ヶ月",
+    "signal_new": "NEW",
+    "signal_was": "前 {{signal}}",
+    "signal_consecutive": "{{count}} スキャン",
     "all_signals_normal": "✅ すべての追跡銘柄のシグナルは正常です！",
     "no_tracking_stocks": "📭 追跡銘柄がありません。投資レーダーで追跡を開始してください。",
     "top_holdings_title": "🏆 上位 {{limit}} 件の保有銘柄",
@@ -166,6 +181,25 @@
     "ytd_return": "年初来リターン",
     "ytd_dividend": "年初来配当",
     "ytd_dividend_actual": "（年初来の実際の配当に基づく）",
+    "info": {
+      "sentiment_thresholds": "段階閾値（トレンドセッターが60MAを下回る割合）：\n≤10% 強い強気 · ≤30% 強気 · ≤50% 中立 · ≤70% 弱気 · >70% 強い弱気",
+      "sentiment_no_details": "詳細を見るにはスキャンを実行してください。",
+      "fear_greed_source_cnn": "出典：CNN 恐怖・強欲指数",
+      "fear_greed_source_self": "出典：自己計算（7要素）",
+      "fear_greed_source_vix": "出典：VIX由来スコア",
+      "fear_greed_top": "最強シグナル：{{name}}（{{score}}）",
+      "fear_greed_bottom": "最弱シグナル：{{name}}（{{score}}）",
+      "health_non_normal": "非正常シグナル：",
+      "health_all_normal": "全追跡銘柄が NORMAL です ✅",
+      "health_overflow": "…他 {{count}} 件",
+      "dividend_breakdown": "銘柄別内訳：",
+      "dividend_qty": "数量",
+      "dividend_dps": "1株配当",
+      "dividend_subtotal": "小計",
+      "dividend_currency_note": "各銘柄の現地通貨表示（FX換算なし）",
+      "dividend_native": "現地通貨",
+      "dividend_converted": "換算後"
+    },
     "no_holdings": "保有銘柄データがありません。",
     "no_holdings_data": "📭 保有銘柄データがありません。まず保有銘柄を追加してください。",
     "resonance": {
@@ -182,7 +216,6 @@
     "fear_greed_title": "恐怖と強欲",
     "performance_title": "📈 ポートフォリオパフォーマンス",
     "performance_no_data": "📭 スナップショット履歴がありません。毎日 23:00 UTC に自動記録されます。",
-    "performance_benchmark_label": "S&P 500",
     "performance_period_1w": "1W",
     "performance_period_1m": "1M",
     "performance_period_3m": "3M",
@@ -190,8 +223,35 @@
     "performance_period_ytd": "今年",
     "performance_period_1y": "1Y",
     "performance_period_all": "全期間",
+    "heatmap_title": "📊 ウォッチリスト ヒートマップ",
+    "heatmap_empty": "📭 価格データがありません。スキャンを実行してください。",
+    "heatmap_grouped_by": "GICSセクター別グループ",
+    "heatmap_price": "株価",
+    "heatmap_change": "騰落率",
+    "heatmap_sector_other": "その他",
+    "heatmap_legend_strong_loss": "≤ −3%",
+    "heatmap_legend_neutral": "≈ 0%",
+    "heatmap_legend_strong_gain": "≥ +3%",
     "performance_portfolio_return": "ポートフォリオ",
-    "performance_no_period_data": "この期間のデータがありません"
+    "performance_no_period_data": "この期間のデータがありません",
+    "performance_data_from": "{{date}} からのデータ",
+    "performance_benchmark_sp500": "S&P 500",
+    "performance_benchmark_vt": "VT（グローバル）",
+    "performance_benchmark_n225": "日経平均 225",
+    "performance_benchmark_twii": "台湾加重",
+    "performance_commentary_outperform_strong": "強力なアルファ — {{benchmark}} を +{{delta}}% 上回る",
+    "performance_commentary_outperform_mild": "{{benchmark}} を +{{delta}}% 上回る",
+    "performance_commentary_neutral": "{{benchmark}} と近似した動き",
+    "performance_commentary_underperform_mild": "{{benchmark}} を {{delta}}% 下回る — ポジション確認を",
+    "performance_commentary_underperform_strong": "{{benchmark}} を大幅に下回る — リバランスを検討",
+    "performance_commentary_positive_no_benchmark": "当期ポートフォリオは {{return}}% 上昇",
+    "performance_commentary_negative_no_benchmark": "当期ポートフォリオは {{return}}% 下落",
+    "performance_commentary_flat_no_benchmark": "当期ポートフォリオはほぼ横ばい",
+    "performance_no_benchmark_data": "この期間の {{benchmark}} データなし",
+    "performance_backfill_run": "バックフィル実行",
+    "performance_backfilling": "バックフィル中…",
+    "performance_backfill_complete": "基準データを読み込みました — チャートを更新しました",
+    "performance_backfill_timeout": "バックフィルに時間がかかっています — ページを更新してください"
   },
   "radar": {
     "title": "📡 Folio",
@@ -346,7 +406,8 @@
       "remove_reason_required": "⚠️ 削除理由を入力してください。",
       "current_category_label": "現在：{{cat}}",
       "confirm_switch": "切替確認",
-      "tags_placeholder": "タグ（カンマ区切り）"
+      "tags_placeholder": "タグ（カンマ区切り）",
+      "held": "保有中"
     }
   },
   "allocation": {
@@ -461,7 +522,12 @@
         "fx_watch_alerts": "📡 外貨両替タイミングアラート",
         "fx_watch_alerts_help": "為替レートが直近高値に近づくか連続上昇する際に通知（6時間ごとのCron）",
         "guru_alerts": "🧠 グル 13F 申告アラート",
-        "guru_alerts_help": "新しいグル申告ダイジェストとウォッチリスト共鳴アラート"
+        "guru_alerts_help": "新しいグル申告ダイジェストとウォッチリスト共鳴アラート",
+        "rate_limit_label": "最大{{max_count}}回／{{window_hours}}時間",
+        "rate_limit_max": "最大回数",
+        "rate_limit_window": "時間範囲（時間）",
+        "rate_limit_unlimited": "無制限",
+        "rate_limit_caption": "一定時間内に通知が送信される最大回数を設定します。0は無制限を意味します。"
       },
       "save_notif": "💾 通知設定を保存"
     },

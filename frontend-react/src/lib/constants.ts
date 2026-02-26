@@ -104,6 +104,17 @@ export const GURU_TIER_STARS: Record<string, number> = {
 export const HIGH_CONVICTION_THRESHOLD = 60
 export const DIVERSIFIED_THRESHOLD = 30
 
+/** Diverging color scale for stock heat map cells (keyed by daily change % bucket). */
+export const HEATMAP_COLORS = {
+  strongGain: "#16a34a",   // >= +3%
+  gain:       "#22c55e",   // >= +1.5%
+  weakGain:   "#4ade80",   // >= +0.3%
+  neutral:    "#6b7280",   // -0.3% to +0.3% (or no data)
+  weakLoss:   "#f87171",   // > -1.5%
+  loss:       "#ef4444",   // > -3%
+  strongLoss: "#dc2626",   // <= -3%
+} as const
+
 // Market options: labelKey references config.market.* i18n keys
 export const MARKET_OPTIONS = [
   { key: "US", labelKey: "config.market.us", suffix: "", currency: "USD" },

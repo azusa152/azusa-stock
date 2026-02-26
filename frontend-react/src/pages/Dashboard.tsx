@@ -10,6 +10,7 @@ import {
   useHoldings,
   useRebalance,
   useProfile,
+  useSignalActivity,
   useFearGreed,
   useSnapshots,
   useTwr,
@@ -24,6 +25,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent } from "@/components/ui/card"
+import { LazySection } from "@/components/LazySection"
 import { PortfolioPulse } from "@/components/dashboard/PortfolioPulse"
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
 import { SignalAlerts } from "@/components/dashboard/SignalAlerts"
@@ -31,6 +35,7 @@ import { AllocationGlance } from "@/components/dashboard/AllocationGlance"
 import { TopHoldings } from "@/components/dashboard/TopHoldings"
 import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
+import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -46,16 +51,31 @@ export default function Dashboard() {
     })
   }
 
+  // Fast (DB-only) queries — fired immediately on mount.
   const { data: stocks, isLoading: stocksLoading } = useStocks()
-  const { data: enrichedStocks } = useEnrichedStocks()
-  const { data: lastScan } = useLastScan()
   const { data: holdings } = useHoldings()
-  const { data: rebalance, isLoading: rebalanceLoading } = useRebalance(displayCurrency)
-  const { data: profile } = useProfile()
-  const { data: fearGreed } = useFearGreed()
-  const { data: snapshots } = useSnapshots(730)
+  const { data: lastScan } = useLastScan()
+  const { data: signalActivity } = useSignalActivity()
+  const { data: snapshots, isLoading: snapshotsLoading } = useSnapshots(730)
   const { data: twr } = useTwr()
-  const { data: greatMinds, isLoading: greatMindsLoading } = useGreatMinds()
+  const { data: profile } = useProfile()
+
+  // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
+  // both depend on it. Its response is cached on the backend (60s TTL) so repeat
+  // requests are fast; placeholderData keeps old data visible on currency switch.
+  const { data: rebalance, isLoading: rebalanceLoading } = useRebalance(displayCurrency)
+
+  // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
+  // requests above can claim FastAPI threadpool workers first. Note: LazySection
+  // below defers *rendering* of below-fold components, but these hooks are still
+  // registered here; data fetching starts as soon as stocksLoading resolves.
+  const { data: enrichedStocks, isLoading: enrichedLoading } = useEnrichedStocks({
+    enabled: !stocksLoading,
+  })
+  const { data: fearGreed } = useFearGreed({ enabled: !stocksLoading })
+  const { data: greatMinds, isLoading: greatMindsLoading } = useGreatMinds({
+    enabled: !stocksLoading,
+  })
 
   const heroLoading = stocksLoading || rebalanceLoading
 
@@ -132,27 +152,39 @@ export default function Dashboard() {
         isLoading={heroLoading}
       />
 
+      {/* Stock Heat Map */}
+      <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
+
       {/* YTD Dividend Income */}
       <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
 
       {/* Performance Chart */}
-      <PerformanceChart snapshots={snapshots ?? []} />
+      <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
 
-      {/* Signal Alerts */}
-      <SignalAlerts
-        stocks={stocks ?? []}
-        enrichedStocks={enrichedStocks ?? []}
-        rebalance={rebalance}
-      />
+      {/* Signal Alerts — lazy loaded (below fold) */}
+      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+        <SignalAlerts
+          stocks={stocks ?? []}
+          enrichedStocks={enrichedStocks ?? []}
+          rebalance={rebalance}
+          signalActivity={signalActivity ?? []}
+        />
+      </LazySection>
 
-      {/* Allocation at a Glance */}
-      <AllocationGlance rebalance={rebalance} profile={profile} />
+      {/* Allocation at a Glance — lazy loaded (below fold) */}
+      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+        <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
+      </LazySection>
 
-      {/* Top Holdings */}
-      <TopHoldings rebalance={rebalance} />
+      {/* Top Holdings — lazy loaded (below fold) */}
+      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
+        <TopHoldings rebalance={rebalance} />
+      </LazySection>
 
-      {/* Smart Money Resonance */}
-      <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
+      {/* Smart Money Resonance — lazy loaded (below fold) */}
+      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+        <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
+      </LazySection>
     </div>
   )
 }

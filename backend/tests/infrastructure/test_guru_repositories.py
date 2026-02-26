@@ -1409,3 +1409,211 @@ class TestFindGrandPortfolio:
         assert result["total_value"] == 0.0
         assert result["unique_tickers"] == 0
         assert result["sector_breakdown"] == []
+
+
+# ---------------------------------------------------------------------------
+# Style filter tests
+# ---------------------------------------------------------------------------
+
+
+def _make_guru_with_style(
+    session: Session, cik: str, display_name: str, style: str
+) -> Guru:
+    """Helper: Create and save a guru with a specific style."""
+    return save_guru(
+        session,
+        Guru(
+            name=f"Institution {cik}",
+            cik=cik,
+            display_name=display_name,
+            is_active=True,
+            style=style,
+        ),
+    )
+
+
+class TestStyleFilter:
+    """Style filter parameter propagates correctly through all aggregation functions."""
+
+    def test_find_all_guru_summaries_filters_by_style(self, test_session: Session):
+        """Only active gurus with the matching style are returned."""
+        value_guru = _make_guru_with_style(
+            test_session, "SF0001", "Value Guru", "VALUE"
+        )
+        _make_filing(test_session, value_guru.id, "SF-ACC-001", "2024-12-31")
+
+        growth_guru = _make_guru_with_style(
+            test_session, "SF0002", "Growth Guru", "GROWTH"
+        )
+        _make_filing(test_session, growth_guru.id, "SF-ACC-002", "2024-12-31")
+
+        results = find_all_guru_summaries(test_session, style="VALUE")
+        names = [r["display_name"] for r in results]
+        assert "Value Guru" in names
+        assert "Growth Guru" not in names
+
+    def test_find_grand_portfolio_filters_by_style(self, test_session: Session):
+        """Grand portfolio only aggregates holdings from gurus of the given style."""
+        value_guru = _make_guru_with_style(
+            test_session, "SF0003", "Value Guru 2", "VALUE"
+        )
+        value_filing = _make_filing(
+            test_session, value_guru.id, "SF-ACC-003", "2024-12-31"
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=value_filing.id,
+                    guru_id=value_guru.id,
+                    cusip="SF-C001",
+                    ticker="AAPL",
+                    company_name="Apple",
+                    value=200_000.0,
+                    shares=1000.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=20.0,
+                )
+            ],
+        )
+
+        growth_guru = _make_guru_with_style(
+            test_session, "SF0004", "Growth Guru 2", "GROWTH"
+        )
+        growth_filing = _make_filing(
+            test_session, growth_guru.id, "SF-ACC-004", "2024-12-31"
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=growth_filing.id,
+                    guru_id=growth_guru.id,
+                    cusip="SF-C002",
+                    ticker="NVDA",
+                    company_name="NVIDIA",
+                    value=300_000.0,
+                    shares=500.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=30.0,
+                )
+            ],
+        )
+
+        result = find_grand_portfolio(test_session, style="VALUE")
+        tickers = [i["ticker"] for i in result["items"]]
+        assert "AAPL" in tickers
+        assert "NVDA" not in tickers
+
+    def test_find_grand_portfolio_excludes_inactive_gurus_when_style_set(
+        self, test_session: Session
+    ):
+        """Inactive gurus are excluded from grand portfolio even when their style matches."""
+        active_guru = _make_guru_with_style(
+            test_session, "SF0005", "Active Value Guru", "VALUE"
+        )
+        active_filing = _make_filing(
+            test_session, active_guru.id, "SF-ACC-005", "2024-12-31"
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=active_filing.id,
+                    guru_id=active_guru.id,
+                    cusip="SF-C003",
+                    ticker="MSFT",
+                    company_name="Microsoft",
+                    value=100_000.0,
+                    shares=400.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=10.0,
+                )
+            ],
+        )
+
+        inactive_guru = save_guru(
+            test_session,
+            Guru(
+                name="Inactive Institution",
+                cik="SF0006",
+                display_name="Inactive Value Guru",
+                is_active=False,
+                style="VALUE",
+            ),
+        )
+        inactive_filing = _make_filing(
+            test_session, inactive_guru.id, "SF-ACC-006", "2024-12-31"
+        )
+        save_holdings_batch(
+            test_session,
+            [
+                GuruHolding(
+                    filing_id=inactive_filing.id,
+                    guru_id=inactive_guru.id,
+                    cusip="SF-C004",
+                    ticker="AMZN",
+                    company_name="Amazon",
+                    value=150_000.0,
+                    shares=600.0,
+                    action=HoldingAction.UNCHANGED.value,
+                    weight_pct=15.0,
+                )
+            ],
+        )
+
+        result = find_grand_portfolio(test_session, style="VALUE")
+        tickers = [i["ticker"] for i in result["items"]]
+        assert "MSFT" in tickers
+        assert "AMZN" not in tickers
+
+    def test_find_consensus_stocks_filters_by_style(self, test_session: Session):
+        """Consensus only counts gurus of the given style; single-style holding is excluded."""
+        # Two VALUE gurus both hold AAPL → consensus
+        v1 = _make_guru_with_style(test_session, "SF0007", "Value A", "VALUE")
+        v1_f = _make_filing(test_session, v1.id, "SF-ACC-007", "2024-12-31")
+        v2 = _make_guru_with_style(test_session, "SF0008", "Value B", "VALUE")
+        v2_f = _make_filing(test_session, v2.id, "SF-ACC-008", "2024-12-31")
+
+        # GROWTH guru also holds AAPL, but should not count when filtering VALUE
+        g1 = _make_guru_with_style(test_session, "SF0009", "Growth A", "GROWTH")
+        g1_f = _make_filing(test_session, g1.id, "SF-ACC-009", "2024-12-31")
+
+        for fid, gid, cusip in [
+            (v1_f.id, v1.id, "SF-C005"),
+            (v2_f.id, v2.id, "SF-C006"),
+            (g1_f.id, g1.id, "SF-C007"),
+        ]:
+            save_holdings_batch(
+                test_session,
+                [
+                    GuruHolding(
+                        filing_id=fid,
+                        guru_id=gid,
+                        cusip=cusip,
+                        ticker="AAPL",
+                        company_name="Apple",
+                        value=100_000.0,
+                        shares=500.0,
+                        action=HoldingAction.UNCHANGED.value,
+                        weight_pct=10.0,
+                    )
+                ],
+            )
+
+        result = find_consensus_stocks(test_session, style="VALUE")
+        aapl = next((r for r in result if r["ticker"] == "AAPL"), None)
+        assert aapl is not None
+        assert aapl["guru_count"] == 2
+
+    def test_style_none_returns_all_gurus(self, test_session: Session):
+        """Passing style=None (default) returns data across all styles."""
+        v = _make_guru_with_style(test_session, "SF0010", "Nil Value Guru", "VALUE")
+        _make_filing(test_session, v.id, "SF-ACC-010", "2024-12-31")
+        g = _make_guru_with_style(test_session, "SF0011", "Nil Growth Guru", "GROWTH")
+        _make_filing(test_session, g.id, "SF-ACC-011", "2024-12-31")
+
+        results = find_all_guru_summaries(test_session, style=None)
+        names = [r["display_name"] for r in results]
+        assert "Nil Value Guru" in names
+        assert "Nil Growth Guru" in names

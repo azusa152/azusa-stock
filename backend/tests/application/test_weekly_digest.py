@@ -182,11 +182,13 @@ class TestSendWeeklyDigest:
 
         sent_message = mock_send.call_args[0][0]
         assert "NIO" in sent_message
-        # Change count must be present as a digit
-        assert " 1 " in sent_message
+        # Transition direction must be shown in the new format
+        assert "NORMAL" in sent_message
+        assert "OVERSOLD" in sent_message
         # Translated labels must be present, not raw keys
         assert "notification.change_label" not in sent_message
         assert "notification.times_label" not in sent_message
+        assert "notification.signal_change_detail" not in sent_message
 
     def test_should_handle_empty_portfolio(self, db_session: Session):
         """When watchlist is empty the no_stocks key must render as real text."""

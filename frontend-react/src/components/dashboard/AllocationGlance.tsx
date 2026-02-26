@@ -15,6 +15,7 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   CATEGORY_ICON_SHORT,
   CATEGORY_COLOR_MAP,
@@ -26,12 +27,27 @@ import type { RebalanceResponse, ProfileResponse } from "@/api/types/dashboard"
 interface Props {
   rebalance?: RebalanceResponse | null
   profile?: ProfileResponse | null
+  isLoading?: boolean
 }
 
-export function AllocationGlance({ rebalance, profile }: Props) {
+export function AllocationGlance({ rebalance, profile, isLoading = false }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const navigate = useNavigate()
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-32" />
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (!rebalance || !profile || !rebalance.categories) {
     return (

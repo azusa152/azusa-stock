@@ -2,12 +2,15 @@
 
 from domain.analysis import (
     compute_bias_percentile,
+    compute_signal_duration,
     compute_twr,
     detect_rogue_wave,
     determine_market_sentiment,
     determine_scan_signal,
 )
+from domain.analysis.analysis import determine_moat_status, score_momentum_composite
 from domain.constants import (
+    MOAT_MARGIN_DETERIORATION_THRESHOLD,
     ROGUE_WAVE_BIAS_PERCENTILE,
     ROGUE_WAVE_MIN_HISTORY_DAYS,
     ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
@@ -829,3 +832,105 @@ class TestDetermineMarketSentiment:
         sentiment, pct = determine_market_sentiment(3, 10)
         assert sentiment == MarketSentiment.BULLISH
         assert pct == 30.0
+
+
+# ---------------------------------------------------------------------------
+# determine_moat_status
+# ---------------------------------------------------------------------------
+
+
+class TestDetermineMoatStatus:
+    """Tests for determine_moat_status() — margin-based moat health."""
+
+    def test_should_return_deteriorating_when_margin_drops_below_threshold(self):
+        # change = 40.0 - 50.0 = -10.0 < MOAT_MARGIN_DETERIORATION_THRESHOLD (-2)
+        status, change = determine_moat_status(40.0, 50.0)
+        assert status == MoatStatus.DETERIORATING
+        assert change == -10.0
+
+    def test_should_return_stable_when_margin_improves(self):
+        status, change = determine_moat_status(55.0, 50.0)
+        assert status == MoatStatus.STABLE
+        assert change == 5.0
+
+    def test_should_return_not_available_when_current_margin_is_none(self):
+        status, change = determine_moat_status(None, 50.0)
+        assert status == MoatStatus.NOT_AVAILABLE
+        assert change == 0.0
+
+    def test_should_return_not_available_when_previous_margin_is_none(self):
+        status, change = determine_moat_status(50.0, None)
+        assert status == MoatStatus.NOT_AVAILABLE
+        assert change == 0.0
+
+    def test_should_return_stable_when_change_equals_threshold(self):
+        # change = exactly MOAT_MARGIN_DETERIORATION_THRESHOLD → NOT deteriorating (strict <)
+        previous = 50.0
+        current = previous + MOAT_MARGIN_DETERIORATION_THRESHOLD  # change == threshold
+        status, _ = determine_moat_status(current, previous)
+        assert status == MoatStatus.STABLE
+
+
+# ---------------------------------------------------------------------------
+# score_momentum_composite
+# ---------------------------------------------------------------------------
+
+
+class TestScoreMomentumComposite:
+    """Tests for score_momentum_composite() — RSI + MA50 composite score."""
+
+    def test_should_return_none_when_too_few_prices(self):
+        # Need max(rsi_period+1=15, ma_window=50)=50 prices; 10 is not enough
+        assert score_momentum_composite([100.0] * 10) is None
+
+    def test_should_return_int_in_range_with_sufficient_prices(self):
+        # 50 prices, alternating to produce valid RSI and MA
+        prices = [100.0 + (i % 2) * 2 for i in range(50)]
+        result = score_momentum_composite(prices)
+        assert result is not None
+        assert 0 <= result <= 100
+
+
+# ---------------------------------------------------------------------------
+# compute_signal_duration
+# ---------------------------------------------------------------------------
+
+
+class TestComputeSignalDuration:
+    """Tests for compute_signal_duration() — new helper added in feat/enhance-ux."""
+
+    def test_should_return_none_and_false_when_signal_since_is_none(self):
+        from datetime import UTC, datetime
+
+        now = datetime.now(UTC)
+        days, is_new = compute_signal_duration(None, now)
+        assert days is None
+        assert is_new is False
+
+    def test_should_return_zero_days_and_true_for_signal_under_24h(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime.now(UTC)
+        signal_since = now - timedelta(hours=1)
+        days, is_new = compute_signal_duration(signal_since, now)
+        assert days == 0
+        assert is_new is True
+
+    def test_should_return_correct_days_and_false_for_old_signal(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime.now(UTC)
+        signal_since = now - timedelta(days=5)
+        days, is_new = compute_signal_duration(signal_since, now)
+        assert days == 5
+        assert is_new is False
+
+    def test_should_handle_naive_datetime_by_assuming_utc(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime.now(UTC)
+        # Naive datetime (no tzinfo) — should be treated as UTC
+        naive_since = (now - timedelta(days=2)).replace(tzinfo=None)
+        days, is_new = compute_signal_duration(naive_since, now)
+        assert days == 2
+        assert is_new is False

@@ -320,6 +320,8 @@ class TestFXWatchActions:
         assert result["result"]["alert_on_recent_high"] is True
         assert result["result"]["alert_on_consecutive_increase"] is True
 
+    @patch("application.portfolio.fx_watch_service.log_notification_sent")
+    @patch("application.portfolio.fx_watch_service.is_within_rate_limit")
     @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     @patch("application.portfolio.fx_watch_service.is_notification_enabled")
@@ -328,6 +330,8 @@ class TestFXWatchActions:
         mock_notification_enabled,
         mock_get_history,
         mock_send_telegram,
+        mock_rate_limit,
+        _mock_log,
         client: TestClient,
     ):
         # Arrange: create a config that should trigger alert
@@ -342,6 +346,7 @@ class TestFXWatchActions:
         )
 
         mock_notification_enabled.return_value = True
+        mock_rate_limit.return_value = True
         mock_get_history.return_value = [
             {"date": "2026-02-07", "close": 30.0},
             {"date": "2026-02-08", "close": 30.5},
@@ -392,6 +397,8 @@ class TestFXWatchValidation:
 class TestFXWatchAlertCooldown:
     """Tests for alert cooldown integration flow."""
 
+    @patch("application.portfolio.fx_watch_service.log_notification_sent")
+    @patch("application.portfolio.fx_watch_service.is_within_rate_limit")
     @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     @patch("application.portfolio.fx_watch_service.is_notification_enabled")
@@ -400,6 +407,8 @@ class TestFXWatchAlertCooldown:
         mock_notification_enabled,
         mock_get_history,
         mock_send_telegram,
+        mock_rate_limit,
+        _mock_log,
         client: TestClient,
     ):
         # Arrange: create a config with short cooldown
@@ -415,6 +424,7 @@ class TestFXWatchAlertCooldown:
         )
 
         mock_notification_enabled.return_value = True
+        mock_rate_limit.return_value = True
         mock_get_history.return_value = [
             {"date": "2026-02-07", "close": 30.0},
             {"date": "2026-02-08", "close": 30.5},

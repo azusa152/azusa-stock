@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { formatLocalTime } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useLastScan } from "@/api/hooks/useDashboard"
+import { useLastScan, useHoldings } from "@/api/hooks/useDashboard"
 import {
   useRadarStocks,
   useRadarEnrichedStocks,
@@ -26,14 +26,24 @@ export default function Radar() {
   const { data: lastScan } = useLastScan()
   const { data: scanStatus } = useScanStatus()
   const { data: resonanceMap } = useResonance()
+  const { data: holdings } = useHoldings()
 
   const isScanning = scanStatus?.is_running ?? false
 
   // Build enriched map: ticker → enriched data
-  const enrichedMap: Record<string, RadarEnrichedStock> = {}
-  for (const es of enrichedStocks ?? []) {
-    if (es.ticker) enrichedMap[es.ticker] = es
-  }
+  const enrichedMap = useMemo(() => {
+    const map: Record<string, RadarEnrichedStock> = {}
+    for (const es of enrichedStocks ?? []) {
+      if (es.ticker) map[es.ticker] = es
+    }
+    return map
+  }, [enrichedStocks])
+
+  // Build held tickers set from non-cash portfolio holdings for O(1) lookup per card
+  const heldTickers = useMemo(
+    () => new Set((holdings ?? []).filter((h) => !h.is_cash).map((h) => h.ticker.toUpperCase())),
+    [holdings],
+  )
 
   if (stocksLoading) {
     return (
@@ -118,6 +128,7 @@ export default function Radar() {
         removedStocks={removedStocks ?? []}
         enrichedMap={enrichedMap}
         resonanceMap={resonanceMap ?? {}}
+        heldTickers={heldTickers}
       />
 
       {/* Control panel drawer */}

@@ -230,3 +230,86 @@ class TestImportHoldings:
         # Verify all cleared
         holdings = client.get("/holdings").json()
         assert len(holdings) == 0
+
+
+# ---------------------------------------------------------------------------
+# X-Ray Alert
+# ---------------------------------------------------------------------------
+
+_PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
+
+
+class TestTriggerXrayAlert:
+    """Tests for POST /rebalance/xray-alert."""
+
+    def test_should_return_200_with_warnings_list(self, client):
+        # Arrange — holding + active profile
+        _create_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        # Act
+        resp = client.post("/rebalance/xray-alert")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "warnings" in data
+        assert "message" in data
+        assert isinstance(data["warnings"], list)
+
+
+# ---------------------------------------------------------------------------
+# FX Alert
+# ---------------------------------------------------------------------------
+
+
+class TestTriggerFxAlert:
+    """Tests for POST /currency-exposure/alert."""
+
+    def test_should_return_200_with_alerts_list_when_no_holdings(self, client):
+        resp = client.post("/currency-exposure/alert")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "alerts" in data
+        assert "message" in data
+        assert isinstance(data["alerts"], list)
+
+    def test_should_return_200_with_alerts_list_when_holdings_present(self, client):
+        _create_holding(client)
+        resp = client.post("/currency-exposure/alert")
+        assert resp.status_code == 200
+        assert "alerts" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Smart Withdrawal
+# ---------------------------------------------------------------------------
+
+
+class TestWithdraw:
+    """Tests for POST /withdraw."""
+
+    def test_should_return_withdraw_plan_with_holdings_and_profile(self, client):
+        # Arrange
+        _create_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        # Act
+        resp = client.post(
+            "/withdraw",
+            json={"target_amount": 1000, "display_currency": "USD"},
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "recommendations" in data
+
+    def test_should_return_404_when_no_active_profile(self, client):
+        # No profile configured → StockNotFoundError → 404
+        _create_holding(client)
+        resp = client.post(
+            "/withdraw",
+            json={"target_amount": 1000, "display_currency": "USD"},
+        )
+        assert resp.status_code == 404

@@ -889,3 +889,43 @@ class TestGetGrandPortfolio:
         body = resp.json()
         assert body["total_value"] == 2_400_000_000.0
         assert body["unique_tickers"] == 1
+
+    def test_style_param_is_forwarded_to_service(self, client):
+        """When ?style=VALUE is given, the service is called with style='VALUE'."""
+        with patch(GRAND_PORTFOLIO_TARGET, return_value=_GRAND_PORTFOLIO_DATA) as mock:
+            resp = client.get("/gurus/grand-portfolio?style=VALUE")
+
+        assert resp.status_code == 200
+        mock.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("style") == "VALUE"
+
+    def test_invalid_style_returns_422(self, client):
+        """An unrecognised style value must be rejected with 422."""
+        resp = client.get("/gurus/grand-portfolio?style=INVALID")
+        assert resp.status_code == 422
+
+
+class TestDashboardStyleFilter:
+    """Style query param contract tests for GET /gurus/dashboard."""
+
+    def test_style_param_is_forwarded_to_service(self, client):
+        """When ?style=GROWTH is given, the service is called with style='GROWTH'."""
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA) as mock:
+            resp = client.get("/gurus/dashboard?style=GROWTH")
+
+        assert resp.status_code == 200
+        mock.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("style") == "GROWTH"
+
+    def test_invalid_style_returns_422(self, client):
+        """An unrecognised style value must be rejected with 422."""
+        resp = client.get("/gurus/dashboard?style=INVALID")
+        assert resp.status_code == 422
+
+    def test_no_style_param_still_returns_200(self, client):
+        """Omitting ?style entirely should continue to return 200."""
+        with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
+            resp = client.get("/gurus/dashboard")
+        assert resp.status_code == 200

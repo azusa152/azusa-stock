@@ -6,24 +6,30 @@ API — 掃描路由（非同步 fire-and-forget）。
 
 import threading
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import Session
 
 from api.rate_limit import limiter
 from api.schemas import (
     AcceptedResponse,
     CNNFearGreedData,
+    FearGreedComponent,
     FearGreedResponse,
     LastScanResponse,
     PrewarmStatusResponse,
     ScanStatusResponse,
+    SignalActivityItem,
     VIXData,
 )
 from application.formatters import format_fear_greed_label
 from application.scan import scan_service
 from application.scan.prewarm_service import is_prewarm_ready
-from application.services import run_scan, send_weekly_digest
-from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
+from application.services import get_signal_activity, run_scan, send_weekly_digest
+from domain.constants import (
+    ERROR_DIGEST_IN_PROGRESS,
+    ERROR_SCAN_IN_PROGRESS,
+    FG_COMPONENT_WEIGHTS,
+)
 from i18n import get_user_language, t
 from infrastructure.database import engine, get_session
 from logging_config import get_logger
@@ -87,14 +93,30 @@ def get_prewarm_status() -> PrewarmStatusResponse:
 @router.get(
     "/market/fear-greed", response_model=FearGreedResponse, summary="Fear & Greed Index"
 )
-def get_fear_greed(session: Session = Depends(get_session)) -> FearGreedResponse:
-    """取得恐懼與貪婪指數（VIX + CNN Fear & Greed 綜合分析）。"""
+def get_fear_greed(
+    response: Response, session: Session = Depends(get_session)
+) -> FearGreedResponse:
+    """取得恐懼與貪婪指數（VIX + CNN Fear & Greed + 7 項自計算指標綜合分析）。"""
+    response.headers["Cache-Control"] = (
+        "private, max-age=300, stale-while-revalidate=3600"
+    )
     fg = scan_service.get_fear_greed() or {}
     composite_level = fg.get("composite_level", "N/A")
     composite_score = fg.get("composite_score", 50)
+    self_calculated_score = fg.get("self_calculated_score")
 
     vix_raw = fg.get("vix")
     cnn_raw = fg.get("cnn")
+    raw_components: dict = fg.get("components") or {}
+
+    components = [
+        FearGreedComponent(
+            name=name,
+            score=raw_components.get(name),
+            weight=FG_COMPONENT_WEIGHTS.get(name, 0.0),
+        )
+        for name in FG_COMPONENT_WEIGHTS
+    ]
 
     lang = get_user_language(session)
 
@@ -104,6 +126,8 @@ def get_fear_greed(session: Session = Depends(get_session)) -> FearGreedResponse
         composite_label=format_fear_greed_label(
             composite_level, composite_score, lang=lang
         ),
+        self_calculated_score=self_calculated_score,
+        components=components,
         vix=VIXData(**vix_raw) if vix_raw else None,
         cnn=CNNFearGreedData(**cnn_raw) if cnn_raw else None,
         fetched_at=fg.get("fetched_at", ""),
@@ -180,3 +204,16 @@ async def run_digest_route(
         status="accepted",
         message=t("api.digest_started", lang=get_user_language(session)),
     )
+
+
+@router.get(
+    "/signals/activity",
+    response_model=list[SignalActivityItem],
+    summary="Get signal activity for all active non-NORMAL stocks",
+)
+def get_signal_activity_route(
+    session: Session = Depends(get_session),
+) -> list[SignalActivityItem]:
+    """取得所有啟用中且訊號非 NORMAL 的股票之訊號活躍狀態（含持續時間、前訊號、連續掃描次數）。"""
+    items = get_signal_activity(session)
+    return [SignalActivityItem(**item) for item in items]

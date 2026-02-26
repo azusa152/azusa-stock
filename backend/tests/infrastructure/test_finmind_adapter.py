@@ -175,14 +175,15 @@ def test_latest_value_picks_most_recent_row(mock_get):
 
 @patch("infrastructure.market_data.finmind_adapter.requests.get")
 def test_circuit_breaker_opens_after_threshold_failures(mock_get):
-    """Circuit opens after _CIRCUIT_BREAKER_THRESHOLD consecutive failures."""
+    """Circuit opens after FINMIND_CIRCUIT_BREAKER_THRESHOLD consecutive failures."""
     mock_get.side_effect = RuntimeError("network error")
 
     with patch.dict("os.environ", {"FINMIND_API_TOKEN": "test-token"}):
         import infrastructure.market_data.finmind_adapter as adapter
+        from domain.constants import FINMIND_CIRCUIT_BREAKER_THRESHOLD
 
         _reset_adapter()
-        threshold = adapter._CIRCUIT_BREAKER_THRESHOLD
+        threshold = FINMIND_CIRCUIT_BREAKER_THRESHOLD
 
         for _ in range(threshold):
             adapter.get_financials("2330.TW")

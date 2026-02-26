@@ -8,13 +8,15 @@ import os
 import threading
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlmodel import Session
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.dependencies import require_api_key
 from api.rate_limit import limiter
@@ -33,7 +35,7 @@ from api.routes.thesis_routes import router as thesis_router
 from api.schemas import HealthResponse
 from config.settings import init_settings
 from infrastructure.database import create_db_and_tables
-from logging_config import get_logger
+from logging_config import get_logger, request_id_var
 
 # Load environment variables from .env file
 load_dotenv()
@@ -86,14 +88,36 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+class _RequestIdMiddleware(BaseHTTPMiddleware):
+    """Injects a per-request correlation ID into the logging context.
+
+    Reads ``X-Request-ID`` from the incoming request (useful for client-side
+    tracing) or generates a short UUID. The ID is echoed back in the response
+    header and is available in every log line via ``request_id_var``.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        rid = request.headers.get("X-Request-ID") or str(uuid4())[:8]
+        token = request_id_var.set(rid)
+        try:
+            response: Response = await call_next(request)
+        finally:
+            request_id_var.reset(token)
+        response.headers["X-Request-ID"] = rid
+        return response
+
+
 # CORS middleware for frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ALLOW_ORIGIN", "http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["X-API-Key", "Content-Type"],
+    allow_headers=["X-API-Key", "Content-Type", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
+app.add_middleware(_RequestIdMiddleware)
 
 
 # ---------------------------------------------------------------------------

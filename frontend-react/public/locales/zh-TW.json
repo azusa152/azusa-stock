@@ -70,7 +70,16 @@
       "greed": "🤑 貪婪",
       "extreme_greed": "🤯 極度貪婪",
       "na": "⏳ 無資料",
-      "cnn_unavailable": "⚠️ CNN 資料不可用，僅使用 VIX"
+      "cnn_unavailable": "⚠️ CNN 資料不可用，僅使用 VIX",
+      "components": {
+        "price_strength": "股價強度",
+        "vix": "波動率 (VIX)",
+        "momentum": "動能",
+        "breadth": "市場廣度",
+        "junk_bond": "垃圾債需求",
+        "safe_haven": "避險需求",
+        "sector_rotation": "類股輪動"
+      }
     },
     "fx_period": {
       "1month": "1 個月",
@@ -151,6 +160,12 @@
     "signal_alerts_title": "⚠️ 訊號警報",
     "signal_buy_title": "🟢 買入機會",
     "signal_risk_title": "🚨 風險警示",
+    "signal_duration_days": "{{count}}天",
+    "signal_duration_weeks": "{{count}}週",
+    "signal_duration_months": "{{count}}個月",
+    "signal_new": "NEW",
+    "signal_was": "前訊號 {{signal}}",
+    "signal_consecutive": "{{count}} 次掃描",
     "all_signals_normal": "✅ 所有追蹤股票訊號正常！",
     "no_tracking_stocks": "📭 尚未追蹤任何股票。前往投資雷達開始追蹤。",
     "top_holdings_title": "🏆 前 {{limit}} 大持倉",
@@ -166,6 +181,25 @@
     "ytd_return": "今年報酬",
     "ytd_dividend": "今年股息",
     "ytd_dividend_actual": "（以實際年初至今配息計算）",
+    "info": {
+      "sentiment_thresholds": "等級閾值（趨勢指標股跌破60日均線的比例）：\n≤10% 強勢多頭 · ≤30% 多頭 · ≤50% 中性 · ≤70% 空頭 · >70% 強勢空頭",
+      "sentiment_no_details": "請執行掃描以查看詳情。",
+      "fear_greed_source_cnn": "來源：CNN 恐懼貪婪指數",
+      "fear_greed_source_self": "來源：自行計算（7項指標）",
+      "fear_greed_source_vix": "來源：VIX 衍生分數",
+      "fear_greed_top": "最強訊號：{{name}}（{{score}}）",
+      "fear_greed_bottom": "最弱訊號：{{name}}（{{score}}）",
+      "health_non_normal": "非正常訊號：",
+      "health_all_normal": "所有追蹤股票均為 NORMAL ✅",
+      "health_overflow": "…另有 {{count}} 支",
+      "dividend_breakdown": "各股明細（已換匯為 {{currency}}）：",
+      "dividend_qty": "數量",
+      "dividend_dps": "每股股息",
+      "dividend_subtotal": "小計",
+      "dividend_currency_note": "金額為各股原幣（未換匯）",
+      "dividend_native": "原幣金額",
+      "dividend_converted": "換匯後"
+    },
     "no_holdings": "無持倉資料。",
     "no_holdings_data": "📭 尚無持倉資料。請先新增持倉以查看分析。",
     "resonance": {
@@ -182,7 +216,6 @@
     "fear_greed_title": "恐懼與貪婪",
     "performance_title": "📈 投資組合績效",
     "performance_no_data": "📭 尚無快照歷史。每日 23:00 UTC 自動建立快照。",
-    "performance_benchmark_label": "S&P 500",
     "performance_period_1w": "1W",
     "performance_period_1m": "1M",
     "performance_period_3m": "3M",
@@ -190,8 +223,35 @@
     "performance_period_ytd": "今年",
     "performance_period_1y": "1Y",
     "performance_period_all": "全部",
+    "heatmap_title": "📊 自選股熱力圖",
+    "heatmap_empty": "📭 尚無價格資料，請先執行掃描。",
+    "heatmap_grouped_by": "依 GICS 板塊分組",
+    "heatmap_price": "股價",
+    "heatmap_change": "漲跌幅",
+    "heatmap_sector_other": "其他",
+    "heatmap_legend_strong_loss": "≤ −3%",
+    "heatmap_legend_neutral": "≈ 0%",
+    "heatmap_legend_strong_gain": "≥ +3%",
     "performance_portfolio_return": "投資組合",
-    "performance_no_period_data": "此期間無資料"
+    "performance_no_period_data": "此期間無資料",
+    "performance_data_from": "資料起始 {{date}}",
+    "performance_benchmark_sp500": "S&P 500",
+    "performance_benchmark_vt": "VT（全球）",
+    "performance_benchmark_n225": "日經 225",
+    "performance_benchmark_twii": "台灣加權",
+    "performance_commentary_outperform_strong": "強勢超越 {{benchmark}}，領先 +{{delta}}%",
+    "performance_commentary_outperform_mild": "小幅領先 {{benchmark}} +{{delta}}%",
+    "performance_commentary_neutral": "與 {{benchmark}} 走勢相近",
+    "performance_commentary_underperform_mild": "落後 {{benchmark}} {{delta}}%，建議檢視持倉",
+    "performance_commentary_underperform_strong": "明顯落後 {{benchmark}}，考慮重新調整",
+    "performance_commentary_positive_no_benchmark": "本期投資組合上漲 {{return}}%",
+    "performance_commentary_negative_no_benchmark": "本期投資組合下跌 {{return}}%",
+    "performance_commentary_flat_no_benchmark": "本期投資組合幾乎持平",
+    "performance_no_benchmark_data": "此期間無 {{benchmark}} 基準資料",
+    "performance_backfill_run": "執行回填",
+    "performance_backfilling": "回填中…",
+    "performance_backfill_complete": "基準資料已載入 — 圖表已更新",
+    "performance_backfill_timeout": "回填時間較長，請稍後重新整理頁面"
   },
   "radar": {
     "title": "📡 Folio",
@@ -346,7 +406,8 @@
       "remove_reason_required": "⚠️ 請輸入移除原因。",
       "current_category_label": "目前：{{cat}}",
       "confirm_switch": "確認切換",
-      "tags_placeholder": "標籤（逗號分隔）"
+      "tags_placeholder": "標籤（逗號分隔）",
+      "held": "持有"
     }
   },
   "allocation": {
@@ -461,7 +522,12 @@
         "fx_watch_alerts": "📡 外匯換匯時機警報",
         "fx_watch_alerts_help": "匯率接近近期高點或連續上漲時通知（每 6 小時掃描）",
         "guru_alerts": "🧠 大師 13F 申報警報",
-        "guru_alerts_help": "新的大師申報摘要與自選股共鳴警報"
+        "guru_alerts_help": "新的大師申報摘要與自選股共鳴警報",
+        "rate_limit_label": "最多 {{max_count}} 次／{{window_hours}} 小時",
+        "rate_limit_max": "最多次數",
+        "rate_limit_window": "時間範圍（小時）",
+        "rate_limit_unlimited": "不限制",
+        "rate_limit_caption": "設定此通知在一段時間內最多可發送幾次，0 表示不限制。"
       },
       "save_notif": "💾 儲存通知偏好"
     },

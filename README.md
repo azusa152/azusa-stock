@@ -85,7 +85,7 @@
 - **五頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控、大師足跡
 - **雷達市場篩選器** — 當追蹤清單涵蓋多個市場（美股 + 台股 + 日股 + 港股）時，雷達頁面自動顯示市場篩選藥丸，一鍵只看指定市場的股票
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
-- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + 基準疊加 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
+- **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + **多基準切換**：S&P 500 / VT 全球 / 日經 225 / 台灣加權 + **績效評語**自動生成 + 資料起始日標注 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
@@ -571,9 +571,9 @@ docker compose up --build -d
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
 | `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計，含總值 + 日漲跌 + 前三名 + 配置偏移 + Smart Money） |
-| `GET` | `/snapshots` | 歷史投資組合快照清單，支援 `?days=30`（1–730）或 `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
+| `GET` | `/snapshots` | 歷史投資組合快照清單，支援 `?days=30`（1–730）或 `?start=YYYY-MM-DD&end=YYYY-MM-DD`；每筆含 `benchmark_values`（S&P 500 / VT / 日經 225 / TWII 當日收盤） |
 | `GET` | `/snapshots/twr` | 計算指定期間的時間加權報酬率（TWR），支援 `?start=&end=`，預設 YTD |
-| `POST` | `/snapshots/take` | 手動觸發當日投資組合快照（背景執行，upsert 語意） |
+| `POST` | `/snapshots/take` | 手動觸發當日投資組合快照（背景執行，upsert 語意）；同步記錄四個基準指數收盤價 |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/personas/templates` | 取得系統預設投資人格範本 |
 | `GET` | `/profiles` | 取得目前啟用的投資組合配置 |

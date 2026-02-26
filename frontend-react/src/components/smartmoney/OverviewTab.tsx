@@ -7,9 +7,9 @@ import { ActivityFeed } from "./ActivityFeed"
 import { ConsensusStocks } from "./ConsensusStocks"
 import { SectorChart } from "./SectorChart"
 
-export function OverviewTab() {
+export function OverviewTab({ style }: { style?: string | null }) {
   const { t } = useTranslation()
-  const { data, isLoading } = useGuruDashboard()
+  const { data, isLoading } = useGuruDashboard(style)
 
   if (isLoading) {
     return (

@@ -69,7 +69,7 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 # ---------------------------------------------------------------------------
 #  Guards (hidden prerequisite targets — fail early with actionable messages)
 # ---------------------------------------------------------------------------
-.PHONY: .venv-check .node-check
+.PHONY: .venv-check .node-check .python-version-check
 
 .venv-check:
 	@test -x $(PYTHON) || \
@@ -78,6 +78,19 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 .node-check:
 	@test -d $(FRONTEND_DIR)/node_modules || \
 		{ echo "Error: node_modules not found. Run 'make frontend-install' first."; exit 1; }
+
+# Warn when the active Python minor version doesn't match .python-version (CI uses 3.12).
+# A mismatch causes the OpenAPI spec to differ between local and CI.
+.python-version-check:
+	@if [ -f .python-version ]; then \
+		REQUIRED=$$(cat .python-version | tr -d '[:space:]'); \
+		REQUIRED_MM=$$(echo "$$REQUIRED" | cut -d. -f1-2); \
+		ACTUAL_MM=$$($(PYTHON) -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"); \
+		if [ "$$ACTUAL_MM" != "$$REQUIRED_MM" ]; then \
+			echo "Warning: venv Python $$ACTUAL_MM differs from .python-version ($$REQUIRED_MM)."; \
+			echo "         OpenAPI spec output may differ from CI. Rebuild venv with Python $$REQUIRED_MM to fix."; \
+		fi; \
+	fi
 
 # ---------------------------------------------------------------------------
 #  Setup & Install
@@ -120,7 +133,7 @@ backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
 		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
 		-n auto --durations=20 \
-		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing
+		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing --cov-fail-under=85
 
 backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
@@ -161,7 +174,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
+ci: lint test check-constants check-api-spec check-i18n frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -173,7 +186,7 @@ clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.c
 # ---------------------------------------------------------------------------
 .PHONY: generate-api
 
-generate-api: .venv-check ## Export OpenAPI spec and regenerate TypeScript types
+generate-api: .venv-check .python-version-check ## Export OpenAPI spec and regenerate TypeScript types
 	$(PYTHON) scripts/export_openapi.py
 	cd $(FRONTEND_DIR) && npx openapi-typescript src/api/openapi.json -o src/api/types/generated.d.ts
 
@@ -216,12 +229,15 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
 
-check-api-spec: .venv-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
+check-i18n: ## Check locale key parity (backend + frontend locale files)
+	python3 scripts/check_locale_parity.py
+
+check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
 		$(PYTHON) scripts/export_openapi.py
 	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json

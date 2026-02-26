@@ -135,6 +135,19 @@ class PrewarmStatusResponse(BaseModel):
     ready: bool
 
 
+class SignalActivityItem(BaseModel):
+    """GET /signals/activity 單筆訊號活躍狀態。"""
+
+    ticker: str
+    signal: str
+    signal_since: str | None = None
+    duration_days: int | None = None
+    previous_signal: str | None = None
+    changed_at: str | None = None
+    consecutive_scans: int = 1
+    is_new: bool = False
+
+
 class ScanLogResponse(BaseModel):
     """掃描歷史單一紀錄。"""
 
@@ -162,12 +175,22 @@ class CNNFearGreedData(BaseModel):
     fetched_at: str = ""
 
 
+class FearGreedComponent(BaseModel):
+    """Self-calculated Fear & Greed component score."""
+
+    name: str
+    score: int | None = None
+    weight: float
+
+
 class FearGreedResponse(BaseModel):
     """GET /market/fear-greed 回傳的恐懼與貪婪指數綜合分析。"""
 
     composite_score: int = 50
     composite_level: str = "N/A"
     composite_label: str = ""
+    self_calculated_score: int | None = None
+    components: list[FearGreedComponent] = []
     vix: VIXData | None = None
     cnn: CNNFearGreedData | None = None
     fetched_at: str = ""

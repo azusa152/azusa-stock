@@ -12,6 +12,7 @@ from api.schemas import (
     ProfileResponse,
     ProfileUpdateRequest,
 )
+from application.services import invalidate_rebalance_cache
 from application.settings import persona_service
 from i18n import get_user_language
 from infrastructure.database import get_session
@@ -87,11 +88,13 @@ def update_profile(
 ) -> ProfileResponse:
     """更新投資組合配置。"""
     lang = get_user_language(session)
-    return ProfileResponse(
+    result = ProfileResponse(
         **persona_service.update_profile(
             session, profile_id, payload.model_dump(), lang
         )
     )
+    invalidate_rebalance_cache()
+    return result
 
 
 @router.delete(
@@ -105,4 +108,6 @@ def delete_profile(
 ) -> dict:
     """停用投資組合配置（軟刪除）。"""
     lang = get_user_language(session)
-    return persona_service.deactivate_profile(session, profile_id, lang)
+    result = persona_service.deactivate_profile(session, profile_id, lang)
+    invalidate_rebalance_cache()
+    return result

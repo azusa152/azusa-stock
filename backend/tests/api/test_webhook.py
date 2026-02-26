@@ -210,11 +210,19 @@ class TestWebhookAddStock:
 class TestWebhookFXWatch:
     """Tests for the 'fx_watch' webhook action — AI agent entry point for FX alerts."""
 
+    @patch("application.portfolio.fx_watch_service.log_notification_sent")
+    @patch("application.portfolio.fx_watch_service.is_within_rate_limit")
     @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_fx_watch_should_return_success_with_counts(
-        self, mock_notif, mock_history, mock_telegram, client
+        self,
+        mock_notif,
+        mock_history,
+        mock_telegram,
+        mock_rate_limit,
+        _mock_log,
+        client,
     ):
         # Arrange: create an FX watch config
         client.post(
@@ -227,6 +235,7 @@ class TestWebhookFXWatch:
             },
         )
         mock_notif.return_value = True
+        mock_rate_limit.return_value = True
         mock_history.return_value = [
             {"date": "2026-02-07", "close": 30.0},
             {"date": "2026-02-08", "close": 30.5},
@@ -296,15 +305,24 @@ class TestWebhookDiscoverability:
         # Also verify no extra actions beyond registry
         assert set(actions.keys()) == set(WEBHOOK_ACTION_REGISTRY.keys())
 
+    @patch("application.portfolio.fx_watch_service.log_notification_sent")
+    @patch("application.portfolio.fx_watch_service.is_within_rate_limit")
     @patch("application.portfolio.fx_watch_service.send_telegram_message_dual")
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     @patch("application.portfolio.fx_watch_service.is_notification_enabled")
     def test_fx_watch_response_data_should_have_required_keys(
-        self, mock_notif, mock_history, mock_telegram, client
+        self,
+        mock_notif,
+        mock_history,
+        mock_telegram,
+        mock_rate_limit,
+        _mock_log,
+        client,
     ):
         """Response schema contract test — ensures AI agent gets expected keys."""
         # Arrange
         mock_notif.return_value = True
+        mock_rate_limit.return_value = True
         mock_history.return_value = [
             {"date": "2026-02-10", "close": 31.0},
             {"date": "2026-02-11", "close": 31.5},

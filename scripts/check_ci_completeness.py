@@ -32,6 +32,7 @@ KNOWN_JOB_MAP: dict[str, str] = {
     "frontend-test": "frontend-test",
     "frontend-security": "frontend-security",
     "constant-sync": "check-constants",
+    "locale-parity": "check-i18n",
     "security": "backend-security",
 }
 

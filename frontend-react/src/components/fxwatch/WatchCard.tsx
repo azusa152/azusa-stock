@@ -54,7 +54,11 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
   const del = useDeleteFxWatch()
 
   const needsHistory = expanded && !isPrivate && !sparklineData
-  const { data: historyData } = useFxHistory(watch.base_currency, watch.quote_currency, needsHistory)
+  const { data: historyData, isLoading: historyLoading } = useFxHistory(
+    watch.base_currency,
+    watch.quote_currency,
+    needsHistory,
+  )
 
   const pair = `${watch.base_currency}/${watch.quote_currency}`
   const currentRate = analysis?.current_rate
@@ -114,8 +118,8 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
           className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors rounded-[inherit]"
         >
           <div className="flex items-center gap-3">
-            {/* Sparkline */}
-            {!isPrivate && sparklineData && sparklineData.length >= 2 && (
+            {/* Sparkline — shows skeleton while data loads */}
+            {!isPrivate && (
               <FxSparkline data={sparklineData} />
             )}
 
@@ -233,9 +237,9 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                 <div>
                   {(sparklineData ?? historyData) ? (
                     <FxChart data={(sparklineData ?? historyData)!} recentHighDays={watch.recent_high_days} />
-                  ) : (
-                    <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
-                  )}
+                  ) : historyLoading ? (
+                    <Skeleton className="h-[220px] w-full" />
+                  ) : null}
                 </div>
 
                 {/* Right: structured analysis + settings */}

@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import apiClient from "@/api/client"
 import { useTranslation } from "react-i18next"
 import {
   AreaSeries,
@@ -10,6 +13,7 @@ import {
   type MouseEventParams,
 } from "lightweight-charts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import type { Snapshot } from "@/api/types/dashboard"
 
@@ -23,6 +27,13 @@ const PERIOD_OPTIONS: { key: string; labelKey: string; days: number | "YTD" | "A
   { key: "ALL", labelKey: "dashboard.performance_period_all", days: "ALL" },
 ]
 
+const BENCHMARK_OPTIONS: { key: string; labelKey: string }[] = [
+  { key: "^GSPC", labelKey: "dashboard.performance_benchmark_sp500" },
+  { key: "VT", labelKey: "dashboard.performance_benchmark_vt" },
+  { key: "^N225", labelKey: "dashboard.performance_benchmark_n225" },
+  { key: "^TWII", labelKey: "dashboard.performance_benchmark_twii" },
+]
+
 interface CrosshairData {
   date: string
   portfolio: number
@@ -31,6 +42,7 @@ interface CrosshairData {
 
 interface Props {
   snapshots: Snapshot[]
+  isLoading?: boolean
 }
 
 function formatDate(isoDate: string, locale: string): string {
@@ -43,10 +55,75 @@ function formatDate(isoDate: string, locale: string): string {
   }).format(new Date(year, month - 1, day))
 }
 
-export function PerformanceChart({ snapshots }: Props) {
+function getCommentaryKey(
+  portfolioReturn: number,
+  benchmarkReturn: number | null,
+): string {
+  if (benchmarkReturn === null) {
+    if (Math.abs(portfolioReturn) < 1) return "performance_commentary_flat_no_benchmark"
+    return portfolioReturn >= 0
+      ? "performance_commentary_positive_no_benchmark"
+      : "performance_commentary_negative_no_benchmark"
+  }
+  const delta = portfolioReturn - benchmarkReturn
+  if (delta >= 5) return "performance_commentary_outperform_strong"
+  if (delta >= 1) return "performance_commentary_outperform_mild"
+  if (delta >= -1) return "performance_commentary_neutral"
+  if (delta >= -5) return "performance_commentary_underperform_mild"
+  return "performance_commentary_underperform_strong"
+}
+
+export function PerformanceChart({ snapshots, isLoading = false }: Props) {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const [selectedKey, setSelectedKey] = useState("1M")
+  const [selectedBenchmark, setSelectedBenchmark] = useState("^GSPC")
   const [crosshair, setCrosshair] = useState<CrosshairData | null>(null)
+
+  // Whether the selected benchmark has enough data points in the current period
+  const [hasBenchmarkData, setHasBenchmarkData] = useState(true)
+  const [backfilling, setBackfilling] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [])
+
+  // When benchmark data appears while we're polling → success
+  useEffect(() => {
+    if (hasBenchmarkData && pollRef.current) {
+      stopPolling()
+      setBackfilling(false)
+      toast.success(t("dashboard.performance_backfill_complete"))
+    }
+  }, [hasBenchmarkData, stopPolling, t])
+
+  // Cleanup on unmount
+  useEffect(() => () => stopPolling(), [stopPolling])
+
+  const handleBackfill = useCallback(async () => {
+    setBackfilling(true)
+    try {
+      await apiClient.post("/snapshots/backfill-benchmarks")
+      // Poll every 4s; give up after 90s
+      let elapsed = 0
+      pollRef.current = setInterval(async () => {
+        elapsed += 4000
+        await queryClient.invalidateQueries({ queryKey: ["snapshots", 730] })
+        if (elapsed >= 90_000) {
+          stopPolling()
+          setBackfilling(false)
+          toast.error(t("dashboard.performance_backfill_timeout"))
+        }
+      }, 4000)
+    } catch {
+      setBackfilling(false)
+      toast.error(t("common.error"))
+    }
+  }, [queryClient, stopPolling, t])
 
   // Stable chart / series refs — set once inside onInit, read by the data-update effect
   const chartRef = useRef<IChartApi | null>(null)
@@ -85,6 +162,33 @@ export function PerformanceChart({ snapshots }: Props) {
     }
   }, [filtered])
 
+  // ── Benchmark return for the selected period ────────────────────────────────
+  // Mirror the same fallback logic used by the chart effect: for legacy snapshots
+  // that pre-date the benchmark_values column, only ^GSPC can fall back to the
+  // old benchmark_value field. All other indices return null for those rows.
+  const benchmarkPeriodReturn = useMemo(() => {
+    if (filtered.length < 2) return null
+    const pairs = filtered
+      .map((s) => {
+        const bvMap = s.benchmark_values as Record<string, number | null> | undefined
+        const val =
+          bvMap?.[selectedBenchmark] ??
+          (selectedBenchmark === "^GSPC" ? s.benchmark_value : null) ??
+          null
+        return { d: s.snapshot_date, b: val }
+      })
+      .filter((p): p is { d: string; b: number } => p.b != null)
+    if (pairs.length < 2) return null
+    const base = pairs[0].b || 1
+    return ((pairs[pairs.length - 1].b / base) - 1) * 100
+  }, [filtered, selectedBenchmark])
+
+  // ── Oldest snapshot in the loaded window (up to 730 days) ──────────────────
+  const oldestSnapshotDate = useMemo(() => {
+    if (snapshots.length === 0) return null
+    return snapshots[0].snapshot_date
+  }, [snapshots])
+
   // ── Chart initialisation — called ONCE on mount via LightweightChartWrapper ─
   // t from react-i18next is guaranteed stable, so this callback is also stable.
   const onInit = useCallback((chart: IChartApi) => {
@@ -116,7 +220,9 @@ export function PerformanceChart({ snapshots }: Props) {
       priceLineVisible: false,
       lastValueVisible: false,
       priceFormat: { type: "percent", precision: 2, minMove: 0.01 },
-      title: t("dashboard.performance_benchmark_label"),
+      // Initial title matches the default selectedBenchmark (^GSPC); updated in
+      // the data effect whenever selectedBenchmark changes.
+      title: t("dashboard.performance_benchmark_sp500"),
     })
     benchmarkSeriesRef.current = benchmarkSeries
 
@@ -148,7 +254,7 @@ export function PerformanceChart({ snapshots }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // t is stable per react-i18next contract; onInit only runs once on mount
 
-  // ── In-place data update when period changes ────────────────────────────────
+  // ── In-place data update when period or benchmark changes ───────────────────
   useEffect(() => {
     const chart = chartRef.current
     const areaSeries = areaSeriesRef.current
@@ -181,10 +287,14 @@ export function PerformanceChart({ snapshots }: Props) {
       })),
     )
 
-    // Benchmark: both portfolio and S&P 500 rebased to 0% at period start
-    // (standard "indexed comparison" / "growth of $1" approach)
+    // Benchmark: rebased to 0% at period start — use selectedBenchmark from benchmark_values
+    // Falls back to legacy benchmark_value (^GSPC) for historical snapshots without benchmark_values.
     const benchmarkPairs = filtered
-      .map((s) => ({ d: s.snapshot_date, b: s.benchmark_value }))
+      .map((s) => {
+        const bvMap = s.benchmark_values as Record<string, number | null> | undefined
+        const val = bvMap?.[selectedBenchmark] ?? (selectedBenchmark === "^GSPC" ? s.benchmark_value : null) ?? null
+        return { d: s.snapshot_date, b: val }
+      })
       .filter((p): p is { d: string; b: number } => p.b != null)
 
     if (benchmarkPairs.length >= 2) {
@@ -195,26 +305,81 @@ export function PerformanceChart({ snapshots }: Props) {
           value: (p.b / baseB - 1) * 100,
         })),
       )
+      setHasBenchmarkData(true)
     } else {
       benchmarkSeries.setData([])
+      setHasBenchmarkData(false)
     }
 
     chart.timeScale().fitContent()
-  }, [filtered])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, selectedBenchmark]) // t is stable per react-i18next contract
+
+  // ── Keep series titles in sync with locale and selected benchmark ───────────
+  // onInit only fires once at mount; titles would remain in the mount-time locale
+  // without this effect re-applying them on every language or benchmark change.
+  useEffect(() => {
+    const areaSeries = areaSeriesRef.current
+    const benchmarkSeries = benchmarkSeriesRef.current
+    if (!areaSeries || !benchmarkSeries) return
+    areaSeries.applyOptions({ title: t("dashboard.performance_portfolio_return") })
+    const selectedLabel = BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey
+    if (selectedLabel) benchmarkSeries.applyOptions({ title: t(selectedLabel) })
+  }, [i18n.language, selectedBenchmark, t])
 
   const hasSnapshots = snapshots.length >= 2
   const hasPeriodData = filtered.length >= 2
 
+  // ── Commentary ──────────────────────────────────────────────────────────────
+  const commentary = useMemo(() => {
+    if (!periodStats) return null
+    const { returnPct } = periodStats
+    const benchmarkLabel =
+      BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? ""
+    const benchmarkName = benchmarkLabel ? t(benchmarkLabel) : selectedBenchmark
+    const key = getCommentaryKey(returnPct, benchmarkPeriodReturn)
+
+    if (benchmarkPeriodReturn === null) {
+      return t(`dashboard.${key}`, {
+        return: Math.abs(returnPct).toFixed(1),
+      })
+    }
+    const delta = Math.abs(returnPct - benchmarkPeriodReturn).toFixed(1)
+    return t(`dashboard.${key}`, { benchmark: benchmarkName, delta })
+  }, [periodStats, benchmarkPeriodReturn, selectedBenchmark, t])
+
   // ── Render ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[280px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
         {/* Title row — shows period return % when idle, crosshair values on hover */}
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base">{t("dashboard.performance_title")}</CardTitle>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <CardTitle className="text-base">{t("dashboard.performance_title")}</CardTitle>
+            {oldestSnapshotDate && (
+              <p className="text-xs text-muted-foreground">
+                {t("dashboard.performance_data_from", {
+                  date: formatDate(oldestSnapshotDate, i18n.language),
+                })}
+              </p>
+            )}
+          </div>
           {crosshair ? (
             <span
-              className={`text-xs font-mono tabular-nums ${
+              className={`text-xs font-mono tabular-nums shrink-0 ${
                 crosshair.portfolio >= 0 ? "text-green-500" : "text-red-500"
               }`}
             >
@@ -222,7 +387,7 @@ export function PerformanceChart({ snapshots }: Props) {
               {crosshair.portfolio.toFixed(2)}%
               {crosshair.benchmark !== undefined && (
                 <span className="text-muted-foreground">
-                  {" "}/ {t("dashboard.performance_benchmark_label")}:{" "}
+                  {" "}/ {t(BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "")}:{" "}
                   {crosshair.benchmark >= 0 ? "+" : ""}
                   {crosshair.benchmark.toFixed(2)}%
                 </span>
@@ -231,7 +396,7 @@ export function PerformanceChart({ snapshots }: Props) {
           ) : (
             periodStats && (
               <span
-                className={`text-sm font-bold tabular-nums ${
+                className={`text-sm font-bold tabular-nums shrink-0 ${
                   periodStats.returnPct >= 0 ? "text-green-500" : "text-red-500"
                 }`}
               >
@@ -241,6 +406,11 @@ export function PerformanceChart({ snapshots }: Props) {
             )
           )}
         </div>
+
+        {/* Commentary badge */}
+        {commentary && !crosshair && (
+          <p className="text-xs text-muted-foreground italic mt-0.5">{commentary}</p>
+        )}
 
         {/* Period selector */}
         <div className="flex flex-wrap gap-1 mt-1">
@@ -258,6 +428,43 @@ export function PerformanceChart({ snapshots }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Benchmark selector */}
+        <div className="flex flex-wrap gap-1 mt-1">
+          {BENCHMARK_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setSelectedBenchmark(opt.key)}
+              className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                selectedBenchmark === opt.key
+                  ? "bg-muted text-foreground border-border font-medium"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+            >
+              {t(opt.labelKey)}
+            </button>
+          ))}
+        </div>
+
+        {/* No-data notice + backfill trigger */}
+        {!hasBenchmarkData && hasPeriodData && (
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-amber-500">
+              {t("dashboard.performance_no_benchmark_data", {
+                benchmark: t(
+                  BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
+                ),
+              })}
+            </p>
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="text-xs px-2 py-0.5 rounded border border-amber-500 text-amber-500 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
+            </button>
+          </div>
+        )}
 
         {/* Sub-caption: date range when idle, hovered date when crosshair active */}
         <p className="text-xs text-muted-foreground mt-0.5 h-4">

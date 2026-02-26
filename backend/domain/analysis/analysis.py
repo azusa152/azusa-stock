@@ -5,6 +5,8 @@ Domain — 純粹的分析計算函式。
 """
 
 import bisect
+import math
+from datetime import UTC, datetime
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
@@ -15,6 +17,22 @@ from domain.constants import (
     CNN_FG_FEAR,
     CNN_FG_GREED,
     CNN_FG_NEUTRAL_HIGH,
+    FG_BREADTH_MULT,
+    FG_COMPONENT_WEIGHTS,
+    FG_JUNK_BOND_MULT,
+    FG_LOOKBACK_DAYS,
+    FG_MA_WINDOW,
+    FG_MOMENTUM_MA_MULT,
+    FG_MOMENTUM_RSI_WEIGHT,
+    FG_PRICE_STRENGTH_MULT,
+    FG_SAFE_HAVEN_MULT,
+    FG_SECTOR_ROTATION_MULT,
+    FG_VIX_BASE,
+    FG_VIX_OFFSET,
+    FG_VIX_SLOPE,
+    JP_VI_BASE,
+    JP_VI_OFFSET,
+    JP_VI_SLOPE,
     MA200_DEEP_DEVIATION_THRESHOLD,
     MA200_HIGH_DEVIATION_THRESHOLD,
     MARKET_BEARISH_MAX_PCT,
@@ -30,6 +48,10 @@ from domain.constants import (
     RSI_OVERBOUGHT,
     RSI_PERIOD,
     RSI_WEAKENING_THRESHOLD,
+    SECONDS_PER_DAY,
+    TW_VOL_BASE,
+    TW_VOL_OFFSET,
+    TW_VOL_SLOPE,
     VIX_EXTREME_FEAR,
     VIX_FEAR,
     VIX_GREED,
@@ -429,24 +451,27 @@ def _vix_to_score(vix_value: float | None) -> int:
             ratio = (vix_high - vix_value) / (vix_high - vix_low)
             return round(score_at_high + ratio * (score_at_low - score_at_high))
 
-    return 50  # fallback（理論上不會執行到此）
+    return 50  # fallback（理論上不會執行到此）  # pragma: no cover
 
 
 def compute_composite_fear_greed(
     vix_value: float | None,
     cnn_score: int | None,
+    self_calculated_score: int | None = None,
 ) -> tuple[FearGreedLevel, int]:
     """
-    恐懼與貪婪指數：CNN 優先，VIX 備援。
+    恐懼與貪婪指數：CNN 優先 → 自計算備援 → VIX 單一備援。
 
     CNN Fear & Greed Index 本身已是 7 項指標（含 VIX）的綜合分數，
-    直接採用可避免 VIX 被重複加權。VIX 僅在 CNN 不可用時作為備援。
+    直接採用可避免 VIX 被重複加權。
 
     回傳 (等級, 0–100 分數)。
     純函式，無副作用。
     """
     if cnn_score is not None:
         composite = cnn_score
+    elif self_calculated_score is not None:
+        composite = self_calculated_score
     elif vix_value is not None:
         composite = _vix_to_score(vix_value)
     else:
@@ -455,6 +480,199 @@ def compute_composite_fear_greed(
     composite = max(0, min(100, composite))
     level = classify_cnn_fear_greed(composite)
     return level, composite
+
+
+# ---------------------------------------------------------------------------
+# Self-Calculated Fear & Greed — 7 Component Scoring Functions
+# Modeled after OnOff.Markets' methodology. Each returns 0–100 (clamped).
+# Pure functions, no side effects.
+# ---------------------------------------------------------------------------
+
+
+def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> int:
+    """Clamp a float to [lo, hi] and return as int."""
+    return round(max(lo, min(hi, value)))
+
+
+def _period_return(prices: list[float], lookback: int) -> float | None:
+    """
+    Compute simple return over the last `lookback` days from a price series.
+    Returns None if insufficient data. Result is a percentage (e.g. 3.5 for +3.5%).
+    """
+    if len(prices) < lookback + 1:
+        return None
+    start = prices[-(lookback + 1)]
+    end = prices[-1]
+    if start == 0:
+        return None
+    return (end / start - 1) * 100
+
+
+def score_vix_linear(vix_value: float) -> int:
+    """
+    Continuous linear VIX → 0–100 fear/greed score (no piecewise cliffs).
+    Formula: score = FG_VIX_BASE - (vix - FG_VIX_OFFSET) * FG_VIX_SLOPE
+    VIX 10 → 90, VIX 20 → 58, VIX 30 → 26, VIX 38+ → 0.
+    """
+    raw = FG_VIX_BASE - (vix_value - FG_VIX_OFFSET) * FG_VIX_SLOPE
+    return _clamp(raw)
+
+
+def score_price_strength(
+    prices: list[float], lookback: int = FG_LOOKBACK_DAYS
+) -> int | None:
+    """
+    SPY 14-day return → 0–100. Formula: 50 + return_pct * FG_PRICE_STRENGTH_MULT.
+    Saturates at ±6.25% (score 0 or 100). Returns None if insufficient data.
+    """
+    ret = _period_return(prices, lookback)
+    if ret is None:
+        return None
+    return _clamp(50.0 + ret * FG_PRICE_STRENGTH_MULT)
+
+
+def score_momentum_composite(
+    prices: list[float],
+    rsi_period: int = RSI_PERIOD,
+    ma_window: int = FG_MA_WINDOW,
+) -> int | None:
+    """
+    70% RSI(14) + 30% price-vs-MA50 position → 0–100.
+    Leverages existing compute_rsi(). Returns None if insufficient data.
+    """
+    if len(prices) < max(rsi_period + 1, ma_window):
+        return None
+
+    rsi = compute_rsi(prices, rsi_period)
+    if rsi is None or not math.isfinite(rsi):
+        return None  # pragma: no cover
+
+    ma50 = sum(prices[-ma_window:]) / ma_window
+    if ma50 == 0 or not math.isfinite(ma50):
+        return None  # pragma: no cover
+    deviation_pct = (prices[-1] / ma50 - 1) * 100
+    if not math.isfinite(deviation_pct):
+        return None  # pragma: no cover
+    ma_score = _clamp(50.0 + deviation_pct * FG_MOMENTUM_MA_MULT)
+
+    composite = FG_MOMENTUM_RSI_WEIGHT * rsi + (1 - FG_MOMENTUM_RSI_WEIGHT) * ma_score
+    return _clamp(composite)
+
+
+def score_breadth(
+    rsp_prices: list[float],
+    spy_prices: list[float],
+    lookback: int = FG_LOOKBACK_DAYS,
+) -> int | None:
+    """
+    RSP vs SPY 14-day divergence → 0–100.
+    Formula: 50 + (rsp_ret - spy_ret) * FG_BREADTH_MULT.
+    Saturates at ±2.78% divergence. Returns None if insufficient data.
+    """
+    rsp_ret = _period_return(rsp_prices, lookback)
+    spy_ret = _period_return(spy_prices, lookback)
+    if rsp_ret is None or spy_ret is None:
+        return None
+    return _clamp(50.0 + (rsp_ret - spy_ret) * FG_BREADTH_MULT)
+
+
+def score_junk_bond_demand(
+    hyg_prices: list[float],
+    tlt_prices: list[float],
+    lookback: int = FG_LOOKBACK_DAYS,
+) -> int | None:
+    """
+    HYG vs TLT 14-day divergence → 0–100.
+    Formula: 50 + (hyg_ret - tlt_ret) * FG_JUNK_BOND_MULT.
+    HYG outperforming = risk appetite = greed. Returns None if insufficient data.
+    """
+    hyg_ret = _period_return(hyg_prices, lookback)
+    tlt_ret = _period_return(tlt_prices, lookback)
+    if hyg_ret is None or tlt_ret is None:
+        return None
+    return _clamp(50.0 + (hyg_ret - tlt_ret) * FG_JUNK_BOND_MULT)
+
+
+def score_safe_haven(
+    tlt_prices: list[float],
+    lookback: int = FG_LOOKBACK_DAYS,
+) -> int | None:
+    """
+    TLT 14-day return (inverted) → 0–100.
+    Formula: 50 - tlt_ret * FG_SAFE_HAVEN_MULT.
+    Rising TLT = fear for stocks (lower score). Returns None if insufficient data.
+    """
+    tlt_ret = _period_return(tlt_prices, lookback)
+    if tlt_ret is None:
+        return None
+    return _clamp(50.0 - tlt_ret * FG_SAFE_HAVEN_MULT)
+
+
+def score_sector_rotation(
+    qqq_prices: list[float],
+    xlp_prices: list[float],
+    lookback: int = FG_LOOKBACK_DAYS,
+) -> int | None:
+    """
+    QQQ vs XLP 14-day divergence → 0–100.
+    Formula: 50 + (qqq_ret - xlp_ret) * FG_SECTOR_ROTATION_MULT.
+    QQQ (tech/growth) outperforming XLP (defensive) = risk-on = greed.
+    Returns None if insufficient data.
+    """
+    qqq_ret = _period_return(qqq_prices, lookback)
+    xlp_ret = _period_return(xlp_prices, lookback)
+    if qqq_ret is None or xlp_ret is None:
+        return None
+    return _clamp(50.0 + (qqq_ret - xlp_ret) * FG_SECTOR_ROTATION_MULT)
+
+
+def compute_weighted_fear_greed(
+    components: dict[str, int | None],
+    weights: dict[str, float] | None = None,
+) -> tuple[FearGreedLevel, int]:
+    """
+    Weighted average of available component scores → (FearGreedLevel, 0–100).
+
+    Missing (None) components are excluded and the remaining weights are
+    re-normalised so the result is always a valid 0–100 score.
+    Returns (NOT_AVAILABLE, 50) when no component data is available.
+    """
+    if weights is None:
+        weights = FG_COMPONENT_WEIGHTS
+
+    available = {k: v for k, v in components.items() if v is not None}
+    if not available:
+        return FearGreedLevel.NOT_AVAILABLE, 50
+
+    total_weight = sum(weights.get(k, 0.0) for k in available)
+    if total_weight == 0:
+        return FearGreedLevel.NOT_AVAILABLE, 50
+
+    weighted_sum = sum(v * weights.get(k, 0.0) for k, v in available.items())
+    composite = round(weighted_sum / total_weight)
+    composite = max(0, min(100, composite))
+    level = classify_cnn_fear_greed(composite)
+    return level, composite
+
+
+def score_nikkei_vi_linear(nikkei_vi: float) -> int:
+    """
+    Continuous linear Nikkei VI → 0–100 fear/greed score.
+    Formula: score = JP_VI_BASE - (nikkei_vi - JP_VI_OFFSET) * JP_VI_SLOPE
+    NKV 12 → ~90, NKV 20 → ~62, NKV 35 → ~10.
+    """
+    raw = JP_VI_BASE - (nikkei_vi - JP_VI_OFFSET) * JP_VI_SLOPE
+    return _clamp(raw)
+
+
+def score_tw_vol_linear(vol_pct: float) -> int:
+    """
+    Continuous linear TAIEX realized volatility (%) → 0–100 fear/greed score.
+    Formula: score = TW_VOL_BASE - (vol_pct - TW_VOL_OFFSET) * TW_VOL_SLOPE
+    vol 8% → ~90, vol 18% → ~55, vol 30% → ~13.
+    """
+    raw = TW_VOL_BASE - (vol_pct - TW_VOL_OFFSET) * TW_VOL_SLOPE
+    return _clamp(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -493,3 +711,26 @@ def compute_twr(snapshots: list[dict]) -> float | None:
         product *= values[i] / values[i - 1]  # type: ignore[operator]
 
     return round((product - 1) * 100, 2)
+
+
+def compute_signal_duration(
+    signal_since: datetime | None,
+    now: datetime,
+) -> tuple[int | None, bool]:
+    """
+    計算訊號持續天數，並判斷是否為「新」訊號（< 24 小時）。
+
+    自動處理 naive datetime（補 UTC tzinfo）。
+    純函式，無副作用。
+
+    Returns:
+        (duration_days, is_new)
+        - duration_days: 訊號持續天數，signal_since 為 None 時回傳 None
+        - is_new: 訊號持續不足 24 小時時為 True
+    """
+    if signal_since is None:
+        return None, False
+    if signal_since.tzinfo is None:
+        signal_since = signal_since.replace(tzinfo=UTC)
+    delta = now - signal_since
+    return delta.days, delta.total_seconds() < SECONDS_PER_DAY

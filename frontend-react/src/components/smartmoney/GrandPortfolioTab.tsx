@@ -7,10 +7,10 @@ import { SectorChart } from "./SectorChart"
 import { ActionBadge } from "./ActionBadge"
 import { formatValue, ACTION_COLORS } from "./formatters"
 
-export function GrandPortfolioTab() {
+export function GrandPortfolioTab({ style }: { style?: string | null }) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
-  const { data, isLoading } = useGrandPortfolio()
+  const { data, isLoading } = useGrandPortfolio(style)
 
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (!data || data.items.length === 0) {

@@ -2,13 +2,17 @@
 Application — Stock Service：股票 CRUD、匯入匯出、護城河查詢。
 """
 
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from cachetools import TTLCache
 from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
+    ENRICHED_CACHE_MAXSIZE,
+    ENRICHED_CACHE_TTL,
     ENRICHED_PER_TICKER_TIMEOUT,
     ENRICHED_THREAD_POOL_SIZE,
     REMOVAL_REASON_UNKNOWN,
@@ -28,6 +32,7 @@ from infrastructure.market_data import (
     get_fear_greed_index,
     get_jp_volatility_index,
     get_technical_signals,
+    get_ticker_sector_cached,
     get_tw_volatility_index,
 )
 from infrastructure.market_data import (
@@ -184,6 +189,9 @@ def list_active_stocks(session: Session) -> list[dict]:
             "current_tags": _str_to_tags(stock.current_tags),
             "display_order": stock.display_order,
             "last_scan_signal": stock.last_scan_signal,
+            "signal_since": stock.signal_since.isoformat()
+            if stock.signal_since
+            else None,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
         }
@@ -559,19 +567,95 @@ def get_moat_for_ticker(session: Session, ticker: str) -> dict:
 # Batch Enriched Stocks（一次回傳所有股票 + 訊號 / 財報 / 股息）
 # ---------------------------------------------------------------------------
 
+# 短效快取，避免同一時間多個前端請求（Dashboard 多個元件）重複執行完整 yfinance 呼叫。
+_enriched_cache: TTLCache = TTLCache(
+    maxsize=ENRICHED_CACHE_MAXSIZE, ttl=ENRICHED_CACHE_TTL
+)
+_enriched_cache_lock = threading.Lock()
+# 防止 thundering herd：快取未命中時，後續並行請求等待第一個請求完成後共享結果。
+_enriched_in_progress: threading.Event | None = None
+
+
+def invalidate_enriched_cache() -> None:
+    """主動清除豐富資料快取（股票新增 / 移除 / 停用後呼叫）。"""
+    global _enriched_in_progress
+    with _enriched_cache_lock:
+        _enriched_cache.clear()
+        if _enriched_in_progress is not None:
+            _enriched_in_progress.set()
+        _enriched_in_progress = None
+
 
 def get_enriched_stocks(session: Session) -> list[dict]:
     """
     取得所有啟用中股票，並行附加技術訊號、最近財報日與股息資訊。
     前端可一次取得所有資料，避免逐卡 N+1 API 呼叫。
+    結果透過 TTL 快取，在快取窗口內重複請求直接回傳快取值。
+    並行 cache miss 時，後續請求等待第一個計算完成，避免 thundering herd。
     """
-    stocks = repo.find_active_stocks(session)
+    global _enriched_in_progress
+    _cache_key = "enriched"
+
+    while True:
+        with _enriched_cache_lock:
+            cached = _enriched_cache.get(_cache_key)
+            if cached is not None:
+                logger.debug("豐富資料快取命中")
+                return cached
+
+            # First request after a miss: set an in-progress event; others will wait
+            if _enriched_in_progress is None:
+                _enriched_in_progress = threading.Event()
+                event_owner = True
+            else:
+                event_to_wait = _enriched_in_progress
+                event_owner = False
+
+        if not event_owner:
+            # Another thread is computing — wait for it, then re-check cache
+            logger.debug("等待豐富資料計算完成...")
+            event_to_wait.wait(timeout=120)
+            continue  # re-enter loop to read from cache
+
+        # This thread owns the computation
+        break
+
+    try:
+        stocks = repo.find_active_stocks(session)
+    except Exception:
+        # Ensure waiters are unblocked even on DB error
+        with _enriched_cache_lock:
+            _enriched_in_progress = None
+        raise
+
     if not stocks:
+        with _enriched_cache_lock:
+            _enriched_in_progress = None
         return []
 
+    # try/finally ensures waiters are always unblocked, even on unexpected errors.
+    try:
+        result = _compute_enriched_stocks(stocks)
+    except Exception:
+        with _enriched_cache_lock:
+            if _enriched_in_progress is not None:
+                _enriched_in_progress.set()
+            _enriched_in_progress = None
+        raise
+
+    with _enriched_cache_lock:
+        _enriched_cache[_cache_key] = result
+        if _enriched_in_progress is not None:
+            _enriched_in_progress.set()
+        _enriched_in_progress = None
+    return result
+
+
+def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
+    """Inner computation: fetch signals/earnings/dividends for all stocks in parallel."""
     logger.info("批次取得 %d 檔股票的豐富資料...", len(stocks))
 
-    # 建立基礎資料
+    # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
     enriched: dict[str, dict] = {}
     for stock in stocks:
         enriched[stock.ticker] = {
@@ -585,10 +669,14 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
+            "sector": get_ticker_sector_cached(stock.ticker),
             "signals": None,
             "earnings": None,
             "dividend": None,
             "computed_signal": None,
+            "price": None,
+            "change_pct": None,
+            "rsi": None,
         }
 
     def _fetch_enrichment(
@@ -636,6 +724,10 @@ def get_enriched_stocks(session: Session) -> list[dict]:
                     enriched[ticker]["signals"] = signals
                     enriched[ticker]["earnings"] = earnings
                     enriched[ticker]["dividend"] = dividend
+                    # Surface key metrics at top level for heat map / dashboard use
+                    enriched[ticker]["price"] = (signals or {}).get("price")
+                    enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
+                    enriched[ticker]["rsi"] = (signals or {}).get("rsi")
                     # Compute real-time signal from live RSI/bias (skip moat — too expensive here)
                     persisted_signal = enriched[ticker].get(
                         "last_scan_signal", "NORMAL"

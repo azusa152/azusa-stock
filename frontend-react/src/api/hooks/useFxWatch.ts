@@ -121,8 +121,8 @@ async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
     const entry: FxAnalysis = {
       current_rate: r.result.current_rate,
       should_alert: r.result.should_alert,
-      recommendation: r.result.recommendation_zh,
-      reasoning: r.result.reasoning_zh,
+      recommendation: r.result.recommendation,
+      reasoning: r.result.reasoning,
       is_recent_high: r.result.is_recent_high,
       lookback_high: r.result.lookback_high,
       lookback_days: r.result.lookback_days,

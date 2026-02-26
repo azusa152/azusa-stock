@@ -1,0 +1,94 @@
+---
+description: i18n checklist for agent when adding or modifying user-facing strings. Apply when writing or editing backend routes, application services, domain models, or frontend components.
+---
+
+# i18n Checklist
+
+## The Golden Rule
+
+**Never hardcode user-facing strings.** All text that reaches the user — in API responses, Telegram messages, or the UI — must be translatable.
+
+---
+
+## Backend
+
+### Domain Layer (`domain/`)
+
+The domain layer **cannot import from `i18n`** (architecture boundary).
+
+- Return machine-readable tokens instead of translated strings.
+- Use the `scenario` + `scenario_vars` pattern for computed text:
+
+```python
+# ✅ Good — domain produces a token + interpolation vars
+@dataclass(frozen=True)
+class MyResult:
+    scenario: str          # e.g. "high_risk"
+    scenario_vars: dict    # e.g. {"pct": 0.45}
+
+# ❌ Bad — domain builds translated text
+reason = f"高風險：{pct:.0%}"
+```
+
+### Application / API Layer (`application/`, `api/routes/`)
+
+- Translate at the boundary. Call `get_user_language(session)` once and pass `lang` to `t()`.
+- Map domain tokens to i18n keys: `t(f"section.prefix_{scenario}", lang=lang, **scenario_vars)`.
+
+```python
+# ✅ Good
+lang = get_user_language(session)
+result.recommendation = t(f"fx_watch.rec_{timing.scenario}", lang=lang, **timing.scenario_vars)
+
+# ❌ Bad — route returns the domain's raw Chinese string
+result.recommendation = timing.recommendation_zh
+```
+
+### Adding New i18n Keys
+
+1. Add the key to **all 4 backend locale files**: `backend/i18n/locales/{en,ja,zh-TW,zh-CN}.json`
+2. Run `make check-i18n` to verify parity.
+3. If adding frontend strings, also update all 4 frontend locale files: `frontend-react/public/locales/{en,ja,zh-TW,zh-CN}.json`.
+
+```bash
+make check-i18n   # Must pass before committing
+```
+
+---
+
+## Frontend
+
+- Use `useTranslation` and the `t()` hook for every user-visible string.
+- Never render API string fields directly if they might contain language-specific text.
+- Check for `i18next/no-literal-string` ESLint warnings — genuine hardcoded strings appear as warnings in `npm run lint`.
+
+```tsx
+// ✅ Good
+const { t } = useTranslation()
+return <p>{t('fx_watch.recommendation')}</p>
+
+// ❌ Bad — renders raw Chinese text from the API
+return <p>{result.recommendation_zh}</p>
+```
+
+---
+
+## CI Gates
+
+| Check | Command | What it catches |
+|---|---|---|
+| Locale key parity | `make check-i18n` | Keys present in one locale but not all others |
+| ESLint i18n rule | `npm run lint` (frontend) | Hardcoded JSX text strings (`warn`) |
+
+Both checks run in the CI pipeline. `make ci` runs `check-i18n` automatically.
+
+---
+
+## Key Patterns in This Codebase
+
+| Layer | Pattern | Example |
+|---|---|---|
+| Domain → API | `scenario` + `scenario_vars` | FX Watch (`assess_exchange_timing`) |
+| Domain → App | `reason_key` + `reason_vars` | Smart Withdrawal (`plan_withdrawal`) |
+| App → Telegram | `t(key, lang=lang, **vars)` | FX Exposure alerts |
+| Route translation | `get_user_language(session)` once per request | `fx_watch_routes.py` |

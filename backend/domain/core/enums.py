@@ -4,6 +4,12 @@ Domain — 列舉定義。
 """
 
 from enum import StrEnum
+from typing import NewType
+
+# I18nKey is a str that holds an i18n lookup key (e.g. "fx.period_1d").
+# The application layer is responsible for translating it with t(key, lang=lang).
+# Using NewType makes the distinction explicit in type annotations without runtime cost.
+I18nKey = NewType("I18nKey", str)
 
 
 class StockCategory(StrEnum):
@@ -86,10 +92,11 @@ class FXAlertType(StrEnum):
     LONG_TERM_TREND = "long_term_trend"
 
 
+# Values are i18n keys, resolved via t() in the application layer.
 FX_ALERT_LABEL: dict[str, str] = {
-    "daily_spike": "單日劇烈波動",
-    "short_term_swing": "短期波段變動",
-    "long_term_trend": "長期趨勢變動",
+    "daily_spike": "fx.alert_type_daily_spike",
+    "short_term_swing": "fx.alert_type_short_term_swing",
+    "long_term_trend": "fx.alert_type_long_term_trend",
 }
 
 
