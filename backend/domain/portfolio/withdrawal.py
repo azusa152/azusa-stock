@@ -13,6 +13,7 @@ from domain.constants import (
     CATEGORY_LIQUIDITY_ORDER,
     WITHDRAWAL_MIN_SELL_VALUE,
 )
+from domain.enums import I18nKey
 
 # ---------------------------------------------------------------------------
 # Data Structures
@@ -42,9 +43,17 @@ class SellRecommendation:
     category: str
     quantity_to_sell: float
     sell_value: float  # 以 display_currency 計算
-    reason: str
+    # reason_key + reason_vars are the machine-readable i18n contract.
+    # The application layer translates them into `reason` before returning to the caller.
+    reason_key: I18nKey
     unrealized_pl: float | None  # 未實現損益（None 表示無成本資訊）
     priority: int  # 1=再平衡, 2=節稅, 3=流動性
+    # Fields with defaults must come last in a frozen dataclass.
+    # reason_vars excluded from __hash__: dict is not hashable and is not part of identity.
+    reason_vars: dict = field(default_factory=dict, hash=False, compare=False)
+    reason: str = field(
+        default=""
+    )  # Localised text — set by the application layer via t(reason_key, **reason_vars).
 
 
 @dataclass
@@ -90,7 +99,8 @@ def _qty_for_value(h: HoldingData, target_value: float) -> float:
 def _sell_from_holding(
     h: HoldingData,
     remaining: float,
-    reason: str,
+    reason_key: I18nKey,
+    reason_vars: dict,
     priority: int,
     already_sold: dict[str, float],
 ) -> SellRecommendation | None:
@@ -124,9 +134,10 @@ def _sell_from_holding(
         category=h.category,
         quantity_to_sell=round(qty_to_sell, 4),
         sell_value=actual_sell_value,
-        reason=reason,
+        reason_key=reason_key,
         unrealized_pl=unrealized_pl,
         priority=priority,
+        reason_vars=reason_vars,
     )
 
 
@@ -239,11 +250,17 @@ def plan_withdrawal(
                 break
 
             icon = CATEGORY_ICON.get(cat, "📊")
-            reason = (
-                f"{icon} {cat} 超配 {drift_pct:+.1f}%，賣出可鎖定獲利並回歸目標佔比。"
-            )
             rec = _sell_from_holding(
-                h, min(remaining, sellable_value), reason, 1, already_sold
+                h,
+                min(remaining, sellable_value),
+                reason_key=I18nKey("withdrawal.rebalance_reason"),
+                reason_vars={
+                    "icon": icon,
+                    "category": cat,
+                    "drift": f"{drift_pct:+.1f}",
+                },
+                priority=1,
+                already_sold=already_sold,
             )
             if rec:
                 recommendations.append(rec)
@@ -276,8 +293,14 @@ def plan_withdrawal(
             if remaining <= 0:
                 break
 
-            reason = "📉 帳面虧損持倉，賣出可進行 Tax-Loss Harvesting 抵銷資本利得稅。"
-            rec = _sell_from_holding(h, remaining, reason, 2, already_sold)
+            rec = _sell_from_holding(
+                h,
+                remaining,
+                reason_key=I18nKey("withdrawal.tax_reason"),
+                reason_vars={},
+                priority=2,
+                already_sold=already_sold,
+            )
             if rec:
                 recommendations.append(rec)
                 already_sold[h.ticker] = (
@@ -311,11 +334,18 @@ def plan_withdrawal(
             rank = liquidity_rank.get(cat, 999)
             icon = CATEGORY_ICON.get(cat, "📊")
             if rank <= 1:  # Cash, Bond
-                reason = f"{icon} {cat} 流動性高，優先用於提款，保留複利核心資產。"
+                reason_key = "withdrawal.liquidity_high_reason"
             else:
-                reason = f"{icon} {cat} 資產變現以補足提款缺口。"
+                reason_key = "withdrawal.liquidity_default_reason"
 
-            rec = _sell_from_holding(h, remaining, reason, 3, already_sold)
+            rec = _sell_from_holding(
+                h,
+                remaining,
+                reason_key=reason_key,
+                reason_vars={"icon": icon, "category": cat},
+                priority=3,
+                already_sold=already_sold,
+            )
             if rec:
                 recommendations.append(rec)
                 already_sold[h.ticker] = (

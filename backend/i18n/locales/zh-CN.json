@@ -289,5 +289,13 @@
     "lagging_disclaimer": "⚠️ 此数据为 {days_ago} 天前的持仓快照，非实时数据",
     "report_date_label": "持仓基准日",
     "filing_date_label": "公告日"
+  },
+  "fx": {
+    "period_1d": "单日",
+    "period_5d": "5 日",
+    "period_3m": "3 个月",
+    "alert_type_daily_spike": "单日剧烈波动",
+    "alert_type_short_term_swing": "短期波段变动",
+    "alert_type_long_term_trend": "长期趋势变动"
   }
 }

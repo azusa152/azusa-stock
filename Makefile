@@ -161,7 +161,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
+ci: lint test check-constants check-api-spec check-i18n frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -216,10 +216,13 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
+
+check-i18n: ## Check locale key parity (backend + frontend locale files)
+	python3 scripts/check_locale_parity.py
 
 check-api-spec: .venv-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \

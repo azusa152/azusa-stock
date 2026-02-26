@@ -289,5 +289,13 @@
     "lagging_disclaimer": "⚠️ このデータは {days_ago} 日前の保有スナップショットです。リアルタイムではありません",
     "report_date_label": "保有基準日",
     "filing_date_label": "申告日"
+  },
+  "fx": {
+    "period_1d": "1日",
+    "period_5d": "5日",
+    "period_3m": "3か月",
+    "alert_type_daily_spike": "日次急騰・急落",
+    "alert_type_short_term_swing": "短期スイング",
+    "alert_type_long_term_trend": "長期トレンド"
   }
 }

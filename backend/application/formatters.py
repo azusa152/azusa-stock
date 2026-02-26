@@ -104,7 +104,7 @@ def format_withdrawal_telegram(
             f" — {t('formatter.sell', lang=lang)} {rec.quantity_to_sell:,.4g} "
             f"{t('formatter.shares', lang=lang)}"
             f"（{rec.sell_value:,.2f} {display_currency}）"
-            f"\n   {t('formatter.reason', lang=lang)}：{rec.reason}"
+            f"\n   {t('formatter.reason', lang=lang)}：{t(rec.reason_key, lang=lang, **rec.reason_vars)}"
             f"\n   {t('formatter.priority', lang=lang)}：{priority_label}"
             f"{pl_text}"
         )

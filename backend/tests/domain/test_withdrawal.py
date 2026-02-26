@@ -120,7 +120,8 @@ class TestPriority1Rebalancing:
         first = plan.recommendations[0]
         assert first.ticker == "NVDA"
         assert first.priority == 1
-        assert "超配" in first.reason
+        assert first.reason_key == "withdrawal.rebalance_reason"
+        assert "category" in first.reason_vars
         assert plan.shortfall == pytest.approx(0.0, abs=1.0)
 
     def test_overweight_partial_sell_should_not_exceed_drift_cap(self):
@@ -177,7 +178,7 @@ class TestPriority2TaxLossHarvesting:
         first = plan.recommendations[0]
         assert first.ticker == "INTC"
         assert first.priority == 2
-        assert "Tax-Loss" in first.reason
+        assert first.reason_key == "withdrawal.tax_reason"
         assert first.unrealized_pl is not None
         assert first.unrealized_pl < 0  # 確認是虧損
 
@@ -294,7 +295,7 @@ class TestPriority3LiquidityOrder:
 
         # Assert
         assert len(plan.recommendations) >= 1
-        assert "流動性" in plan.recommendations[0].reason
+        assert plan.recommendations[0].reason_key == "withdrawal.liquidity_high_reason"
 
 
 # ---------------------------------------------------------------------------

@@ -5475,13 +5475,22 @@
             "type": "boolean",
             "title": "Should Alert"
           },
-          "recommendation_zh": {
+          "scenario": {
             "type": "string",
-            "title": "Recommendation Zh"
+            "title": "Scenario"
           },
-          "reasoning_zh": {
+          "scenario_vars": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Scenario Vars"
+          },
+          "recommendation": {
             "type": "string",
-            "title": "Reasoning Zh"
+            "title": "Recommendation"
+          },
+          "reasoning": {
+            "type": "string",
+            "title": "Reasoning"
           }
         },
         "type": "object",
@@ -5497,8 +5506,10 @@
           "alert_on_recent_high",
           "alert_on_consecutive_increase",
           "should_alert",
-          "recommendation_zh",
-          "reasoning_zh"
+          "scenario",
+          "scenario_vars",
+          "recommendation",
+          "reasoning"
         ],
         "title": "FXTimingResultResponse",
         "description": "\u63db\u532f\u6642\u6a5f\u5206\u6790\u7d50\u679c\u3002"

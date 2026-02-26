@@ -10,6 +10,7 @@ from domain.core.enums import (  # noqa: F401
     FearGreedLevel,
     FXAlertType,
     HoldingAction,
+    I18nKey,
     MarketSentiment,
     MoatStatus,
     ScanSignal,

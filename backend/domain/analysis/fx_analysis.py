@@ -12,7 +12,7 @@ from domain.constants import (
     FX_LONG_TERM_TREND_PCT,
     FX_SHORT_TERM_SWING_PCT,
 )
-from domain.enums import FXAlertType
+from domain.enums import FXAlertType, I18nKey
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,9 @@ class FXRateAlert:
     change_pct: float  # signed percentage change
     direction: str  # "up" / "down"
     current_rate: float
-    period_label: str  # "1 日" / "5 日" / "3 個月"
+    period_label: (
+        I18nKey  # e.g. I18nKey("fx.period_1d") — translated by the application layer
+    )
 
 
 def _compute_change_pct(
@@ -78,7 +80,7 @@ def analyze_fx_rate_changes(
                     change_pct=daily_pct,
                     direction=_direction(daily_pct),
                     current_rate=current_rate,
-                    period_label="1 日",
+                    period_label=I18nKey("fx.period_1d"),
                 )
             )
 
@@ -93,7 +95,7 @@ def analyze_fx_rate_changes(
                     change_pct=swing_pct,
                     direction=_direction(swing_pct),
                     current_rate=current_rate,
-                    period_label="5 日",
+                    period_label=I18nKey("fx.period_5d"),
                 )
             )
 
@@ -108,7 +110,7 @@ def analyze_fx_rate_changes(
                     change_pct=trend_pct,
                     direction=_direction(trend_pct),
                     current_rate=current_rate,
-                    period_label="3 個月",
+                    period_label=I18nKey("fx.period_3m"),
                 )
             )
 

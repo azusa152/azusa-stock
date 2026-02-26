@@ -193,7 +193,10 @@
       "health_all_normal": "所有追蹤股票均為 NORMAL ✅",
       "health_overflow": "…另有 {{count}} 支",
       "dividend_breakdown": "各股明細（已換匯為 {{currency}}）：",
+      "dividend_qty": "數量",
       "dividend_dps": "每股股息",
+      "dividend_subtotal": "小計",
+      "dividend_currency_note": "金額為各股原幣（未換匯）",
       "dividend_native": "原幣金額",
       "dividend_converted": "換匯後"
     },

@@ -289,5 +289,13 @@
     "lagging_disclaimer": "⚠️ 此數據為 {days_ago} 天前的持倉快照，非即時資料",
     "report_date_label": "持倉基準日",
     "filing_date_label": "公告日"
+  },
+  "fx": {
+    "period_1d": "單日",
+    "period_5d": "5 日",
+    "period_3m": "3 個月",
+    "alert_type_daily_spike": "單日劇烈波動",
+    "alert_type_short_term_swing": "短期波段變動",
+    "alert_type_long_term_trend": "長期趨勢變動"
   }
 }

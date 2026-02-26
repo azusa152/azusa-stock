@@ -140,8 +140,8 @@
     "non_home_pct": "📊 Non-home currency ({home}) assets: {pct:.1f}%.",
     "foreign_cash_warning": "💵 {pct:.1f}% of your cash is in foreign currency. Largest foreign cash: {currency} (approx. {value:,.0f} {home}), directly impacted by FX movements.",
     "cash_impact": "(including {currency} cash approx. {amount:,.0f} {home} directly affected)",
-    "fx_alert_up": "📈 {pair} {type_label}: {period}appreciated {change_pct:+.2f}%, current rate {rate:.4f}. {cash_note}",
-    "fx_alert_down": "📉 {pair} {type_label}: {period}depreciated {change_pct:+.2f}%, current rate {rate:.4f}. Consider hedging. {cash_note}",
+    "fx_alert_up": "📈 {pair} {type_label}: {period} appreciated {change_pct:+.2f}%, current rate {rate:.4f}. {cash_note}",
+    "fx_alert_down": "📉 {pair} {type_label}: {period} depreciated {change_pct:+.2f}%, current rate {rate:.4f}. Consider hedging. {cash_note}",
     "fx_exposure_title": "💱 Currency Exposure Monitor",
     "withdrawal_insufficient": "⚠️ No holdings entered, cannot calculate withdrawal plan.",
     "withdrawal_shortfall_total": "⚠️ Insufficient portfolio value, shortfall: {amount} {currency}.",
@@ -289,5 +289,13 @@
     "lagging_disclaimer": "⚠️ This data reflects holdings from {days_ago} days ago — not real-time",
     "report_date_label": "Report Date",
     "filing_date_label": "Filing Date"
+  },
+  "fx": {
+    "period_1d": "1-day",
+    "period_5d": "5-day",
+    "period_3m": "3-month",
+    "alert_type_daily_spike": "Daily Spike",
+    "alert_type_short_term_swing": "Short-term Swing",
+    "alert_type_long_term_trend": "Long-term Trend"
   }
 }

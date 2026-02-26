@@ -813,7 +813,11 @@ def _generate_fx_advice(
             if cash_amt > 0
             else ""
         )
-        type_label = FX_ALERT_LABEL.get(alert.alert_type.value, alert.alert_type.value)
+        type_label_key = FX_ALERT_LABEL.get(
+            alert.alert_type.value, alert.alert_type.value
+        )
+        type_label = t(type_label_key, lang=lang)
+        period = t(alert.period_label, lang=lang)
         if alert.direction == "up":
             advice.append(
                 t(
@@ -821,7 +825,7 @@ def _generate_fx_advice(
                     lang=lang,
                     pair=alert.pair,
                     type_label=type_label,
-                    period=alert.period_label,
+                    period=period,
                     change_pct=alert.change_pct,
                     rate=alert.current_rate,
                     cash_note=cash_note,
@@ -834,7 +838,7 @@ def _generate_fx_advice(
                     lang=lang,
                     pair=alert.pair,
                     type_label=type_label,
-                    period=alert.period_label,
+                    period=period,
                     change_pct=alert.change_pct,
                     rate=alert.current_rate,
                     cash_note=cash_note,
@@ -849,36 +853,46 @@ def _generate_fx_advice(
 # ===========================================================================
 
 
-def check_fx_alerts(session: Session) -> list[str]:
+def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
     """
     檢查匯率曝險警報：偵測三層級匯率變動，產出 Telegram 通知文字。
+    Alert text is localised to the user's preferred language.
+    Pass `lang` explicitly to avoid a redundant DB read when the caller already holds it.
     """
     exposure = calculate_currency_exposure(session)
     alerts: list[str] = []
-
-    home_cur = exposure["home_currency"]
+    if lang is None:
+        lang = get_user_language(session)
 
     # 匯率變動警報（三層級偵測）
     for alert_data in exposure.get("fx_rate_alerts", []):
         pair = alert_data["pair"]
-        base_cur = pair.split("/")[0]
-        type_label = FX_ALERT_LABEL.get(
+        type_label_key = FX_ALERT_LABEL.get(
             alert_data["alert_type"], alert_data["alert_type"]
         )
-        if alert_data["direction"] == "up":
-            alerts.append(
-                f"📈 {pair} {type_label}：{alert_data['period_label']}升值 "
-                f"{alert_data['change_pct']:+.2f}%"
-                f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 購買力上升。"
-            )
-        else:
-            alerts.append(
-                f"📉 {pair} {type_label}：{alert_data['period_label']}貶值 "
-                f"{alert_data['change_pct']:+.2f}%"
-                f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 資產以 {home_cur} 計價正在縮水。"
-            )
+        type_label = t(type_label_key, lang=lang)
+        period = (
+            t(alert_data["period_label"], lang=lang)
+            if alert_data.get("period_label")
+            else ""
+        )
+        key = (
+            "rebalance.fx_alert_up"
+            if alert_data["direction"] == "up"
+            else "rebalance.fx_alert_down"
+        )
+        alerts.append(
+            t(
+                key,
+                lang=lang,
+                pair=pair,
+                type_label=type_label,
+                period=period,
+                change_pct=alert_data["change_pct"],
+                rate=alert_data["current_rate"],
+                cash_note="",
+            ).rstrip()
+        )
 
     return alerts
 
@@ -888,7 +902,8 @@ def send_fx_alerts(session: Session) -> list[str]:
     執行匯率曝險檢查，若有警報則發送 Telegram 通知。
     回傳已發送的警報列表。
     """
-    alerts = check_fx_alerts(session)
+    lang = get_user_language(session)
+    alerts = check_fx_alerts(session, lang=lang)
 
     if alerts:
         if not is_notification_enabled(session, "fx_alerts"):
@@ -896,7 +911,8 @@ def send_fx_alerts(session: Session) -> list[str]:
         elif not is_within_rate_limit(session, "fx_alerts"):
             logger.info("匯率曝險通知已達頻率上限，跳過發送。")
         else:
-            full_msg = "💱 匯率曝險監控\n\n" + "\n\n".join(alerts)
+            title = t("rebalance.fx_exposure_title", lang=lang)
+            full_msg = title + "\n\n" + "\n\n".join(alerts)
             try:
                 send_telegram_message_dual(full_msg, session)
             except Exception as e:
@@ -1021,21 +1037,21 @@ def calculate_withdrawal(
         target_config=target_config,
     )
 
-    # 7) 建立回傳結果
+    # 7) 建立回傳結果（翻譯 reason_key → 使用者語言的 reason 文字）
+    lang = get_user_language(session)
     recs = [
         {
             "ticker": r.ticker,
             "category": r.category,
             "quantity_to_sell": r.quantity_to_sell,
             "sell_value": r.sell_value,
-            "reason": r.reason,
+            "reason": t(r.reason_key, lang=lang, **r.reason_vars),
             "unrealized_pl": r.unrealized_pl,
             "priority": r.priority,
         }
         for r in plan.recommendations
     ]
 
-    lang = get_user_language(session)
     if plan.shortfall > 0:
         message = t(
             "withdrawal.shortfall",

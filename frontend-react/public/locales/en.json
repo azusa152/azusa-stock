@@ -196,7 +196,9 @@
       "dividend_qty": "Qty",
       "dividend_dps": "Div/Sh",
       "dividend_subtotal": "Subtotal",
-      "dividend_currency_note": "Amounts in each stock's native currency (not FX-converted)"
+      "dividend_currency_note": "Amounts in each stock's native currency (not FX-converted)",
+      "dividend_native": "Native",
+      "dividend_converted": "Converted"
     },
     "no_holdings": "No holdings data.",
     "no_holdings_data": "📭 No holdings data. Please add holdings first.",

@@ -196,7 +196,9 @@
       "dividend_qty": "数量",
       "dividend_dps": "每股股息",
       "dividend_subtotal": "小计",
-      "dividend_currency_note": "金额为各股本地货币（未换汇）"
+      "dividend_currency_note": "金额为各股本地货币（未换汇）",
+      "dividend_native": "原币金额",
+      "dividend_converted": "换汇后"
     },
     "no_holdings": "无持仓资料。",
     "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
