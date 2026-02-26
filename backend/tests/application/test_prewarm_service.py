@@ -123,6 +123,28 @@ class TestCollectTickers:
         assert "USD" not in result["moat"]
         assert "NVDA" in result["moat"]
 
+    def test_should_include_bond_in_sector_but_exclude_cash(self, db_session: Session):
+        # Arrange
+        db_session.add(
+            Stock(ticker="NVDA", category=StockCategory.MOAT, current_thesis="AI")
+        )
+        db_session.add(
+            Stock(ticker="TLT", category=StockCategory.BOND, current_thesis="Treasury")
+        )
+        db_session.add(
+            Stock(ticker="USD", category=StockCategory.CASH, current_thesis="Cash")
+        )
+        db_session.commit()
+
+        # Act
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
+            result = _collect_tickers()
+
+        # Assert: sector prewarm includes Bond but excludes Cash
+        assert "TLT" in result["sector"]
+        assert "NVDA" in result["sector"]
+        assert "USD" not in result["sector"]
+
     def test_should_identify_etf_tickers(self, db_session: Session):
         # Arrange
         db_session.add(
@@ -308,7 +330,7 @@ class TestPrewarmAllCaches:
         mock_etf.assert_called_once()
         mock_beta.assert_called_once()
 
-        # Phase 7: sector prewarm called for equity tickers (NVDA + VTI)
+        # Phase 7: sector prewarm called for all non-Cash tickers (includes Bond, ETF, equity)
         sector_tickers = sorted(c.args[0] for c in mock_sector.call_args_list)
         assert "NVDA" in sector_tickers
         assert "VTI" in sector_tickers

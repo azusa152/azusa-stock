@@ -85,11 +85,11 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, equity=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
-        len(tickers["equity"]),
+        len(tickers["sector"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
         len(tickers["etf"]),
@@ -113,8 +113,8 @@ def prewarm_all_caches() -> None:
         )
     if tickers["beta"]:
         parallel_phases.append(("beta", lambda: prewarm_beta_batch(tickers["beta"])))
-    if tickers["equity"]:
-        parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["equity"])))
+    if tickers["sector"]:
+        parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
 
     with ThreadPoolExecutor(max_workers=min(len(parallel_phases), 4)) as pool:
         phase_futures = {
@@ -200,6 +200,15 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
+    # Sector: 熱力圖需要包含 Bond 類標的（Bond 有 GICS 板塊，只是不做訊號/護城河）
+    # SKIP_SIGNALS_CATEGORIES（僅 Cash）排除的標的，其餘均需板塊資訊
+    sector_tickers = [
+        t
+        for t in all_tickers
+        if t not in stock_map
+        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+    ]
+
     return {
         "all": sorted(all_tickers),
         "signals": sorted(signals_tickers),
@@ -207,6 +216,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         "etf": sorted(etf_tickers),
         "beta": sorted(beta_tickers),
         "equity": sorted(equity_tickers),
+        "sector": sorted(sector_tickers),
     }
 
 

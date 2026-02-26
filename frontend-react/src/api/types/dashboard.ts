@@ -57,6 +57,7 @@ export interface EnrichedStock {
   category?: StockCategory
   last_scan_signal?: ScanSignal
   computed_signal?: ScanSignal
+  sector?: string
   price?: number
   change_pct?: number
   rsi?: number

@@ -32,6 +32,7 @@ import { AllocationGlance } from "@/components/dashboard/AllocationGlance"
 import { TopHoldings } from "@/components/dashboard/TopHoldings"
 import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
+import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -48,7 +49,7 @@ export default function Dashboard() {
   }
 
   const { data: stocks, isLoading: stocksLoading } = useStocks()
-  const { data: enrichedStocks } = useEnrichedStocks()
+  const { data: enrichedStocks, isLoading: enrichedLoading } = useEnrichedStocks()
   const { data: lastScan } = useLastScan()
   const { data: signalActivity } = useSignalActivity()
   const { data: holdings } = useHoldings()
@@ -133,6 +134,9 @@ export default function Dashboard() {
         holdings={holdings ?? []}
         isLoading={heroLoading}
       />
+
+      {/* Stock Heat Map */}
+      <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
 
       {/* YTD Dividend Income */}
       <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />

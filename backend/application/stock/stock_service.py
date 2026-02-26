@@ -28,6 +28,7 @@ from infrastructure.market_data import (
     get_fear_greed_index,
     get_jp_volatility_index,
     get_technical_signals,
+    get_ticker_sector_cached,
     get_tw_volatility_index,
 )
 from infrastructure.market_data import (
@@ -574,7 +575,7 @@ def get_enriched_stocks(session: Session) -> list[dict]:
 
     logger.info("批次取得 %d 檔股票的豐富資料...", len(stocks))
 
-    # 建立基礎資料
+    # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
     enriched: dict[str, dict] = {}
     for stock in stocks:
         enriched[stock.ticker] = {
@@ -588,10 +589,14 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
+            "sector": get_ticker_sector_cached(stock.ticker),
             "signals": None,
             "earnings": None,
             "dividend": None,
             "computed_signal": None,
+            "price": None,
+            "change_pct": None,
+            "rsi": None,
         }
 
     def _fetch_enrichment(
@@ -639,6 +644,10 @@ def get_enriched_stocks(session: Session) -> list[dict]:
                     enriched[ticker]["signals"] = signals
                     enriched[ticker]["earnings"] = earnings
                     enriched[ticker]["dividend"] = dividend
+                    # Surface key metrics at top level for heat map / dashboard use
+                    enriched[ticker]["price"] = (signals or {}).get("price")
+                    enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
+                    enriched[ticker]["rsi"] = (signals or {}).get("rsi")
                     # Compute real-time signal from live RSI/bias (skip moat — too expensive here)
                     persisted_signal = enriched[ticker].get(
                         "last_scan_signal", "NORMAL"
