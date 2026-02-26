@@ -10,11 +10,54 @@ import os
 import requests as http_requests
 from sqlmodel import Session
 
-from domain.constants import DEFAULT_USER_ID, TELEGRAM_API_URL, TELEGRAM_REQUEST_TIMEOUT
+from domain.constants import (
+    DEFAULT_USER_ID,
+    TELEGRAM_API_URL,
+    TELEGRAM_MAX_MESSAGE_LENGTH,
+    TELEGRAM_REQUEST_TIMEOUT,
+)
 from infrastructure.external.crypto import decrypt_token
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _split_message(
+    text: str, max_length: int = TELEGRAM_MAX_MESSAGE_LENGTH
+) -> list[str]:
+    """Split a message at newline boundaries to respect Telegram's character limit.
+
+    Each chunk is guaranteed to be ≤ max_length characters. Lines longer than
+    max_length are hard-split as a last resort.
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks: list[str] = []
+    current_lines: list[str] = []
+    current_len = 0
+
+    for line in text.split("\n"):
+        # +1 for the newline separator (except for the very first line)
+        added_len = len(line) + (1 if current_lines else 0)
+
+        if current_len + added_len > max_length:
+            if current_lines:
+                chunks.append("\n".join(current_lines))
+            # Handle a single line exceeding max_length by hard-splitting
+            while len(line) > max_length:
+                chunks.append(line[:max_length])
+                line = line[max_length:]
+            current_lines = [line] if line else []
+            current_len = len(line)
+        else:
+            current_lines.append(line)
+            current_len += added_len
+
+    if current_lines:
+        chunks.append("\n".join(current_lines))
+
+    return chunks
 
 
 def is_notification_enabled(session: Session, notification_type: str) -> bool:
@@ -36,28 +79,40 @@ def is_notification_enabled(session: Session, notification_type: str) -> bool:
 
 
 def _send(token: str, chat_id: str, text: str) -> None:
-    """低層發送：透過指定的 token / chat_id 發送 Telegram 訊息。"""
+    """低層發送：透過指定的 token / chat_id 發送 Telegram 訊息。
+
+    超過 4096 字元的訊息會自動在換行處拆分後依序發送。
+    """
     url = TELEGRAM_API_URL.format(token=token)
-    try:
-        response = http_requests.post(
-            url,
-            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=TELEGRAM_REQUEST_TIMEOUT,
-        )
-        if response.ok:
-            logger.info("Telegram 通知已發送。")
-        else:
-            try:
-                body = response.json() if response.content else {}
-            except ValueError:
-                body = {}
-            logger.error(
-                "Telegram 通知失敗（HTTP %s）：%s",
-                response.status_code,
-                body.get("description", response.text),
+    chunks = _split_message(text)
+    total = len(chunks)
+
+    for idx, chunk in enumerate(chunks, start=1):
+        try:
+            response = http_requests.post(
+                url,
+                json={"chat_id": chat_id, "text": chunk, "parse_mode": "HTML"},
+                timeout=TELEGRAM_REQUEST_TIMEOUT,
             )
-    except Exception as e:
-        logger.error("Telegram 通知發送失敗：%s", e)
+            if response.ok:
+                if total > 1:
+                    logger.info("Telegram 通知已發送（%d/%d）。", idx, total)
+                else:
+                    logger.info("Telegram 通知已發送。")
+            else:
+                try:
+                    body = response.json() if response.content else {}
+                except ValueError:
+                    body = {}
+                logger.error(
+                    "Telegram 通知失敗（HTTP %s）：%s",
+                    response.status_code,
+                    body.get("description", response.text),
+                )
+                break  # 避免傳送殘缺的後續段落
+        except Exception as e:
+            logger.error("Telegram 通知發送失敗：%s", e)
+            break  # 避免傳送殘缺的後續段落
 
 
 def _env_credentials() -> tuple[str, str]:

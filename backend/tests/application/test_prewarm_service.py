@@ -173,6 +173,37 @@ class TestCollectTickers:
         assert result["etf"] == ["VTI"]
         assert "MSFT" not in result["etf"]
 
+    def test_should_exclude_etf_from_moat(self, db_session: Session):
+        # Arrange
+        db_session.add(
+            Stock(
+                ticker="VTI",
+                category=StockCategory.TREND_SETTER,
+                current_thesis="US Market",
+                is_etf=True,
+            )
+        )
+        db_session.add(
+            Stock(
+                ticker="NVDA",
+                category=StockCategory.MOAT,
+                current_thesis="AI",
+                is_etf=False,
+            )
+        )
+        db_session.commit()
+
+        # Act
+        with patch("application.scan.prewarm_service.engine", db_session.get_bind()):
+            result = _collect_tickers()
+
+        # Assert — ETFs are excluded from moat (no income statement → always fails)
+        assert "VTI" not in result["moat"]
+        assert "NVDA" in result["moat"]
+        # ETFs still appear in signals, beta, and etf lists
+        assert "VTI" in result["signals"]
+        assert "VTI" in result["etf"]
+
     def test_should_union_watchlist_and_holdings(self, db_session: Session):
         # Arrange — NVDA in watchlist, AAPL only in holdings
         db_session.add(
@@ -342,7 +373,9 @@ class TestPrewarmAllCaches:
 
         moat_tickers = sorted(mock_moat.call_args[0][0])
         assert "NVDA" in moat_tickers
-        assert "VTI" in moat_tickers  # Trend_Setter is not in SKIP_MOAT_CATEGORIES
+        assert (
+            "VTI" not in moat_tickers
+        )  # ETFs are excluded from moat (no income statement)
 
         etf_tickers = sorted(mock_etf.call_args[0][0])
         assert etf_tickers == ["VTI"]

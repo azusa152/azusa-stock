@@ -1,7 +1,7 @@
 """
 Optional FinMind API adapter for Taiwan stock financial data.
 Activated only when FINMIND_API_TOKEN env var is set.
-Includes a circuit breaker: after 3 consecutive failures, disables for 30 minutes.
+Includes a circuit breaker (see FINMIND_CIRCUIT_BREAKER_* in domain.constants).
 """
 
 import os
@@ -10,13 +10,16 @@ from datetime import date, timedelta
 
 import requests
 
+from domain.constants import (
+    FINMIND_API_URL,
+    FINMIND_CIRCUIT_BREAKER_COOLDOWN,
+    FINMIND_CIRCUIT_BREAKER_THRESHOLD,
+    FINMIND_LOOKBACK_DAYS,
+    FINMIND_REQUEST_TIMEOUT,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
-
-FINMIND_API_URL = "https://api.finmindtrade.com/api/v4/data"
-_CIRCUIT_BREAKER_THRESHOLD = 3
-_CIRCUIT_BREAKER_COOLDOWN = 1800  # 30 minutes in seconds
 
 _consecutive_failures = 0
 _circuit_open_until: float = 0
@@ -76,12 +79,16 @@ def get_financials(ticker_code: str) -> dict | None:
     params = {
         "dataset": "TaiwanStockFinancialStatements",
         "data_id": code,
-        "start_date": (date.today() - timedelta(days=365)).isoformat(),
+        "start_date": (
+            date.today() - timedelta(days=FINMIND_LOOKBACK_DAYS)
+        ).isoformat(),
         "token": token,
     }
 
     try:
-        resp = requests.get(FINMIND_API_URL, params=params, timeout=10)
+        resp = requests.get(
+            FINMIND_API_URL, params=params, timeout=FINMIND_REQUEST_TIMEOUT
+        )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
 
@@ -102,8 +109,8 @@ def get_financials(ticker_code: str) -> dict | None:
 
     except Exception as e:
         _consecutive_failures += 1
-        if _consecutive_failures >= _CIRCUIT_BREAKER_THRESHOLD:
-            _circuit_open_until = time.time() + _CIRCUIT_BREAKER_COOLDOWN
+        if _consecutive_failures >= FINMIND_CIRCUIT_BREAKER_THRESHOLD:
+            _circuit_open_until = time.time() + FINMIND_CIRCUIT_BREAKER_COOLDOWN
             logger.warning(
                 "FinMind circuit breaker opened after %d failures (source=finmind, market=TW)",
                 _consecutive_failures,

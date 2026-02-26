@@ -14,6 +14,8 @@ from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    REBALANCE_CACHE_MAXSIZE,
+    REBALANCE_CACHE_TTL,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
@@ -51,10 +53,11 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# 再平衡計算結果的短效快取（TTL 60 秒，key = (display_currency, lang)）。
+# 再平衡計算結果的短效快取（key = (display_currency, lang)）。
 # 避免同一時間多個前端請求（Dashboard + Allocation + 快照觸發）重複執行完整計算。
-_REBALANCE_CACHE_TTL = 60
-_rebalance_cache: TTLCache = TTLCache(maxsize=10, ttl=_REBALANCE_CACHE_TTL)
+_rebalance_cache: TTLCache = TTLCache(
+    maxsize=REBALANCE_CACHE_MAXSIZE, ttl=REBALANCE_CACHE_TTL
+)
 _rebalance_cache_lock = threading.Lock()
 
 

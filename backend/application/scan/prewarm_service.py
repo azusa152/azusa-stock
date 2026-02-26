@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlmodel import Session, select
 
 from domain.constants import (
+    DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
     GURU_BACKFILL_YEARS,
     SCAN_THREAD_POOL_SIZE,
@@ -51,12 +52,6 @@ def _set_prewarm_ready(value: bool) -> None:
     global _prewarm_ready  # noqa: PLW0603
     with _prewarm_lock:
         _prewarm_ready = value
-
-
-# ---------------------------------------------------------------------------
-# 常數
-# ---------------------------------------------------------------------------
-_DEFAULT_USER_ID = "default"
 
 
 def prewarm_all_caches() -> None:
@@ -166,7 +161,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         holdings = list(
             session.exec(
                 select(Holding).where(
-                    Holding.user_id == _DEFAULT_USER_ID,
+                    Holding.user_id == DEFAULT_USER_ID,
                     Holding.is_cash == False,  # noqa: E712
                 )
             ).all()
@@ -186,11 +181,15 @@ def _collect_tickers() -> dict[str, list[str]]:
         or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
     ]
 
-    # Moat: 排除 Bond/Cash
+    # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）
     moat_tickers = [
         t
         for t in all_tickers
-        if t not in stock_map or stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+        if t not in stock_map
+        or (
+            stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+            and not stock_map[t].is_etf
+        )
     ]
 
     # ETF: 只有追蹤清單中 is_etf=True 的標的

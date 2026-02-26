@@ -58,6 +58,8 @@ EARNINGS_CACHE_MAXSIZE = 200
 EARNINGS_CACHE_TTL = 86400  # 24 hours
 DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
+REBALANCE_CACHE_MAXSIZE = 10
+REBALANCE_CACHE_TTL = 60  # 1 minute (dedup rapid sequential requests)
 
 # ---------------------------------------------------------------------------
 # Persistent Data Directory — root for all app-written state files
@@ -104,6 +106,7 @@ MARGIN_TREND_QUARTERS = 5
 # ---------------------------------------------------------------------------
 TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/sendMessage"
 TELEGRAM_REQUEST_TIMEOUT = 10
+TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 
 # ---------------------------------------------------------------------------
 # Shared Messages
@@ -673,6 +676,15 @@ EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"}
 JQUANTS_CACHE_TTL = 86400  # 24 hours (financial data changes quarterly)
 DISK_KEY_JQUANTS_FINANCIALS = "jquants_financials"
 DISK_JQUANTS_FINANCIALS_TTL = 604800  # 7 days
+
+# ---------------------------------------------------------------------------
+# FinMind API (optional TW data supplement)
+# ---------------------------------------------------------------------------
+FINMIND_API_URL = "https://api.finmindtrade.com/api/v4/data"
+FINMIND_REQUEST_TIMEOUT = 10
+FINMIND_CIRCUIT_BREAKER_THRESHOLD = 3
+FINMIND_CIRCUIT_BREAKER_COOLDOWN = 1800  # 30 minutes
+FINMIND_LOOKBACK_DAYS = 365
 
 # ---------------------------------------------------------------------------
 # JP Market Sentiment (Nikkei VI)
