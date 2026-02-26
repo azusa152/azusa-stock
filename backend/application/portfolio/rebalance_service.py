@@ -19,7 +19,7 @@ from domain.constants import (
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Holding, UserInvestmentProfile
+from domain.entities import Holding, Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL
 from domain.fx_analysis import (
     FXRateAlert,
@@ -319,6 +319,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         prewarm_etf_holdings_batch(xray_tickers)
         prewarm_etf_sector_weights_batch(xray_tickers)
 
+    # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
+    # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
+    known_etf_tickers: set[str] = {
+        s.ticker
+        for s in session.exec(select(Stock).where(Stock.is_etf == True))  # noqa: E712
+    }
+
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
 
     for ticker, agg in ticker_agg.items():
@@ -345,6 +352,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
                 xray_map[sym]["indirect"] += indirect_mv
                 src_pct = round(weight * 100, 2)
                 xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
+        elif ticker in known_etf_tickers:
+            # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
+            # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
+            logger.warning(
+                "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
+                ticker,
+            )
         else:
             # 非 ETF — 記錄為直接持倉
             if ticker not in xray_map:
