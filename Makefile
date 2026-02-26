@@ -120,7 +120,7 @@ backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
 		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
 		-n auto --durations=20 \
-		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing
+		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing --cov-fail-under=85
 
 backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
 	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \

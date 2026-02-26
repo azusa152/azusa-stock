@@ -75,7 +75,7 @@ jobs:
         env:
           LOG_DIR: /tmp/folio_test_logs
           DATABASE_URL: "sqlite://"
-        run: python -m pytest tests/ -v --tb=short --cov --cov-report=term-missing
+        run: python -m pytest tests/ -v --tb=short --cov --cov-report=term-missing --cov-fail-under=85
 
       - name: Coverage comment
         uses: py-cov-action/python-coverage-comment-action@v3

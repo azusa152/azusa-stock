@@ -62,6 +62,7 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 Coverage is enforced in CI via a ratchet approach — thresholds only ever increase.
 
-- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold (`fail_under = 85`) is in `backend/pyproject.toml` under `[tool.coverage.report]`. CI fails if coverage drops below it.
+- **Backend**: `make backend-test` runs pytest with `pytest-cov`. Threshold is enforced via `--cov-fail-under=85` on the pytest command line (in `Makefile` and `.github/workflows/ci.yml`). CI fails if coverage drops below it.
+- **Important**: Do NOT set `fail_under` in `[tool.coverage.report]` in `backend/pyproject.toml`. It affects all `coverage` subcommands including those run internally by third-party GitHub Actions (e.g. `py-cov-action/python-coverage-comment-action`), causing CI failure with exit code 2. Use `--cov-fail-under=N` on the pytest command line only.
 - **Frontend**: `make frontend-test` runs `vitest run --coverage`. Thresholds are in `frontend-react/vitest.config.ts` under `coverage.thresholds` (lines: 4%, branches: 60%, functions: 25%). `src/components/ui/` is excluded — those are third-party shadcn wrappers.
-- To raise the floor: improve coverage, confirm locally, then bump the threshold value and commit it as the new baseline.
+- To raise the floor: improve coverage, confirm locally, then bump the `--cov-fail-under` value in both `Makefile` and `.github/workflows/ci.yml` and commit as the new baseline.

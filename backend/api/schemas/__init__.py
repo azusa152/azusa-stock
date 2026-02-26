@@ -19,6 +19,8 @@ from api.schemas.fx_watch import (  # noqa: F401
     FXWatchUpdateRequest,
 )
 from api.schemas.guru import (  # noqa: F401
+    ActivityFeed,
+    ActivityFeedItem,
     ConsensusStockItem,
     DashboardResponse,
     FilingHistoryItem,
@@ -31,6 +33,7 @@ from api.schemas.guru import (  # noqa: F401
     GuruFilingResponse,
     GuruHoldingResponse,
     GuruResponse,
+    GuruStyleLiteral,
     GuruSummaryItem,
     QoQHoldingItem,
     QoQQuarterSnapshot,

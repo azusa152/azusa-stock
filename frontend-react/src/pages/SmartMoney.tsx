@@ -169,13 +169,13 @@ export default function SmartMoney() {
           {activeGurus.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("smart_money.no_gurus_hint")}</p>
           ) : (
-            <OverviewTab />
+            <OverviewTab style={styleFilter} />
           )}
         </TabsContent>
 
         {/* Grand Portfolio tab */}
         <TabsContent value={GRAND_PORTFOLIO_TAB} className="mt-4">
-          <GrandPortfolioTab />
+          <GrandPortfolioTab style={styleFilter} />
         </TabsContent>
 
         {/* Per-guru tabs */}

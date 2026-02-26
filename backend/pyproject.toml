@@ -15,7 +15,9 @@ relative_files = true
 parallel = true
 
 [tool.coverage.report]
-fail_under = 85
+# DO NOT add fail_under here — it leaks into the coverage comment GitHub Action's
+# internal `coverage json` call, causing CI failure (exit code 2).
+# Use --cov-fail-under on the pytest command line instead (see Makefile / ci.yml).
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
