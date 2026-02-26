@@ -400,7 +400,8 @@
       "remove_reason_required": "⚠️ Please enter a removal reason.",
       "current_category_label": "Current: {{cat}}",
       "confirm_switch": "Confirm Switch",
-      "tags_placeholder": "Tags (comma-separated)"
+      "tags_placeholder": "Tags (comma-separated)",
+      "held": "Held"
     }
   },
   "allocation": {

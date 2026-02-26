@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES, MARKET_OPTIONS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import { formatPrice, isMarketOpen } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
@@ -34,6 +35,7 @@ interface Props {
   stock: RadarStock
   enrichment?: RadarEnrichedStock
   resonance?: ResonanceMap[string]
+  isHeld?: boolean
 }
 
 function MetricChip({ label, value, color }: { label: string; value: string | number | null | undefined; color?: string }) {
@@ -238,7 +240,7 @@ function RemoveSection({ ticker }: { ticker: string }) {
 
 type TabKey = "metrics" | "thesis" | "category" | "remove"
 
-export function StockCard({ stock, enrichment, resonance }: Props) {
+export function StockCard({ stock, enrichment, resonance, isHeld = false }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
@@ -292,14 +294,21 @@ export function StockCard({ stock, enrichment, resonance }: Props) {
   const changeColor = isUp === null ? "" : isUp ? "text-green-500" : "text-red-500"
 
   return (
-    <Card className="border-border/70">
+    <Card className={cn("border-border/70", isHeld && "border-l-[3px] border-l-primary")}>
       <button
         className="w-full text-left p-3 font-medium text-sm hover:bg-muted/30 transition-colors rounded-t-lg"
         onClick={() => setExpanded((v) => !v)}
       >
         <span className="flex items-center justify-between gap-2">
           {/* Left: identity */}
-          <span className="flex-1 min-w-0 truncate text-sm">{identityParts}</span>
+          <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
+            <span className="truncate">{identityParts}</span>
+            {isHeld && (
+              <span className="shrink-0 inline-flex items-center rounded-md border border-primary px-1.5 py-0 h-4 text-[10px] font-medium text-primary">
+                {t("radar.stock_card.held")}
+              </span>
+            )}
+          </span>
 
           {/* Right: price block + sparkline + chevron */}
           <span className="flex items-center gap-2 shrink-0">

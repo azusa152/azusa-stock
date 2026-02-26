@@ -12,6 +12,7 @@ interface Props {
   removedStocks: RemovedStock[]
   enrichedMap: Record<string, RadarEnrichedStock>
   resonanceMap: ResonanceMap
+  heldTickers: Set<string>
 }
 
 function inferMarket(ticker: string): string {
@@ -21,7 +22,7 @@ function inferMarket(ticker: string): string {
   return "US"
 }
 
-export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap }: Props) {
+export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap, heldTickers }: Props) {
   const { t } = useTranslation()
   const [selectedMarket, setSelectedMarket] = useState("ALL")
 
@@ -97,6 +98,7 @@ export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap 
                     stock={stock}
                     enrichment={enrichedMap[stock.ticker]}
                     resonance={resonanceMap[stock.ticker]}
+                    isHeld={heldTickers.has(stock.ticker.toUpperCase())}
                   />
                 ))}
               </>

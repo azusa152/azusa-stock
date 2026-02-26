@@ -400,7 +400,8 @@
       "remove_reason_required": "⚠️ 削除理由を入力してください。",
       "current_category_label": "現在：{{cat}}",
       "confirm_switch": "切替確認",
-      "tags_placeholder": "タグ（カンマ区切り）"
+      "tags_placeholder": "タグ（カンマ区切り）",
+      "held": "保有中"
     }
   },
   "allocation": {

@@ -400,7 +400,8 @@
       "remove_reason_required": "⚠️ 请输入移除原因。",
       "current_category_label": "当前：{{cat}}",
       "confirm_switch": "确认切换",
-      "tags_placeholder": "标签（逗号分隔）"
+      "tags_placeholder": "标签（逗号分隔）",
+      "held": "持有"
     }
   },
   "allocation": {

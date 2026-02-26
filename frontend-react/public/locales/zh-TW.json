@@ -399,7 +399,8 @@
       "remove_reason_required": "⚠️ 請輸入移除原因。",
       "current_category_label": "目前：{{cat}}",
       "confirm_switch": "確認切換",
-      "tags_placeholder": "標籤（逗號分隔）"
+      "tags_placeholder": "標籤（逗號分隔）",
+      "held": "持有"
     }
   },
   "allocation": {
