@@ -69,7 +69,7 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 # ---------------------------------------------------------------------------
 #  Guards (hidden prerequisite targets — fail early with actionable messages)
 # ---------------------------------------------------------------------------
-.PHONY: .venv-check .node-check
+.PHONY: .venv-check .node-check .python-version-check
 
 .venv-check:
 	@test -x $(PYTHON) || \
@@ -78,6 +78,19 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 .node-check:
 	@test -d $(FRONTEND_DIR)/node_modules || \
 		{ echo "Error: node_modules not found. Run 'make frontend-install' first."; exit 1; }
+
+# Warn when the active Python minor version doesn't match .python-version (CI uses 3.12).
+# A mismatch causes the OpenAPI spec to differ between local and CI.
+.python-version-check:
+	@if [ -f .python-version ]; then \
+		REQUIRED=$$(cat .python-version | tr -d '[:space:]'); \
+		REQUIRED_MM=$$(echo "$$REQUIRED" | cut -d. -f1-2); \
+		ACTUAL_MM=$$($(PYTHON) -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"); \
+		if [ "$$ACTUAL_MM" != "$$REQUIRED_MM" ]; then \
+			echo "Warning: venv Python $$ACTUAL_MM differs from .python-version ($$REQUIRED_MM)."; \
+			echo "         OpenAPI spec output may differ from CI. Rebuild venv with Python $$REQUIRED_MM to fix."; \
+		fi; \
+	fi
 
 # ---------------------------------------------------------------------------
 #  Setup & Install
@@ -173,7 +186,7 @@ clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.c
 # ---------------------------------------------------------------------------
 .PHONY: generate-api
 
-generate-api: .venv-check ## Export OpenAPI spec and regenerate TypeScript types
+generate-api: .venv-check .python-version-check ## Export OpenAPI spec and regenerate TypeScript types
 	$(PYTHON) scripts/export_openapi.py
 	cd $(FRONTEND_DIR) && npx openapi-typescript src/api/openapi.json -o src/api/types/generated.d.ts
 
@@ -224,7 +237,7 @@ check-constants: .venv-check ## Check backend/frontend constant sync
 check-i18n: ## Check locale key parity (backend + frontend locale files)
 	python3 scripts/check_locale_parity.py
 
-check-api-spec: .venv-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
+check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
 		$(PYTHON) scripts/export_openapi.py
 	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json

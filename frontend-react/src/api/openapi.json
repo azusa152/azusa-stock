@@ -8107,8 +8107,7 @@
               ]
             },
             "type": "object",
-            "title": "Benchmark Values",
-            "default": {}
+            "title": "Benchmark Values"
           }
         },
         "type": "object",
@@ -8777,8 +8776,7 @@
           "params": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Params",
-            "default": {}
+            "title": "Params"
           }
         },
         "type": "object",
@@ -8801,8 +8799,7 @@
           "data": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Data",
-            "default": {}
+            "title": "Data"
           }
         },
         "type": "object",

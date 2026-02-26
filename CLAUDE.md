@@ -14,6 +14,18 @@ make format              # Format code
 make clean               # Remove build caches
 ```
 
+## Python Version
+
+CI runs **Python 3.12** (pinned in `.python-version` and `.github/workflows/ci.yml`). Your local venv must use the same minor version — the OpenAPI spec generator (`make generate-api`) produces different output on Python 3.13+, causing the `check-api-spec` CI job to fail.
+
+```bash
+pyenv install 3.12        # install if needed
+pyenv local 3.12          # picks up .python-version automatically
+make install              # rebuilds venv with the correct Python
+```
+
+`make generate-api` and `make check-api-spec` will warn if your venv Python doesn't match `.python-version`.
+
 ## Dependency Management (pip-tools)
 
 Backend dependencies use [pip-tools](https://pip-tools.readthedocs.io/) for reproducible builds:
