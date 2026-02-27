@@ -21,7 +21,7 @@ import {
   useTriggerScan,
   useImportStocks,
 } from "@/api/hooks/useRadar"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import type { StockCategory, StockImportItem } from "@/api/types/radar"
 
 interface Props {
@@ -132,7 +132,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
     setScanFeedback(null)
     triggerScan.mutate(undefined, {
       onSuccess: (data) => {
-        if (data?.error_code === "scan_in_progress") {
+        if ((data as Record<string, unknown> | undefined)?.error_code === "scan_in_progress") {
           setScanFeedback(t("radar.scan.already_running"))
           toast.success(t("radar.scan.already_running"))
         } else {
@@ -150,7 +150,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
   const handleExport = async () => {
     try {
-      const { data } = await apiClient.get("/stocks/export")
+      const { data, error } = await client.GET("/stocks/export")
+      if (error) throw error
       const json = JSON.stringify(data, null, 2)
       const blob = new Blob([json], { type: "application/json" })
       const url = URL.createObjectURL(blob)
@@ -159,7 +160,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
       a.download = "folio_watchlist.json"
       a.click()
       URL.revokeObjectURL(url)
-      setExportCount(Array.isArray(data) ? data.length : null)
+      setExportCount(Array.isArray(data) ? (data as unknown[]).length : null)
     } catch {
       setExportCount(null)
     }

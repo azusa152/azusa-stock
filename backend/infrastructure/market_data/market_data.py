@@ -1,3 +1,6 @@
+# pyright: reportAttributeAccessIssue=false, reportOptionalSubscript=false
+# pyright: reportOptionalMemberAccess=false, reportReturnType=false
+# pyright: reportCallIssue=false, reportIndexIssue=false, reportGeneralTypeIssues=false
 """
 Infrastructure — 市場資料適配器 (yfinance)。
 負責外部 API 呼叫、快取管理、速率限制。
@@ -2035,9 +2038,8 @@ def _fetch_beta_from_yf(ticker: str) -> float:
             beta = round(float(beta), 2)
             logger.info("%s Beta = %.2f", ticker, beta)
             return beta
-        else:
-            logger.debug("%s yfinance 未提供 Beta 值，使用哨兵值。", ticker)
-            return _BETA_NOT_AVAILABLE
+        logger.debug("%s yfinance 未提供 Beta 值，使用哨兵值。", ticker)
+        return _BETA_NOT_AVAILABLE
     except Exception as e:
         logger.warning("無法取得 %s Beta：%s，使用哨兵值。", ticker, e)
         return _BETA_NOT_AVAILABLE
@@ -2337,7 +2339,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 report_prices[ticker] = None
 
     # Fetch current prices (never cached — always live)
-    current_prices: dict[str, float | None] = {t: None for t in tickers}
+    current_prices: dict[str, float | None] = dict.fromkeys(tickers)
     try:
         _rate_limiter.wait()
         current = yf.download(

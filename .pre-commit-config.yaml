@@ -1,19 +1,21 @@
-# Pre-commit hooks for Folio — enforces architecture boundaries and code style at commit time.
+# Pre-commit hooks for Folio — fast checks on commit, heavier gates on push.
 #
 # Setup (done automatically by `make setup`):
 #   make setup-hooks
 #
 # Run manually against all files:
 #   backend/.venv/bin/pre-commit run --all-files
+#   backend/.venv/bin/pre-commit run --all-files --hook-stage pre-push
 #
 # Update remote hook versions:
 #   backend/.venv/bin/pre-commit autoupdate
 #
 # Skip (emergency only — CI will still catch violations):
 #   git commit --no-verify
+#   git push --no-verify
 
 # ---------------------------------------------------------------------------
-# 1. Standard hygiene hooks (remote — pre-commit/pre-commit-hooks v5.0.0)
+# 1. Standard hygiene hooks  (pre-commit — instant, always fast)
 # ---------------------------------------------------------------------------
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -27,10 +29,8 @@ repos:
         args: [--maxkb=500]      # Prevents accidental binary blobs / DB files
 
 # ---------------------------------------------------------------------------
-# 2. Python linting and formatting (remote — astral-sh/ruff-pre-commit v0.8.5)
-#    Replaces local venv-dependent ruff hooks. ruff-pre-commit ships its own
-#    prebuilt binary — works on any machine after `pre-commit install`,
-#    no venv required.
+# 2. Python linting and formatting  (pre-commit — fast, uses prebuilt binary)
+#    ruff-pre-commit ships its own binary — no venv required.
 # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.2
@@ -42,31 +42,10 @@ repos:
         files: ^backend/
 
 # ---------------------------------------------------------------------------
-# 3. Project-specific hooks (local — no remote equivalent)
+# 3. Lightweight project-specific hooks  (pre-commit — fast, file-scoped)
 # ---------------------------------------------------------------------------
   - repo: local
     hooks:
-      - id: architecture-boundary
-        name: architecture boundary check
-        entry: bash -c 'cd backend && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// .venv/bin/python -m pytest tests/test_architecture.py -q --tb=short --no-header'
-        language: system
-        pass_filenames: false
-        files: ^backend/
-
-      - id: eslint
-        name: eslint (frontend)
-        entry: bash -c 'cd frontend-react && npx eslint .'
-        language: system
-        pass_filenames: false
-        files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
-
-      - id: vitest
-        name: vitest (frontend)
-        entry: bash -c 'cd frontend-react && npm test'
-        language: system
-        pass_filenames: false
-        files: ^frontend-react/
-
       - id: constant-sync
         name: backend/frontend constant sync
         entry: bash -c 'backend/.venv/bin/python scripts/check_constant_sync.py'
@@ -74,16 +53,48 @@ repos:
         pass_filenames: false
         files: (backend/domain/core/constants\.py|frontend-react/src/lib/constants\.ts)
 
+# ---------------------------------------------------------------------------
+# 4. Heavier gates  (pre-push — run once before pushing, not on every commit)
+#    Move slow checks here so commits stay instant.
+# ---------------------------------------------------------------------------
+      - id: architecture-boundary
+        name: architecture boundary check
+        entry: bash -c 'cd backend && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// .venv/bin/python -m pytest tests/test_architecture.py -q --tb=short --no-header'
+        language: system
+        pass_filenames: false
+        files: ^backend/
+        stages: [pre-push]
+
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend-react && npx eslint .'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
+        stages: [pre-push]
+
+      - id: vitest
+        name: vitest (frontend)
+        entry: bash -c 'cd frontend-react && npm test'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/
+        stages: [pre-push]
+
       - id: npm-audit
         name: npm audit (frontend, high severity)
         entry: bash -c 'cd frontend-react && npm audit --audit-level=high'
         language: system
         pass_filenames: false
         files: ^frontend-react/package-lock\.json$
+        stages: [pre-push]
 
       - id: ci-completeness
         name: CI completeness check
-        entry: bash -c 'backend/.venv/bin/python scripts/check_ci_completeness.py'
+        # pyyaml is available via the backend dev-dependencies (uv project context),
+        # equivalent to the --with pyyaml flag used in CI.
+        entry: bash -c 'cd backend && uv run python ../scripts/check_ci_completeness.py'
         language: system
         pass_filenames: false
         files: (\.github/workflows/ci\.yml|Makefile)
+        stages: [pre-push]

@@ -311,7 +311,7 @@ class TestRebalancePortfolioChange:
                     "previous_close": 110.0,
                     "change_pct": 9.09,
                 }
-            elif ticker == "AAPL":
+            if ticker == "AAPL":
                 return {
                     "price": 170.0,
                     "previous_close": 180.0,

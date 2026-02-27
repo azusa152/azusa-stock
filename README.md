@@ -376,12 +376,12 @@ make generate-api
 
 CI 流程（GitHub Actions）會自動驗證 `openapi.json` 是否與後端保持同步，並確認前端可正常編譯。本地可執行 `make check-api-spec` 進行相同驗證。
 
-### 6. 依賴管理（pip-tools）
+### 6. 依賴管理（uv）
 
-後端使用 [pip-tools](https://pip-tools.readthedocs.io/) 管理 Python 依賴，確保可重現建構：
+後端使用 [uv](https://docs.astral.sh/uv/) 管理 Python 依賴，確保可重現建構：
 
-- **`backend/requirements.in`** — 直接依賴，寬鬆版本約束（編輯此檔）
-- **`backend/requirements.txt`** — 自動產生的鎖定檔，包含所有遞移依賴的精確版本（請勿手動編輯）
+- **`backend/pyproject.toml`** — 直接依賴，寬鬆版本約束（編輯此檔）
+- **`backend/uv.lock`** — 自動產生的鎖定檔，包含所有遞移依賴的精確版本（請勿手動編輯）
 
 ```bash
 # 新增或修改依賴後，重新解析鎖定檔
@@ -441,9 +441,8 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
 
 LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v --tb=short
 ```
@@ -889,8 +888,8 @@ azusa-stock/
 │
 ├── backend/
 │   ├── Dockerfile
-│   ├── requirements.in               # 直接依賴（寬鬆約束，手動編輯）
-│   ├── requirements.txt              # 鎖定檔（pip-compile 自動產生，勿手動編輯）
+│   ├── pyproject.toml                # 直接依賴與工具設定（手動編輯）
+│   ├── uv.lock                       # 鎖定檔（uv 自動產生，勿手動編輯）
 │   ├── main.py                       # 進入點：建立 App、註冊路由
 │   ├── logging_config.py             # 集中式日誌（跨層共用）
 │   │

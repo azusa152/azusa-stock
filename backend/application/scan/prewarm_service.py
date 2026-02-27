@@ -49,7 +49,7 @@ def is_prewarm_ready() -> bool:
 
 
 def _set_prewarm_ready(value: bool) -> None:
-    global _prewarm_ready  # noqa: PLW0603
+    global _prewarm_ready
     with _prewarm_lock:
         _prewarm_ready = value
 
@@ -261,7 +261,7 @@ def _backfill_all_gurus() -> None:
     冪等：已同步的申報自動跳過，重複啟動安全。
     """
     # Late import to avoid circular dependency (prewarm → filing_service → repositories)
-    from application.stock.filing_service import backfill_guru_filings  # noqa: PLC0415
+    from application.stock.filing_service import backfill_guru_filings
 
     with Session(engine) as session:
         gurus = find_all_active_gurus(session)

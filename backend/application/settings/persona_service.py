@@ -7,9 +7,12 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
-from sqlmodel import Session
+
+if TYPE_CHECKING:
+    from sqlmodel import Session
 
 from domain.constants import DEFAULT_USER_ID, ERROR_PROFILE_NOT_FOUND
 from domain.entities import UserInvestmentProfile

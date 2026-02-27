@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import type {
   Guru,
   DashboardResponse,
@@ -10,6 +10,7 @@ import type {
   GreatMindsResponse,
   QoQResponse,
   AddGuruRequest,
+  GuruStyle,
 } from "@/api/types/smartMoney"
 
 // ---------------------------------------------------------------------------
@@ -20,8 +21,9 @@ export function useGurus() {
   return useQuery<Guru[]>({
     queryKey: ["gurus"],
     queryFn: async () => {
-      const { data } = await apiClient.get<Guru[]>("/gurus")
-      return data
+      const { data, error } = await client.GET("/gurus")
+      if (error) throw error
+      return data as unknown as Guru[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -31,9 +33,11 @@ export function useGuruDashboard(style?: string | null) {
   return useQuery<DashboardResponse>({
     queryKey: ["guruDashboard", style ?? "all"],
     queryFn: async () => {
-      const params = style ? { style } : undefined
-      const { data } = await apiClient.get<DashboardResponse>("/gurus/dashboard", { params })
-      return data
+      const { data, error } = await client.GET("/gurus/dashboard", {
+        params: { query: style ? { style: style as GuruStyle } : undefined },
+      })
+      if (error) throw error
+      return data as unknown as DashboardResponse
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -43,8 +47,11 @@ export function useGuruFiling(id: number, enabled = true) {
   return useQuery<GuruFiling>({
     queryKey: ["guruFiling", id],
     queryFn: async () => {
-      const { data } = await apiClient.get<GuruFiling>(`/gurus/${id}/filing`)
-      return data
+      const { data, error } = await client.GET("/gurus/{guru_id}/filing", {
+        params: { path: { guru_id: id } },
+      })
+      if (error) throw error
+      return data as unknown as GuruFiling
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -55,8 +62,11 @@ export function useGuruFilings(id: number, enabled = true) {
   return useQuery<FilingHistoryResponse>({
     queryKey: ["guruFilings", id],
     queryFn: async () => {
-      const { data } = await apiClient.get<FilingHistoryResponse>(`/gurus/${id}/filings`)
-      return data
+      const { data, error } = await client.GET("/gurus/{guru_id}/filings", {
+        params: { path: { guru_id: id } },
+      })
+      if (error) throw error
+      return data as unknown as FilingHistoryResponse
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -67,10 +77,11 @@ export function useGuruHoldingChanges(id: number, enabled = true, includePerform
   return useQuery<GuruHolding[]>({
     queryKey: ["guruHoldingChanges", id, includePerformance],
     queryFn: async () => {
-      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/holdings`, {
-        params: { limit: 20, include_performance: includePerformance },
+      const { data, error } = await client.GET("/gurus/{guru_id}/holdings", {
+        params: { path: { guru_id: id }, query: { limit: 20, include_performance: includePerformance } },
       })
-      return data
+      if (error) throw error
+      return data as unknown as GuruHolding[]
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -81,10 +92,11 @@ export function useGuruTopHoldings(id: number, enabled = true, includePerformanc
   return useQuery<GuruHolding[]>({
     queryKey: ["guruTopHoldings", id, includePerformance],
     queryFn: async () => {
-      const { data } = await apiClient.get<GuruHolding[]>(`/gurus/${id}/top`, {
-        params: { n: 15, include_performance: includePerformance },
+      const { data, error } = await client.GET("/gurus/{guru_id}/top", {
+        params: { path: { guru_id: id }, query: { n: 15, include_performance: includePerformance } },
       })
-      return data
+      if (error) throw error
+      return data as unknown as GuruHolding[]
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -95,8 +107,9 @@ export function useGreatMinds() {
   return useQuery<GreatMindsResponse>({
     queryKey: ["greatMinds"],
     queryFn: async () => {
-      const { data } = await apiClient.get<GreatMindsResponse>("/resonance/great-minds")
-      return data
+      const { data, error } = await client.GET("/resonance/great-minds")
+      if (error) throw error
+      return data as unknown as GreatMindsResponse
     },
     staleTime: 24 * 60 * 60 * 1000,
   })
@@ -106,8 +119,11 @@ export function useGuruQoQ(id: number, enabled = true) {
   return useQuery<QoQResponse>({
     queryKey: ["guruQoQ", id],
     queryFn: async () => {
-      const { data } = await apiClient.get<QoQResponse>(`/gurus/${id}/qoq`)
-      return data
+      const { data, error } = await client.GET("/gurus/{guru_id}/qoq", {
+        params: { path: { guru_id: id } },
+      })
+      if (error) throw error
+      return data as unknown as QoQResponse
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -117,12 +133,13 @@ export function useGuruQoQ(id: number, enabled = true) {
 export function useGrandPortfolio(style?: string | null) {
   return useQuery<GrandPortfolioResponse>({
     queryKey: ["grandPortfolio", style ?? "all"],
-    queryFn: () =>
-      apiClient
-        .get<GrandPortfolioResponse>("/gurus/grand-portfolio", {
-          params: style ? { style } : undefined,
-        })
-        .then((r) => r.data),
+    queryFn: async () => {
+      const { data, error } = await client.GET("/gurus/grand-portfolio", {
+        params: { query: style ? { style: style as GuruStyle } : undefined },
+      })
+      if (error) throw error
+      return data as unknown as GrandPortfolioResponse
+    },
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -135,8 +152,9 @@ export function useAddGuru() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: AddGuruRequest) => {
-      const { data } = await apiClient.post<Guru>("/gurus", payload)
-      return data
+      const { data, error } = await client.POST("/gurus", { body: payload })
+      if (error) throw error
+      return data as unknown as Guru
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })
@@ -149,7 +167,10 @@ export function useSyncGuru() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      const { data } = await apiClient.post(`/gurus/${id}/sync`)
+      const { data, error } = await client.POST("/gurus/{guru_id}/sync", {
+        params: { path: { guru_id: id } },
+      })
+      if (error) throw error
       return data
     },
     onSuccess: (_data, id) => {
@@ -167,7 +188,8 @@ export function useSyncAllGurus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/gurus/sync")
+      const { data, error } = await client.POST("/gurus/sync")
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -181,7 +203,10 @@ export function useDeactivateGuru() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/gurus/${id}`)
+      const { error } = await client.DELETE("/gurus/{guru_id}", {
+        params: { path: { guru_id: id } },
+      })
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })

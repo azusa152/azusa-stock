@@ -311,6 +311,7 @@ class TestSyncGuruFiling:
         filing = find_filing_by_accession(
             db_session, _SAMPLE_EDGAR_FILINGS[0]["accession_number"]
         )
+        assert filing is not None
         holdings = find_holdings_by_filing(db_session, filing.id)
         assert len(holdings) == len(_SAMPLE_RAW_HOLDINGS)
 
@@ -456,6 +457,7 @@ class TestSyncHoldingDiff:
         filing = find_filing_by_accession(
             db_session, _SAMPLE_EDGAR_FILINGS[0]["accession_number"]
         )
+        assert filing is not None
         holdings = find_holdings_by_filing(db_session, filing.id)
         assert len(holdings) == 1
         assert holdings[0].action == HoldingAction.NEW_POSITION.value
@@ -488,6 +490,7 @@ class TestSyncHoldingDiff:
             sync_guru_filing(db_session, guru.id)
 
         latest = find_latest_filing_by_guru(db_session, guru.id)
+        assert latest is not None
         holdings = find_holdings_by_filing(db_session, latest.id)
         assert holdings[0].action == HoldingAction.SOLD_OUT.value
 
@@ -518,6 +521,7 @@ class TestSyncHoldingDiff:
             sync_guru_filing(db_session, guru.id)
 
         latest = find_latest_filing_by_guru(db_session, guru.id)
+        assert latest is not None
         holdings = find_holdings_by_filing(db_session, latest.id)
         assert holdings[0].action == HoldingAction.INCREASED.value
         assert holdings[0].change_pct == pytest.approx(50.0)
@@ -549,6 +553,7 @@ class TestSyncHoldingDiff:
             sync_guru_filing(db_session, guru.id)
 
         latest = find_latest_filing_by_guru(db_session, guru.id)
+        assert latest is not None
         holdings = find_holdings_by_filing(db_session, latest.id)
         assert holdings[0].action == HoldingAction.DECREASED.value
         assert holdings[0].change_pct == pytest.approx(-50.0)
@@ -582,6 +587,7 @@ class TestSyncHoldingDiff:
         assert result["sold_out"] == 1
 
         latest = find_latest_filing_by_guru(db_session, guru.id)
+        assert latest is not None
         holdings = find_holdings_by_filing(db_session, latest.id)
         sold = [h for h in holdings if h.action == HoldingAction.SOLD_OUT.value]
         assert len(sold) == 1
@@ -616,6 +622,7 @@ class TestSyncHoldingDiff:
             sync_guru_filing(db_session, guru.id)
 
         latest = find_latest_filing_by_guru(db_session, guru.id)
+        assert latest is not None
         holdings = find_holdings_by_filing(db_session, latest.id)
         assert holdings[0].action == HoldingAction.UNCHANGED.value
 
@@ -646,6 +653,7 @@ class TestSyncWeightAndTopHoldings:
         filing = find_filing_by_accession(
             db_session, _SAMPLE_EDGAR_FILINGS[0]["accession_number"]
         )
+        assert filing is not None
         holdings = find_holdings_by_filing(db_session, filing.id)
         total_weight = sum(h.weight_pct or 0 for h in holdings)
         assert abs(total_weight - 100.0) < 0.1

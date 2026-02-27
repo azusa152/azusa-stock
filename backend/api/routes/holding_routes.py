@@ -168,7 +168,7 @@ def get_rebalance(
     response: Response,
     display_currency: str = "USD",
     session: Session = Depends(get_session),
-) -> RebalanceResponse:
+) -> dict:
     """計算再平衡分析（目標 vs 實際配置）。可透過 display_currency 指定顯示幣別。"""
     response.headers["Cache-Control"] = (
         "private, max-age=60, stale-while-revalidate=300"
@@ -264,7 +264,7 @@ def calculate_withdraw_route(
 )
 def get_currency_exposure(
     session: Session = Depends(get_session),
-) -> CurrencyExposureResponse:
+) -> dict:
     """計算匯率曝險分析：幣別分佈、匯率變動、風險等級與建議。"""
     return calculate_currency_exposure(session)
 

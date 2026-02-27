@@ -26,7 +26,7 @@ os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
 
 # Patch disk cache dir and data dir before any infrastructure imports
-import domain.constants  # noqa: E402
+import domain.constants
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
@@ -208,7 +208,7 @@ _PATCHES: list[tuple[str, object]] = [
 ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def client() -> Generator[TestClient, None, None]:
     """TestClient with overridden DB session and mocked external services."""
     app.dependency_overrides[get_session] = _override_get_session
@@ -233,7 +233,7 @@ def client() -> Generator[TestClient, None, None]:
         app.state.limiter._storage.storage.clear()
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     """Standalone DB session fixture for service layer unit tests."""
     with Session(test_engine) as session:

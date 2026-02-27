@@ -12,10 +12,13 @@ Covers:
 
 from __future__ import annotations
 
+import typing
 from datetime import UTC
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from sqlmodel import Session
+if TYPE_CHECKING:
+    from sqlmodel import Session
 
 from application.scan.scan_service import run_scan
 from domain.entities import PriceAlert, Stock
@@ -375,7 +378,9 @@ class TestGetFearGreed:
 class TestCheckPriceAlerts:
     """Tests for _check_price_alerts: trigger, cooldown, timezone safety, isolation."""
 
-    _RESULTS = [{"ticker": "AAPL", "rsi": 25.0, "price": 150.0, "bias": -10.0}]
+    _RESULTS: typing.ClassVar[list[dict[str, object]]] = [
+        {"ticker": "AAPL", "rsi": 25.0, "price": 150.0, "bias": -10.0}
+    ]
 
     def _make_alert(
         self, metric: str = "rsi", operator: str = "lt", threshold: float = 30.0

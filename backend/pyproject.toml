@@ -1,3 +1,44 @@
+[project]
+name = "folio"
+version = "0.1.0"
+description = "Folio — Investment Analysis System"
+requires-python = ">=3.12"
+dependencies = [
+    # Core API
+    "fastapi>=0.129.0,<1.0",
+    "starlette>=0.49.1",  # CVE-2025-54121, CVE-2025-62727: Force minimum safe version
+    "uvicorn[standard]>=0.34.0,<1.0",
+    "sqlmodel>=0.0.22,<1.0",
+    # Market Data
+    "jquants-api-client>=2.0.0",
+    "yfinance>=0.2.58,<1.0",
+    "curl_cffi>=0.7.4,<1.0",
+    "requests>=2.32.4",  # CVE-2024-47081: Minimum safe version
+    # Configuration & Utilities
+    "python-dotenv>=1.0.1,<2.0",
+    "cachetools>=5.5.1,<6.0",
+    "diskcache>=5.6.3,<6.0",  # Note: pickle usage CVE-2025-69872 - no patch available yet
+    "tenacity>=8.2.0,<9.0",
+    # Security - Rate Limiting
+    "slowapi>=0.1.9,<1.0",
+    # Security - Data Encryption
+    "cryptography>=46.0.5",  # CVE-2026-26007: Minimum safe version
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4,<9.0",
+    "httpx>=0.28.1,<1.0",
+    "pytest-mock>=3.14.0,<4.0",
+    "pytest-cov>=7.0.0,<8.0",
+    "pytest-xdist>=3.6.0,<4.0",
+    "ruff>=0.15.2,<1.0",
+    "pyright>=1.1.0",
+    "pre-commit>=4.0.0",
+    "pip-audit==2.10.0",
+    "pyyaml>=6.0",
+]
+
 [tool.pytest.ini_options]
 filterwarnings = [
     # StaticPool (in-memory SQLite) connections are intentionally kept alive across
@@ -31,17 +72,55 @@ line-length = 88
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "I",   # isort (import sorting)
-    "UP",  # pyupgrade (Python 3.12+ idioms)
-    "B",   # flake8-bugbear (common bugs)
-    "SIM", # flake8-simplify
-    "T20", # flake8-print (catch stray print() calls)
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade (Python 3.12+ idioms)
+    "B",    # flake8-bugbear (common bugs)
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print (catch stray print() calls)
+    "RUF",  # Ruff-specific rules (ambiguous unicode, mutable defaults, etc.)
+    "C4",   # flake8-comprehensions (unnecessary list/dict/set comprehensions)
+    "PIE",  # flake8-pie (misc style improvements)
+    "PT",   # flake8-pytest-style (assert patterns, fixture naming)
+    "RET",  # flake8-return (return statement simplification)
+    "TCH",  # flake8-type-checking (move type-only imports behind TYPE_CHECKING)
+    "PERF", # perflint (performance anti-patterns)
 ]
 ignore = [
-    "E501",  # line-too-long — pre-existing, requires separate cleanup pass
-    "B008",  # function-call-in-default-argument — FastAPI Depends() is the standard pattern
-    "UP047", # non-pep695-generic-function — PEP 695 syntax not yet widely adopted
+    "E501",   # line-too-long — pre-existing, requires separate cleanup pass
+    "B008",   # function-call-in-default-argument — FastAPI Depends() is the standard pattern
+    "UP047",  # non-pep695-generic-function — PEP 695 syntax not yet widely adopted
+    "RET504", # unnecessary-assign-before-return — style preference
+    # Codebase is intentionally bilingual (Traditional Chinese + English).
+    # Full-width punctuation and CJK characters in docstrings/comments/strings are correct.
+    "RUF001", # ambiguous-unicode-character-string
+    "RUF002", # ambiguous-unicode-character-docstring
+    "RUF003", # ambiguous-unicode-character-comment
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    # Side-effect fixtures injected as parameters are a valid pattern in this test suite.
+    # Moving all of them to @pytest.mark.usefixtures would require mass refactoring.
+    "PT019",
+]
+"api/routes/**" = [
+    # FastAPI route handlers named test_* are endpoints, not pytest test functions.
+    "PT028",
+]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"
+reportMissingImports = true
+reportMissingTypeStubs = false
+# SQLModel declares primary-key IDs as `int | None` (pre-insert), causing
+# ~300 reportArgumentType false positives when passing `.id` to service calls.
+# All other type errors are fixed individually or suppressed via per-file
+# `# pyright:` directives on files with incomplete 3rd-party stubs
+# (yfinance, pandas, SQLAlchemy column API, jquants).
+reportArgumentType = "warning"

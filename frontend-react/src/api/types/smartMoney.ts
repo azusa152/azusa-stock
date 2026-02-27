@@ -1,4 +1,4 @@
-import type { components } from "./generated"
+import type { components, operations } from "./generated"
 
 // ---------------------------------------------------------------------------
 // Generated from backend Pydantic schemas (single source of truth)
@@ -49,3 +49,7 @@ export interface GreatMindsResponse {
 
 // Request types
 export type AddGuruRequest = components["schemas"]["GuruCreate"]
+// Derived from the generated spec so it stays in sync when the backend enum changes.
+export type GuruStyle = NonNullable<
+  NonNullable<operations["get_dashboard_gurus_dashboard_get"]["parameters"]["query"]>["style"]
+>
