@@ -781,7 +781,7 @@ openclaw onboard
 
 **方式一：使用 Skill 檔案**
 
-將 `docs/agents/folio/` 資料夾複製到 OpenClaw skills 目錄：
+將 `docs/agents/folio/` 資料夾複製到 OpenClaw skills 目錄（包含 `SKILL.md` 與 `reference.md`）：
 
 ```bash
 cp -r docs/agents/folio/ ~/.openclaw/skills/folio/
@@ -843,7 +843,13 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 azusa-stock/
 ├── backend/       # FastAPI + SQLModel（domain / application / infrastructure / api / tests）
 ├── frontend-react/ # React + Vite SPA（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
-├── scripts/       # 匯入腳本 + OpenClaw 設定
+├── docs/
+│   └── agents/
+│       ├── AGENTS.md            # OpenClaw workspace 指令範本
+│       └── folio/
+│           ├── SKILL.md         # OpenClaw Skill 定義檔（AgentSkills 相容格式）
+│           └── reference.md     # 完整 API 參考、訊號分類、市場情緒閾值、維運操作
+├── scripts/       # 匯入腳本
 └── docker-compose.yml
 ```
 
@@ -988,12 +994,8 @@ azusa-stock/
 │   ├── check_ci_completeness.py      # 驗證 make ci 覆蓋所有 GitHub CI job（CI + pre-commit）
 │   ├── export_openapi.py             # 匯出 FastAPI OpenAPI 規格供前端 codegen 使用
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
-│   ├── data/
-│   │   └── folio_watchlist.json      # 預設觀察名單
-│   └── openclaw/
-│       ├── AGENTS.md                 # OpenClaw workspace 指令範本
-│       └── folio/
-│           └── SKILL.md              # OpenClaw Skill 定義檔
+│   └── data/
+│       └── folio_watchlist.json      # 預設觀察名單
 │
 └── logs/                             # 日誌檔案（bind-mount 自動產生）
     ├── radar.log                     # 當日日誌
