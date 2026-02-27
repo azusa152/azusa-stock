@@ -8,26 +8,20 @@ You have access to **Folio (智能資產配置)**, a self-hosted stock tracking 
 
 Folio supports optional API key authentication via the `X-API-Key` header. When `FOLIO_API_KEY` is set in the environment, all API requests must include the key.
 
-**Dev Mode (default):** If `FOLIO_API_KEY` is unset, authentication is disabled — no breaking changes for existing users.
+**Dev Mode (default):** If `FOLIO_API_KEY` is unset, authentication is disabled.
 
 **Production Mode:** Set `FOLIO_API_KEY` in `.env` and include the header in all requests:
 
 ```bash
-# Generate a secure API key
 make generate-key
-
-# Add to .env
 echo "FOLIO_API_KEY=your-generated-key" >> .env
-
-# Use in requests
 export FOLIO_API_KEY="your-generated-key"
-curl -s http://localhost:8000/summary \
-  -H "X-API-Key: $FOLIO_API_KEY"
+curl -s http://localhost:8000/summary -H "X-API-Key: $FOLIO_API_KEY"
 ```
 
 ## Language (i18n)
 
-Folio supports 4 languages: `zh-TW` (default), `en`, `ja`, `zh-CN`. All API response messages and Telegram notifications are localized based on the user's preference stored via `PUT /settings/preferences` with `{"language": "en"}`. The `detail` field in error responses varies by language -- always branch on `error_code`, not the human-readable string.
+Folio supports 4 languages: `zh-TW` (default), `en`, `ja`, `zh-CN`. All API response messages and Telegram notifications are localized based on the user's preference stored via `PUT /settings/preferences` with `{"language": "en"}`. The `detail` field in error responses varies by language — always branch on `error_code`, not the human-readable string.
 
 ## How to Interact
 
@@ -35,7 +29,6 @@ Use the `exec` tool with `curl` to call the Folio API:
 
 ```bash
 # Quick portfolio overview (plain text)
-# Add -H "X-API-Key: $FOLIO_API_KEY" if auth is enabled
 curl -s http://localhost:8000/summary
 
 # Structured command via webhook
@@ -49,8 +42,8 @@ curl -s -X POST http://localhost:8000/webhook \
 
 ### Primary (use these first)
 
-- **`GET /summary`** — Rich plain-text portfolio overview. Start here. Includes: total value + daily change %, category groups, active signals, top 3 movers, allocation drift warnings, Smart Money highlights.
-- **`POST /webhook`** — Single structured entry point for all actions. Accepts `{"action": "...", "ticker": "...", "params": {}}`.
+- **`GET /summary`** — Rich plain-text portfolio overview: total value + daily change %, category groups, active signals, top 3 movers, allocation drift warnings, Smart Money highlights.
+- **`POST /webhook`** — Single entry point for all actions. Accepts `{"action": "...", "ticker": "...", "params": {}}`.
 
 ### Webhook Actions
 
@@ -65,66 +58,40 @@ curl -s -X POST http://localhost:8000/webhook \
 | `fear_greed` | Fear & Greed Index (VIX + CNN composite score) |
 | `add_stock` | Add stock with `params: {ticker, category, thesis, tags}` |
 | `withdraw` | Smart withdrawal plan with `params: {amount, currency}` |
-| `fx_watch` | Check FX exchange timing alerts & send Telegram notifications (monitors custom currency pairs with cooldown) |
+| `fx_watch` | Check FX exchange timing alerts & send Telegram notifications |
 
 > **Start with `help`** — call `POST /webhook {"action": "help"}` to discover all available actions at runtime.
 
-### Direct API (for advanced queries)
+### Direct API (most-used)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/stocks` | All tracked stocks (includes `last_scan_signal` — persisted signal from last full scan) |
-| `GET` | `/stocks/export` | Export watchlist as JSON |
+| `GET` | `/stocks` | All tracked stocks (includes `last_scan_signal`) |
 | `POST` | `/ticker` | Add new stock |
-| `GET` | `/ticker/{ticker}/signals` | Technical signals (includes `bias_percentile` and `is_rogue_wave` for Rogue Wave detection) |
+| `GET` | `/ticker/{ticker}/signals` | Technical signals (includes `bias_percentile` and `is_rogue_wave`) |
 | `GET` | `/ticker/{ticker}/moat` | Moat analysis |
-| `POST` | `/ticker/{ticker}/thesis` | Update thesis |
-| `PATCH` | `/ticker/{ticker}/category` | Switch category |
-| `GET` | `/ticker/{ticker}/scan-history` | Scan history |
-| `GET` | `/ticker/{ticker}/alerts` | Price alerts |
 | `POST` | `/ticker/{ticker}/alerts` | Create price alert |
-| `PATCH` | `/alerts/{alert_id}/toggle` | Toggle alert on/off (active ↔ paused) |
-| `DELETE` | `/alerts/{alert_id}` | Delete price alert |
-| `GET` | `/ticker/{ticker}/earnings` | Earnings calendar |
-| `GET` | `/ticker/{ticker}/dividend` | Dividend info |
-| `POST` | `/scan` | Trigger scan |
-| `POST` | `/digest` | Trigger weekly digest |
-| `GET` | `/snapshots` | Historical portfolio snapshots — `?days=30` (1–730) or `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
-| `GET` | `/snapshots/twr` | Time-weighted return — `?start=&end=` (defaults to YTD); `twr_pct` is null when < 2 snapshots |
-| `POST` | `/snapshots/take` | Trigger today's portfolio snapshot (background, upsert) |
-| `GET` | `/personas/templates` | Investment persona templates |
-| `GET` | `/profiles` | Active investment profile |
-| `POST` | `/profiles` | Create investment profile |
+| `PATCH` | `/alerts/{alert_id}/toggle` | Toggle alert on/off (active / paused) |
+| `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
+| `GET` | `/stress-test` | Stress test (portfolio crash simulation) |
+| `GET` | `/currency-exposure` | Currency exposure with `fx_rate_alerts` (three-tier) |
+| `POST` | `/fx-watch` | Create FX watch config |
+| `POST` | `/fx-watch/check` | Analyze FX watches (no Telegram) |
+| `POST` | `/fx-watch/alert` | Analyze + send Telegram (with cooldown) |
 | `GET` | `/holdings` | All holdings |
-| `POST` | `/holdings` | Add holding (auto-snapshots `purchase_fx_rate` for non-USD holdings) |
-| `GET` | `/rebalance` | Rebalance analysis (includes `purchase_fx_rate` + `current_fx_rate` per holding for FX return calculation) |
-| `GET` | `/stress-test` | Stress test analysis (portfolio crash simulation) |
-| `GET` | `/settings/telegram` | Telegram notification settings |
-| `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
-| `POST` | `/settings/telegram/test` | Send a test Telegram message |
-| `GET` | `/settings/preferences` | User preferences (language, privacy mode, etc.) |
-| `PUT` | `/settings/preferences` | Update user preferences (upsert) -- supports `language` field (`zh-TW`/`en`/`ja`/`zh-CN`) |
-| `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite; for JP market, Nikkei VI is used as the JP fear indicator) |
+| `POST` | `/holdings` | Add holding (auto-snapshots `purchase_fx_rate`) |
+| `POST` | `/withdraw` | Smart withdrawal (Liquidity Waterfall) |
+| `GET` | `/snapshots/twr` | Time-weighted return (YTD default) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
-| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
-| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert — three-tier detection (daily >1.5%, 5-day >2%, 3-month >8%), includes cash exposure amounts |
-| `GET` | `/fx-watch` | Get all FX watch configs (supports `?active_only=true`) |
-| `POST` | `/fx-watch` | Create FX watch config (base_currency, quote_currency, recent_high_days, consecutive_increase_days, alert_on_recent_high, alert_on_consecutive_increase, reminder_interval_hours) |
-| `PATCH` | `/fx-watch/{id}` | Update FX watch config (optional fields) |
-| `DELETE` | `/fx-watch/{id}` | Delete FX watch config |
-| `POST` | `/fx-watch/check` | Check all FX watches (analysis only, no Telegram) |
-| `POST` | `/fx-watch/alert` | Check FX watches & send Telegram alerts (with per-watch cooldown) |
-| `POST` | `/withdraw` | Smart withdrawal plan (Liquidity Waterfall) |
-| `GET` | `/gurus` | List all tracked gurus (id, name, display_name, cik) |
-| `POST` | `/gurus` | Add custom guru — body: `{"name": "Berkshire Hathaway Inc", "cik": "0001067983", "display_name": "Warren Buffett"}` |
-| `DELETE` | `/gurus/{guru_id}` | Deactivate guru (history preserved) |
-| `POST` | `/gurus/sync` | Batch-sync all gurus' 13F filings from SEC EDGAR (mutex-protected, safe to call from cron) |
-| `POST` | `/gurus/{guru_id}/sync` | Sync one guru's 13F — returns `{"status": "synced"\|"skipped", "message": "..."}` |
-| `GET` | `/gurus/{guru_id}/filing` | Latest 13F filing summary: report_date, filing_date, total_value, holdings_count, new_positions, sold_out, increased, decreased |
-| `GET` | `/gurus/{guru_id}/holdings` | All holdings with action labels (NEW_POSITION/SOLD_OUT/INCREASED/DECREASED/UNCHANGED), ticker, value, shares, change_pct, weight_pct |
-| `GET` | `/gurus/{guru_id}/top` | Top N holdings by weight — supports `?n=10` |
-| `GET` | `/resonance` | Portfolio resonance overview — all guru overlaps with your watchlist/holdings. Returns `{results: [{guru_display_name, overlapping_tickers, overlap_count, holdings: [{ticker, action, weight_pct}]}], total_gurus, gurus_with_overlap}` |
-| `GET` | `/resonance/{ticker}` | Which gurus hold a specific ticker and their current action |
+| `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
+| `GET` | `/gurus` | Tracked superinvestors |
+| `POST` | `/gurus/sync` | Batch-sync all guru 13F filings |
+| `GET` | `/gurus/{id}/holdings` | Holdings with action labels; add `?include_performance=true` |
+| `GET` | `/gurus/{id}/qoq` | Quarter-over-quarter history (`?quarters=4`) |
+| `GET` | `/resonance` | Guru overlap with your watchlist/holdings |
+| `PUT` | `/settings/preferences` | Update language (`zh-TW`/`en`/`ja`/`zh-CN`) |
+
+If the `folio` skill is installed, read its bundled `reference.md` for the full endpoint list with field specs, query parameters, signal taxonomy, and market sentiment thresholds.
 
 ### Docs
 
@@ -139,7 +106,7 @@ Direct API errors return structured JSON with a machine-readable `error_code`:
 {"detail": {"error_code": "STOCK_NOT_FOUND", "detail": "找不到股票 NVDA。"}}
 ```
 
-Branch on `error_code` (not the human-readable `detail` string, which is localized based on user language preference). Common codes:
+Branch on `error_code` (not the human-readable `detail` string, which is localized). Common codes:
 - `STOCK_NOT_FOUND` / `STOCK_ALREADY_EXISTS` / `STOCK_ALREADY_INACTIVE` / `STOCK_ALREADY_ACTIVE`
 - `CATEGORY_UNCHANGED` / `HOLDING_NOT_FOUND` / `PROFILE_NOT_FOUND`
 - `SCAN_IN_PROGRESS` / `DIGEST_IN_PROGRESS`
@@ -148,111 +115,58 @@ Branch on `error_code` (not the human-readable `detail` string, which is localiz
 
 ## Service Operations
 
-Folio provides `make` targets for service management. Use `exec` to run these from the project root.
-
-### Backup & Restore
+Run `make` commands from the project root using the `exec` tool.
 
 | Command | Description |
 |---------|-------------|
-| `make backup` | Backup database to `./backups/radar-YYYYMMDD_HHMMSS.db` |
-| `make restore` | Restore from the latest backup in `./backups/` |
-| `make restore FILE=backups/radar-20260214.db` | Restore from a specific backup file |
-
-### Upgrade & Restart
-
-When code changes have been pushed to the repository, follow this workflow to apply them to the running service:
-
-| Step | Command | Purpose |
-|------|---------|---------|
-| 1. Pull latest code | `git pull origin main` | Fetch code changes (or use current branch name) |
-| 2. Rebuild & restart | `make up` | Rebuild images with changes and restart containers (zero downtime, data preserved) |
-| 3. Verify health | `curl -sf http://localhost:8000/health` | Backend health check |
-| 4. Check status | `docker compose ps` | Verify all containers are running |
-| 5. Troubleshoot (if needed) | `docker compose logs backend --tail 50` | View recent logs if health check fails |
-
-| Command | Description |
-|---------|-------------|
-| `docker compose down -v` | Full reset -- DELETES ALL DATA (use `make backup` first!) |
-
-### Health Check
-
-| Command | Description |
-|---------|-------------|
+| `make backup` | Backup database (timestamped file in `./backups/`) |
+| `make restore` | Restore from latest backup |
+| `make up` | Rebuild images + restart containers (zero downtime) |
 | `curl -sf http://localhost:8000/health` | Backend health check |
-| `docker compose ps` | Check container status |
-| `docker compose logs backend --tail 50` | View recent backend logs |
+| `docker compose ps` | Container status |
+| `docker compose logs backend --tail 50` | Recent backend logs |
+
+> `docker compose down -v` — full reset, **DELETES ALL DATA**. Always `make backup` first.
 
 ## Response Guidelines
 
 - Be concise — the user wants quick investment insights, not essays
-- When a `signals` response has `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
-- When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite. For JP market sentiment, Nikkei VI (`^JNV`) is used — levels >35 = extreme fear, >25 = fear, 18–25 = neutral, 14–18 = greed, <14 = extreme greed. For TW market sentiment, TAIEX realized volatility (`^TWII`) is used — levels >30% = extreme fear, 22–30% = fear, 15–22% = neutral, 10–15% = greed, <10% = extreme greed
+- When `signals` returns `is_rogue_wave: true`, warn the user: bias is at a 3-year extreme (≥ P95) with volume surge — the party is likely peaking; avoid leveraged chasing
+- When asked about market sentiment or timing, call `/webhook` with `fear_greed`. For JP market use Nikkei VI thresholds (≥35 extreme fear, <14 extreme greed); for TW market use TAIEX realized vol thresholds (>30% extreme fear, <10% extreme greed)
 - When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
-- When asked about portfolio status, call `/summary` first — it returns total value + daily change, category groups, active signals, top movers, drift warnings, and Smart Money highlights in one plain-text response
-- When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the `last_scan_signal` value using the **Signal Reference** section below
-- When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance` to get the full overlap matrix
-- Use `PATCH /alerts/{alert_id}/toggle` to pause or resume a price alert without deleting it — useful for silencing alerts during earnings season or known volatile periods
-- When asked to sync the latest 13F data, call `POST /gurus/sync` (all gurus) or `POST /gurus/{id}/sync` (one guru); status `"synced"` = new data, `"skipped"` = already current
+- When asked about portfolio status, call `/summary` first
+- When asked about a specific stock, call `/webhook` with `signals` or `moat`; interpret the signal using the **Signal Reference** below
+- When asked "which gurus hold this stock?" or "what are the big names buying?", call `GET /resonance`
+- Use `PATCH /alerts/{alert_id}/toggle` to pause/resume a price alert without deleting it
+- When asked to sync the latest 13F data, call `POST /gurus/sync` (all) or `POST /gurus/{id}/sync` (one)
 - Present data in a structured, readable format
 
 ## Signal Reference
 
-Folio uses two signal fields per stock:
+Folio uses two signal fields: `last_scan_signal` (persisted, from full scan with moat check) and `computed_signal` (real-time RSI/bias, no moat). `THESIS_BROKEN` always comes from the persisted value.
 
-- **`last_scan_signal`** — persisted result of the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`.
-- **`computed_signal`** — real-time signal recomputed on each request from live RSI/bias (no moat check). Returned by `GET /stocks/enriched`. The dashboard Signal Alerts section and radar page both prefer `computed_signal` when available, falling back to `last_scan_signal`. `THESIS_BROKEN` is always taken from the persisted value (moat analysis is required to set it).
+RSI thresholds are category-aware (Growth +2, Moat +1, Bond −3). A MA200 amplifier can upgrade signals when price is far from the 200-day MA.
 
-Both fields use the same 9-state taxonomy. RSI thresholds are category-aware: Growth +2, Moat +1, Bond −3 offsets applied to all RSI thresholds (buy and sell side). A MA200 amplifier (Phase 2) can upgrade WEAKENING→APPROACHING_BUY→CONTRARIAN_BUY when price is >15% below MA200, and upgrade CAUTION_HIGH→OVERHEATED when price is >20% above MA200.
+| Signal | Icon | What to tell the user |
+|--------|------|-----------------------|
+| `THESIS_BROKEN` | 🚨 | Fundamental thesis broken — recommend re-evaluating the holding |
+| `DEEP_VALUE` | 💎 | Both price and momentum confirm deep discount — high-conviction entry zone |
+| `OVERSOLD` | 📉 | Price at extreme low; RSI not yet confirming — watch for further confirmation |
+| `CONTRARIAN_BUY` | 🟢 | RSI oversold, price not overheated — potential contrarian entry |
+| `APPROACHING_BUY` | 🎯 | Accumulation zone — approaching buy range; monitor for RSI confirmation |
+| `OVERHEATED` | 🔥 | Both indicators overheated — sell warning, avoid chasing |
+| `CAUTION_HIGH` | ⚠️ | Single indicator elevated — reduce new positions |
+| `WEAKENING` | 🔻 | Early weakness, not yet extreme — monitor closely |
+| `NORMAL` | ➖ | No notable signal |
 
-| Signal | Icon | Condition (default offset=0) | What to tell the user |
-|--------|------|------------------------------|----------------------|
-| `THESIS_BROKEN` | 🚨 | Gross margin YoY deteriorated >2pp | Fundamental thesis broken — recommend re-evaluating the holding |
-| `DEEP_VALUE` | 💎 | Bias < −20% AND RSI < 35 | Both price and momentum confirm deep discount — high-conviction entry zone |
-| `OVERSOLD` | 📉 | Bias < −20% (RSI ≥ 35) | Price at extreme low; RSI not yet confirming — watch for further confirmation |
-| `CONTRARIAN_BUY` | 🟢 | RSI < 35 AND Bias < 20% | RSI oversold, price not overheated — potential contrarian entry |
-| `APPROACHING_BUY` | 🎯 | RSI < 37 AND Bias < −15% | Accumulation zone — approaching buy range; monitor for further RSI confirmation |
-| `OVERHEATED` | 🔥 | Bias > 20% AND RSI > 70 | Both indicators overheated — sell warning, avoid chasing |
-| `CAUTION_HIGH` | ⚠️ | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions |
-| `WEAKENING` | 🔻 | Bias < −15% AND RSI < 38 | Early weakness, not yet extreme — monitor closely |
-| `NORMAL` | ➖ | Everything else | No notable signal |
-
-Telegram notifications may append volume context: **📈 volume surge** (`volume_ratio ≥ 1.5`) strengthens conviction; **📉 thin volume** (`volume_ratio ≤ 0.5`) weakens it. These qualifiers do not change the signal enum.
-
-## Market Sentiment (5-Tier)
-
-Market sentiment is determined by the percentage of **Trend Setter** stocks trading below their 60-day moving average. It serves as a contextual backdrop — it does NOT gate signal logic.
-
-| % Below 60MA | Sentiment | Icon | Guidance |
-|--------------|-----------|------|----------|
-| 0–10% | `STRONG_BULLISH` | ☀️ | Nearly all trend setters healthy — strong breadth, full risk-on |
-| 10–30% | `BULLISH` | 🌤️ | Mostly healthy — normal accumulation conditions |
-| 30–50% | `NEUTRAL` | ⛅ | Mixed breadth — transition zone, be selective |
-| 50–70% | `BEARISH` | 🌧️ | Majority weakening — reduce exposure, tighten stops |
-| >70% | `STRONG_BEARISH` | ⛈️ | Extreme weakness — defensive posture, cash is king |
-
-The `GET /scan/last` endpoint returns the current sentiment in `market_sentiment.status` (e.g., `"BULLISH"`) and `market_sentiment.below_60ma_pct`.
-
-### JP Market Sentiment (Nikkei VI)
-
-When the user holds `.T` (Japan) tickers, `get_market_sentiment_multi()` additionally returns a `"JP"` key with Nikkei Volatility Index (`^JNV`) data alongside the standard `"US"` Fear & Greed composite. Nikkei VI thresholds are: **≥35** = Extreme Fear, **25–35** = Fear, **18–25** = Neutral, **14–18** = Greed, **<14** = Extreme Greed. These are structurally equivalent to US VIX levels but calibrated to the JP market.
-
-### TW Market Sentiment (^TWII Realized Volatility)
-
-When the user holds `.TW` (Taiwan) tickers, `get_market_sentiment_multi()` additionally returns a `"TW"` key with TAIEX Weighted Index (`^TWII`) 20-day annualized realized volatility. The `source` field is `"TAIEX Realized Vol"`. The key is absent when no `.TW` tickers are tracked.
-
-| Realized Vol | Level | Guidance |
-|-------------|-------|----------|
-| > 30% | Extreme Fear | TW market panic — contrarian opportunity zone |
-| 22–30% | Fear | TW market cautious — selective accumulation |
-| 15–22% | Neutral | TW market balanced — normal positioning |
-| 10–15% | Greed | TW market confident — watch for overheating |
-| < 10% | Extreme Greed | TW market euphoric — reduce exposure |
+Telegram notifications may append volume context: **📈 volume surge** (`volume_ratio ≥ 1.5`) strengthens conviction; **📉 thin volume** (`volume_ratio ≤ 0.5`) weakens it.
 
 ## Categories
 
-- Use the stock categories to contextualize advice:
-  - **Trend_Setter (風向球)**: Market direction indicators
-  - **Moat (護城河)**: Companies with competitive advantages
-  - **Growth (成長夢想)**: High-volatility growth stocks
-  - **Bond (債券)**: Bonds and fixed-income ETFs
-  - **Cash (現金)**: Idle cash positions
+| Category | Label | Description |
+|----------|-------|-------------|
+| `Trend_Setter` | 🌊 風向球 | Market direction indicators |
+| `Moat` | 🏰 護城河 | Companies with competitive advantages |
+| `Growth` | 🚀 成長夢想 | High-volatility growth stocks |
+| `Bond` | 🛡️ 債券 | Bonds and fixed-income ETFs |
+| `Cash` | 💵 現金 | Idle cash positions |
