@@ -1,3 +1,4 @@
+# pyright: reportReturnType=false
 """
 Infrastructure — SEC EDGAR API 適配器。
 負責 EDGAR 外部 API 呼叫、速率限制、快取管理。

@@ -1,3 +1,4 @@
+# pyright: reportCallIssue=false
 """
 Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史。
 """
@@ -538,11 +539,8 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
 
         # 比較
         triggered = False
-        if (
-            alert.operator == "lt"
-            and metric_value < alert.threshold
-            or alert.operator == "gt"
-            and metric_value > alert.threshold
+        if (alert.operator == "lt" and metric_value < alert.threshold) or (
+            alert.operator == "gt" and metric_value > alert.threshold
         ):
             triggered = True
 

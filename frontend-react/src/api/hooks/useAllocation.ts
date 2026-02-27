@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import apiClient from "@/api/client"
+import client from "@/api/client"
+import type { components } from "@/api/types/generated"
 import type {
   PersonaTemplate,
   AllocRebalanceResponse,
@@ -16,8 +17,9 @@ import type {
   UpdateProfileRequest,
   SaveTelegramRequest,
   SavePreferencesRequest,
+  Holding,
+  ProfileResponse,
 } from "@/api/types/allocation"
-import type { Holding, ProfileResponse } from "@/api/types/allocation"
 
 // ---------------------------------------------------------------------------
 // Query hooks
@@ -27,8 +29,9 @@ export function useTemplates() {
   return useQuery<PersonaTemplate[]>({
     queryKey: ["personas", "templates"],
     queryFn: async () => {
-      const { data } = await apiClient.get<PersonaTemplate[]>("/personas/templates")
-      return data
+      const { data, error } = await client.GET("/personas/templates")
+      if (error) throw error
+      return data as unknown as PersonaTemplate[]
     },
     staleTime: 24 * 60 * 60 * 1000,
   })
@@ -38,10 +41,11 @@ export function useAllocRebalance(displayCurrency: string, enabled = true) {
   return useQuery<AllocRebalanceResponse>({
     queryKey: ["rebalance", displayCurrency],
     queryFn: async () => {
-      const { data } = await apiClient.get<AllocRebalanceResponse>("/rebalance", {
-        params: { display_currency: displayCurrency },
+      const { data, error } = await client.GET("/rebalance", {
+        params: { query: { display_currency: displayCurrency } },
       })
-      return data
+      if (error) throw error
+      return data as unknown as AllocRebalanceResponse
     },
     staleTime: 60 * 1000,
     enabled,
@@ -52,8 +56,9 @@ export function useCurrencyExposure(enabled = true) {
   return useQuery<CurrencyExposureResponse>({
     queryKey: ["currency-exposure"],
     queryFn: async () => {
-      const { data } = await apiClient.get<CurrencyExposureResponse>("/currency-exposure")
-      return data
+      const { data, error } = await client.GET("/currency-exposure")
+      if (error) throw error
+      return data as unknown as CurrencyExposureResponse
     },
     staleTime: 60 * 1000,
     enabled,
@@ -64,10 +69,11 @@ export function useStressTest(dropPct: number, currency: string, enabled = true)
   return useQuery<StressTestResponse>({
     queryKey: ["stress-test", dropPct, currency],
     queryFn: async () => {
-      const { data } = await apiClient.get<StressTestResponse>("/stress-test", {
-        params: { scenario_drop_pct: dropPct, display_currency: currency },
+      const { data, error } = await client.GET("/stress-test", {
+        params: { query: { scenario_drop_pct: dropPct, display_currency: currency } },
       })
-      return data
+      if (error) throw error
+      return data as unknown as StressTestResponse
     },
     staleTime: 60 * 1000,
     enabled,
@@ -78,8 +84,9 @@ export function useTelegramSettings() {
   return useQuery<TelegramSettings>({
     queryKey: ["settings", "telegram"],
     queryFn: async () => {
-      const { data } = await apiClient.get<TelegramSettings>("/settings/telegram")
-      return data
+      const { data, error } = await client.GET("/settings/telegram")
+      if (error) throw error
+      return data as unknown as TelegramSettings
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -89,8 +96,9 @@ export function usePreferences() {
   return useQuery<AllocPreferencesResponse>({
     queryKey: ["settings", "preferences"],
     queryFn: async () => {
-      const { data } = await apiClient.get<AllocPreferencesResponse>("/settings/preferences")
-      return data
+      const { data, error } = await client.GET("/settings/preferences")
+      if (error) throw error
+      return data as unknown as AllocPreferencesResponse
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -104,8 +112,9 @@ export function useCreateProfile() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CreateProfileRequest) => {
-      const { data } = await apiClient.post<ProfileResponse>("/profiles", payload)
-      return data
+      const { data, error } = await client.POST("/profiles", { body: payload })
+      if (error) throw error
+      return data as unknown as ProfileResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] })
@@ -117,8 +126,12 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: UpdateProfileRequest }) => {
-      const { data } = await apiClient.put<ProfileResponse>(`/profiles/${id}`, payload)
-      return data
+      const { data, error } = await client.PUT("/profiles/{profile_id}", {
+        params: { path: { profile_id: id } },
+        body: payload,
+      })
+      if (error) throw error
+      return data as unknown as ProfileResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] })
@@ -131,8 +144,11 @@ export function useAddHolding() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: AddHoldingRequest) => {
-      const { data } = await apiClient.post<Holding>("/holdings", payload)
-      return data
+      const { data, error } = await client.POST("/holdings", {
+        body: { ...payload, is_cash: payload.is_cash ?? false },
+      })
+      if (error) throw error
+      return data as unknown as Holding
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
@@ -145,8 +161,9 @@ export function useAddCashHolding() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: AddCashRequest) => {
-      const { data } = await apiClient.post<Holding>("/holdings/cash", payload)
-      return data
+      const { data, error } = await client.POST("/holdings/cash", { body: payload })
+      if (error) throw error
+      return data as unknown as Holding
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
@@ -159,8 +176,12 @@ export function useUpdateHolding() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: UpdateHoldingRequest }) => {
-      const { data } = await apiClient.put<Holding>(`/holdings/${id}`, payload)
-      return data
+      const { data, error } = await client.PUT("/holdings/{holding_id}", {
+        params: { path: { holding_id: id } },
+        body: payload,
+      })
+      if (error) throw error
+      return data as unknown as Holding
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
@@ -173,7 +194,10 @@ export function useDeleteHolding() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/holdings/${id}`)
+      const { error } = await client.DELETE("/holdings/{holding_id}", {
+        params: { path: { holding_id: id } },
+      })
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
@@ -185,8 +209,9 @@ export function useDeleteHolding() {
 export function useImportHoldings() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (holdings: unknown[]) => {
-      const { data } = await apiClient.post("/holdings/import", holdings)
+    mutationFn: async (holdings: components["schemas"]["HoldingImportItem"][]) => {
+      const { data, error } = await client.POST("/holdings/import", { body: holdings })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -199,8 +224,9 @@ export function useImportHoldings() {
 export function useWithdraw() {
   return useMutation({
     mutationFn: async (payload: WithdrawRequest) => {
-      const { data } = await apiClient.post<WithdrawResponse>("/withdraw", payload)
-      return data
+      const { data, error } = await client.POST("/withdraw", { body: payload })
+      if (error) throw error
+      return data as unknown as WithdrawResponse
     },
   })
 }
@@ -208,7 +234,8 @@ export function useWithdraw() {
 export function useXRayAlert() {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/rebalance/xray-alert")
+      const { data, error } = await client.POST("/rebalance/xray-alert")
+      if (error) throw error
       return data
     },
   })
@@ -217,7 +244,8 @@ export function useXRayAlert() {
 export function useFxExposureAlert() {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/currency-exposure/alert")
+      const { data, error } = await client.POST("/currency-exposure/alert")
+      if (error) throw error
       return data
     },
   })
@@ -227,8 +255,9 @@ export function useSaveTelegram() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: SaveTelegramRequest) => {
-      const { data } = await apiClient.put<TelegramSettings>("/settings/telegram", payload)
-      return data
+      const { data, error } = await client.PUT("/settings/telegram", { body: payload })
+      if (error) throw error
+      return data as unknown as TelegramSettings
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings", "telegram"] })
@@ -239,7 +268,8 @@ export function useSaveTelegram() {
 export function useTestTelegram() {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/settings/telegram/test")
+      const { data, error } = await client.POST("/settings/telegram/test")
+      if (error) throw error
       return data
     },
   })
@@ -248,7 +278,8 @@ export function useTestTelegram() {
 export function useTriggerDigest() {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/digest")
+      const { data, error } = await client.POST("/digest")
+      if (error) throw error
       return data
     },
   })
@@ -258,8 +289,9 @@ export function useSavePreferences() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: SavePreferencesRequest) => {
-      const { data } = await apiClient.put<AllocPreferencesResponse>("/settings/preferences", payload)
-      return data
+      const { data, error } = await client.PUT("/settings/preferences", { body: payload })
+      if (error) throw error
+      return data as unknown as AllocPreferencesResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings", "preferences"] })

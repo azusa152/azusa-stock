@@ -1,3 +1,4 @@
+# pyright: reportReturnType=false
 from domain.enums import MoatStatus
 from logging_config import get_logger
 

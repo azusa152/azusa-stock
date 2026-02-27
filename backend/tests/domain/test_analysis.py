@@ -114,7 +114,8 @@ class TestComputeBiasPercentile:
     ):
         p_low = compute_bias_percentile(5.0, VALID_HISTORY)
         p_high = compute_bias_percentile(20.0, VALID_HISTORY)
-        assert p_low is not None and p_high is not None
+        assert p_low is not None
+        assert p_high is not None
         assert p_high >= p_low
 
     # --- duplicate values edge case ---
@@ -824,7 +825,7 @@ class TestDetermineMarketSentiment:
 
     def test_boundary_10_1_pct(self):
         # 10.7% → BULLISH (just above 10% boundary)
-        sentiment, pct = determine_market_sentiment(3, 28)
+        sentiment, _pct = determine_market_sentiment(3, 28)
         assert sentiment == MarketSentiment.BULLISH
 
     def test_boundary_30_pct_exact(self):

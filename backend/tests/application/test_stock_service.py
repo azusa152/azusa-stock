@@ -20,6 +20,7 @@ class TestGetSignalsForTicker:
 
             result = get_signals_for_ticker("AAPL")
 
+        assert result is not None
         assert result["rsi"] == 55.0
         assert result["bias_distribution"] == mock_dist
 

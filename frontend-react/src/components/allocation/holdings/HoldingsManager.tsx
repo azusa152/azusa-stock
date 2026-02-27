@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react"
-import axios from "axios"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
@@ -81,10 +80,19 @@ export function HoldingsManager({ privacyMode }: Props) {
           setEditing(null)
         },
         onError: (err: unknown) => {
-          const msg = axios.isAxiosError(err)
-            ? (err.response?.data?.detail ?? t("common.error"))
-            : t("common.error")
-          setEditing((prev) => prev ? { ...prev, error: msg } : prev)
+          // openapi-fetch errors are plain objects like { detail: string }, not Error instances.
+          const apiDetail =
+            err !== null && typeof err === "object" && "detail" in err
+              ? (err as { detail: unknown }).detail
+              : undefined
+          const detail =
+            typeof apiDetail === "string"
+              ? apiDetail
+              : err instanceof Error
+                ? err.message
+                : null
+          const msg = detail ?? t("common.error")
+          setEditing((prev) => (prev ? { ...prev, error: msg } : prev))
           toast.error(msg)
         },
       },

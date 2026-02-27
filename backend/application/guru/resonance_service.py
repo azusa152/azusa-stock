@@ -119,8 +119,8 @@ def get_resonance_for_ticker(session: Session, ticker: str) -> list[dict]:
 
     # Pre-load all active gurus and latest filings to avoid N+1 queries
     all_gurus = find_all_active_gurus(session)
-    guru_map: dict[int, str] = {g.id: g.display_name for g in all_gurus}
-    filing_map: dict[int, object] = {
+    guru_map: dict[int | None, str] = {g.id: g.display_name for g in all_gurus}
+    filing_map: dict[int | None, object] = {
         g.id: find_latest_filing_by_guru(session, g.id) for g in all_gurus
     }
 

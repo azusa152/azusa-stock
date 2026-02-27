@@ -1,0 +1,29 @@
+# docker-compose.override.yml — Local development overrides
+#
+# Applied automatically when running `docker compose up`.
+# Enables hot-reload for the backend by mounting source code into the container.
+#
+# To use production configuration only (no override):
+#   docker compose -f docker-compose.yml up
+#
+# Note: run `make backend-dev` for local dev WITHOUT Docker (faster feedback loop).
+
+services:
+  backend:
+    volumes:
+      - radar-data:/app/data
+      - ./logs:/app/data/logs
+      - ./backend:/app              # Mount source for hot-reload; writable so uvicorn can write __pycache__
+      - /app/.venv                  # Anonymous volume keeps the container-installed venv intact (not overridden by host mount)
+    command:
+      - "uv"
+      - "run"
+      - "--frozen"
+      - "--no-dev"
+      - "uvicorn"
+      - "main:app"
+      - "--reload"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"

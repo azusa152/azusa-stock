@@ -11,8 +11,10 @@
 #    make format           Format backend code
 #
 #  Backend (granular):
+#    make backend-dev      Start backend with hot-reload (local development)
 #    make backend-lint     Ruff check + format check
 #    make backend-test     pytest (in-memory SQLite)
+#    make backend-typecheck pyright static type check
 #    make backend-format   Ruff format
 #    make backend-security pip-audit vulnerability scan
 #
@@ -28,13 +30,13 @@
 #    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
 #  Setup:
-#    make setup            First-time: venv + npm + codegen + pre-commit hooks
-#    make install          Create backend venv and install deps (incl. pip-audit)
+#    make setup            First-time: uv sync + npm + codegen + pre-commit hooks
+#    make install          Install backend deps via uv (creates .venv, generates uv.lock)
 #    make frontend-install Install frontend deps (npm ci)
 #    make generate-api     Export OpenAPI spec + regenerate TS types
-#    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff)
-#    make lock             Resolve deps: requirements.in → requirements.txt
-#    make upgrade           Re-lock all deps to latest compatible versions
+#    make setup-hooks      Install pre-commit hooks (architecture boundary + ruff on commit)
+#    make lock             Lock deps: update uv.lock from pyproject.toml
+#    make upgrade          Re-lock all deps to latest compatible versions
 #
 #  Docker:
 #    make up               Start all services (background)
@@ -58,7 +60,6 @@ BACKEND_DIR  := backend
 FRONTEND_DIR := frontend-react
 
 PYTHON ?= $(BACKEND_DIR)/.venv/bin/python
-PIP    ?= $(BACKEND_DIR)/.venv/bin/pip
 RUFF   ?= $(BACKEND_DIR)/.venv/bin/ruff
 
 # Lazy-evaluated: only runs `docker volume ls` when backup/restore targets execute
@@ -69,9 +70,13 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 # ---------------------------------------------------------------------------
 #  Guards (hidden prerequisite targets — fail early with actionable messages)
 # ---------------------------------------------------------------------------
-.PHONY: .venv-check .node-check .python-version-check
+.PHONY: .venv-check .node-check .uv-check .python-version-check
 
-.venv-check:
+.uv-check:
+	@command -v uv > /dev/null 2>&1 || \
+		{ echo "Error: uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
+
+.venv-check: .uv-check
 	@test -x $(PYTHON) || \
 		{ echo "Error: backend venv not found. Run 'make install' first."; exit 1; }
 
@@ -100,30 +105,28 @@ VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | 
 setup: install frontend-install generate-api setup-hooks ## Full first-time setup (backend + frontend + codegen + hooks)
 	@echo "Setup complete. Run 'make ci' to verify everything passes."
 
-install: ## Create backend venv and install dependencies
-	cd $(BACKEND_DIR) && python3 -m venv .venv
-	$(PIP) install pip-tools
-	$(PIP) install -r $(BACKEND_DIR)/requirements.txt
+install: .uv-check ## Install backend dependencies via uv (creates .venv + uv.lock)
+	cd $(BACKEND_DIR) && uv sync
 
 frontend-install: ## Install frontend dependencies (npm ci)
 	cd $(FRONTEND_DIR) && npm ci
 
-setup-hooks: .venv-check ## Install pre-commit hooks (auto-runs architecture boundary + ruff on every commit)
-	$(PIP) install pre-commit
-	$(BACKEND_DIR)/.venv/bin/pre-commit install
+setup-hooks: .venv-check ## Install pre-commit hooks (fast hooks on commit, slow hooks on pre-push)
+	cd $(BACKEND_DIR) && uv run pre-commit install --hook-type pre-commit --hook-type pre-push
 
-lock: .venv-check ## Resolve deps: requirements.in → requirements.txt (run after editing .in)
-	$(BACKEND_DIR)/.venv/bin/pip-compile $(BACKEND_DIR)/requirements.in \
-		--output-file=$(BACKEND_DIR)/requirements.txt --strip-extras
+lock: .uv-check ## Lock deps: update uv.lock from pyproject.toml (run after editing pyproject.toml)
+	cd $(BACKEND_DIR) && uv lock
 
-upgrade: .venv-check ## Re-lock all deps to latest compatible versions
-	$(BACKEND_DIR)/.venv/bin/pip-compile $(BACKEND_DIR)/requirements.in \
-		--output-file=$(BACKEND_DIR)/requirements.txt --strip-extras --upgrade
+upgrade: .uv-check ## Re-lock all deps to latest compatible versions
+	cd $(BACKEND_DIR) && uv lock --upgrade
 
 # ---------------------------------------------------------------------------
 #  Backend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: backend-lint backend-test backend-test-quick backend-format
+.PHONY: backend-dev backend-lint backend-test backend-test-quick backend-format backend-typecheck
+
+backend-dev: .venv-check ## Start backend with hot-reload (local development)
+	cd $(BACKEND_DIR) && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 backend-lint: .venv-check ## Ruff check + format --check (backend only)
 	$(RUFF) check --fix $(BACKEND_DIR)/
@@ -143,6 +146,9 @@ backend-test-quick: .venv-check ## Fast test run — no coverage, for local iter
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
 
+backend-typecheck: .venv-check ## pyright static type check (basic mode, advisory)
+	cd $(BACKEND_DIR) && uv run pyright .
+
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
@@ -151,7 +157,7 @@ backend-format: .venv-check ## Ruff format — rewrite files in place (backend o
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
 
-frontend-dev: .node-check generate-api ## Start Vite dev server (requires backend venv; or cd frontend-react && npm run dev)
+frontend-dev: .node-check generate-api ## Start Vite dev server (requires backend running; or cd frontend-react && npm run dev)
 	cd $(FRONTEND_DIR) && npm run dev
 
 frontend-build: .node-check ## Build frontend for production (run generate-api first if types are stale)
@@ -174,7 +180,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec check-i18n frontend-build frontend-security backend-security ## Full CI check — mirrors all GitHub CI pipeline jobs
+ci: lint test check-constants check-api-spec check-i18n frontend-build frontend-security backend-security backend-typecheck ## Full CI check — mirrors all GitHub CI pipeline jobs
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -234,8 +240,8 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
 
-check-i18n: ## Check locale key parity (backend + frontend locale files)
-	python3 scripts/check_locale_parity.py
+check-i18n: .venv-check ## Check locale key parity (backend + frontend locale files)
+	$(PYTHON) scripts/check_locale_parity.py
 
 check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
@@ -243,14 +249,14 @@ check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to
 	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json
 
 backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors CI security job)
-	$(BACKEND_DIR)/.venv/bin/pip-audit --desc --ignore-vuln CVE-2025-69872
+	cd $(BACKEND_DIR) && uv run pip-audit --desc --ignore-vuln CVE-2025-69872
 
 check-ci: .venv-check ## Verify make ci covers all GitHub CI pipeline jobs
-	$(PYTHON) scripts/check_ci_completeness.py
+	cd $(BACKEND_DIR) && uv run python ../scripts/check_ci_completeness.py
 
-generate-key: ## Generate a secure API key (add to .env as FOLIO_API_KEY)
+generate-key: .venv-check ## Generate a secure API key (add to .env as FOLIO_API_KEY)
 	@echo "Generated API Key (add to .env as FOLIO_API_KEY):"
-	@python3 -c "import secrets; print(f'sk-folio-{secrets.token_urlsafe(32)}')"
+	@$(PYTHON) -c "import secrets; print(f'sk-folio-{secrets.token_urlsafe(32)}')"
 
 security: ## Security audit (.env file, hardcoded secrets, pip-audit)
 	@echo "=== Security Audit ==="

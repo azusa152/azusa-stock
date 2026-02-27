@@ -141,6 +141,7 @@ class TestGetActiveProfile:
     def test_config_is_parsed_dict(self, db_session: Session) -> None:
         _seed_profile(db_session, config={"Bond": 40})
         result = get_active_profile(db_session)
+        assert result is not None
         assert isinstance(result["config"], dict)
         assert result["config"]["Bond"] == 40
 
@@ -169,6 +170,7 @@ class TestCreateProfile:
         _seed_profile(db_session, name="Old")
         create_profile(db_session, _create_payload(name="New"), _LANG)
         active = get_active_profile(db_session)
+        assert active is not None
         assert active["name"] == "New"
 
     def test_config_stored_and_returned_as_dict(self, db_session: Session) -> None:

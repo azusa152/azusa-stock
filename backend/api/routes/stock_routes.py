@@ -289,13 +289,13 @@ def reactivate_ticker_route(
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
-def get_earnings_route(ticker: str) -> dict:
+def get_earnings_route(ticker: str) -> dict | None:
     """取得指定股票的下次財報日期。"""
     return stock_service.get_earnings_for_ticker(ticker.upper())
 
 
 @router.get("/ticker/{ticker}/dividend", summary="Get dividend info for a stock")
-def get_dividend_route(ticker: str) -> dict:
+def get_dividend_route(ticker: str) -> dict | None:
     """取得指定股票的股息資訊。"""
     return stock_service.get_dividend_for_ticker(ticker.upper())
 

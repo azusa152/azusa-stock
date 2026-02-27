@@ -426,9 +426,9 @@ NOTIFICATION_TYPES = {
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
     "guru_alerts": "constants.notification_guru_alerts",
 }
-DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
-    k: True for k in NOTIFICATION_TYPES
-}
+DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
+    NOTIFICATION_TYPES, True
+)
 
 # Rate limit defaults — 0 means unlimited (no cap)
 NOTIFICATION_RATE_LIMIT_MAX_COUNT_DEFAULT = 1  # 0 = unlimited

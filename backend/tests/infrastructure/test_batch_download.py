@@ -19,7 +19,7 @@ import tempfile
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
-import domain.constants  # noqa: E402
+import domain.constants
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_batch"
@@ -60,7 +60,7 @@ def _make_hist(rows: int = _MIN_ROWS) -> pd.DataFrame:
 def _make_multi_ticker_data(tickers: list[str], rows: int = _MIN_ROWS) -> pd.DataFrame:
     """Simulate yf.download() multi-ticker output with MultiIndex columns."""
     hist = _make_hist(rows)
-    frames = {t: hist for t in tickers}
+    frames = dict.fromkeys(tickers, hist)
     return pd.concat(frames, axis=1)
 
 

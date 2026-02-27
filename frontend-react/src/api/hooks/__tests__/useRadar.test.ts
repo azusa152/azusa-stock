@@ -3,19 +3,22 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 import { useRadarStocks, useAddStock } from "../useRadar";
-import apiClient from "@/api/client";
+import client from "@/api/client";
 
 vi.mock("@/api/client", () => ({
   default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    interceptors: { request: { use: vi.fn() } },
+    GET: vi.fn(),
+    POST: vi.fn(),
+    PUT: vi.fn(),
+    PATCH: vi.fn(),
+    DELETE: vi.fn(),
+    use: vi.fn(),
   },
 }));
 
-const mockApiClient = apiClient as unknown as {
-  get: ReturnType<typeof vi.fn>;
-  post: ReturnType<typeof vi.fn>;
+const mockClient = client as unknown as {
+  GET: ReturnType<typeof vi.fn>;
+  POST: ReturnType<typeof vi.fn>;
 };
 
 function createWrapper() {
@@ -32,7 +35,7 @@ beforeEach(() => {
 
 describe("useRadarStocks", () => {
   it("is in loading state initially", () => {
-    mockApiClient.get.mockResolvedValueOnce({ data: [] });
+    mockClient.GET.mockResolvedValueOnce({ data: [], error: undefined });
     const { result } = renderHook(() => useRadarStocks(), {
       wrapper: createWrapper(),
     });
@@ -41,7 +44,7 @@ describe("useRadarStocks", () => {
 
   it("calls the /stocks endpoint", async () => {
     const stocks = [{ ticker: "NVDA", name: "NVIDIA" }];
-    mockApiClient.get.mockResolvedValueOnce({ data: stocks });
+    mockClient.GET.mockResolvedValueOnce({ data: stocks, error: undefined });
 
     const { result } = renderHook(() => useRadarStocks(), {
       wrapper: createWrapper(),
@@ -49,7 +52,7 @@ describe("useRadarStocks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockApiClient.get).toHaveBeenCalledWith("/stocks");
+    expect(mockClient.GET).toHaveBeenCalledWith("/stocks");
     expect(result.current.data).toEqual(stocks);
   });
 
@@ -58,7 +61,7 @@ describe("useRadarStocks", () => {
       { ticker: "NVDA", name: "NVIDIA" },
       { ticker: "MSFT", name: "Microsoft" },
     ];
-    mockApiClient.get.mockResolvedValueOnce({ data: stocks });
+    mockClient.GET.mockResolvedValueOnce({ data: stocks, error: undefined });
 
     const { result } = renderHook(() => useRadarStocks(), {
       wrapper: createWrapper(),
@@ -74,7 +77,7 @@ describe("useRadarStocks", () => {
 describe("useAddStock", () => {
   it("posts to /ticker with the provided payload", async () => {
     const payload = { ticker: "AAPL", category: "Moat" };
-    mockApiClient.post.mockResolvedValueOnce({ data: { success: true } });
+    mockClient.POST.mockResolvedValueOnce({ data: { success: true }, error: undefined });
 
     const { result } = renderHook(() => useAddStock(), {
       wrapper: createWrapper(),
@@ -86,11 +89,11 @@ describe("useAddStock", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockApiClient.post).toHaveBeenCalledWith("/ticker", payload);
+    expect(mockClient.POST).toHaveBeenCalledWith("/ticker", { body: payload });
   });
 
   it("transitions to success after a resolved mutation", async () => {
-    mockApiClient.post.mockResolvedValueOnce({ data: { success: true } });
+    mockClient.POST.mockResolvedValueOnce({ data: { success: true }, error: undefined });
 
     const { result } = renderHook(() => useAddStock(), {
       wrapper: createWrapper(),

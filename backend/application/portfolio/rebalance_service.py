@@ -224,14 +224,14 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         prewarm_signals_batch(non_cash_tickers)
 
     # 4) 使用共用邏輯計算各持倉市值
-    currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
+    _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
         holdings,
         fx_rates,
     )
 
     # 4.5) 取得每個分類的市值合計
     category_values: dict[str, float] = {}
-    for _key, agg in ticker_agg.items():
+    for agg in ticker_agg.values():
         cat = agg["category"]
         category_values[cat] = category_values.get(cat, 0.0) + agg["mv"]
 

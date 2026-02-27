@@ -135,7 +135,7 @@ class TestSend:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def rate_limit_session():
     """In-memory SQLite session with all tables for rate limit tests."""
     engine = create_engine(

@@ -1,3 +1,4 @@
+# pyright: reportAttributeAccessIssue=false, reportGeneralTypeIssues=false
 """
 Application — Portfolio Snapshot Service：每日快照的建立與查詢。
 快照記錄每日投資組合總市值與各類別市值，供歷史績效圖表使用。
@@ -45,7 +46,7 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
     for ticker in benchmark_tickers:
         try:
             data = get_technical_signals(ticker)
-            benchmark_prices[ticker] = data.get("price")
+            benchmark_prices[ticker] = data.get("price") if data is not None else None
         except Exception as exc:
             logger.warning("無法取得基準指數 %s 價格：%s", ticker, exc)
             benchmark_prices[ticker] = None

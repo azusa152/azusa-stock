@@ -16,7 +16,7 @@ import tempfile
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
-import domain.constants  # noqa: E402
+import domain.constants
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_xray_etf"
@@ -88,7 +88,6 @@ def _add_stock(session: Session, ticker: str, is_etf: bool = False) -> None:
     session.add(
         Stock(
             ticker=ticker,
-            name=ticker,
             category=StockCategory.GROWTH,
             is_active=True,
             is_etf=is_etf,

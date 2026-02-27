@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
+# pyright: reportCallIssue=false
 """
 Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
@@ -737,7 +739,7 @@ def find_all_guru_summaries(session: Session, style: str | None = None) -> list[
                     .where(GuruHolding.filing_id == filing.id)
                     .group_by(GuruHolding.action)
                 ).all()
-                action_map = {a: c for a, c in action_counts}
+                action_map = dict(action_counts)
                 churned = action_map.get(
                     HoldingAction.NEW_POSITION.value, 0
                 ) + action_map.get(HoldingAction.SOLD_OUT.value, 0)
