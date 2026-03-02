@@ -15,6 +15,7 @@ services:
       - ./logs:/app/data/logs
       - ./backend:/app              # Mount source for hot-reload; writable so uvicorn can write __pycache__
       - /app/.venv                  # Anonymous volume keeps the container-installed venv intact (not overridden by host mount)
+      - /app/.uv-cache              # Anonymous volume keeps the container uv cache intact (not overridden by host mount)
     command:
       - "uv"
       - "run"

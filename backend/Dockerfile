@@ -7,6 +7,9 @@ COPY --from=ghcr.io/astral-sh/uv:0.10.6 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
+# Keep uv cache inside /app so the non-root `folio` user (no home dir) can write to it.
+ENV UV_CACHE_DIR=/app/.uv-cache
+
 RUN apt-get update && apt-get install -y --no-install-recommends curl gosu && \
     rm -rf /var/lib/apt/lists/*
 

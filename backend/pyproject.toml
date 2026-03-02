@@ -23,12 +23,13 @@ dependencies = [
     "slowapi>=0.1.9,<1.0",
     # Security - Data Encryption
     "cryptography>=46.0.5",  # CVE-2026-26007: Minimum safe version
+    # HTTP client — used in production by sec_edgar.py
+    "httpx>=0.28.1,<1.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.4,<9.0",
-    "httpx>=0.28.1,<1.0",
     "pytest-mock>=3.14.0,<4.0",
     "pytest-cov>=7.0.0,<8.0",
     "pytest-xdist>=3.6.0,<4.0",
