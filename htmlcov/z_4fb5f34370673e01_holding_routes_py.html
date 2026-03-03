@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_4fb5f34370673e01_persona_routes_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-27 04:03 +0000
+            created at 2026-03-03 16:16 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -250,7 +250,7 @@
     <p class="run run2"><span class="n"><a id="t168" href="#t168">168</a></span><span class="t">    <span class="nam">response</span><span class="op">:</span> <span class="nam">Response</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t169" href="#t169">169</a></span><span class="t">    <span class="nam">display_currency</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"USD"</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t170" href="#t170">170</a></span><span class="t">    <span class="nam">session</span><span class="op">:</span> <span class="nam">Session</span> <span class="op">=</span> <span class="nam">Depends</span><span class="op">(</span><span class="nam">get_session</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t171" href="#t171">171</a></span><span class="t"><span class="op">)</span> <span class="op">-></span> <span class="nam">RebalanceResponse</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t171" href="#t171">171</a></span><span class="t"><span class="op">)</span> <span class="op">-></span> <span class="nam">dict</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t172" href="#t172">172</a></span><span class="t">    <span class="str">"""&#35336;&#31639;&#20877;&#24179;&#34913;&#20998;&#26512;&#65288;&#30446;&#27161; vs &#23526;&#38555;&#37197;&#32622;&#65289;&#12290;&#21487;&#36879;&#36942; display_currency &#25351;&#23450;&#39023;&#31034;&#24163;&#21029;&#12290;"""</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t173" href="#t173">173</a></span><span class="t">    <span class="nam">response</span><span class="op">.</span><span class="nam">headers</span><span class="op">[</span><span class="str">"Cache-Control"</span><span class="op">]</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis mis2 show_mis"><span class="n"><a id="t174" href="#t174">174</a></span><span class="t">        <span class="str">"private, max-age=60, stale-while-revalidate=300"</span>&nbsp;</span><span class="r"></span></p>
@@ -346,7 +346,7 @@
     <p class="run run2"><span class="n"><a id="t264" href="#t264">264</a></span><span class="t"><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t265" href="#t265">265</a></span><span class="t"><span class="key">def</span> <span class="nam">get_currency_exposure</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t266" href="#t266">266</a></span><span class="t">    <span class="nam">session</span><span class="op">:</span> <span class="nam">Session</span> <span class="op">=</span> <span class="nam">Depends</span><span class="op">(</span><span class="nam">get_session</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t267" href="#t267">267</a></span><span class="t"><span class="op">)</span> <span class="op">-></span> <span class="nam">CurrencyExposureResponse</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t267" href="#t267">267</a></span><span class="t"><span class="op">)</span> <span class="op">-></span> <span class="nam">dict</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t268" href="#t268">268</a></span><span class="t">    <span class="str">"""&#35336;&#31639;&#21295;&#29575;&#26333;&#38570;&#20998;&#26512;&#65306;&#24163;&#21029;&#20998;&#20296;&#12289;&#21295;&#29575;&#35722;&#21205;&#12289;&#39080;&#38570;&#31561;&#32026;&#33287;&#24314;&#35696;&#12290;"""</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t269" href="#t269">269</a></span><span class="t">    <span class="key">return</span> <span class="nam">calculate_currency_exposure</span><span class="op">(</span><span class="nam">session</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t270" href="#t270">270</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -440,7 +440,7 @@
             <a class="nav" href="z_4fb5f34370673e01_persona_routes_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-27 04:03 +0000
+            created at 2026-03-03 16:16 +0000
         </p>
     </div>
 </footer>
