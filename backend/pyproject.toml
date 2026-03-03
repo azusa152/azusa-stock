@@ -11,7 +11,7 @@ dependencies = [
     "sqlmodel>=0.0.22,<1.0",
     # Market Data
     "jquants-api-client>=2.0.0",
-    "yfinance>=0.2.58,<1.0",
+    "yfinance[nospam]>=0.2.58,<1.0",
     "curl_cffi>=0.7.4,<1.0",
     "requests>=2.32.4",  # CVE-2024-47081: Minimum safe version
     # Configuration & Utilities

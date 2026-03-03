@@ -63,6 +63,11 @@ _rebalance_cache: TTLCache = TTLCache(
 )
 _rebalance_cache_lock = threading.Lock()
 
+# In-flight 去重：同一 cache_key 同時只允許一個計算在飛行中。
+# 第二個到達的請求等待第一個完成後直接讀快取，避免重複的 yfinance 呼叫。
+_rebalance_inflight_lock = threading.Lock()
+_rebalance_inflight_events: dict[tuple, threading.Event] = {}
+
 
 def invalidate_rebalance_cache() -> None:
     """主動清除再平衡快取（持倉變動後呼叫）。"""
@@ -187,6 +192,52 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         if cached is not None:
             logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
             return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
+
+    # In-flight 去重：同一 cache_key 同時只有一個計算在飛行中。
+    # 後續請求等待主計算完成；若主計算失敗，由一位等待者晉升為新的主計算，
+    # 其餘等待者繼續等候，避免所有等待者同時湧入造成雷鳴群效應。
+    while True:
+        with _rebalance_inflight_lock:
+            if _cache_key in _rebalance_inflight_events:
+                event = _rebalance_inflight_events[_cache_key]
+                is_owner = False
+            else:
+                event = threading.Event()
+                _rebalance_inflight_events[_cache_key] = event
+                is_owner = True
+
+        if not is_owner:
+            logger.debug("再平衡計算去重等待：%s (%s)", display_currency, lang)
+            event.wait()
+            with _rebalance_cache_lock:
+                cached = _rebalance_cache.get(_cache_key)
+                if cached is not None:
+                    return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
+            continue
+
+        try:
+            return _do_calculate_rebalance(session, display_currency, lang, _cache_key)
+        finally:
+            event.set()
+            with _rebalance_inflight_lock:
+                _rebalance_inflight_events.pop(_cache_key, None)
+
+
+def _do_calculate_rebalance(
+    session: Session,
+    display_currency: str,
+    lang: str,
+    _cache_key: tuple,
+) -> dict:
+    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+
+    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
+    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
+    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
+    (3) SQLite 無伺服器端連線逾時；
+    (4) 等待時間受限於主計算耗時（數秒）。
+    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    """
 
     # 1) 取得目標配置
     profile = session.exec(

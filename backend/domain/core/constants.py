@@ -103,6 +103,7 @@ SCAN_HISTORY_DEFAULT_LIMIT = 20
 LATEST_SCAN_LOGS_DEFAULT_LIMIT = 50
 INSTITUTIONAL_HOLDERS_TOP_N = 5
 MARGIN_TREND_QUARTERS = 5
+BETA_MIN_HISTORY_PERIODS = 60  # minimum paired return days for OLS beta computation
 
 # ---------------------------------------------------------------------------
 # Telegram

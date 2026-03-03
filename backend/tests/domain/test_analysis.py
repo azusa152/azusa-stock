@@ -1,6 +1,7 @@
 """Tests for pure analysis functions in domain/analysis.py."""
 
 from domain.analysis import (
+    compute_beta,
     compute_bias_percentile,
     compute_signal_duration,
     compute_twr,
@@ -10,6 +11,7 @@ from domain.analysis import (
 )
 from domain.analysis.analysis import determine_moat_status, score_momentum_composite
 from domain.constants import (
+    BETA_MIN_HISTORY_PERIODS,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     ROGUE_WAVE_BIAS_PERCENTILE,
     ROGUE_WAVE_MIN_HISTORY_DAYS,
@@ -870,6 +872,86 @@ class TestDetermineMoatStatus:
         current = previous + MOAT_MARGIN_DETERIORATION_THRESHOLD  # change == threshold
         status, _ = determine_moat_status(current, previous)
         assert status == MoatStatus.STABLE
+
+
+# ---------------------------------------------------------------------------
+# compute_beta — OLS regression Beta
+# ---------------------------------------------------------------------------
+
+
+class TestComputeBeta:
+    """Tests for compute_beta() — OLS regression beta calculation."""
+
+    def _make_prices(self, n: int, start: float = 100.0, daily_return: float = 0.001):
+        """Generate a synthetic price series with constant daily return."""
+        prices = [start]
+        for _ in range(n - 1):
+            prices.append(prices[-1] * (1 + daily_return))
+        return prices
+
+    def test_should_return_approx_1_for_identical_series(self):
+        prices = self._make_prices(BETA_MIN_HISTORY_PERIODS + 10)
+        beta = compute_beta(prices, prices)
+        assert beta is not None
+        assert abs(beta - 1.0) < 0.01
+
+    def test_should_return_none_when_data_below_min_periods(self):
+        short = self._make_prices(BETA_MIN_HISTORY_PERIODS)
+        market = self._make_prices(BETA_MIN_HISTORY_PERIODS)
+        assert compute_beta(short, market) is None
+
+    def test_should_return_value_when_exactly_min_periods_plus_1(self):
+        n = BETA_MIN_HISTORY_PERIODS + 1
+        stock = self._make_prices(n)
+        market = self._make_prices(n, daily_return=0.002)
+        beta = compute_beta(stock, market)
+        assert beta is not None
+
+    def test_should_return_none_for_flat_market(self):
+        n = BETA_MIN_HISTORY_PERIODS + 10
+        flat_market = [100.0] * n
+        stock = self._make_prices(n)
+        assert compute_beta(stock, flat_market) is None
+
+    def test_should_filter_zero_prices(self):
+        n = BETA_MIN_HISTORY_PERIODS + 10
+        stock = self._make_prices(n)
+        market = self._make_prices(n, daily_return=0.002)
+        stock[5] = 0.0
+        market[10] = 0.0
+        beta = compute_beta(stock, market)
+        assert beta is not None
+
+    def test_should_return_none_when_too_many_zeros_leave_insufficient_pairs(self):
+        n = BETA_MIN_HISTORY_PERIODS + 5
+        stock = [0.0] * n
+        market = self._make_prices(n)
+        assert compute_beta(stock, market) is None
+
+    def test_should_handle_different_length_series(self):
+        stock = self._make_prices(BETA_MIN_HISTORY_PERIODS + 50)
+        market = self._make_prices(BETA_MIN_HISTORY_PERIODS + 20, daily_return=0.002)
+        beta = compute_beta(stock, market)
+        assert beta is not None
+
+    def test_should_round_to_two_decimal_places(self):
+        n = BETA_MIN_HISTORY_PERIODS + 50
+        stock = self._make_prices(n, daily_return=0.003)
+        market = self._make_prices(n, daily_return=0.002)
+        beta = compute_beta(stock, market)
+        assert beta is not None
+        assert beta == round(beta, 2)
+
+    def test_should_return_negative_beta_for_inverse_series(self):
+        n = BETA_MIN_HISTORY_PERIODS + 50
+        market = self._make_prices(n, daily_return=0.01)
+        inverse_stock = [100.0]
+        for i in range(1, n):
+            market_ret = (market[i] - market[i - 1]) / market[i - 1]
+            inverse_stock.append(inverse_stock[-1] * (1 - market_ret))
+        beta = compute_beta(inverse_stock, market)
+        assert beta is not None
+        assert beta < 0
 
 
 # ---------------------------------------------------------------------------

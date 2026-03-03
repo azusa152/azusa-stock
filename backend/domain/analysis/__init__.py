@@ -3,6 +3,7 @@
 from domain.analysis.analysis import (  # noqa: F401
     classify_cnn_fear_greed,
     classify_vix,
+    compute_beta,
     compute_bias,
     compute_bias_percentile,
     compute_composite_fear_greed,

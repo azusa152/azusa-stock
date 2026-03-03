@@ -201,16 +201,18 @@ class TestPrimeSignalsCacheBatchSkip:
 
 
 class TestPrimeSignalsCacheBatchWrite:
-    """prime_signals_cache_batch should write successful results to L1 only (not L2).
+    """prime_signals_cache_batch writes successful results to both L1 and L2.
 
-    Prewarm results intentionally omit institutional_holders (no extra yf.Ticker() call).
-    Writing to L2 (1hr TTL) would lock in that incomplete data. Instead, only L1 (5min)
-    is warmed; the first L1 miss after expiry triggers a full fetch that populates L2.
+    Prewarm results omit institutional_holders (no extra yf.Ticker() call), but
+    core signal fields (price, RSI, MA) are fully populated. Writing to L2 ensures
+    warm restarts benefit from the prewarmed data, reducing startup time from ~25s
+    to ~0s. The first L1 miss after expiry triggers a full fetch that overwrites L2
+    with complete data including institutional_holders.
     """
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
-    def test_should_write_success_result_to_l1_only_not_l2(
+    def test_should_write_success_result_to_both_l1_and_l2(
         self, mock_fetch, mock_disk_set
     ):
         # Arrange — L1 empty, fetcher returns valid signals
@@ -223,10 +225,10 @@ class TestPrimeSignalsCacheBatchWrite:
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
-        # Assert — L1 is warmed, L2 (disk) is intentionally NOT written during prewarm
+        # Assert — L1 is warmed; L2 is also written to enable fast warm restarts
         assert primed == 1
         assert l1.get("AAPL") == signals
-        mock_disk_set.assert_not_called()
+        mock_disk_set.assert_called_once_with("signals:AAPL", signals, 3600)
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")

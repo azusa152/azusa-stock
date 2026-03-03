@@ -77,22 +77,26 @@ def build_moat_details(
 ) -> str:
     """
     根據護城河判定結果，產生使用者可讀的詳情文字。
+    current_margin / previous_margin 為 None 時安全降級為 "N/A"。
     """
     from domain.enums import MoatStatus
+
+    current = f"{current_margin:.2f}" if current_margin is not None else "N/A"
+    previous = f"{previous_margin:.2f}" if previous_margin is not None else "N/A"
 
     if moat_status_value == MoatStatus.DETERIORATING.value:
         return t(
             "formatter.moat_deteriorating",
             lang=lang,
-            current=current_margin,
-            previous=previous_margin,
-            change=abs(change),
+            current=current,
+            previous=previous,
+            change=f"{abs(change):.2f}",
         )
     return t(
         "formatter.moat_stable",
         lang=lang,
-        current=current_margin,
-        previous=previous_margin,
+        current=current,
+        previous=previous,
         sign="+" if change >= 0 else "",
-        change=change,
+        change=f"{change:.2f}",
     )
