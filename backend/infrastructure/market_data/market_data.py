@@ -13,6 +13,7 @@ import math
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
 from typing import TypeVar
 
@@ -84,6 +85,7 @@ from domain.constants import (
     DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
+    DISK_MOAT_PERSISTENT_TTL,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
     DISK_PRICE_PAIR_TTL,
@@ -123,6 +125,7 @@ from domain.constants import (
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
+    MOAT_PERSISTENT_FAILURE_THRESHOLD,
     NIKKEI_VI_TICKER,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
@@ -224,6 +227,11 @@ def _deduped_fetch(
         key: 唯一識別此請求的字串（通常為 disk_prefix:ticker）。
         fetcher: 實際執行 yfinance 呼叫並寫入快取的函式。
         result_getter: 等待完成後用來讀取快取結果的函式（fetcher 寫入後呼叫）。
+
+    Note: 同一 ticker 在 debug 日誌中出現兩筆「L1+L2 皆未命中」是正常現象。
+    兩個並發請求都在進入 _deduped_fetch 之前就已記錄 cache miss；
+    但 _inflight_lock 確保只有第一個執行緒實際呼叫 yfinance，
+    第二個執行緒透過 result_getter() 取得第一個執行緒寫入的快取結果。
     """
     with _inflight_lock:
         if key in _inflight_events:
@@ -759,6 +767,28 @@ def prewarm_signals_batch(
     return results
 
 
+def count_signals_in_l1(tickers: list[str]) -> int:
+    """回傳在 L1 訊號快取中已存在且有效的 ticker 數量。
+
+    僅計入非錯誤結果（不含 {"error": ...}），避免因短暫錯誤快取造成
+    scan_service 誤判「L1 已經很暖」而略過 batch download。
+    """
+    count = 0
+    for ticker in tickers:
+        cached = _signals_cache.get(ticker)
+        if cached is None:
+            continue
+        if _is_error_dict(cached):
+            continue
+        count += 1
+    return count
+
+
+def are_all_signals_in_l1(tickers: list[str]) -> bool:
+    """若所有 ticker 都已在 L1 訊號快取中，回傳 True。"""
+    return all(_signals_cache.get(t) is not None for t in tickers)
+
+
 # ===========================================================================
 # 股價歷史（Price History）
 # ===========================================================================
@@ -999,9 +1029,18 @@ def _is_moat_error(result) -> bool:
     )
 
 
+_moat_failure_counts: dict[str, int] = {}
+_moat_failure_lock = threading.Lock()
+
+
 def analyze_moat_trend(ticker: str) -> dict:
-    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。"""
-    return _cached_fetch(
+    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。
+
+    持續失敗策略：同一 ticker 連續失敗達 MOAT_PERSISTENT_FAILURE_THRESHOLD 次後，
+    將錯誤哨兵寫入 L2（1天），避免每次 L1 過期後重複觸發 3 秒的速率限制 API 呼叫。
+    成功時重置失敗計數，確保 L2 哨兵過期後可正常恢復。
+    """
+    result = _cached_fetch(
         _moat_cache,
         ticker,
         DISK_KEY_MOAT,
@@ -1009,6 +1048,26 @@ def analyze_moat_trend(ticker: str) -> dict:
         _fetch_moat_from_yf,
         is_error=_is_moat_error,
     )
+
+    if _is_moat_error(result):
+        with _moat_failure_lock:
+            count = _moat_failure_counts.get(ticker, 0) + 1
+            _moat_failure_counts[ticker] = count
+        # Write the persistent sentinel only once when crossing the threshold.
+        if count == MOAT_PERSISTENT_FAILURE_THRESHOLD:
+            disk_key = f"{DISK_KEY_MOAT}:{ticker}"
+            _disk_set(disk_key, result, DISK_MOAT_PERSISTENT_TTL)
+            logger.info(
+                "%s 護城河持續失敗 %d 次，寫入 L2 延長快取（TTL=%ds）。",
+                ticker,
+                count,
+                DISK_MOAT_PERSISTENT_TTL,
+            )
+    else:
+        with _moat_failure_lock:
+            _moat_failure_counts.pop(ticker, None)
+
+    return result
 
 
 def prewarm_moat_batch(
@@ -1822,20 +1881,11 @@ def _fetch_fear_greed(_key: str) -> dict:
     _key 固定為 "composite"。
 
     計算流程：
-    1. 取得 VIX（現有）與 CNN（現有）
-    2. 並行取得 6 個 ETF 的近期收盤價（SPY, TLT, HYG, RSP, QQQ, XLP）
-    3. 計算 7 項組件分數（各 0–100）
-    4. 加權平均得自計算分數
-    5. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
+    1. 並行取得 VIX、CNN、及 6 個 ETF 的近期收盤價（8 個任務同時執行）
+    2. 計算 7 項組件分數（各 0–100）
+    3. 加權平均得自計算分數
+    4. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
     """
-    import concurrent.futures
-
-    vix_data = get_vix_data()
-    cnn_data = get_cnn_fear_greed()
-    vix_value = vix_data.get("value")
-    cnn_score = cnn_data.get("score") if cnn_data else None
-
-    # Fetch price histories for all 6 component ETFs in parallel
     _fg_tickers = [
         FG_SPY_TICKER,
         FG_TLT_TICKER,
@@ -1844,12 +1894,21 @@ def _fetch_fear_greed(_key: str) -> dict:
         FG_QQQ_TICKER,
         FG_XLP_TICKER,
     ]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        futures = {
+
+    # Fetch VIX, CNN, and all 6 ETF histories fully in parallel (8 tasks)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        vix_future = pool.submit(get_vix_data)
+        cnn_future = pool.submit(get_cnn_fear_greed)
+        etf_futures = {
             ticker: pool.submit(_fetch_fg_component_history_safe, ticker)
             for ticker in _fg_tickers
         }
-        results = {ticker: f.result() for ticker, f in futures.items()}
+        vix_data = vix_future.result()
+        cnn_data = cnn_future.result()
+        results = {ticker: f.result() for ticker, f in etf_futures.items()}
+
+    vix_value = vix_data.get("value")
+    cnn_score = cnn_data.get("score") if cnn_data else None
 
     spy_prices = results[FG_SPY_TICKER]
     tlt_prices = results[FG_TLT_TICKER]

@@ -34,6 +34,7 @@ from domain.rebalance import (
 )
 from i18n import get_user_language, t
 from infrastructure.market_data import (
+    are_all_signals_in_l1,
     get_etf_sector_weights,
     get_etf_top_holdings,
     get_exchange_rates,
@@ -271,8 +272,13 @@ def _do_calculate_rebalance(
     # 3.5) 並行預熱所有非現金持倉的技術訊號（避免逐一串行呼叫 yfinance）
     non_cash_tickers = list({h.ticker for h in holdings if not h.is_cash})
     if non_cash_tickers:
-        logger.info("並行預熱 %d 檔股票技術訊號...", len(non_cash_tickers))
-        prewarm_signals_batch(non_cash_tickers)
+        if are_all_signals_in_l1(non_cash_tickers):
+            logger.debug(
+                "所有 %d 檔股票技術訊號已在 L1 快取，略過預熱。", len(non_cash_tickers)
+            )
+        else:
+            logger.info("並行預熱 %d 檔股票技術訊號...", len(non_cash_tickers))
+            prewarm_signals_batch(non_cash_tickers)
 
     # 4) 使用共用邏輯計算各持倉市值
     _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(

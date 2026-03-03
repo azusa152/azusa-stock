@@ -496,3 +496,42 @@ class TestCheckPriceAlerts:
 
         # Scan signal alert should still have been attempted
         mock_telegram.assert_called()
+
+
+class TestScanWarmL1SkipBatchDownload:
+    @patch("application.scan.scan_service.send_telegram_message_dual")
+    @patch("application.scan.scan_service.get_fear_greed_index")
+    @patch("application.scan.scan_service.analyze_moat_trend")
+    @patch("application.scan.scan_service.get_bias_distribution")
+    @patch("application.scan.scan_service.get_technical_signals")
+    @patch("application.scan.scan_service.analyze_market_sentiment")
+    @patch("application.scan.scan_service.prime_signals_cache_batch")
+    @patch("application.scan.scan_service.batch_download_history")
+    @patch("application.scan.scan_service.count_signals_in_l1")
+    def test_should_skip_batch_download_when_l1_hit_rate_is_warm(
+        self,
+        mock_count_l1,
+        mock_batch_download,
+        mock_prime_batch,
+        mock_sentiment,
+        mock_signals,
+        mock_bias_dist,
+        mock_moat,
+        mock_fg,
+        mock_telegram,
+        db_session: Session,
+    ):
+        _add_growth_stock(db_session, ticker="AAPL")
+        _add_growth_stock(db_session, ticker="MSFT")
+
+        mock_count_l1.return_value = 2  # 100% hit rate
+        mock_sentiment.return_value = _MOCK_MARKET_SENTIMENT
+        mock_signals.return_value = _BASE_SIGNALS
+        mock_bias_dist.return_value = _MOCK_BIAS_DIST
+        mock_moat.return_value = _MOCK_MOAT
+        mock_fg.return_value = _MOCK_FG
+
+        run_scan(db_session)
+
+        mock_batch_download.assert_not_called()
+        mock_prime_batch.assert_not_called()

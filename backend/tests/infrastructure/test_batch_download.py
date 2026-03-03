@@ -32,6 +32,7 @@ from cachetools import TTLCache  # noqa: E402
 
 from infrastructure.market_data import (  # noqa: E402
     batch_download_history,
+    count_signals_in_l1,
     prime_signals_cache_batch,
 )
 
@@ -282,3 +283,17 @@ class TestPrimeSignalsCacheBatchWrite:
 
         # Assert — pre_fetched_hist was passed
         mock_fetch.assert_called_once_with("AAPL", pre_fetched_hist=hist)
+
+
+class TestCountSignalsInL1:
+    """count_signals_in_l1 should count only valid (non-error) L1 entries."""
+
+    def test_should_count_only_non_error_entries(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+        l1["MSFT"] = {"error": "temporary failure"}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            count = count_signals_in_l1(["AAPL", "MSFT", "GOOGL"])
+
+        assert count == 1
