@@ -31,6 +31,7 @@ import pandas as pd  # noqa: E402
 from cachetools import TTLCache  # noqa: E402
 
 from infrastructure.market_data import (  # noqa: E402
+    are_all_signals_in_l1,
     batch_download_history,
     count_signals_in_l1,
     prime_signals_cache_batch,
@@ -297,3 +298,27 @@ class TestCountSignalsInL1:
             count = count_signals_in_l1(["AAPL", "MSFT", "GOOGL"])
 
         assert count == 1
+
+
+class TestAreAllSignalsInL1:
+    """are_all_signals_in_l1 should only return True when every ticker is cached."""
+
+    def test_should_return_true_for_empty_ticker_list(self):
+        l1 = _fresh_signals_l1()
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1([]) is True
+
+    def test_should_return_true_when_all_tickers_are_cached(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+        l1["MSFT"] = {"ticker": "MSFT", "price": 200.0}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1(["AAPL", "MSFT"]) is True
+
+    def test_should_return_false_when_any_ticker_is_missing(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1(["AAPL", "MSFT"]) is False

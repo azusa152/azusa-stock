@@ -343,6 +343,117 @@ class TestRebalancePortfolioChange:
         assert nvda_holding["change_pct"] == pytest.approx(9.09, rel=0.01)
         assert aapl_holding["change_pct"] == pytest.approx(-5.56, rel=0.01)
 
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.are_all_signals_in_l1")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
+    def test_calculate_rebalance_should_skip_prewarm_when_signals_already_warm(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        mock_l1_all_warm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 100}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="NVDA",
+                category=StockCategory.GROWTH,
+                quantity=10.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        mock_l1_all_warm.return_value = True
+        mock_fx.return_value = {"USD": 1.0}
+        mock_signals.return_value = {
+            "price": 110.0,
+            "previous_close": 108.0,
+            "change_pct": 1.85,
+        }
+
+        calculate_rebalance(db_session, "USD")
+
+        mock_l1_all_warm.assert_called_once_with(["NVDA"])
+        mock_prewarm.assert_not_called()
+
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
+    def test_calculate_rebalance_should_fallback_to_zero_when_price_and_cost_are_missing(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        _mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 100}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="NO_PRICE",
+                category=StockCategory.GROWTH,
+                quantity=5.0,
+                cost_basis=None,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        mock_fx.return_value = {"USD": 1.0}
+        mock_signals.return_value = {"price": None, "previous_close": None}
+
+        result = calculate_rebalance(db_session, "USD")
+
+        assert result["total_value"] == pytest.approx(0.0, rel=0.01)
+        assert result["previous_total_value"] == pytest.approx(0.0, rel=0.01)
+        assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
+        assert result["total_value_change_pct"] is None
+
 
 class TestRebalanceAdviceTranslation:
     """Application-layer step 5.5: advice must be list[str], not list[dict]."""
