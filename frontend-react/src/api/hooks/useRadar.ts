@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import type {
   RadarStock,
   RemovedStock,
@@ -27,8 +27,9 @@ export function useRadarStocks() {
   return useQuery<RadarStock[]>({
     queryKey: ["stocks"],
     queryFn: async () => {
-      const { data } = await apiClient.get<RadarStock[]>("/stocks")
-      return data
+      const { data, error } = await client.GET("/stocks")
+      if (error) throw error
+      return data as unknown as RadarStock[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -38,8 +39,9 @@ export function useRadarEnrichedStocks() {
   return useQuery<RadarEnrichedStock[]>({
     queryKey: ["stocks", "enriched"],
     queryFn: async () => {
-      const { data } = await apiClient.get<RadarEnrichedStock[]>("/stocks/enriched")
-      return data
+      const { data, error } = await client.GET("/stocks/enriched")
+      if (error) throw error
+      return data as unknown as RadarEnrichedStock[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -49,8 +51,9 @@ export function useRemovedStocks() {
   return useQuery<RemovedStock[]>({
     queryKey: ["stocks", "removed"],
     queryFn: async () => {
-      const { data } = await apiClient.get<RemovedStock[]>("/stocks/removed")
-      return data
+      const { data, error } = await client.GET("/stocks/removed")
+      if (error) throw error
+      return data as unknown as RemovedStock[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -60,8 +63,9 @@ export function useScanStatus() {
   return useQuery<ScanStatusResponse>({
     queryKey: ["scan", "status"],
     queryFn: async () => {
-      const { data } = await apiClient.get<ScanStatusResponse>("/scan/status")
-      return data
+      const { data, error } = await client.GET("/scan/status")
+      if (error) throw error
+      return data as unknown as ScanStatusResponse
     },
     staleTime: 0,
     refetchInterval: 60 * 1000,
@@ -72,12 +76,13 @@ export function useResonance() {
   return useQuery<ResonanceMap>({
     queryKey: ["resonance"],
     queryFn: async () => {
-      const { data } = await apiClient.get<ResonanceResponse>("/resonance")
+      const { data, error } = await client.GET("/resonance")
+      if (error) throw error
+      const response = data as unknown as ResonanceResponse
       // Invert guru-centric response into ticker→gurus map for O(1) card lookup
       const acc: ResonanceMap = {}
-      for (const entry of data.results) {
+      for (const entry of response.results) {
         for (const rawH of entry.holdings) {
-          // entry.holdings is list[dict] in the backend → cast to known shape
           const h = rawH as unknown as ResonanceHolding
           const item: ResonanceHolding & { guru_display_name: string } = {
             ticker: h.ticker,
@@ -99,8 +104,11 @@ export function useThesisHistory(ticker: string, enabled: boolean) {
   return useQuery<ThesisLog[]>({
     queryKey: ["thesis", ticker],
     queryFn: async () => {
-      const { data } = await apiClient.get<ThesisLog[]>(`/ticker/${ticker}/thesis`)
-      return data
+      const { data, error } = await client.GET("/ticker/{ticker}/thesis", {
+        params: { path: { ticker } },
+      })
+      if (error) throw error
+      return data as unknown as ThesisLog[]
     },
     enabled,
     staleTime: 0,
@@ -111,8 +119,11 @@ export function useRemovalHistory(ticker: string, enabled: boolean) {
   return useQuery<RemovalLog[]>({
     queryKey: ["removals", ticker],
     queryFn: async () => {
-      const { data } = await apiClient.get<RemovalLog[]>(`/ticker/${ticker}/removals`)
-      return data
+      const { data, error } = await client.GET("/ticker/{ticker}/removals", {
+        params: { path: { ticker } },
+      })
+      if (error) throw error
+      return data as unknown as RemovalLog[]
     },
     enabled,
     staleTime: 0,
@@ -140,8 +151,11 @@ export function usePriceHistory(ticker: string, enabled: boolean) {
   return useQuery<PricePoint[]>({
     queryKey: ["priceHistory", ticker],
     queryFn: async () => {
-      const { data } = await apiClient.get<PricePoint[]>(`/ticker/${ticker}/price-history`)
-      return data
+      const { data, error } = await client.GET("/ticker/{ticker}/price-history", {
+        params: { path: { ticker } },
+      })
+      if (error) throw error
+      return data as unknown as PricePoint[]
     },
     enabled,
     staleTime: 5 * 60 * 1000,
@@ -152,8 +166,11 @@ export function useMoatAnalysis(ticker: string, enabled: boolean) {
   return useQuery<MoatAnalysis>({
     queryKey: ["moat", ticker],
     queryFn: async () => {
-      const { data } = await apiClient.get<MoatAnalysis>(`/ticker/${ticker}/moat`)
-      return data
+      const { data, error } = await client.GET("/ticker/{ticker}/moat", {
+        params: { path: { ticker } },
+      })
+      if (error) throw error
+      return data as unknown as MoatAnalysis
     },
     enabled,
     staleTime: 60 * 60 * 1000,
@@ -168,7 +185,8 @@ export function useAddStock() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: AddStockRequest) => {
-      const { data } = await apiClient.post("/ticker", payload)
+      const { data, error } = await client.POST("/ticker", { body: payload })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -181,7 +199,8 @@ export function useTriggerScan() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/scan")
+      const { data, error } = await client.POST("/scan")
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -194,7 +213,11 @@ export function useDeactivateStock() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ ticker, payload }: { ticker: string; payload: DeactivateRequest }) => {
-      const { data } = await apiClient.post(`/ticker/${ticker}/deactivate`, payload)
+      const { data, error } = await client.POST("/ticker/{ticker}/deactivate", {
+        params: { path: { ticker } },
+        body: payload,
+      })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -207,7 +230,11 @@ export function useReactivateStock() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ ticker, payload }: { ticker: string; payload: ReactivateRequest }) => {
-      const { data } = await apiClient.post(`/ticker/${ticker}/reactivate`, payload)
+      const { data, error } = await client.POST("/ticker/{ticker}/reactivate", {
+        params: { path: { ticker } },
+        body: payload,
+      })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -220,7 +247,11 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ ticker, payload }: { ticker: string; payload: UpdateCategoryRequest }) => {
-      const { data } = await apiClient.patch(`/ticker/${ticker}/category`, payload)
+      const { data, error } = await client.PATCH("/ticker/{ticker}/category", {
+        params: { path: { ticker } },
+        body: payload,
+      })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -233,7 +264,8 @@ export function useReorderStocks() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: ReorderRequest) => {
-      const { data } = await apiClient.put("/stocks/reorder", payload)
+      const { data, error } = await client.PUT("/stocks/reorder", { body: payload })
+      if (error) throw error
       return data
     },
     onSuccess: () => {
@@ -246,7 +278,11 @@ export function useAddThesis() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ ticker, payload }: { ticker: string; payload: AddThesisRequest }) => {
-      const { data } = await apiClient.post(`/ticker/${ticker}/thesis`, payload)
+      const { data, error } = await client.POST("/ticker/{ticker}/thesis", {
+        params: { path: { ticker } },
+        body: payload,
+      })
+      if (error) throw error
       return data
     },
     onSuccess: (_data, variables) => {
@@ -260,7 +296,8 @@ export function useImportStocks() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (items: StockImportItem[]) => {
-      const { data } = await apiClient.post("/stocks/import", items)
+      const { data, error } = await client.POST("/stocks/import", { body: items })
+      if (error) throw error
       return data
     },
     onSuccess: () => {

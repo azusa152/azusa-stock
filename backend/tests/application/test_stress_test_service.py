@@ -177,7 +177,7 @@ class TestCalculateStressTestHappyPath:
         def beta_side_effect(ticker):
             if ticker == "NVDA":
                 return 1.8
-            elif ticker == "2330.TW":
+            if ticker == "2330.TW":
                 return 1.2
             return None
 

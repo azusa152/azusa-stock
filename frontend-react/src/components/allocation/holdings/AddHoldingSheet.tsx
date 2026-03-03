@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/sheet"
 import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
 import { useHoldings } from "@/api/hooks/useDashboard"
-import apiClient from "@/api/client"
 import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
 import type { StockCategory } from "@/api/types/allocation"
+import type { components } from "@/api/types/generated"
 
 interface Props {
   open: boolean
@@ -39,7 +39,9 @@ export function AddHoldingSheet({ open, onClose }: Props) {
 
   const [feedback, setFeedback] = useState<string | null>(null)
   const [importFeedback, setImportFeedback] = useState<string | null>(null)
-  const [pendingImport, setPendingImport] = useState<unknown[] | null>(null)
+  const [pendingImport, setPendingImport] = useState<
+    components["schemas"]["HoldingImportItem"][] | null
+  >(null)
 
   const addHoldingMutation = useAddHolding()
   const addCashMutation = useAddCashHolding()
@@ -161,7 +163,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           setImportFeedback(t("allocation.sidebar.import_error_format"))
           return
         }
-        setPendingImport(parsed)
+        setPendingImport(parsed as components["schemas"]["HoldingImportItem"][])
         setImportFeedback(t("allocation.sidebar.import_detected", { count: parsed.length }))
       } catch {
         setImportFeedback(t("allocation.sidebar.import_error_json"))
@@ -187,15 +189,22 @@ export function AddHoldingSheet({ open, onClose }: Props) {
 
   const handleExport = async () => {
     try {
-      const response = await apiClient.get("/holdings/export", { responseType: "blob" })
-      const url = URL.createObjectURL(new Blob([response.data]))
+      const headers: HeadersInit = {}
+      const apiKey = import.meta.env.VITE_API_KEY
+      if (apiKey) headers["X-API-Key"] = apiKey
+
+      const response = await fetch("/api/holdings/export", { headers })
+      if (!response.ok) throw new Error(response.statusText)
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
       link.download = "holdings.json"
       link.click()
       URL.revokeObjectURL(url)
     } catch {
-      // silently fail
+      toast.error(t("common.error"))
     }
   }
 

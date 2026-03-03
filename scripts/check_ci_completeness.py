@@ -26,6 +26,7 @@ MAKEFILE = ROOT / "Makefile"
 KNOWN_JOB_MAP: dict[str, str] = {
     "test": "backend-test",
     "lint": "backend-lint",
+    "typecheck": "backend-typecheck",
     "api-spec": "check-api-spec",
     "frontend-lint": "frontend-lint",
     "frontend-build": "frontend-build",

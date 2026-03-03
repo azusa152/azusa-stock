@@ -5,6 +5,10 @@
 ## Quick Start
 
 ```bash
+# First-time: install uv (Python package manager) if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+make setup               # First-time setup: uv sync + npm ci + codegen + pre-commit hooks
 docker compose up -d
 make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs
 make test                # Run all tests (backend + frontend)
@@ -21,24 +25,24 @@ CI runs **Python 3.12** (pinned in `.python-version` and `.github/workflows/ci.y
 ```bash
 pyenv install 3.12        # install if needed
 pyenv local 3.12          # picks up .python-version automatically
-make install              # rebuilds venv with the correct Python
+make install              # rebuilds venv with the correct Python (also generates backend/uv.lock)
 ```
 
 `make generate-api` and `make check-api-spec` will warn if your venv Python doesn't match `.python-version`.
 
-## Dependency Management (pip-tools)
+## Dependency Management (uv)
 
-Backend dependencies use [pip-tools](https://pip-tools.readthedocs.io/) for reproducible builds:
+Backend dependencies are managed with [uv](https://docs.astral.sh/uv/) for fast, reproducible builds:
 
-- **`backend/requirements.in`** — direct dependencies with loose version constraints (edit this)
-- **`backend/requirements.txt`** — auto-generated lock file with all transitive deps pinned (do NOT edit by hand)
+- **`backend/pyproject.toml`** — project metadata + direct dependencies (edit this)
+- **`backend/uv.lock`** — auto-generated lock file with all transitive deps pinned (do NOT edit by hand; commit to git)
 
 ```bash
-make lock          # Resolve requirements.in → requirements.txt (after editing .in)
+make lock          # Resolve pyproject.toml → uv.lock (after editing pyproject.toml)
 make upgrade       # Re-lock all deps to latest compatible versions
 ```
 
-**Workflow:** To add or change a dependency, edit `requirements.in`, then run `make lock`. Both files are committed to git. Docker builds install from the lock file for reproducibility.
+**Workflow:** To add or change a dependency, edit `backend/pyproject.toml` `[project.dependencies]` or `[dependency-groups]`, then run `make lock`. Commit both files. Docker builds use `uv sync --frozen` for reproducibility.
 
 ## Frontend Development
 

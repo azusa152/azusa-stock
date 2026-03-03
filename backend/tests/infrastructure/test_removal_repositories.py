@@ -1,5 +1,6 @@
 """Tests for RemovalLog, ThesisLog, and ScanLog repository functions in repositories.py."""
 
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -22,7 +23,7 @@ from infrastructure.repositories import (
 
 
 @pytest.fixture
-def test_session() -> Session:
+def test_session() -> Iterator[Session]:
     from tests.conftest import test_engine
 
     with Session(test_engine) as session:

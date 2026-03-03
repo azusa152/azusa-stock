@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    FG_SPY_TICKER,
     GURU_BACKFILL_YEARS,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
@@ -49,7 +50,7 @@ def is_prewarm_ready() -> bool:
 
 
 def _set_prewarm_ready(value: bool) -> None:
-    global _prewarm_ready  # noqa: PLW0603
+    global _prewarm_ready
     with _prewarm_lock:
         _prewarm_ready = value
 
@@ -90,8 +91,22 @@ def prewarm_all_caches() -> None:
         len(tickers["etf"]),
     )
 
-    # Phase 1: 技術訊號（批次下載，大幅減少 HTTP 請求數量）
-    _prewarm_phase("signals", lambda: _batch_prewarm_signals(tickers["signals"]))
+    # Phase 1: 技術訊號（批次下載，大幅減少 HTTP 請求數量）。
+    # 同時將 hist_batch 傳給 Phase 2 的 beta 預熱，避免逐一呼叫 yfinance info。
+    hist_batch: dict = {}
+    phase1_start = time.monotonic()
+    try:
+        hist_batch = _batch_prewarm_signals(tickers["signals"])
+        logger.info(
+            "快取預熱 [signals] 完成，耗時 %.1f 秒。", time.monotonic() - phase1_start
+        )
+    except Exception as exc:
+        logger.warning(
+            "快取預熱 [signals] 異常中止，耗時 %.1f 秒：%s",
+            time.monotonic() - phase1_start,
+            exc,
+            exc_info=True,
+        )
 
     # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
     # moat 預熱使用 4 個工作執行緒（預設 SCAN_THREAD_POOL_SIZE=2 限制吞吐量；
@@ -115,7 +130,12 @@ def prewarm_all_caches() -> None:
             ("etf_sector_weights", lambda: _prewarm_etf_sector_weights(tickers["etf"]))
         )
     if tickers["beta"]:
-        parallel_phases.append(("beta", lambda: prewarm_beta_batch(tickers["beta"])))
+        parallel_phases.append(
+            (
+                "beta",
+                lambda: prewarm_beta_batch(tickers["beta"], hist_batch=hist_batch),
+            )
+        )
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
 
@@ -173,6 +193,9 @@ def _collect_tickers() -> dict[str, list[str]]:
     # Union of watchlist + holdings (unique)
     all_tickers = set(stock_map.keys()) | holding_tickers
 
+    # ETF tickers from watchlist（用於排除 moat 分析，含持倉中的 ETF 標的）
+    known_etf_tickers = {t for t, s in stock_map.items() if s.is_etf}
+
     # Signals: 排除 Cash 類
     signals_tickers = [
         t
@@ -181,19 +204,25 @@ def _collect_tickers() -> dict[str, list[str]]:
         or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
     ]
 
-    # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）
+    # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）。
+    # known_etf_tickers 包含 watchlist 中 is_etf=True 的標的，即使它們同時出現在持倉中也予以排除。
+    # 注意：持倉中不在 watchlist 的 ETF 標的（如 0050.TW）若未正確設定 is_etf=True，
+    # 仍可能進入 moat 分析並以 NOT_AVAILABLE 優雅降級。根本修復請確認 DB 中 is_etf 欄位。
     moat_tickers = [
         t
         for t in all_tickers
-        if t not in stock_map
-        or (
-            stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
-            and not stock_map[t].is_etf
+        if t not in known_etf_tickers
+        and (
+            t not in stock_map
+            or (
+                stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
+                and not stock_map[t].is_etf
+            )
         )
     ]
 
-    # ETF: 只有追蹤清單中 is_etf=True 的標的
-    etf_tickers = [t for t, s in stock_map.items() if s.is_etf]
+    # ETF: 只有追蹤清單中 is_etf=True 的標的（與 known_etf_tickers 相同）
+    etf_tickers = sorted(known_etf_tickers)
 
     # Beta: 與 signals 使用相同範圍（排除 Cash）
     # 若未來需要不同過濾邏輯（如包含 Bond），再拆分
@@ -227,16 +256,29 @@ def _collect_tickers() -> dict[str, list[str]]:
     }
 
 
-def _batch_prewarm_signals(signal_tickers: list[str]) -> None:
+def _batch_prewarm_signals(signal_tickers: list[str]) -> dict:
     """批次下載所有標的歷史資料（一次 HTTP 請求），再並行計算訊號填充快取。
     若批次下載失敗或部分標的缺資料，回退至逐一呼叫。
+
+    SPY 會加入批次下載（即使不在 watchlist）以供 Beta 快速路徑使用。
+
+    回傳 hist_batch（{ticker: DataFrame}），供 prewarm_all_caches 傳給 beta 預熱階段。
     """
     if not signal_tickers:
-        return
+        return {}
 
-    hist_batch = batch_download_history(signal_tickers)
+    # 包含 SPY 以供 Beta 計算使用（若已在 signal_tickers 中則不重複）
+    download_tickers = (
+        signal_tickers
+        if FG_SPY_TICKER in signal_tickers
+        else [*signal_tickers, FG_SPY_TICKER]
+    )
+
+    hist_batch = batch_download_history(download_tickers)
     if hist_batch:
-        primed = prime_signals_cache_batch(hist_batch)
+        # 僅對 signal_tickers 進行訊號預熱（SPY 不在 watchlist，跳過訊號計算）
+        signal_hist = {t: hist_batch[t] for t in signal_tickers if t in hist_batch}
+        primed = prime_signals_cache_batch(signal_hist)
         logger.info(
             "快取預熱 [signals] 批次預熱 %d/%d 檔。", primed, len(signal_tickers)
         )
@@ -254,6 +296,8 @@ def _batch_prewarm_signals(signal_tickers: list[str]) -> None:
         logger.warning("快取預熱 [signals] 批次下載失敗，回退至個別呼叫。")
         prewarm_signals_batch(signal_tickers)
 
+    return hist_batch
+
 
 def _backfill_all_gurus() -> None:
     """對所有啟用中大師執行 5 年 13F 歷史回填。
@@ -261,7 +305,7 @@ def _backfill_all_gurus() -> None:
     冪等：已同步的申報自動跳過，重複啟動安全。
     """
     # Late import to avoid circular dependency (prewarm → filing_service → repositories)
-    from application.stock.filing_service import backfill_guru_filings  # noqa: PLC0415
+    from application.stock.filing_service import backfill_guru_filings
 
     with Session(engine) as session:
         gurus = find_all_active_gurus(session)

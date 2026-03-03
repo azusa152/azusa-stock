@@ -126,7 +126,9 @@
     "withdrawal_no_holdings": "⚠️ No holdings available for withdrawal calculation.",
     "withdrawal_recommendations": "📋 Recommended Sells:",
     "withdrawal_total": "💵 Total Available: {amount} {currency}",
-    "withdrawal_shortfall": "⚠️ Shortfall: {amount} {currency}"
+    "withdrawal_shortfall": "⚠️ Shortfall: {amount} {currency}",
+    "moat_stable": "Moat stable: gross margin {current}% vs prior year {previous}% ({sign}{change} pp)",
+    "moat_deteriorating": "Moat deteriorating: gross margin {current}% → prior year {previous}% (down {change} pp)"
   },
   "rebalance": {
     "no_profile": "Investment profile not configured. Please set up your portfolio target first.",

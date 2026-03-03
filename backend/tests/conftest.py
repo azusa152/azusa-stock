@@ -26,7 +26,7 @@ os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
 
 # Patch disk cache dir and data dir before any infrastructure imports
-import domain.constants  # noqa: E402
+import domain.constants
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
@@ -178,6 +178,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan.scan_service.analyze_moat_trend", MOCK_MOAT),
     ("application.scan.scan_service.get_fear_greed_index", MOCK_FEAR_GREED),
     ("application.scan.scan_service.get_bias_distribution", {}),
+    ("application.scan.scan_service.count_signals_in_l1", 0),
     # rebalance_service
     ("application.portfolio.rebalance_service.get_technical_signals", MOCK_SIGNALS),
     ("application.portfolio.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
@@ -185,6 +186,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.portfolio.rebalance_service.get_etf_sector_weights", None),
     ("application.portfolio.rebalance_service.get_forex_history", []),
     ("application.portfolio.rebalance_service.get_forex_history_long", []),
+    ("application.portfolio.rebalance_service.are_all_signals_in_l1", False),
     ("application.portfolio.rebalance_service.prewarm_signals_batch", {}),
     ("application.portfolio.rebalance_service.prewarm_etf_holdings_batch", {}),
     ("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch", {}),
@@ -208,7 +210,7 @@ _PATCHES: list[tuple[str, object]] = [
 ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def client() -> Generator[TestClient, None, None]:
     """TestClient with overridden DB session and mocked external services."""
     app.dependency_overrides[get_session] = _override_get_session
@@ -233,7 +235,7 @@ def client() -> Generator[TestClient, None, None]:
         app.state.limiter._storage.storage.clear()
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     """Standalone DB session fixture for service layer unit tests."""
     with Session(test_engine) as session:

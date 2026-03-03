@@ -126,7 +126,9 @@
     "withdrawal_no_holdings": "⚠️ 尚未输入任何持仓，无法计算提款建议。",
     "withdrawal_recommendations": "📋 建议卖出清单：",
     "withdrawal_total": "💵 可卖出总额：{amount} {currency}",
-    "withdrawal_shortfall": "⚠️ 缺口：{amount} {currency}"
+    "withdrawal_shortfall": "⚠️ 缺口：{amount} {currency}",
+    "moat_stable": "护城河稳健：毛利率 {current}% vs 去年同期 {previous}%（{sign}{change} pp）",
+    "moat_deteriorating": "护城河恶化：毛利率 {current}% → 去年同期 {previous}%（下降 {change} pp）"
   },
   "rebalance": {
     "no_profile": "尚未设置投资组合目标配置，请先选择投资人格。",

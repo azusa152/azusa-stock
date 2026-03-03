@@ -1,3 +1,4 @@
+# pyright: reportOptionalOperand=false
 """Tests for Fear & Greed pure analysis functions in domain/analysis.py."""
 
 from domain.analysis import (
@@ -191,7 +192,7 @@ class TestCompositeScore:
 
     def test_composite_should_clamp_to_0_100_range(self):
         # CNN=100 → directly used
-        level, score = compute_composite_fear_greed(5.0, 100)
+        _level, score = compute_composite_fear_greed(5.0, 100)
         assert score == 100
 
     def test_composite_should_use_cnn_directly_ignoring_vix(self):
@@ -257,7 +258,7 @@ class TestScorePriceStrength:
 
     def _prices(self, start: float, end: float, n: int = 20) -> list[float]:
         """Generate a list of n prices starting at start and ending at end."""
-        import numpy as np  # noqa: PLC0415
+        import numpy as np
 
         return list(np.linspace(start, end, n))
 
@@ -304,7 +305,7 @@ class TestScoreMomentumComposite:
 
     def test_momentum_composite_uptrend_scores_above_50(self):
         # Gradually rising prices → high RSI
-        import numpy as np  # noqa: PLC0415
+        import numpy as np
 
         prices = list(np.linspace(90.0, 110.0, 60))
         result = score_momentum_composite(prices)
@@ -312,7 +313,7 @@ class TestScoreMomentumComposite:
         assert result > 50
 
     def test_momentum_composite_downtrend_scores_below_50(self):
-        import numpy as np  # noqa: PLC0415
+        import numpy as np
 
         prices = list(np.linspace(110.0, 90.0, 60))
         result = score_momentum_composite(prices)
@@ -453,9 +454,8 @@ class TestComputeWeightedFearGreed:
         assert level == FearGreedLevel.GREED
 
     def test_all_none_returns_not_available(self):
-        components = {
-            k: None
-            for k in [
+        components = dict.fromkeys(
+            [
                 "price_strength",
                 "vix",
                 "momentum",
@@ -464,7 +464,7 @@ class TestComputeWeightedFearGreed:
                 "safe_haven",
                 "sector_rotation",
             ]
-        }
+        )
         level, score = compute_weighted_fear_greed(components)
         assert level == FearGreedLevel.NOT_AVAILABLE
         assert score == 50
@@ -501,9 +501,8 @@ class TestComputeWeightedFearGreed:
 
     def test_clamps_to_0_100(self):
         # Artificially high scores still clamp
-        components = {
-            k: 100
-            for k in [
+        components = dict.fromkeys(
+            [
                 "price_strength",
                 "vix",
                 "momentum",
@@ -511,8 +510,9 @@ class TestComputeWeightedFearGreed:
                 "junk_bond",
                 "safe_haven",
                 "sector_rotation",
-            ]
-        }
+            ],
+            100,
+        )
         _, score = compute_weighted_fear_greed(components)
         assert score == 100
 

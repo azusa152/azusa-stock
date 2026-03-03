@@ -184,7 +184,7 @@ def send_weekly_digest(session: Session) -> dict:
     benchmark_line: str | None = None
     try:
         sp500 = get_technical_signals("^GSPC")
-        sp500_pct = sp500.get("change_pct")
+        sp500_pct = sp500.get("change_pct") if sp500 is not None else None
         if sp500_pct is not None and current_total is not None:
             if prev_total and prev_total > 0:
                 port_pct = (current_total - prev_total) / prev_total * 100
@@ -252,15 +252,17 @@ def send_weekly_digest(session: Session) -> dict:
         from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
-        for entry in resonance:
-            guru_name = entry["guru_display_name"]
-            for holding in entry["holdings"]:
-                if holding["action"] in _ALERT_ACTIONS:
-                    smart_money_lines.append(
-                        format_resonance_alert(
-                            holding["ticker"], guru_name, holding["action"], lang=lang
-                        )
-                    )
+        smart_money_lines.extend(
+            format_resonance_alert(
+                holding["ticker"],
+                entry["guru_display_name"],
+                holding["action"],
+                lang=lang,
+            )
+            for entry in resonance
+            for holding in entry["holdings"]
+            if holding["action"] in _ALERT_ACTIONS
+        )
     except Exception as exc:
         logger.warning("無法取得 Smart Money 資料：%s", exc)
 
@@ -445,16 +447,17 @@ def get_portfolio_summary(session: Session) -> str:
         from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
-        smart_lines: list[str] = []
-        for entry in resonance:
-            guru_name = entry["guru_display_name"]
-            for holding in entry["holdings"]:
-                if holding["action"] in _ALERT_ACTIONS:
-                    smart_lines.append(
-                        format_resonance_alert(
-                            holding["ticker"], guru_name, holding["action"], lang=lang
-                        )
-                    )
+        smart_lines = [
+            format_resonance_alert(
+                holding["ticker"],
+                entry["guru_display_name"],
+                holding["action"],
+                lang=lang,
+            )
+            for entry in resonance
+            for holding in entry["holdings"]
+            if holding["action"] in _ALERT_ACTIONS
+        ]
         if smart_lines:
             lines += ["", t("notification.smart_money_title", lang=lang)]
             lines.extend(smart_lines)
@@ -558,7 +561,7 @@ def send_resonance_alerts(session: Session) -> dict:
             )
 
     if alert_lines:
-        parts = [t("guru.resonance_alerts_title", lang=lang), ""] + alert_lines
+        parts = [t("guru.resonance_alerts_title", lang=lang), "", *alert_lines]
         parts.append(t("guru.lagging_disclaimer_short", lang=lang))
         send_telegram_message_dual("\n".join(parts), session)
 

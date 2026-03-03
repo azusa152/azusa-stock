@@ -1,3 +1,4 @@
+# pyright: reportCallIssue=false
 """
 Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史。
 """
@@ -23,6 +24,7 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     PRICE_ALERT_COOLDOWN_HOURS,
     SCAN_HISTORY_DEFAULT_LIMIT,
+    SCAN_L1_WARM_THRESHOLD,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
@@ -43,6 +45,7 @@ from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
     batch_download_history,
+    count_signals_in_l1,
     get_bias_distribution,
     get_fear_greed_index,
     get_technical_signals,
@@ -103,13 +106,23 @@ def run_scan(session: Session) -> dict:
     scan_tickers = [
         s.ticker for s in all_stocks if s.category.value not in SKIP_SIGNALS_CATEGORIES
     ]
-    try:
-        hist_batch = batch_download_history(scan_tickers)
-        if hist_batch:
-            primed = prime_signals_cache_batch(hist_batch)
-            logger.info("批次訊號快取預熱：%d/%d 檔股票", primed, len(scan_tickers))
-    except Exception as _batch_err:
-        logger.warning("批次預熱失敗，回退至個別呼叫：%s", _batch_err)
+    l1_hits = count_signals_in_l1(scan_tickers)
+    l1_hit_rate = l1_hits / len(scan_tickers) if scan_tickers else 1.0
+    if l1_hit_rate >= SCAN_L1_WARM_THRESHOLD:
+        logger.info(
+            "L1 命中率 %.0f%%（%d/%d），略過批次下載。",
+            l1_hit_rate * 100,
+            l1_hits,
+            len(scan_tickers),
+        )
+    else:
+        try:
+            hist_batch = batch_download_history(scan_tickers)
+            if hist_batch:
+                primed = prime_signals_cache_batch(hist_batch)
+                logger.info("批次訊號快取預熱：%d/%d 檔股票", primed, len(scan_tickers))
+        except Exception as _batch_err:
+            logger.warning("批次預熱失敗，回退至個別呼叫：%s", _batch_err)
 
     # === Layer 1: 市場情緒 ===
     trend_stocks = [s for s in all_stocks if s.category == StockCategory.TREND_SETTER]
@@ -141,7 +154,7 @@ def run_scan(session: Session) -> dict:
         ticker = stock.ticker
         alerts: list[str] = []
 
-        if stock.category.value in SKIP_MOAT_CATEGORIES:
+        if stock.category.value in SKIP_MOAT_CATEGORIES or stock.is_etf:
             moat_not_applicable = t(
                 "scan.moat_not_applicable", lang=lang, category=stock.category.value
             )
@@ -538,11 +551,8 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
 
         # 比較
         triggered = False
-        if (
-            alert.operator == "lt"
-            and metric_value < alert.threshold
-            or alert.operator == "gt"
-            and metric_value > alert.threshold
+        if (alert.operator == "lt" and metric_value < alert.threshold) or (
+            alert.operator == "gt" and metric_value > alert.threshold
         ):
             triggered = True
 

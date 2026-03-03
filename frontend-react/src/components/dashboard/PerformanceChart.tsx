@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import { useTranslation } from "react-i18next"
 import {
   AreaSeries,
@@ -107,7 +107,8 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
   const handleBackfill = useCallback(async () => {
     setBackfilling(true)
     try {
-      await apiClient.post("/snapshots/backfill-benchmarks")
+      const { error } = await client.POST("/snapshots/backfill-benchmarks")
+      if (error) throw error
       // Poll every 4s; give up after 90s
       let elapsed = 0
       pollRef.current = setInterval(async () => {

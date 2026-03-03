@@ -42,12 +42,7 @@ class TestSafeLoc:
 
 class TestFetchMoatFromYf:
     def _make_df(self, rows: dict, cols: list) -> pd.DataFrame:
-        return pd.DataFrame(
-            rows,
-            index=list(rows.keys())
-            if not isinstance(list(rows.keys())[0], str)
-            else list(rows.keys()),
-        )
+        return pd.DataFrame(rows, index=list(rows.keys()))
 
     @patch("infrastructure.market_data.market_data._yf_quarterly_financials")
     def test_standard_labels_returns_correct_margin(self, mock_financials):

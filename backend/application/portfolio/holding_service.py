@@ -6,9 +6,12 @@ Application — Holding Service。
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
-from sqlmodel import Session
+
+if TYPE_CHECKING:
+    from sqlmodel import Session
 
 from domain.constants import (
     DEFAULT_USER_ID,

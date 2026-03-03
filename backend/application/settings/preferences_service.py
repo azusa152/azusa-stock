@@ -5,8 +5,12 @@ Application — Preferences Service。
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import HTTPException
-from sqlmodel import Session
+
+if TYPE_CHECKING:
+    from sqlmodel import Session
 
 from domain.constants import (
     DEFAULT_LANGUAGE,

@@ -618,7 +618,7 @@ def _build_holdings(
         )
 
     # 前季存在但本季完全消失 → SOLD_OUT
-    for cusip, _prev_shares in prev_map.items():
+    for cusip in prev_map:
         if cusip not in current_cusips:
             ticker = cusip_to_ticker[cusip]
             sector = ticker_to_sector.get(ticker) if ticker else None

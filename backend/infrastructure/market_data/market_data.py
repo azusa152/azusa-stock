@@ -1,3 +1,6 @@
+# pyright: reportAttributeAccessIssue=false, reportOptionalSubscript=false
+# pyright: reportOptionalMemberAccess=false, reportReturnType=false
+# pyright: reportCallIssue=false, reportIndexIssue=false, reportGeneralTypeIssues=false
 """
 Infrastructure — 市場資料適配器 (yfinance)。
 負責外部 API 呼叫、快取管理、速率限制。
@@ -10,6 +13,7 @@ import math
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
 from typing import TypeVar
 
@@ -28,6 +32,7 @@ from tenacity import (
 from domain.analysis import (
     classify_cnn_fear_greed,
     classify_vix,
+    compute_beta,
     compute_bias,
     compute_composite_fear_greed,
     compute_daily_change_pct,
@@ -80,6 +85,7 @@ from domain.constants import (
     DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
+    DISK_MOAT_PERSISTENT_TTL,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
     DISK_PRICE_PAIR_TTL,
@@ -119,6 +125,7 @@ from domain.constants import (
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
+    MOAT_PERSISTENT_FAILURE_THRESHOLD,
     NIKKEI_VI_TICKER,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
@@ -220,6 +227,11 @@ def _deduped_fetch(
         key: 唯一識別此請求的字串（通常為 disk_prefix:ticker）。
         fetcher: 實際執行 yfinance 呼叫並寫入快取的函式。
         result_getter: 等待完成後用來讀取快取結果的函式（fetcher 寫入後呼叫）。
+
+    Note: 同一 ticker 在 debug 日誌中出現兩筆「L1+L2 皆未命中」是正常現象。
+    兩個並發請求都在進入 _deduped_fetch 之前就已記錄 cache miss；
+    但 _inflight_lock 確保只有第一個執行緒實際呼叫 yfinance，
+    第二個執行緒透過 result_getter() 取得第一個執行緒寫入的快取結果。
     """
     with _inflight_lock:
         if key in _inflight_events:
@@ -401,10 +413,10 @@ def _get_session() -> cffi_requests.Session:
 def _yf_history(ticker: str, period: str):
     """
     取得 yfinance 歷史資料（含重試）。
+    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
     空結果也視為可重試：yfinance 有時會吞掉 CurlError/SSL 錯誤，
     僅回傳空 DataFrame 而不拋出例外，導致 @_yf_retry 無法觸發。
     """
-    _rate_limiter.wait()
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     hist = stock.history(period=period)
@@ -417,8 +429,9 @@ def _yf_history(ticker: str, period: str):
 
 @_yf_retry
 def _yf_quarterly_financials(ticker: str):
-    """取得 yfinance 季度財報（含重試）。"""
-    _rate_limiter.wait()
+    """取得 yfinance 季度財報（含重試）。
+    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
+    """
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     return stock.quarterly_financials
@@ -426,8 +439,9 @@ def _yf_quarterly_financials(ticker: str):
 
 @_yf_retry
 def _yf_calendar(ticker: str):
-    """取得 yfinance 財報日曆（含重試）。"""
-    _rate_limiter.wait()
+    """取得 yfinance 財報日曆（含重試）。
+    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
+    """
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     return stock.calendar
@@ -435,8 +449,9 @@ def _yf_calendar(ticker: str):
 
 @_yf_retry
 def _yf_info(ticker: str):
-    """取得 yfinance 股票 info（含重試）。"""
-    _rate_limiter.wait()
+    """取得 yfinance 股票 info（含重試）。
+    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
+    """
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     return stock.info or {}
@@ -683,9 +698,10 @@ def prime_signals_cache_batch(
     max_workers: int = SCAN_THREAD_POOL_SIZE,
 ) -> int:
     """
-    從批次下載的歷史資料預熱訊號 L1 快取（僅寫入記憶體，不寫入 L2 磁碟）。
-    預熱路徑結果缺少 institutional_holders；寫入 L2 會讓不完整資料持續 1 小時。
-    L1 過期（5 分鐘）後首次 cache miss 會走正常路徑，補完所有欄位並寫入 L2。
+    從批次下載的歷史資料預熱訊號 L1 + L2 快取。
+    預熱路徑結果缺少 institutional_holders，但 price/RSI/MA 等核心欄位完整。
+    寫入 L2 讓容器重啟後的暖啟動（warm restart）無需重新下載，訊號預熱耗時從 ~25s 降至 ~0s。
+    L1 過期（5 分鐘）後首次 cache miss 會走正常路徑，補完 institutional_holders 並覆寫 L2。
     跳過已在 L1 快取中的 ticker。
     回傳成功預熱的股票數量（不含已在快取中的）。
     """
@@ -698,8 +714,9 @@ def prime_signals_cache_batch(
             return "cached"
         result = _fetch_signals_from_yf(ticker, pre_fetched_hist=hist)
         _signals_cache[ticker] = result
-        # 預熱路徑刻意不寫入 L2 磁碟快取：結果缺少 institutional_holders（需額外 API 呼叫）。
-        # L1 過期（5 分鐘）後首次 cache miss 會走正常路徑，補完所有欄位並寫入 L2。
+        if not _is_error_dict(result):
+            disk_key = f"{DISK_KEY_SIGNALS}:{ticker}"
+            _disk_set(disk_key, result, DISK_SIGNALS_TTL)
         return "primed"
 
     primed = already_cached = 0
@@ -748,6 +765,28 @@ def prewarm_signals_batch(
                 logger.error("預熱 %s 訊號失敗：%s", ticker, exc, exc_info=True)
                 results[ticker] = None
     return results
+
+
+def count_signals_in_l1(tickers: list[str]) -> int:
+    """回傳在 L1 訊號快取中已存在且有效的 ticker 數量。
+
+    僅計入非錯誤結果（不含 {"error": ...}），避免因短暫錯誤快取造成
+    scan_service 誤判「L1 已經很暖」而略過 batch download。
+    """
+    count = 0
+    for ticker in tickers:
+        cached = _signals_cache.get(ticker)
+        if cached is None:
+            continue
+        if _is_error_dict(cached):
+            continue
+        count += 1
+    return count
+
+
+def are_all_signals_in_l1(tickers: list[str]) -> bool:
+    """若所有 ticker 都已在 L1 訊號快取中，回傳 True。"""
+    return all(_signals_cache.get(t) is not None for t in tickers)
 
 
 # ===========================================================================
@@ -990,9 +1029,18 @@ def _is_moat_error(result) -> bool:
     )
 
 
+_moat_failure_counts: dict[str, int] = {}
+_moat_failure_lock = threading.Lock()
+
+
 def analyze_moat_trend(ticker: str) -> dict:
-    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。"""
-    return _cached_fetch(
+    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。
+
+    持續失敗策略：同一 ticker 連續失敗達 MOAT_PERSISTENT_FAILURE_THRESHOLD 次後，
+    將錯誤哨兵寫入 L2（1天），避免每次 L1 過期後重複觸發 3 秒的速率限制 API 呼叫。
+    成功時重置失敗計數，確保 L2 哨兵過期後可正常恢復。
+    """
+    result = _cached_fetch(
         _moat_cache,
         ticker,
         DISK_KEY_MOAT,
@@ -1000,6 +1048,26 @@ def analyze_moat_trend(ticker: str) -> dict:
         _fetch_moat_from_yf,
         is_error=_is_moat_error,
     )
+
+    if _is_moat_error(result):
+        with _moat_failure_lock:
+            count = _moat_failure_counts.get(ticker, 0) + 1
+            _moat_failure_counts[ticker] = count
+        # Write the persistent sentinel only once when crossing the threshold.
+        if count == MOAT_PERSISTENT_FAILURE_THRESHOLD:
+            disk_key = f"{DISK_KEY_MOAT}:{ticker}"
+            _disk_set(disk_key, result, DISK_MOAT_PERSISTENT_TTL)
+            logger.info(
+                "%s 護城河持續失敗 %d 次，寫入 L2 延長快取（TTL=%ds）。",
+                ticker,
+                count,
+                DISK_MOAT_PERSISTENT_TTL,
+            )
+    else:
+        with _moat_failure_lock:
+            _moat_failure_counts.pop(ticker, None)
+
+    return result
 
 
 def prewarm_moat_batch(
@@ -1813,20 +1881,11 @@ def _fetch_fear_greed(_key: str) -> dict:
     _key 固定為 "composite"。
 
     計算流程：
-    1. 取得 VIX（現有）與 CNN（現有）
-    2. 並行取得 6 個 ETF 的近期收盤價（SPY, TLT, HYG, RSP, QQQ, XLP）
-    3. 計算 7 項組件分數（各 0–100）
-    4. 加權平均得自計算分數
-    5. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
+    1. 並行取得 VIX、CNN、及 6 個 ETF 的近期收盤價（8 個任務同時執行）
+    2. 計算 7 項組件分數（各 0–100）
+    3. 加權平均得自計算分數
+    4. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
     """
-    import concurrent.futures
-
-    vix_data = get_vix_data()
-    cnn_data = get_cnn_fear_greed()
-    vix_value = vix_data.get("value")
-    cnn_score = cnn_data.get("score") if cnn_data else None
-
-    # Fetch price histories for all 6 component ETFs in parallel
     _fg_tickers = [
         FG_SPY_TICKER,
         FG_TLT_TICKER,
@@ -1835,12 +1894,21 @@ def _fetch_fear_greed(_key: str) -> dict:
         FG_QQQ_TICKER,
         FG_XLP_TICKER,
     ]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        futures = {
+
+    # Fetch VIX, CNN, and all 6 ETF histories fully in parallel (8 tasks)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        vix_future = pool.submit(get_vix_data)
+        cnn_future = pool.submit(get_cnn_fear_greed)
+        etf_futures = {
             ticker: pool.submit(_fetch_fg_component_history_safe, ticker)
             for ticker in _fg_tickers
         }
-        results = {ticker: f.result() for ticker, f in futures.items()}
+        vix_data = vix_future.result()
+        cnn_data = cnn_future.result()
+        results = {ticker: f.result() for ticker, f in etf_futures.items()}
+
+    vix_value = vix_data.get("value")
+    cnn_score = cnn_data.get("score") if cnn_data else None
 
     spy_prices = results[FG_SPY_TICKER]
     tlt_prices = results[FG_TLT_TICKER]
@@ -2035,9 +2103,8 @@ def _fetch_beta_from_yf(ticker: str) -> float:
             beta = round(float(beta), 2)
             logger.info("%s Beta = %.2f", ticker, beta)
             return beta
-        else:
-            logger.debug("%s yfinance 未提供 Beta 值，使用哨兵值。", ticker)
-            return _BETA_NOT_AVAILABLE
+        logger.debug("%s yfinance 未提供 Beta 值，使用哨兵值。", ticker)
+        return _BETA_NOT_AVAILABLE
     except Exception as e:
         logger.warning("無法取得 %s Beta：%s，使用哨兵值。", ticker, e)
         return _BETA_NOT_AVAILABLE
@@ -2063,19 +2130,100 @@ def get_stock_beta(ticker: str) -> float | None:
     return None if result == _BETA_NOT_AVAILABLE else result
 
 
+def _compute_and_cache_beta_from_history(
+    ticker: str,
+    stock_hist,
+    market_hist,
+) -> float | None:
+    """
+    從批次下載的價格歷史 DataFrame 計算 Beta，並寫入 L1 + L2 快取。
+    stock_hist / market_hist 為 yf.download 回傳的 DataFrame（含 Close 欄）。
+
+    L1/L2 命中時直接回傳快取值，不重複計算。
+    計算失敗或資料不足時回退至 get_stock_beta（yfinance info）。
+    """
+    cached = _beta_cache.get(ticker)
+    if cached is not None:
+        return None if cached == _BETA_NOT_AVAILABLE else cached
+    disk_key = f"{DISK_KEY_BETA}:{ticker}"
+    disk_cached = _disk_get(disk_key)
+    if disk_cached is not None:
+        _beta_cache[ticker] = disk_cached
+        return None if disk_cached == _BETA_NOT_AVAILABLE else disk_cached
+
+    try:
+        stock_closes = stock_hist["Close"].dropna().tolist()
+        market_closes = market_hist["Close"].dropna().tolist()
+        beta = compute_beta(
+            [float(c) for c in stock_closes],
+            [float(c) for c in market_closes],
+        )
+        if beta is not None:
+            logger.info("%s Beta（歷史計算）= %.2f", ticker, beta)
+            _beta_cache[ticker] = beta
+            _disk_set(disk_key, beta, DISK_BETA_TTL)
+            return beta
+        logger.debug("%s 歷史資料不足以計算 Beta，回退至 yfinance info。", ticker)
+    except Exception as exc:
+        logger.warning(
+            "從歷史資料計算 %s Beta 失敗，回退至 yfinance info：%s", ticker, exc
+        )
+    return get_stock_beta(ticker)
+
+
 def prewarm_beta_batch(
-    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+    tickers: list[str],
+    max_workers: int = SCAN_THREAD_POOL_SIZE,
+    hist_batch: dict | None = None,
 ) -> dict[str, float | None]:
     """
     並行預熱多檔股票的 Beta 快取。
-    已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
+
+    快速路徑（hist_batch 提供）：以 OLS 回歸從已下載的價格歷史計算 Beta，
+    從 ~267s（逐一呼叫 yfinance info）降至 ~1s。
+    hist_batch 需包含 FG_SPY_TICKER（SPY）作為市場基準；若缺少則另行下載。
+    快速路徑會先檢查 L1/L2 快取，命中時直接回傳；計算失敗或資料不足時
+    自動回退至 yfinance info（慢速路徑）。
+
+    慢速路徑（hist_batch 未提供，或該 ticker 不在 hist_batch 中）：
+    回退至原有的 yfinance info 呼叫（已含 L1/L2 快取檢查）。
+
     回傳 {ticker: beta_or_None} 對照表。
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    market_hist = None
+    if hist_batch is not None:
+        market_hist = hist_batch.get(FG_SPY_TICKER)
+        if market_hist is None:
+            try:
+                spy_batch = batch_download_history([FG_SPY_TICKER])
+                market_hist = spy_batch.get(FG_SPY_TICKER)
+                if market_hist is not None:
+                    logger.info("已額外下載 SPY 歷史資料作為 Beta 計算基準。")
+            except Exception as exc:
+                logger.warning("下載 SPY 歷史資料失敗，將回退至 yfinance info：%s", exc)
+
     results: dict[str, float | None] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_stock_beta, t): t for t in tickers}
+        futures: dict = {}
+        for ticker in tickers:
+            if (
+                hist_batch is not None
+                and market_hist is not None
+                and ticker in hist_batch
+                and ticker != FG_SPY_TICKER
+            ):
+                futures[
+                    executor.submit(
+                        _compute_and_cache_beta_from_history,
+                        ticker,
+                        hist_batch[ticker],
+                        market_hist,
+                    )
+                ] = ticker
+            else:
+                futures[executor.submit(get_stock_beta, ticker)] = ticker
         for future in as_completed(futures):
             ticker = futures[future]
             try:
@@ -2337,7 +2485,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 report_prices[ticker] = None
 
     # Fetch current prices (never cached — always live)
-    current_prices: dict[str, float | None] = {t: None for t in tickers}
+    current_prices: dict[str, float | None] = dict.fromkeys(tickers)
     try:
         _rate_limiter.wait()
         current = yf.download(

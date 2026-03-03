@@ -1,3 +1,4 @@
+# pyright: reportAttributeAccessIssue=false
 from unittest.mock import MagicMock, patch
 
 

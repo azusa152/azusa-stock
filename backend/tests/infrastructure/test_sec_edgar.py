@@ -495,6 +495,7 @@ class TestGuruRepository:
         assert guru.is_active is True
         deactivate_guru(db_session, guru)
         found = find_guru_by_id(db_session, guru.id)
+        assert found is not None
         assert found.is_active is False
 
     def test_update_guru_should_persist_changes(self, db_session: Session):
@@ -506,6 +507,7 @@ class TestGuruRepository:
         updated = update_guru(db_session, guru)
         assert updated.display_name == "New Display"
         found = find_guru_by_id(db_session, guru.id)
+        assert found is not None
         assert found.display_name == "New Display"
 
 
@@ -690,6 +692,8 @@ class TestGuruHoldingRepository:
         ]
         save_holdings_batch(db_session, holdings)
         found = find_holdings_by_filing(db_session, filing.id)
+        assert found[0].weight_pct is not None
+        assert found[-1].weight_pct is not None
         assert found[0].weight_pct >= found[-1].weight_pct
 
     def test_find_holdings_by_guru_latest_should_return_latest_filings_holdings(

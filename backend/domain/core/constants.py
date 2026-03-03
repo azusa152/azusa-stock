@@ -97,12 +97,20 @@ SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
 ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬
 SCAN_STALE_SECONDS = 900  # 15 minutes — scanner skips if last scan is fresher
+SCAN_L1_WARM_THRESHOLD = 0.8  # skip batch_download if ≥80% of scan tickers are in L1
+MOAT_PERSISTENT_FAILURE_THRESHOLD = (
+    3  # consecutive failures before writing sentinel to L2
+)
+DISK_MOAT_PERSISTENT_TTL = (
+    86400  # 1 day — sentinel TTL for persistently-failing moat tickers
+)
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
 SCAN_HISTORY_DEFAULT_LIMIT = 20
 LATEST_SCAN_LOGS_DEFAULT_LIMIT = 50
 INSTITUTIONAL_HOLDERS_TOP_N = 5
 MARGIN_TREND_QUARTERS = 5
+BETA_MIN_HISTORY_PERIODS = 60  # minimum paired return days for OLS beta computation
 
 # ---------------------------------------------------------------------------
 # Telegram
@@ -426,9 +434,9 @@ NOTIFICATION_TYPES = {
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
     "guru_alerts": "constants.notification_guru_alerts",
 }
-DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
-    k: True for k in NOTIFICATION_TYPES
-}
+DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
+    NOTIFICATION_TYPES, True
+)
 
 # Rate limit defaults — 0 means unlimited (no cap)
 NOTIFICATION_RATE_LIMIT_MAX_COUNT_DEFAULT = 1  # 0 = unlimited

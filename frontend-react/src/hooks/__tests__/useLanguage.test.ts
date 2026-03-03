@@ -20,8 +20,12 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/api/client", () => ({
   default: {
-    put: mockApiPut,
-    interceptors: { request: { use: vi.fn() } },
+    GET: vi.fn(),
+    POST: vi.fn(),
+    PUT: mockApiPut,
+    PATCH: vi.fn(),
+    DELETE: vi.fn(),
+    use: vi.fn(),
   },
 }))
 
@@ -68,8 +72,10 @@ describe("useLanguage", () => {
       await result.current.changeLanguage("ja")
     })
     expect(mockApiPut).toHaveBeenCalledWith("/settings/preferences", {
-      language: "ja",
-      privacy_mode: false,
+      body: {
+        language: "ja",
+        privacy_mode: false,
+      },
     })
   })
 

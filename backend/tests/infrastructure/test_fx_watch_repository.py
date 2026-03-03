@@ -1,5 +1,6 @@
 """Tests for FX Watch repository functions."""
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -19,7 +20,7 @@ from infrastructure.repositories import (
 
 
 @pytest.fixture
-def test_session() -> Session:
+def test_session() -> Iterator[Session]:
     """Provide a test session (uses conftest's test_engine)."""
     from tests.conftest import test_engine
 
@@ -187,6 +188,7 @@ class TestFXWatchRepository:
 
         # Assert
         updated = find_fx_watch_by_id(test_session, created.id)
+        assert updated is not None
         assert updated.last_alerted_at is not None
         # Ensure both datetimes are timezone-aware for comparison
         updated_time = (
@@ -223,6 +225,7 @@ class TestFXWatchRepository:
         # Assert
         assert updated.recent_high_days == 60
         found = find_fx_watch_by_id(test_session, created.id)
+        assert found is not None
         assert found.recent_high_days == 60
         # updated_at should have changed
         assert found.updated_at is not None

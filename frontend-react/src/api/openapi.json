@@ -868,8 +868,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "title": "Response Get Earnings Route Ticker  Ticker  Earnings Get"
                 }
               }
@@ -926,8 +933,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "title": "Response Get Dividend Route Ticker  Ticker  Dividend Get"
                 }
               }

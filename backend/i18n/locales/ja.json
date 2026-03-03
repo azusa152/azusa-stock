@@ -126,7 +126,9 @@
     "withdrawal_no_holdings": "⚠️ 保有資産が入力されていないため、引き出し提案を計算できません。",
     "withdrawal_recommendations": "📋 売却推奨リスト：",
     "withdrawal_total": "💵 売却可能総額：{amount} {currency}",
-    "withdrawal_shortfall": "⚠️ 不足額：{amount} {currency}"
+    "withdrawal_shortfall": "⚠️ 不足額：{amount} {currency}",
+    "moat_stable": "護城河安定：粗利率 {current}% vs 前年同期 {previous}%（{sign}{change} pp）",
+    "moat_deteriorating": "護城河悪化：粗利率 {current}% → 前年同期 {previous}%（{change} pp 低下）"
   },
   "rebalance": {
     "no_profile": "投資プロファイルが設定されていません。先にポートフォリオ目標を設定してください。",

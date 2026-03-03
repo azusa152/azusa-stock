@@ -3,16 +3,20 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 import { useStocks } from "../useDashboard";
-import apiClient from "@/api/client";
+import client from "@/api/client";
 
 vi.mock("@/api/client", () => ({
   default: {
-    get: vi.fn(),
-    interceptors: { request: { use: vi.fn() } },
+    GET: vi.fn(),
+    POST: vi.fn(),
+    PUT: vi.fn(),
+    PATCH: vi.fn(),
+    DELETE: vi.fn(),
+    use: vi.fn(),
   },
 }));
 
-const mockApiClient = apiClient as unknown as { get: ReturnType<typeof vi.fn> };
+const mockClient = client as unknown as { GET: ReturnType<typeof vi.fn> };
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -28,7 +32,7 @@ describe("useStocks", () => {
   });
 
   it("uses the correct query key", () => {
-    mockApiClient.get.mockResolvedValueOnce({ data: [] });
+    mockClient.GET.mockResolvedValueOnce({ data: [], error: undefined });
     const { result } = renderHook(() => useStocks(), {
       wrapper: createWrapper(),
     });
@@ -37,7 +41,7 @@ describe("useStocks", () => {
 
   it("calls the /stocks endpoint", async () => {
     const stocks = [{ ticker: "AAPL", name: "Apple Inc." }];
-    mockApiClient.get.mockResolvedValueOnce({ data: stocks });
+    mockClient.GET.mockResolvedValueOnce({ data: stocks, error: undefined });
 
     const { result } = renderHook(() => useStocks(), {
       wrapper: createWrapper(),
@@ -45,7 +49,7 @@ describe("useStocks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockApiClient.get).toHaveBeenCalledWith("/stocks");
+    expect(mockClient.GET).toHaveBeenCalledWith("/stocks");
     expect(result.current.data).toEqual(stocks);
   });
 
@@ -54,7 +58,7 @@ describe("useStocks", () => {
       { ticker: "AAPL", name: "Apple Inc." },
       { ticker: "MSFT", name: "Microsoft" },
     ];
-    mockApiClient.get.mockResolvedValueOnce({ data: stocks });
+    mockClient.GET.mockResolvedValueOnce({ data: stocks, error: undefined });
 
     const { result } = renderHook(() => useStocks(), {
       wrapper: createWrapper(),

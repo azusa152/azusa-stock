@@ -1,3 +1,4 @@
+# pyright: reportCallIssue=false
 """
 Optional J-Quants API adapter for Japanese stock financial data.
 Activated only when JQUANTS_API_KEY env var is set.

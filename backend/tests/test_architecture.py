@@ -42,11 +42,10 @@ def _collect_imports(filepath: Path) -> list[str]:
     """Parse a Python file and return all imported module names."""
     source = filepath.read_text()
     tree = ast.parse(source)
-    imports = []
+    imports: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(alias.name)
+            imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
     return imports
@@ -70,10 +69,12 @@ class TestDomainBoundary:
         violations = []
         for filepath in domain_files:
             imports = _collect_imports(filepath)
-            for imp in imports:
-                for forbidden in LAYER_RULES["domain"]["forbidden"]:
-                    if imp == forbidden or imp.startswith(f"{forbidden}."):
-                        violations.append(f"{filepath.name}: imports {imp}")
+            violations.extend(
+                f"{filepath.name}: imports {imp}"
+                for imp in imports
+                for forbidden in LAYER_RULES["domain"]["forbidden"]
+                if imp == forbidden or imp.startswith(f"{forbidden}.")
+            )
         assert violations == [], "Domain layer violations:\n" + "\n".join(violations)
 
 
@@ -88,10 +89,12 @@ class TestInfrastructureBoundary:
         violations = []
         for filepath in infra_files:
             imports = _collect_imports(filepath)
-            for imp in imports:
-                for forbidden in LAYER_RULES["infrastructure"]["forbidden"]:
-                    if imp == forbidden or imp.startswith(f"{forbidden}."):
-                        violations.append(f"{filepath.name}: imports {imp}")
+            violations.extend(
+                f"{filepath.name}: imports {imp}"
+                for imp in imports
+                for forbidden in LAYER_RULES["infrastructure"]["forbidden"]
+                if imp == forbidden or imp.startswith(f"{forbidden}.")
+            )
         assert violations == [], "Infrastructure layer violations:\n" + "\n".join(
             violations
         )
@@ -105,13 +108,13 @@ class TestApiControllerBoundary:
         return _get_python_files(BACKEND_ROOT / "api")
 
     def test_no_direct_infrastructure_imports(self, api_files):
-        violations = []
         allowed = set(LAYER_RULES["api"]["allowed_infrastructure"])
-        for filepath in api_files:
-            imports = _collect_imports(filepath)
-            for imp in imports:
-                if imp.startswith("infrastructure") and imp not in allowed:
-                    violations.append(f"{filepath.name}: imports {imp}")
+        violations = [
+            f"{filepath.name}: imports {imp}"
+            for filepath in api_files
+            for imp in _collect_imports(filepath)
+            if imp.startswith("infrastructure") and imp not in allowed
+        ]
         assert violations == [], "API layer infrastructure violations:\n" + "\n".join(
             violations
         )

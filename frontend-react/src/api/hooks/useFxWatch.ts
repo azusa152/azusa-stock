@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import type {
   FxWatch,
   FxAnalysis,
@@ -18,8 +18,9 @@ export function useFxWatches() {
   return useQuery<FxWatch[]>({
     queryKey: ["fxWatches"],
     queryFn: async () => {
-      const { data } = await apiClient.get<FxWatch[]>("/fx-watch")
-      return data
+      const { data, error } = await client.GET("/fx-watch")
+      if (error) throw error
+      return data as unknown as FxWatch[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -29,8 +30,11 @@ export function useFxHistory(base: string, quote: string, enabled = true) {
   return useQuery<FxHistoryPoint[]>({
     queryKey: ["fxHistory", base, quote],
     queryFn: async () => {
-      const { data } = await apiClient.get<FxHistoryPoint[]>(`/forex/${base}/${quote}/history-long`)
-      return data
+      const { data, error } = await client.GET("/forex/{base}/{quote}/history-long", {
+        params: { path: { base, quote } },
+      })
+      if (error) throw error
+      return data as unknown as FxHistoryPoint[]
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -45,8 +49,11 @@ export function useFxHistoryMap(pairs: Array<{ base: string; quote: string }>) {
       const entries = await Promise.all(
         pairs.map(async ({ base, quote }) => {
           try {
-            const { data } = await apiClient.get<FxHistoryPoint[]>(`/forex/${base}/${quote}/history-long`)
-            return [`${base}/${quote}`, data] as const
+            const { data, error } = await client.GET("/forex/{base}/{quote}/history-long", {
+              params: { path: { base, quote } },
+            })
+            if (error) return [`${base}/${quote}`, []] as const
+            return [`${base}/${quote}`, data as unknown as FxHistoryPoint[]] as const
           } catch {
             return [`${base}/${quote}`, []] as const
           }
@@ -67,8 +74,9 @@ export function useCreateFxWatch() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CreateFxWatchRequest) => {
-      const { data } = await apiClient.post<FxWatch>("/fx-watch", payload)
-      return data
+      const { data, error } = await client.POST("/fx-watch", { body: payload })
+      if (error) throw error
+      return data as unknown as FxWatch
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -80,8 +88,12 @@ export function useUpdateFxWatch() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: UpdateFxWatchRequest }) => {
-      const { data } = await apiClient.patch<FxWatch>(`/fx-watch/${id}`, payload)
-      return data
+      const { data, error } = await client.PATCH("/fx-watch/{watch_id}", {
+        params: { path: { watch_id: id } },
+        body: payload,
+      })
+      if (error) throw error
+      return data as unknown as FxWatch
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -93,7 +105,10 @@ export function useDeleteFxWatch() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/fx-watch/${id}`)
+      const { error } = await client.DELETE("/fx-watch/{watch_id}", {
+        params: { path: { watch_id: id } },
+      })
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -105,8 +120,12 @@ export function useToggleFxWatch() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const { data } = await apiClient.patch<FxWatch>(`/fx-watch/${id}`, { is_active: !isActive })
-      return data
+      const { data, error } = await client.PATCH("/fx-watch/{watch_id}", {
+        params: { path: { watch_id: id } },
+        body: { is_active: !isActive },
+      })
+      if (error) throw error
+      return data as unknown as FxWatch
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -115,9 +134,11 @@ export function useToggleFxWatch() {
 }
 
 async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
-  const { data } = await apiClient.post<FxCheckResponse>("/fx-watch/check")
+  const { data, error } = await client.POST("/fx-watch/check")
+  if (error) throw error
+  const response = data as unknown as FxCheckResponse
   const map: FxAnalysisMap = {}
-  for (const r of data.results) {
+  for (const r of response.results) {
     const entry: FxAnalysis = {
       current_rate: r.result.current_rate,
       should_alert: r.result.should_alert,
@@ -160,7 +181,8 @@ export function useAlertFxWatches() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post("/fx-watch/alert")
+      const { data, error } = await client.POST("/fx-watch/alert")
+      if (error) throw error
       return data
     },
     onSuccess: () => {

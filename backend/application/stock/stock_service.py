@@ -759,7 +759,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def get_signals_for_ticker(ticker: str) -> dict:
+def get_signals_for_ticker(ticker: str) -> dict | None:
     """Fetch technical signals and bias distribution for a ticker."""
     signals = get_technical_signals(ticker)
     if signals:

@@ -43,22 +43,22 @@ def _make_timing_result(should_alert=True, **overrides):
     """Build a FXTimingResult with sensible defaults."""
     base = overrides.get("base_currency", "USD")
     quote = overrides.get("quote_currency", "TWD")
-    defaults = dict(
-        base_currency=base,
-        quote_currency=quote,
-        current_rate=32.0,
-        is_recent_high=True,
-        lookback_high=32.0,
-        lookback_days=30,
-        consecutive_increases=3,
-        consecutive_threshold=3,
-        alert_on_recent_high=True,
-        alert_on_consecutive_increase=True,
-        should_alert=should_alert,
-        recommendation_zh="建議考慮換匯：USD → TWD（近期高點 + 連續上漲）",
-        reasoning_zh="USD/TWD 已接近 30 日高點 (32.0000)，且連續上漲 3 日。",
-        scenario="should_alert_both",
-        scenario_vars={
+    defaults = {
+        "base_currency": base,
+        "quote_currency": quote,
+        "current_rate": 32.0,
+        "is_recent_high": True,
+        "lookback_high": 32.0,
+        "lookback_days": 30,
+        "consecutive_increases": 3,
+        "consecutive_threshold": 3,
+        "alert_on_recent_high": True,
+        "alert_on_consecutive_increase": True,
+        "should_alert": should_alert,
+        "recommendation_zh": "建議考慮換匯：USD → TWD（近期高點 + 連續上漲）",
+        "reasoning_zh": "USD/TWD 已接近 30 日高點 (32.0000)，且連續上漲 3 日。",
+        "scenario": "should_alert_both",
+        "scenario_vars": {
             "base": base,
             "quote": quote,
             "pair": f"{base}/{quote}",
@@ -67,7 +67,7 @@ def _make_timing_result(should_alert=True, **overrides):
             "consec": 3,
             "consec_threshold": 3,
         },
-    )
+    }
     defaults.update(overrides)
     return FXTimingResult(**defaults)
 

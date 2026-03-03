@@ -18,14 +18,14 @@ alwaysApply: false
 - **Fullstack targets:** `make lint` (backend + frontend), `make test` (backend + frontend), `make format` (backend). These run the whole project.
 - **Granular targets:** `make backend-lint`, `make backend-test`, `make backend-format` for backend only; `make frontend-lint`, `make frontend-test`, `make frontend-build`, `make frontend-security` for frontend only.
 - **CI gate:** Use `make ci` — it mirrors ALL GitHub CI pipeline jobs. If `make ci` passes locally, the GitHub pipeline will pass too. Always run before committing.
-  - Covers: `lint`, `test`, `check-constants`, `check-api-spec`, `frontend-build`, `frontend-security`, `backend-security`
+  - Covers: `lint`, `test`, `check-constants`, `check-api-spec`, `check-i18n`, `frontend-build`, `frontend-security`, `backend-security`, `backend-typecheck`
   - Run `make check-ci` to verify `make ci` still covers all pipeline jobs (auto-enforced by CI and pre-commit).
 - **Cleanup:** Use `make clean` to remove `.pytest_cache`, `.ruff_cache`, `dist`, and `node_modules/.cache`.
 - Run `make help` to see all available targets.
 
 ## Dependencies
-- **Dependencies:** Use pip-tools. Edit `backend/requirements.in` (loose constraints) and run `make lock` to regenerate the pinned `backend/requirements.txt`. Never edit `requirements.txt` by hand.
-- **Dev tools** (e.g. `pip-audit`, `ruff`, `pytest`) belong in `requirements.in` — never install them ad-hoc inside Makefile targets.
+- **Dependencies:** Use [uv](https://docs.astral.sh/uv/). Edit `backend/pyproject.toml` (direct dependencies under `[project.dependencies]` or `[dependency-groups]`) and run `make lock` to regenerate the pinned `backend/uv.lock`. Never edit `uv.lock` by hand.
+- **Dev tools** (e.g. `pip-audit`, `ruff`, `pytest`) belong in `[dependency-groups.dev]` in `pyproject.toml` — never install them ad-hoc inside Makefile targets.
 - **Adding a new CI job:** Add the job to `.github/workflows/ci.yml`, add its job ID + corresponding make target to `KNOWN_JOB_MAP` in `scripts/check_ci_completeness.py`, and wire the make target into `make ci`. The `ci-completeness` pre-commit hook and CI job will enforce this. For infrastructure-only jobs (path filtering, meta-checks, merge gates), add the job ID to `SKIP_JOBS` instead of `KNOWN_JOB_MAP` — the `ci-gate` and `ci-completeness` jobs are examples of this. The `CI Gate` job is the sole required status check for merging to `main`; never remove it from `SKIP_JOBS`.
 
 ## Test Coverage

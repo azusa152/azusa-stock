@@ -19,7 +19,7 @@ import tempfile
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
-import domain.constants  # noqa: E402
+import domain.constants
 
 domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_batch"
@@ -31,7 +31,9 @@ import pandas as pd  # noqa: E402
 from cachetools import TTLCache  # noqa: E402
 
 from infrastructure.market_data import (  # noqa: E402
+    are_all_signals_in_l1,
     batch_download_history,
+    count_signals_in_l1,
     prime_signals_cache_batch,
 )
 
@@ -60,7 +62,7 @@ def _make_hist(rows: int = _MIN_ROWS) -> pd.DataFrame:
 def _make_multi_ticker_data(tickers: list[str], rows: int = _MIN_ROWS) -> pd.DataFrame:
     """Simulate yf.download() multi-ticker output with MultiIndex columns."""
     hist = _make_hist(rows)
-    frames = {t: hist for t in tickers}
+    frames = dict.fromkeys(tickers, hist)
     return pd.concat(frames, axis=1)
 
 
@@ -201,16 +203,18 @@ class TestPrimeSignalsCacheBatchSkip:
 
 
 class TestPrimeSignalsCacheBatchWrite:
-    """prime_signals_cache_batch should write successful results to L1 only (not L2).
+    """prime_signals_cache_batch writes successful results to both L1 and L2.
 
-    Prewarm results intentionally omit institutional_holders (no extra yf.Ticker() call).
-    Writing to L2 (1hr TTL) would lock in that incomplete data. Instead, only L1 (5min)
-    is warmed; the first L1 miss after expiry triggers a full fetch that populates L2.
+    Prewarm results omit institutional_holders (no extra yf.Ticker() call), but
+    core signal fields (price, RSI, MA) are fully populated. Writing to L2 ensures
+    warm restarts benefit from the prewarmed data, reducing startup time from ~25s
+    to ~0s. The first L1 miss after expiry triggers a full fetch that overwrites L2
+    with complete data including institutional_holders.
     """
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
-    def test_should_write_success_result_to_l1_only_not_l2(
+    def test_should_write_success_result_to_both_l1_and_l2(
         self, mock_fetch, mock_disk_set
     ):
         # Arrange — L1 empty, fetcher returns valid signals
@@ -223,10 +227,10 @@ class TestPrimeSignalsCacheBatchWrite:
             # Act
             primed = prime_signals_cache_batch(hist_map)
 
-        # Assert — L1 is warmed, L2 (disk) is intentionally NOT written during prewarm
+        # Assert — L1 is warmed; L2 is also written to enable fast warm restarts
         assert primed == 1
         assert l1.get("AAPL") == signals
-        mock_disk_set.assert_not_called()
+        mock_disk_set.assert_called_once_with("signals:AAPL", signals, 3600)
 
     @patch("infrastructure.market_data.market_data._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_signals_from_yf")
@@ -280,3 +284,41 @@ class TestPrimeSignalsCacheBatchWrite:
 
         # Assert — pre_fetched_hist was passed
         mock_fetch.assert_called_once_with("AAPL", pre_fetched_hist=hist)
+
+
+class TestCountSignalsInL1:
+    """count_signals_in_l1 should count only valid (non-error) L1 entries."""
+
+    def test_should_count_only_non_error_entries(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+        l1["MSFT"] = {"error": "temporary failure"}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            count = count_signals_in_l1(["AAPL", "MSFT", "GOOGL"])
+
+        assert count == 1
+
+
+class TestAreAllSignalsInL1:
+    """are_all_signals_in_l1 should only return True when every ticker is cached."""
+
+    def test_should_return_true_for_empty_ticker_list(self):
+        l1 = _fresh_signals_l1()
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1([]) is True
+
+    def test_should_return_true_when_all_tickers_are_cached(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+        l1["MSFT"] = {"ticker": "MSFT", "price": 200.0}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1(["AAPL", "MSFT"]) is True
+
+    def test_should_return_false_when_any_ticker_is_missing(self):
+        l1 = _fresh_signals_l1()
+        l1["AAPL"] = {"ticker": "AAPL", "price": 100.0}
+
+        with patch("infrastructure.market_data.market_data._signals_cache", l1):
+            assert are_all_signals_in_l1(["AAPL", "MSFT"]) is False

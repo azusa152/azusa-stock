@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import apiClient from "@/api/client"
+import client from "@/api/client"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 
 const LANGUAGE_OPTIONS = {
@@ -15,9 +15,11 @@ export function useLanguage() {
   const changeLanguage = async (lang: string) => {
     await i18n.changeLanguage(lang)
     try {
-      await apiClient.put("/settings/preferences", {
-        language: lang,
-        privacy_mode: usePrivacyMode.getState().isPrivate,
+      await client.PUT("/settings/preferences", {
+        body: {
+          language: lang,
+          privacy_mode: usePrivacyMode.getState().isPrivate,
+        },
       })
     } catch {
       /* fail silently */

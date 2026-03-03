@@ -34,6 +34,7 @@ from domain.rebalance import (
 )
 from i18n import get_user_language, t
 from infrastructure.market_data import (
+    are_all_signals_in_l1,
     get_etf_sector_weights,
     get_etf_top_holdings,
     get_exchange_rates,
@@ -62,6 +63,11 @@ _rebalance_cache: TTLCache = TTLCache(
     maxsize=REBALANCE_CACHE_MAXSIZE, ttl=REBALANCE_CACHE_TTL
 )
 _rebalance_cache_lock = threading.Lock()
+
+# In-flight 去重：同一 cache_key 同時只允許一個計算在飛行中。
+# 第二個到達的請求等待第一個完成後直接讀快取，避免重複的 yfinance 呼叫。
+_rebalance_inflight_lock = threading.Lock()
+_rebalance_inflight_events: dict[tuple, threading.Event] = {}
 
 
 def invalidate_rebalance_cache() -> None:
@@ -188,6 +194,52 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
             logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
             return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
 
+    # In-flight 去重：同一 cache_key 同時只有一個計算在飛行中。
+    # 後續請求等待主計算完成；若主計算失敗，由一位等待者晉升為新的主計算，
+    # 其餘等待者繼續等候，避免所有等待者同時湧入造成雷鳴群效應。
+    while True:
+        with _rebalance_inflight_lock:
+            if _cache_key in _rebalance_inflight_events:
+                event = _rebalance_inflight_events[_cache_key]
+                is_owner = False
+            else:
+                event = threading.Event()
+                _rebalance_inflight_events[_cache_key] = event
+                is_owner = True
+
+        if not is_owner:
+            logger.debug("再平衡計算去重等待：%s (%s)", display_currency, lang)
+            event.wait()
+            with _rebalance_cache_lock:
+                cached = _rebalance_cache.get(_cache_key)
+                if cached is not None:
+                    return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
+            continue
+
+        try:
+            return _do_calculate_rebalance(session, display_currency, lang, _cache_key)
+        finally:
+            event.set()
+            with _rebalance_inflight_lock:
+                _rebalance_inflight_events.pop(_cache_key, None)
+
+
+def _do_calculate_rebalance(
+    session: Session,
+    display_currency: str,
+    lang: str,
+    _cache_key: tuple,
+) -> dict:
+    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+
+    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
+    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
+    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
+    (3) SQLite 無伺服器端連線逾時；
+    (4) 等待時間受限於主計算耗時（數秒）。
+    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    """
+
     # 1) 取得目標配置
     profile = session.exec(
         select(UserInvestmentProfile)
@@ -220,18 +272,23 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     # 3.5) 並行預熱所有非現金持倉的技術訊號（避免逐一串行呼叫 yfinance）
     non_cash_tickers = list({h.ticker for h in holdings if not h.is_cash})
     if non_cash_tickers:
-        logger.info("並行預熱 %d 檔股票技術訊號...", len(non_cash_tickers))
-        prewarm_signals_batch(non_cash_tickers)
+        if are_all_signals_in_l1(non_cash_tickers):
+            logger.debug(
+                "所有 %d 檔股票技術訊號已在 L1 快取，略過預熱。", len(non_cash_tickers)
+            )
+        else:
+            logger.info("並行預熱 %d 檔股票技術訊號...", len(non_cash_tickers))
+            prewarm_signals_batch(non_cash_tickers)
 
     # 4) 使用共用邏輯計算各持倉市值
-    currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
+    _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
         holdings,
         fx_rates,
     )
 
     # 4.5) 取得每個分類的市值合計
     category_values: dict[str, float] = {}
-    for _key, agg in ticker_agg.items():
+    for agg in ticker_agg.values():
         cat = agg["category"]
         category_values[cat] = category_values.get(cat, 0.0) + agg["mv"]
 

@@ -3,6 +3,8 @@
 Focus: Season Highlights cold-start exclusion (>= 2 filings guard).
 """
 
+from collections.abc import Iterator
+
 import pytest
 from sqlmodel import Session
 
@@ -24,7 +26,7 @@ from infrastructure.repositories import (
 
 
 @pytest.fixture
-def test_session() -> Session:
+def test_session() -> Iterator[Session]:
     """Provide a test session (uses conftest's test_engine)."""
     from tests.conftest import test_engine
 

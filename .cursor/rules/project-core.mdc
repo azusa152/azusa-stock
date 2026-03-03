@@ -19,7 +19,7 @@ Each layer is further grouped into domain-specific sub-packages. Old flat import
 - **Constants:** `backend/domain/core/constants.py` (also accessible as `backend/domain/constants.py` via shim) and `frontend-react/src/lib/constants.ts` for all thresholds, labels, and magic values.
 - **Type Safety:** Pydantic models and Python type hints everywhere.
 - **API Type Codegen:** Run `make generate-api` after changing any Pydantic schema in `backend/api/schemas/`. The `api/schemas/__init__.py` re-exports all schemas so `from api.schemas import X` keeps working.
-- **Dependency Management:** Backend uses pip-tools. Edit `backend/requirements.in` (loose constraints), then run `make lock` to regenerate the pinned `backend/requirements.txt`. Never edit `requirements.txt` by hand.
+- **Dependency Management:** Backend uses [uv](https://docs.astral.sh/uv/). Edit `backend/pyproject.toml` (direct dependencies), then run `make lock` to regenerate the pinned `backend/uv.lock`. Never edit `uv.lock` by hand.
 - **Error Handling:** Never crash on external API failures (yfinance, Telegram). Return None/Warning; log the error.
 - **Architecture Boundaries:** See `.cursor/rules/architecture-boundaries.mdc`. API routes in `api/routes/` delegate to `application/<domain>/` services — never import directly from `infrastructure/` (except `infrastructure.database`).
 - **New Features:** Follow Research → Plan → Implement → Verify (`make ci`) workflow. Check existing patterns in the same sub-package before writing new code.

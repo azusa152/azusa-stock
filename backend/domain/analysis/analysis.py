@@ -9,6 +9,7 @@ import math
 from datetime import UTC, datetime
 
 from domain.constants import (
+    BETA_MIN_HISTORY_PERIODS,
     BIAS_OVERHEATED_THRESHOLD,
     BIAS_OVERSOLD_THRESHOLD,
     BIAS_WEAKENING_THRESHOLD,
@@ -129,6 +130,56 @@ def compute_moving_average(values: list[float], window: int) -> float | None:
     if len(values) < window:
         return None
     return round(sum(values[-window:]) / window, 2)
+
+
+def compute_beta(
+    stock_closes: list[float],
+    market_closes: list[float],
+    min_periods: int = BETA_MIN_HISTORY_PERIODS,
+) -> float | None:
+    """
+    以 OLS 回歸計算股票相對市場基準的 Beta 值。
+    Beta = Cov(R_stock, R_market) / Var(R_market)，以算術日收益率計算。
+
+    需要至少 min_periods 筆有效的成對日收益率。
+    純函式，無副作用。
+
+    Args:
+        stock_closes:  股票收盤價序列（由舊至新）。
+        market_closes: 市場基準（如 SPY）收盤價序列（由舊至新）。
+        min_periods:   最少有效配對天數（預設 60）。
+
+    Returns:
+        Beta 值（四捨五入至小數點後 2 位），或資料不足時回傳 None。
+    """
+    n = min(len(stock_closes), len(market_closes))
+    if n < min_periods + 1:
+        return None
+
+    s = stock_closes[-n:]
+    m = market_closes[-n:]
+
+    s_ret: list[float] = []
+    m_ret: list[float] = []
+    for i in range(1, n):
+        if s[i - 1] != 0 and m[i - 1] != 0:
+            s_ret.append((s[i] - s[i - 1]) / s[i - 1])
+            m_ret.append((m[i] - m[i - 1]) / m[i - 1])
+
+    if len(s_ret) < min_periods:
+        return None
+
+    n_ret = len(s_ret)
+    s_mean = sum(s_ret) / n_ret
+    m_mean = sum(m_ret) / n_ret
+
+    cov = sum((s_ret[i] - s_mean) * (m_ret[i] - m_mean) for i in range(n_ret)) / n_ret
+    var_m = sum((m_ret[i] - m_mean) ** 2 for i in range(n_ret)) / n_ret
+
+    if var_m == 0:
+        return None
+
+    return round(cov / var_m, 2)
 
 
 # ---------------------------------------------------------------------------
