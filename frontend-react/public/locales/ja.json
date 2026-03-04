@@ -459,6 +459,7 @@
     "caption": "各シグナルの将来リターンを期間別に検証",
     "error": "❌ バックテストデータの読み込みに失敗しました",
     "computed_at": "🕐 計算時刻: {{time}}",
+    "export_csv": "CSV エクスポート",
     "backfilling": "過去シグナルデータを生成中...",
     "backfilling_progress": "{{completed}} / {{total}} 銘柄",
     "no_data": "まだ履歴データがありません。次回サーバー起動時に自動生成されます。",

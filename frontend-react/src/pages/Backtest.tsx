@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { Download } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import {
   Bar,
   BarChart,
@@ -48,6 +50,27 @@ export default function Backtest() {
   const hasSignals = (summary?.signals?.length ?? 0) > 0
   const showBackfillingState = isBackfilling && !hasSignals
   const showEmptyState = !isBackfilling && !hasSignals
+
+  const handleExportCsv = async () => {
+    try {
+      const headers: HeadersInit = {}
+      const apiKey = import.meta.env.VITE_API_KEY
+      if (apiKey) headers["X-API-Key"] = apiKey
+
+      const response = await fetch("/api/backtest/export-csv", { headers })
+      if (!response.ok) throw new Error(response.statusText)
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "backtest_signals.csv"
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(t("common.error"))
+    }
+  }
 
   useEffect(() => {
     if (isBackfilling) {
@@ -109,9 +132,17 @@ export default function Backtest() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold">{t("backtest.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("backtest.caption")}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {t("backtest.computed_at", { time: formatLocalTime(summary.computed_at) })}
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t("backtest.computed_at", { time: formatLocalTime(summary.computed_at) })}
+          </p>
+          {hasSignals && (
+            <Button variant="outline" size="sm" onClick={handleExportCsv}>
+              <Download className="h-4 w-4 mr-1" />
+              {t("backtest.export_csv")}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border border-border">

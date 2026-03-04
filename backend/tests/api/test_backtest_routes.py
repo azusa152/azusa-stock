@@ -78,3 +78,18 @@ def test_backfill_status_route_should_return_200_with_response_shape(client) -> 
     assert "is_backfilling" in data
     assert "total" in data
     assert "completed" in data
+
+
+def test_backtest_export_csv_route_should_return_csv_with_header(client) -> None:
+    resp = client.get("/backtest/export-csv")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert 'attachment; filename="backtest_signals.csv"' in resp.headers.get(
+        "content-disposition", ""
+    )
+
+    first_line = resp.text.splitlines()[0]
+    assert first_line == (
+        "signal,direction,ticker,signal_date,market_status,return_5d,"
+        "return_10d,return_30d,return_60d"
+    )

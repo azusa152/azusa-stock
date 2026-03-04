@@ -459,6 +459,7 @@
     "caption": "按多个前瞻窗口评估信号历史效果",
     "error": "❌ 加载回测数据失败",
     "computed_at": "🕐 计算时间：{{time}}",
+    "export_csv": "导出 CSV",
     "backfilling": "正在生成历史信号数据...",
     "backfilling_progress": "{{completed}} / {{total}} 只股票",
     "no_data": "当前暂无历史数据。系统会在下次服务器启动时自动生成。",

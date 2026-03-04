@@ -580,6 +580,7 @@ docker compose up --build -d
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（命中率、平均報酬、誤報率、樣本信心） |
 | `GET` | `/backtest/signal/{signal}` | 取得單一訊號回測明細（逐筆事件與各視窗前瞻報酬） |
 | `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
+| `GET` | `/backtest/export-csv` | 匯出回測事件 CSV（跨所有訊號，單列事件資料） |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
@@ -618,6 +619,7 @@ docker compose up --build -d
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（依訊號彙整命中率、平均報酬、誤報率） |
 | `GET` | `/backtest/signal/{signal}` | 取得指定訊號回測明細（事件列表與前瞻報酬） |
 | `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
+| `GET` | `/backtest/export-csv` | 匯出回測事件 CSV（跨所有訊號，單列事件資料） |
 | `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |

@@ -155,3 +155,31 @@ def get_backtest_detail(
         "total_occurrences": len(occurrences),
         "occurrences": occurrences[:safe_limit],
     }
+
+
+def get_backtest_all_occurrences(session: Session) -> list[dict[str, Any]]:
+    """Return all backtest occurrences across all signals as a flat list."""
+    payload = _get_or_build_payload(session)
+    rows: list[dict[str, Any]] = []
+
+    details = payload.get("details", {})
+    for signal_name in sorted(details):
+        detail = details[signal_name]
+        direction = detail.get("direction", "")
+        for occurrence in detail.get("occurrences", []):
+            forward_returns = occurrence.get("forward_returns", {})
+            rows.append(
+                {
+                    "signal": signal_name,
+                    "direction": direction,
+                    "ticker": occurrence.get("ticker", ""),
+                    "signal_date": occurrence.get("signal_date"),
+                    "market_status": occurrence.get("market_status", ""),
+                    "return_5d": forward_returns.get("5d"),
+                    "return_10d": forward_returns.get("10d"),
+                    "return_30d": forward_returns.get("30d"),
+                    "return_60d": forward_returns.get("60d"),
+                }
+            )
+
+    return rows

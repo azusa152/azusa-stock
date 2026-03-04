@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 from application.scan.backtest_service import (
+    get_backtest_all_occurrences,
     get_backtest_detail,
     get_backtest_summary,
     invalidate_backtest_cache,
@@ -126,3 +127,47 @@ def test_get_backtest_detail_should_return_occurrences_for_signal(db_session) ->
     assert detail["signal"] == "OVERHEATED"
     assert len(detail["occurrences"]) == 1
     assert detail["occurrences"][0]["ticker"] == "NVDA"
+
+
+def test_get_backtest_all_occurrences_should_flatten_all_signals(db_session) -> None:
+    _seed_stock(db_session, "AAPL")
+    _seed_stock(db_session, "MSFT")
+    db_session.add_all(
+        [
+            ScanLog(
+                stock_ticker="AAPL",
+                signal="OVERSOLD",
+                market_status="BULLISH",
+                scanned_at=datetime(2026, 1, 2, tzinfo=UTC),
+            ),
+            ScanLog(
+                stock_ticker="MSFT",
+                signal="OVERHEATED",
+                market_status="BEARISH",
+                scanned_at=datetime(2026, 1, 3, tzinfo=UTC),
+            ),
+        ]
+    )
+    db_session.commit()
+
+    mock_prices = [
+        {"date": "2026-01-02", "close": 100.0},
+        {"date": "2026-01-05", "close": 102.0},
+        {"date": "2026-01-06", "close": 101.0},
+    ]
+
+    invalidate_backtest_cache()
+    with patch(
+        "application.scan.backtest_service.get_price_history",
+        return_value=mock_prices,
+    ):
+        rows = get_backtest_all_occurrences(db_session)
+
+    assert len(rows) == 2
+    assert rows[0]["signal"] == "OVERHEATED"
+    assert rows[0]["ticker"] == "MSFT"
+    assert rows[0]["direction"] == "sell"
+    assert "return_5d" in rows[0]
+    assert rows[1]["signal"] == "OVERSOLD"
+    assert rows[1]["ticker"] == "AAPL"
+    assert rows[1]["direction"] == "buy"

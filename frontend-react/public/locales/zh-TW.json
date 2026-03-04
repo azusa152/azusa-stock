@@ -459,6 +459,7 @@
     "caption": "檢視各訊號在不同前瞻區間的歷史表現",
     "error": "❌ 載入回測資料失敗",
     "computed_at": "🕐 計算時間：{{time}}",
+    "export_csv": "匯出 CSV",
     "backfilling": "正在產生歷史訊號資料...",
     "backfilling_progress": "{{completed}} / {{total}} 檔股票",
     "no_data": "目前尚無歷史資料。系統會在下次伺服器啟動時自動產生。",

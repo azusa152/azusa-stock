@@ -459,6 +459,7 @@
     "caption": "Measure signal quality across multiple forward windows",
     "error": "❌ Failed to load backtest data",
     "computed_at": "🕐 Computed at: {{time}}",
+    "export_csv": "Export CSV",
     "backfilling": "Generating historical signal data...",
     "backfilling_progress": "{{completed}} / {{total}} stocks",
     "no_data": "No historical data available yet. Data will be generated on next server startup.",

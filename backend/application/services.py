@@ -52,6 +52,7 @@ from application.scan.backfill_service import get_backfill_status  # noqa: F401
 # Scan Service (scanning, price alerts, scan history)
 # ---------------------------------------------------------------------------
 from application.scan.backtest_service import (  # noqa: F401
+    get_backtest_all_occurrences,
     get_backtest_detail,
     get_backtest_summary,
     invalidate_backtest_cache,
