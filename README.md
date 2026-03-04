@@ -89,7 +89,7 @@
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
-- **匯出 / 匯入** — JSON 格式匯出觀察名單，Dashboard 上傳或 CLI 腳本匯入
+- **匯出 / 匯入** — 觀察名單支援 JSON 匯出匯入；持倉支援 JSON 與 CSV/TSV 匯入（含欄位對應與預覽）
 - **本地時間顯示** — 自動偵測瀏覽器時區，資料更新時間以本地時間呈現
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
@@ -320,6 +320,32 @@ python scripts/import_stocks.py path/to/custom_list.json
 - `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Bond`、`Cash` 之一
 - `thesis` — 初始觀點
 - `tags` — 領域標籤（選填，預設為空陣列）
+
+</details>
+
+### 3-1. 匯入持倉（CSV / TSV）
+
+在「💼 個人資產配置（War Room）」側邊欄的「📤 匯入持倉」區塊可直接上傳 CSV。
+
+- 支援 `.csv` 與 `.tsv`（常見券商匯出格式）
+- 上傳後會先進入 **欄位對應**（ticker / quantity / category 等）
+- 對應完成後提供 **資料預覽與錯誤檢查**，確認後才會送出匯入
+- 匯入模式目前為 **Replace-all**（會先清空舊持倉再匯入）
+
+<details>
+<summary>📄 持倉 CSV 格式範例（點擊展開）</summary>
+
+```csv
+ticker,category,quantity,cost_basis,currency,broker,account_type
+AAPL,Growth,10,150.00,USD,Interactive Brokers,
+2330.TW,Moat,100,580.00,TWD,Fubon,
+7203.T,Growth,200,2800.00,JPY,Rakuten,
+USD,Cash,50000,1.00,USD,Bank of America,savings
+```
+
+- `ticker`、`quantity`、`category` 為必要欄位（可在 UI 中對應不同欄名）
+- `currency`、`broker`、`cost_basis`、`account_type` 為選填
+- 現金列可使用 `category=Cash`，系統會自動視為現金持倉
 
 </details>
 

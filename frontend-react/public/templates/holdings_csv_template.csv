@@ -1,0 +1,5 @@
+ticker,category,quantity,cost_basis,currency,broker,account_type
+AAPL,Growth,10,150.00,USD,Interactive Brokers,
+2330.TW,Moat,100,580.00,TWD,Fubon,
+7203.T,Growth,200,2800.00,JPY,Rakuten,
+USD,Cash,50000,1.00,USD,Bank of America,savings

@@ -80,6 +80,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `POST` | `/fx-watch/alert` | Analyze + send Telegram (with cooldown) |
 | `GET` | `/holdings` | All holdings |
 | `POST` | `/holdings` | Add holding (auto-snapshots `purchase_fx_rate`) |
+| `GET` | `/holdings/export` | Export holdings (JSON) |
+| `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
 | `POST` | `/withdraw` | Smart withdrawal (Liquidity Waterfall) |
 | `GET` | `/snapshots/twr` | Time-weighted return (YTD default) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
