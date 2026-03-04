@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { CsvImportDialog } from "@/components/allocation/holdings/CsvImportDialog"
 import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
@@ -42,6 +43,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const [pendingImport, setPendingImport] = useState<
     components["schemas"]["HoldingImportItem"][] | null
   >(null)
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
 
   const addHoldingMutation = useAddHolding()
   const addCashMutation = useAddCashHolding()
@@ -415,6 +417,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           {/* Import */}
           <div className="space-y-2">
             <p className="text-xs font-semibold">{t("allocation.sidebar.import_title")}</p>
+            <p className="text-xs text-muted-foreground">{t("allocation.sidebar.import_hint")}</p>
             <input
               ref={fileRef}
               type="file"
@@ -430,6 +433,19 @@ export function AddHoldingSheet({ open, onClose }: Props) {
             >
               {t("allocation.sidebar.upload_json")}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-xs"
+              onClick={() => setCsvDialogOpen(true)}
+            >
+              {t("allocation.sidebar.upload_csv")}
+            </Button>
+            <Button asChild size="sm" variant="outline" className="w-full text-xs">
+              <a href="/templates/holdings_csv_template.csv" download>
+                {t("allocation.csv_import.download_template")}
+              </a>
+            </Button>
             {importFeedback && <p className="text-xs text-muted-foreground">{importFeedback}</p>}
             {pendingImport && (
               <Button
@@ -444,6 +460,10 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           </div>
         </div>
       </SheetContent>
+      <CsvImportDialog
+        open={csvDialogOpen}
+        onClose={() => setCsvDialogOpen(false)}
+      />
     </Sheet>
   )
 }

@@ -82,6 +82,9 @@ export default function Allocation() {
             <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-muted-foreground whitespace-pre-wrap">
               {t("allocation.sop.content")}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("allocation.sop_csv_note")}
+            </p>
           </div>
         )}
       </div>

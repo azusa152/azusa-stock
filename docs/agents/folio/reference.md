@@ -161,6 +161,8 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/holdings` | All holdings |
 | `POST` | `/holdings` | Add holding (body: `ticker`, `quantity`, `cost`, `currency`; auto-snapshots FX rate) |
 | `POST` | `/holdings/cash` | Add cash holding |
+| `GET` | `/holdings/export` | Export holdings (JSON) |
+| `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
 | `POST` | `/rebalance/xray-alert` | Telegram alert for stocks with true exposure > 15% |
 | `GET` | `/stress-test` | Stress test (`?scenario_drop_pct=-20&display_currency=USD`); returns Beta, expected loss, pain level |
@@ -194,6 +196,8 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/resonance/{ticker}` | Which gurus hold a specific ticker and their current action |
 | `GET` | `/docs` | Swagger UI |
 | `GET` | `/openapi.json` | OpenAPI spec |
+
+> CSV files are imported through the frontend UI. The browser parses CSV/TSV, maps columns to `HoldingImportItem[]`, then submits to `POST /holdings/import`.
 
 ---
 

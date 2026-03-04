@@ -1,5 +1,7 @@
 """Tests for holding management routes (CRUD + import/export + rebalance)."""
 
+from typing import ClassVar
+
 HOLDING_PAYLOAD = {
     "ticker": "NVDA",
     "category": "Growth",
@@ -313,3 +315,46 @@ class TestWithdraw:
             json={"target_amount": 1000, "display_currency": "USD"},
         )
         assert resp.status_code == 404
+
+
+class TestHoldingImportSchemaContract:
+    """Guard against schema drift that can break holdings import/export."""
+
+    AUTO_FIELDS: ClassVar[set[str]] = {
+        "id",
+        "user_id",
+        "updated_at",
+        "purchase_fx_rate",
+    }
+
+    def test_import_schema_covers_all_required_holding_fields(self):
+        from api.schemas.portfolio import HoldingImportItem
+        from domain.entities import Holding
+
+        missing: list[str] = []
+        for name, field_info in Holding.model_fields.items():
+            if name in self.AUTO_FIELDS:
+                continue
+            is_required = field_info.is_required()
+            if is_required and name not in HoldingImportItem.model_fields:
+                missing.append(name)
+
+        assert missing == [], (
+            f"Holding has required fields not covered by HoldingImportItem: {missing}. "
+            "Either add them to HoldingImportItem or provide defaults in Holding."
+        )
+
+    def test_export_roundtrip_matches_import_schema(self):
+        from api.schemas.portfolio import HoldingExportItem, HoldingImportItem
+
+        export_fields = set(HoldingExportItem.model_fields.keys())
+        import_required = {
+            name
+            for name, info in HoldingImportItem.model_fields.items()
+            if info.is_required()
+        }
+        missing = import_required - export_fields
+        assert missing == set(), (
+            f"HoldingImportItem requires fields not in HoldingExportItem: {missing}. "
+            "Export/import roundtrip would fail."
+        )
