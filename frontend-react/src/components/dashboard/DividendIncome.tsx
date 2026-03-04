@@ -67,45 +67,47 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <div className="flex items-center gap-1">
           <p className="text-xs text-muted-foreground">{t("dashboard.ytd_dividend")}</p>
           <InfoPopover align="start">
             <p className="text-xs font-medium">{t("dashboard.info.dividend_breakdown", { currency })}</p>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-muted-foreground">
-                  <th className="text-left font-normal pr-2">{t("dashboard.holdings_table.ticker")}</th>
-                  <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_dps")}</th>
-                  <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_native")}</th>
-                  <th className="text-right font-normal">{t("dashboard.info.dividend_converted")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {breakdown.map((row) => {
-                  const fmtNative = (v: number) =>
-                    new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: row.nativeCurrency,
-                      minimumFractionDigits: 2,
-                    }).format(v)
-                  return (
-                    <tr key={row.ticker}>
-                      <td className="font-medium pr-2">{row.ticker}</td>
-                      <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
-                      <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
-                      <td className="text-right tabular-nums">
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency,
-                          minimumFractionDigits: 2,
-                        }).format(row.convertedSubtotal)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[28rem] text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th className="text-left font-normal pr-2">{t("dashboard.holdings_table.ticker")}</th>
+                    <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_dps")}</th>
+                    <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_native")}</th>
+                    <th className="text-right font-normal">{t("dashboard.info.dividend_converted")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakdown.map((row) => {
+                    const fmtNative = (v: number) =>
+                      new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: row.nativeCurrency,
+                        minimumFractionDigits: 2,
+                      }).format(v)
+                    return (
+                      <tr key={row.ticker}>
+                        <td className="font-medium pr-2">{row.ticker}</td>
+                        <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
+                        <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
+                        <td className="text-right tabular-nums">
+                          {new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency,
+                            minimumFractionDigits: 2,
+                          }).format(row.convertedSubtotal)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </InfoPopover>
         </div>
         <p className="text-2xl font-bold tabular-nums mt-1">

@@ -4,7 +4,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 function PageSkeleton() {
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-4 w-72" />
       <div className="grid grid-cols-3 gap-4 mt-6">
@@ -22,7 +22,7 @@ interface PageShellProps {
 
 export function PageShell({ children }: PageShellProps) {
   return (
-    <div className="mx-auto w-full max-w-7xl">
+    <div className="mx-auto w-full max-w-7xl px-3 sm:px-0">
       <ErrorBoundary>
         <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
       </ErrorBoundary>

@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { useLocation, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { Download } from "lucide-react"
 import i18n from "@/lib/i18n"
 import {
   Sidebar,
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useLanguage } from "@/hooks/useLanguage"
+import { usePwaInstall } from "@/hooks/use-pwa-install"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { useTheme } from "@/hooks/useTheme"
 import { Switch } from "@/components/ui/switch"
@@ -38,6 +40,7 @@ export function AppSidebar() {
   const { t } = useTranslation()
   const location = useLocation()
   const { language, changeLanguage, LANGUAGE_OPTIONS } = useLanguage()
+  const { canInstall, promptInstall } = usePwaInstall()
   const { isPrivate, toggle, initialize } = usePrivacyMode()
   const { theme, toggle: toggleTheme } = useTheme()
   const { data: prefs } = usePreferences()
@@ -80,7 +83,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map(({ path, labelKey, icon }) => (
                 <SidebarMenuItem key={path}>
-                  <SidebarMenuButton asChild isActive={location.pathname === path}>
+                  <SidebarMenuButton asChild isActive={location.pathname === path} className="min-h-[44px]">
                     <Link to={path}>
                       <span>{icon}</span>
                       <span>{t(labelKey)}</span>
@@ -94,6 +97,18 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-3 space-y-2">
+        {canInstall && (
+          <button
+            type="button"
+            onClick={() => {
+              void promptInstall()
+            }}
+            className="w-full min-h-[44px] px-2 text-xs rounded-md border border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground inline-flex items-center justify-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {t("pwa.install")}
+          </button>
+        )}
         {/* Dark mode toggle */}
         <div className="flex items-center justify-between px-1">
           <span className="text-xs text-muted-foreground">
@@ -101,21 +116,23 @@ export function AppSidebar() {
           </span>
           <button
             onClick={toggleTheme}
-            className="text-sm leading-none"
+            className="text-sm leading-none min-h-[44px] min-w-[44px]"
             aria-label="Toggle theme"
           >
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
         </div>
         {/* Privacy mode toggle */}
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between px-1 min-h-[44px]">
           <span className="text-xs text-muted-foreground">
             {isPrivate ? t("common.privacy_on") : t("common.privacy_off")}
           </span>
-          <Switch checked={isPrivate} onCheckedChange={togglePrivacy} />
+          <div className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center">
+            <Switch checked={isPrivate} onCheckedChange={togglePrivacy} />
+          </div>
         </div>
         <Select value={language} onValueChange={changeLanguage}>
-          <SelectTrigger className="w-full text-xs">
+          <SelectTrigger className="w-full text-xs min-h-[44px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

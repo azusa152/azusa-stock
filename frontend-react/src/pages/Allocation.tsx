@@ -31,7 +31,7 @@ export default function Allocation() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-3 sm:p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-80" />
         <Skeleton className="h-10 w-full" />
@@ -42,8 +42,8 @@ export default function Allocation() {
 
   if (!profile || !holdings) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-bold">{t("allocation.title")}</h1>
+      <div className="p-3 sm:p-6 space-y-3">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("allocation.title")}</h1>
         <p className="text-sm text-destructive">{t("common.error_backend")}</p>
       </div>
     )
@@ -52,16 +52,16 @@ export default function Allocation() {
   const hasSetup = holdings.length > 0
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">{t("allocation.title")}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t("allocation.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("allocation.caption")}</p>
         </div>
         <Button
           size="sm"
-          className="text-xs shrink-0"
+          className="text-xs shrink-0 min-h-[44px]"
           onClick={() => setSheetOpen(true)}
         >
           {t("allocation.sidebar.add_holding")}
@@ -72,7 +72,7 @@ export default function Allocation() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
-          className="w-full text-left px-4 py-2 text-sm font-medium hover:bg-muted/30 transition-colors flex items-center justify-between"
+          className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("allocation.sop.title")}</span>
           <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
@@ -98,11 +98,11 @@ export default function Allocation() {
 
       {/* Main tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="portfolio">{t("allocation.tab.portfolio")}</TabsTrigger>
-          <TabsTrigger value="risk">{t("allocation.tab.risk")}</TabsTrigger>
-          <TabsTrigger value="actions">{t("allocation.tab.actions")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("allocation.tab.settings")}</TabsTrigger>
+        <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
+          <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
+          <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
+          <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
+          <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
         </TabsList>
 
         {/* Portfolio tab */}
@@ -113,7 +113,7 @@ export default function Allocation() {
             <select
               value={displayCurrency}
               onChange={(e) => setDisplayCurrency(e.target.value)}
-              className="text-xs border border-border rounded px-2 py-1 bg-background"
+              className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
             >
               {DISPLAY_CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>

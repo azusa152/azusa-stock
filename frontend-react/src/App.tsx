@@ -11,6 +11,7 @@ import Radar from "./pages/Radar"
 import Allocation from "./pages/Allocation"
 import FxWatch from "./pages/FxWatch"
 import SmartMoney from "./pages/SmartMoney"
+import { ReloadPrompt } from "./components/pwa/ReloadPrompt"
 import "./lib/i18n"
 
 export default function App() {
@@ -24,7 +25,7 @@ export default function App() {
               <main className="flex-1 overflow-auto min-w-0">
                 {/* Mobile header with hamburger trigger */}
                 <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border sticky top-0 bg-background z-10">
-                  <SidebarTrigger />
+                  <SidebarTrigger className="min-h-[44px] min-w-[44px]" />
                   <span className="text-sm font-semibold">📡 Folio</span>
                 </div>
                 <Routes>
@@ -37,6 +38,7 @@ export default function App() {
               </main>
             </div>
             <Toaster richColors position="bottom-right" />
+            <ReloadPrompt />
           </SidebarProvider>
         </TooltipProvider>
       </BrowserRouter>

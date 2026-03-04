@@ -48,7 +48,7 @@ export default function SmartMoney() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-3 sm:p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-80" />
         <Skeleton className="h-10 w-full" />
@@ -59,8 +59,8 @@ export default function SmartMoney() {
 
   if (isError || !gurus) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-bold">{t("smart_money.title")}</h1>
+      <div className="p-3 sm:p-6 space-y-3">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("smart_money.title")}</h1>
         <p className="text-sm text-destructive">{t("common.error_backend")}</p>
       </div>
     )
@@ -71,17 +71,17 @@ export default function SmartMoney() {
   )
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">{t("smart_money.title")}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t("smart_money.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("smart_money.caption")}</p>
         </div>
         <Button
           size="sm"
           variant="outline"
-          className="text-xs shrink-0"
+          className="text-xs shrink-0 min-h-[44px]"
           onClick={() => syncAllMutation.mutate()}
           disabled={syncAllMutation.isPending || activeGurus.length === 0}
         >
@@ -95,7 +95,7 @@ export default function SmartMoney() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
-          className="w-full text-left px-4 py-2 text-sm font-medium hover:bg-muted/30 transition-colors flex items-center justify-between"
+          className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.sop.title")}</span>
           <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
@@ -125,7 +125,7 @@ export default function SmartMoney() {
           <button
             onClick={() => setStyleFilter(null)}
             className={cn(
-              "text-xs px-2 py-0.5 rounded-full border transition-colors",
+              "text-xs px-3 py-2 rounded-full border min-h-[44px] min-w-[44px] transition-colors",
               styleFilter == null ? "bg-foreground text-background" : "hover:bg-muted/50",
             )}
           >
@@ -136,7 +136,7 @@ export default function SmartMoney() {
               key={s}
               onClick={() => setStyleFilter(s === styleFilter ? null : s)}
               className={cn(
-                "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                "text-xs px-3 py-2 rounded-full border min-h-[44px] min-w-[44px] transition-colors",
                 s === styleFilter ? "bg-foreground text-background" : "hover:bg-muted/50",
               )}
             >
@@ -149,17 +149,17 @@ export default function SmartMoney() {
       {/* Tab bar: Overview + Grand Portfolio + per-guru + Add Guru */}
       <Tabs value={resolvedTab} onValueChange={setActiveTab}>
         <ScrollArea className="w-full">
-          <TabsList ref={tabsListRef} className="inline-flex w-max gap-1">
-            <TabsTrigger value={OVERVIEW_TAB}>{t("smart_money.overview.tab")}</TabsTrigger>
-            <TabsTrigger value={GRAND_PORTFOLIO_TAB}>
+          <TabsList ref={tabsListRef} className="inline-flex w-max min-h-[44px] gap-1">
+            <TabsTrigger value={OVERVIEW_TAB} className="min-h-[44px]">{t("smart_money.overview.tab")}</TabsTrigger>
+            <TabsTrigger value={GRAND_PORTFOLIO_TAB} className="min-h-[44px]">
               {t("smart_money.grand_portfolio.tab")}
             </TabsTrigger>
             {filteredGurus.map((guru) => (
-              <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)}>
+              <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)} className="min-h-[44px]">
                 {guru.display_name}
               </TabsTrigger>
             ))}
-            <TabsTrigger value={ADD_GURU_TAB}>{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
+            <TabsTrigger value={ADD_GURU_TAB} className="min-h-[44px]">{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
