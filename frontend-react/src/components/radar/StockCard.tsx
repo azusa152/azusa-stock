@@ -8,12 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES, MARKET_OPTIONS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
-import { formatPrice, isMarketOpen } from "@/lib/format"
+import { formatMarketCap, formatPrice, isMarketOpen } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
 import { PriceChart } from "@/components/radar/PriceChart"
 import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
 import { SparklineHeader } from "@/components/radar/SparklineHeader"
+import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
 
@@ -238,7 +239,7 @@ function RemoveSection({ ticker }: { ticker: string }) {
   )
 }
 
-type TabKey = "metrics" | "thesis" | "category" | "remove"
+type TabKey = "metrics" | "fundamentals" | "thesis" | "category" | "remove"
 
 export function StockCard({ stock, enrichment, resonance, isHeld = false }: Props) {
   const { t } = useTranslation()
@@ -267,6 +268,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
   const rsi = sig?.rsi ?? enrichment?.rsi
   const bias = sig?.bias ?? enrichment?.bias
   const volumeRatio = sig?.volume_ratio ?? enrichment?.volume_ratio
+  const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
 
   const marketLabel = infer_market_label(stock.ticker)
   const currency = infer_currency(stock.ticker)
@@ -290,6 +292,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
 
   const TABS: { key: TabKey; label: string }[] = [
     { key: "metrics", label: t("radar.stock_card.signals") },
+    { key: "fundamentals", label: t("radar.stock_card.fundamentals.tab_title") },
     { key: "thesis", label: t("radar.stock_card.thesis") },
     { key: "category", label: t("radar.stock_card.change_category") },
     { key: "remove", label: t("radar.stock_card.remove") },
@@ -308,6 +311,11 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
           {/* Left: identity */}
           <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
             <span className="truncate">{identityParts}</span>
+              {marketCap != null && (
+                <span className="shrink-0 inline-flex items-center rounded-md border border-border px-1.5 py-0 h-4 text-[10px] font-medium text-muted-foreground">
+                  {t("radar.stock_card.fundamentals.market_cap_short")}: {formatMarketCap(marketCap)}
+                </span>
+              )}
             {isHeld && (
               <span className="shrink-0 inline-flex items-center rounded-md border border-primary px-1.5 py-0 h-4 text-[10px] font-medium text-primary">
                 {t("radar.stock_card.held")}
@@ -454,6 +462,12 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
 
                   <ThesisHistorySection ticker={stock.ticker} />
                 </div>
+              )}
+              {activeTab === "fundamentals" && (
+                <FundamentalsTab
+                  ticker={stock.ticker}
+                  fundamentals={enrichment?.fundamentals}
+                />
               )}
               {activeTab === "thesis" && <ThesisSection ticker={stock.ticker} stock={stock} />}
               {activeTab === "category" && <ChangeCategorySection ticker={stock.ticker} currentCategory={stock.category} />}

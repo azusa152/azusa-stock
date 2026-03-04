@@ -70,6 +70,7 @@ Webhook response envelope: `{"success": true, "message": "...", "data": {}}`
 | `GET` | `/stocks` | All tracked stocks with `last_scan_signal` |
 | `POST` | `/ticker` | Add stock |
 | `GET` | `/ticker/{ticker}/signals` | Signals incl. `bias_percentile`, `is_rogue_wave` |
+| `GET` | `/ticker/{ticker}/fundamentals` | Fundamental metrics (P/E, EPS, market cap, growth, margins) |
 | `GET` | `/ticker/{ticker}/moat` | Moat analysis |
 | `POST` | `/ticker/{ticker}/alerts` | Create price alert |
 | `PATCH` | `/alerts/{alert_id}/toggle` | Pause/resume alert |

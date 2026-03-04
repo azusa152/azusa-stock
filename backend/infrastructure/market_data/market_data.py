@@ -70,6 +70,7 @@ from domain.constants import (
     DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
     DISK_FOREX_TTL,
+    DISK_FUNDAMENTALS_TTL,
     DISK_KEY_BETA,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
@@ -79,6 +80,7 @@ from domain.constants import (
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
     DISK_KEY_FOREX_HISTORY_LONG,
+    DISK_KEY_FUNDAMENTALS,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_PRICE_PAIR,
@@ -115,6 +117,8 @@ from domain.constants import (
     FOREX_HISTORY_CACHE_TTL,
     FOREX_HISTORY_LONG_CACHE_MAXSIZE,
     FOREX_HISTORY_LONG_CACHE_TTL,
+    FUNDAMENTALS_CACHE_MAXSIZE,
+    FUNDAMENTALS_CACHE_TTL,
     FX_HISTORY_PERIOD,
     FX_LONG_TERM_PERIOD,
     INSTITUTIONAL_HOLDERS_TOP_N,
@@ -139,6 +143,8 @@ from domain.constants import (
     TWII_TICKER,
     VIX_HISTORY_PERIOD,
     VIX_TICKER,
+    YF_INFO_CACHE_MAXSIZE,
+    YF_INFO_CACHE_TTL,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
@@ -270,6 +276,12 @@ _earnings_cache: TTLCache = TTLCache(
 _dividend_cache: TTLCache = TTLCache(
     maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL
 )
+_fundamentals_cache: TTLCache = TTLCache(
+    maxsize=FUNDAMENTALS_CACHE_MAXSIZE, ttl=FUNDAMENTALS_CACHE_TTL
+)
+_yf_info_cache: TTLCache = TTLCache(
+    maxsize=YF_INFO_CACHE_MAXSIZE, ttl=YF_INFO_CACHE_TTL
+)
 _price_history_cache: TTLCache = TTLCache(
     maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL
 )
@@ -322,6 +334,8 @@ def clear_all_caches() -> dict:
         _moat_cache,
         _earnings_cache,
         _dividend_cache,
+        _fundamentals_cache,
+        _yf_info_cache,
         _price_history_cache,
         _forex_cache,
         _etf_holdings_cache,
@@ -452,9 +466,15 @@ def _yf_info(ticker: str):
     """取得 yfinance 股票 info（含重試）。
     yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
     """
+    cached = _yf_info_cache.get(ticker)
+    if cached is not None:
+        return cached
+
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
-    return stock.info or {}
+    info = stock.info or {}
+    _yf_info_cache[ticker] = info
+    return info
 
 
 def detect_is_etf(ticker: str) -> bool:
@@ -489,18 +509,21 @@ def _yf_ticker_obj(ticker: str):
     return yf.Ticker(ticker, session=_get_session())
 
 
-@_yf_retry
 def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
     """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
-    合併兩次呼叫以避免重複建立 session，同時保留重試保護。
+    info 走 _yf_info（含短 TTL 快取）以共享給 fundamentals 路徑，降低重複呼叫。
     """
-    _rate_limiter.wait()
+    info = _yf_info(ticker)
+    dividends = _yf_dividends(ticker)
+    return info, dividends
+
+
+@_yf_retry
+def _yf_dividends(ticker: str):
+    """取得股息歷史（含重試）。"""
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
-    info = stock.info or {}
-    _rate_limiter.wait()
-    dividends = stock.get_dividends()
-    return info, dividends
+    return stock.get_dividends()
 
 
 # ===========================================================================
@@ -1295,6 +1318,55 @@ def get_dividend_info(ticker: str) -> dict:
         _dividend_cache[ticker] = result
         _disk_set(f"{DISK_KEY_DIVIDEND}:{ticker}", result, DISK_DIVIDEND_TTL)
     return result
+
+
+def _fetch_fundamentals_from_yf(ticker: str) -> dict:
+    """從 yfinance 取得股票基本面指標。"""
+    try:
+        info = _yf_info(ticker)
+        return {
+            "ticker": ticker,
+            "trailing_pe": info.get("trailingPE"),
+            "forward_pe": info.get("forwardPE"),
+            "trailing_eps": info.get("trailingEps"),
+            "forward_eps": info.get("forwardEps"),
+            "market_cap": info.get("marketCap"),
+            "price_to_book": info.get("priceToBook"),
+            "price_to_sales": info.get("priceToSalesTrailing12Months"),
+            "profit_margins": info.get("profitMargins"),
+            "operating_margins": info.get("operatingMargins"),
+            "return_on_equity": info.get("returnOnEquity"),
+            "revenue_growth": info.get("revenueGrowth"),
+            "earnings_growth": info.get("earningsGrowth"),
+        }
+    except Exception as exc:
+        logger.warning("無法取得 %s 基本面資料：%s", ticker, exc)
+        return {
+            "ticker": ticker,
+            "trailing_pe": None,
+            "forward_pe": None,
+            "trailing_eps": None,
+            "forward_eps": None,
+            "market_cap": None,
+            "price_to_book": None,
+            "price_to_sales": None,
+            "profit_margins": None,
+            "operating_margins": None,
+            "return_on_equity": None,
+            "revenue_growth": None,
+            "earnings_growth": None,
+        }
+
+
+def get_fundamentals(ticker: str) -> dict:
+    """取得股票基本面資料（L1 + L2 快取）。"""
+    return _cached_fetch(
+        _fundamentals_cache,
+        ticker,
+        DISK_KEY_FUNDAMENTALS,
+        DISK_FUNDAMENTALS_TTL,
+        _fetch_fundamentals_from_yf,
+    )
 
 
 # ===========================================================================

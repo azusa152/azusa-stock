@@ -960,6 +960,62 @@
         }
       }
     },
+    "/ticker/{ticker}/fundamentals": {
+      "get": {
+        "summary": "Get fundamental metrics for a stock",
+        "description": "\u53d6\u5f97\u6307\u5b9a\u80a1\u7968\u7684\u57fa\u672c\u9762\u6307\u6a19\u3002",
+        "operationId": "get_fundamentals_route_ticker__ticker__fundamentals_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ticker/{ticker}/scan-history": {
       "get": {
         "summary": "Get scan history for a stock",
@@ -6009,6 +6065,152 @@
         "type": "object",
         "title": "FilingHistoryResponse",
         "description": "GET /gurus/{guru_id}/filings \u5b8c\u6574\u56de\u61c9\u3002"
+      },
+      "FundamentalsResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "trailing_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe"
+          },
+          "forward_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forward Pe"
+          },
+          "trailing_eps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Eps"
+          },
+          "forward_eps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forward Eps"
+          },
+          "market_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Cap"
+          },
+          "price_to_book": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price To Book"
+          },
+          "price_to_sales": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price To Sales"
+          },
+          "profit_margins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profit Margins"
+          },
+          "operating_margins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Margins"
+          },
+          "return_on_equity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return On Equity"
+          },
+          "revenue_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Growth"
+          },
+          "earnings_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earnings Growth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker"
+        ],
+        "title": "FundamentalsResponse",
+        "description": "GET /ticker/{ticker}/fundamentals \u56de\u50b3\u8cc7\u6599\u3002"
       },
       "GrandPortfolioItem": {
         "properties": {

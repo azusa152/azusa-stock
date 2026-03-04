@@ -94,6 +94,17 @@ class TestGetDividendForTicker:
         assert result is None
 
 
+class TestGetFundamentalsForTicker:
+    def test_returns_fundamentals(self) -> None:
+        payload = {"ticker": "AAPL", "trailing_pe": 22.3}
+        with patch(f"{STOCK_MODULE}.get_fundamentals", return_value=payload):
+            from application.stock.stock_service import get_fundamentals_for_ticker
+
+            result = get_fundamentals_for_ticker("AAPL")
+
+        assert result == payload
+
+
 # ===========================================================================
 # list_removed_stocks
 # ===========================================================================
@@ -318,11 +329,13 @@ class TestGetEnrichedStocks:
         mock_signals = {"rsi": 60.0, "bias": 5.0, "ma200": 100.0}
         mock_earnings = {"next_earnings_date": "2025-07-30"}
         mock_dividend = {"dividend_yield": 0.02}
+        mock_fundamentals = {"market_cap": 123456789, "trailing_pe": 18.2}
 
         with (
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_dividend),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=mock_fundamentals),
             patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
@@ -334,6 +347,9 @@ class TestGetEnrichedStocks:
         assert result[0]["signals"] == mock_signals
         assert result[0]["earnings"] == mock_earnings
         assert result[0]["dividend"] == mock_dividend
+        assert result[0]["fundamentals"] == mock_fundamentals
+        assert result[0]["market_cap"] == 123456789
+        assert result[0]["trailing_pe"] == 18.2
 
     def test_sector_field_included_in_enriched_response(self, db_session) -> None:
         """sector field from yfinance cache should be present in each enriched stock dict."""
@@ -349,6 +365,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
             patch(
                 f"{STOCK_MODULE}.get_ticker_sector_cached", return_value="Technology"
             ),
@@ -376,6 +393,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
             patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
@@ -403,6 +421,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
             patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
@@ -424,6 +443,7 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
             patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks

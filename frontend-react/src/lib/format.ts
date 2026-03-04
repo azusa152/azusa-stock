@@ -8,6 +8,10 @@ const DEFAULT_FORMATTER = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })
+const COMPACT_FORMATTER = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+})
 
 /**
  * Format a price with currency-appropriate decimals.
@@ -20,6 +24,26 @@ export function formatPrice(value: number, currencyCode: string): string {
     return JPY_FORMATTER.format(value)
   }
   return DEFAULT_FORMATTER.format(value)
+}
+
+export function formatMarketCap(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—"
+  return COMPACT_FORMATTER.format(value)
+}
+
+export function formatRatio(
+  value: number | null | undefined,
+  decimals = 2,
+): string {
+  if (value == null || Number.isNaN(value)) return "—"
+  return value.toFixed(decimals)
+}
+
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—"
+  const normalized = Math.abs(value) <= 1 ? value * 100 : value
+  const sign = normalized > 0 ? "+" : ""
+  return `${sign}${normalized.toFixed(1)}%`
 }
 
 function toMinutes(hhmm: string): number {

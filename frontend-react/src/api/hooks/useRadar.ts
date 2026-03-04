@@ -10,6 +10,7 @@ import type {
   ResonanceMap,
   ResonanceHolding,
   RadarEnrichedStock,
+  FundamentalsResponse,
   AddStockRequest,
   DeactivateRequest,
   ReactivateRequest,
@@ -174,6 +175,21 @@ export function useMoatAnalysis(ticker: string, enabled: boolean) {
     },
     enabled,
     staleTime: 60 * 60 * 1000,
+  })
+}
+
+export function useFundamentals(ticker: string, enabled: boolean) {
+  return useQuery<FundamentalsResponse>({
+    queryKey: ["fundamentals", ticker],
+    queryFn: async () => {
+      const { data, error } = await client.GET("/ticker/{ticker}/fundamentals", {
+        params: { path: { ticker } },
+      })
+      if (error) throw error
+      return data as unknown as FundamentalsResponse
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

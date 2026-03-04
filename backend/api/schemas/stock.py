@@ -125,3 +125,21 @@ class StockExportItem(BaseModel):
     thesis: str = ""
     tags: list[str] = []
     is_etf: bool = False
+
+
+class FundamentalsResponse(BaseModel):
+    """GET /ticker/{ticker}/fundamentals 回傳資料。"""
+
+    ticker: str
+    trailing_pe: float | None = None
+    forward_pe: float | None = None
+    trailing_eps: float | None = None
+    forward_eps: float | None = None
+    market_cap: int | None = None
+    price_to_book: float | None = None
+    price_to_sales: float | None = None
+    profit_margins: float | None = None
+    operating_margins: float | None = None
+    return_on_equity: float | None = None
+    revenue_growth: float | None = None
+    earnings_growth: float | None = None

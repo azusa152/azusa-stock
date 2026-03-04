@@ -11,6 +11,7 @@ from api.rate_limit import limiter
 from api.schemas import (
     CategoryUpdateRequest,
     DeactivateRequest,
+    FundamentalsResponse,
     ImportResponse,
     MessageResponse,
     PriceAlertCreateRequest,
@@ -298,6 +299,21 @@ def get_earnings_route(ticker: str) -> dict | None:
 def get_dividend_route(ticker: str) -> dict | None:
     """取得指定股票的股息資訊。"""
     return stock_service.get_dividend_for_ticker(ticker.upper())
+
+
+@router.get(
+    "/ticker/{ticker}/fundamentals",
+    response_model=FundamentalsResponse,
+    summary="Get fundamental metrics for a stock",
+)
+def get_fundamentals_route(ticker: str, response: Response) -> FundamentalsResponse:
+    """取得指定股票的基本面指標。"""
+    response.headers["Cache-Control"] = (
+        "private, max-age=300, stale-while-revalidate=600"
+    )
+    return FundamentalsResponse(
+        **stock_service.get_fundamentals_for_ticker(ticker.upper())
+    )
 
 
 @router.get("/ticker/{ticker}/scan-history", summary="Get scan history for a stock")

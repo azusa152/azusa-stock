@@ -30,6 +30,7 @@ from infrastructure.market_data import (
     get_dividend_info,
     get_earnings_date,
     get_fear_greed_index,
+    get_fundamentals,
     get_jp_volatility_index,
     get_technical_signals,
     get_ticker_sector_cached,
@@ -41,6 +42,8 @@ from infrastructure.market_data import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash"}
 
 
 # ---------------------------------------------------------------------------
@@ -673,19 +676,23 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "signals": None,
             "earnings": None,
             "dividend": None,
+            "fundamentals": None,
             "computed_signal": None,
             "price": None,
             "change_pct": None,
             "rsi": None,
+            "market_cap": None,
+            "trailing_pe": None,
         }
 
     def _fetch_enrichment(
         ticker: str, cat_value: str
-    ) -> tuple[str, dict | None, dict | None, dict | None]:
+    ) -> tuple[str, dict | None, dict | None, dict | None, dict | None]:
         """並行取得單一股票的附加資料。"""
         signals = None
         earnings = None
         dividend = None
+        fundamentals = None
 
         if cat_value not in SKIP_SIGNALS_CATEGORIES:
             signals = get_technical_signals(ticker)
@@ -695,12 +702,18 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
         except Exception:
             earnings = None
 
-        try:
-            dividend = get_dividend_info(ticker)
-        except Exception:
-            dividend = None
+        if cat_value not in _SKIP_DIVIDEND_CATEGORIES:
+            try:
+                dividend = get_dividend_info(ticker)
+            except Exception:
+                dividend = None
 
-        return ticker, signals, earnings, dividend
+        try:
+            fundamentals = get_fundamentals(ticker)
+        except Exception:
+            fundamentals = None
+
+        return ticker, signals, earnings, dividend, fundamentals
 
     # 並行取得所有附加資料（使用較大執行緒池 + 單檔超時保護）
     with ThreadPoolExecutor(max_workers=ENRICHED_THREAD_POOL_SIZE) as executor:
@@ -717,17 +730,25 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
         for future in as_completed(futures):
             tk = futures[future]
             try:
-                ticker, signals, earnings, dividend = future.result(
+                ticker, signals, earnings, dividend, fundamentals = future.result(
                     timeout=ENRICHED_PER_TICKER_TIMEOUT
                 )
                 if ticker in enriched:
                     enriched[ticker]["signals"] = signals
                     enriched[ticker]["earnings"] = earnings
                     enriched[ticker]["dividend"] = dividend
+                    enriched[ticker]["fundamentals"] = fundamentals
                     # Surface key metrics at top level for heat map / dashboard use
                     enriched[ticker]["price"] = (signals or {}).get("price")
                     enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
                     enriched[ticker]["rsi"] = (signals or {}).get("rsi")
+                    # Hybrid loading: quick-scan metrics also exposed at top-level.
+                    enriched[ticker]["market_cap"] = (fundamentals or {}).get(
+                        "market_cap"
+                    )
+                    enriched[ticker]["trailing_pe"] = (fundamentals or {}).get(
+                        "trailing_pe"
+                    )
                     # Compute real-time signal from live RSI/bias (skip moat — too expensive here)
                     persisted_signal = enriched[ticker].get(
                         "last_scan_signal", "NORMAL"
@@ -780,6 +801,11 @@ def get_earnings_for_ticker(ticker: str) -> dict | None:
 def get_dividend_for_ticker(ticker: str) -> dict | None:
     """Fetch dividend info for a ticker."""
     return get_dividend_info(ticker)
+
+
+def get_fundamentals_for_ticker(ticker: str) -> dict:
+    """Fetch fundamentals for a ticker."""
+    return get_fundamentals(ticker)
 
 
 def get_market_sentiment_multi(session: Session) -> dict:

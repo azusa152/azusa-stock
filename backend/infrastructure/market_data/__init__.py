@@ -26,6 +26,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     get_fear_greed_index,
     get_forex_history,
     get_forex_history_long,
+    get_fundamentals,
     get_jp_volatility_index,
     get_price_history,
     get_stock_beta,
