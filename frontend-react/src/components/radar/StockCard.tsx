@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES, MARKET_OPTIONS } from "@/lib/constants"
+import { getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
 import { formatMarketCap, formatPrice, isMarketOpen } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
@@ -277,7 +278,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
   const resonanceBadge = resonance?.length ? `🏆×${resonance.length}` : ""
   const signalLabel =
     signal !== "NORMAL"
-      ? t(`config.signal.${signal.toLowerCase()}`, { defaultValue: "" })
+      ? getSignalLabel(t, signal)
       : ""
 
   const identityParts = [

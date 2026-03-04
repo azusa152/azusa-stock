@@ -8,9 +8,18 @@ const mockUseBackfillStatus = vi.fn()
 const mockUseBacktestDetail = vi.fn()
 const toastErrorMock = vi.fn()
 
+const translationMap: Record<string, string> = {
+  "config.signal.overheated": "Localized Overheated",
+}
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { days?: number }) => {
+      if (key === "backtest.window_option" && typeof options?.days === "number") {
+        return `${options.days}d`
+      }
+      return translationMap[key] ?? key
+    },
   }),
 }))
 
@@ -73,7 +82,10 @@ describe("Backtest export CSV", () => {
             signal: "OVERHEATED",
             direction: "sell",
             confidence: "high",
-            windows: [{ window_days: 30, hit_rate: 0.5, avg_return_pct: 1.2, sample_count: 2 }],
+            windows: [
+              { window_days: 5, hit_rate: 0.2, avg_return_pct: 0.5, sample_count: 3 },
+              { window_days: 30, hit_rate: 0.5, avg_return_pct: 1.2, sample_count: 2 },
+            ],
           },
         ],
         computed_at: "2026-03-04T00:00:00Z",
@@ -111,5 +123,20 @@ describe("Backtest export CSV", () => {
     fireEvent.click(screen.getByRole("button", { name: "backtest.export_csv" }))
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("common.error"))
+  })
+
+  it("renders translated signal labels instead of raw signal keys", () => {
+    renderPage()
+
+    expect(screen.getAllByText("Localized Overheated").length).toBeGreaterThan(0)
+    expect(screen.queryByText("OVERHEATED")).not.toBeInTheDocument()
+  })
+
+  it("updates card metrics when forward window selector changes", () => {
+    renderPage()
+
+    expect(screen.getByText((text) => text.includes("50.0%"))).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "5d" }))
+    expect(screen.getByText((text) => text.includes("20.0%"))).toBeInTheDocument()
   })
 })

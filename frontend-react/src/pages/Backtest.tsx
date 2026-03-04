@@ -21,6 +21,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getSignalLabel } from "@/lib/signal-label"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { cn, formatLocalTime } from "@/lib/utils"
 
@@ -35,6 +36,7 @@ export default function Backtest() {
   const queryClient = useQueryClient()
   const theme = useRechartsTheme()
   const [sopOpen, setSopOpen] = useState(false)
+  const [selectedWindow, setSelectedWindow] = useState(30)
   const { data: summary, isLoading, isError } = useBacktestSummary()
   const { data: backfillStatus } = useBackfillStatus()
   const selectedSignal = summary?.signals?.[0]?.signal ?? ""
@@ -99,14 +101,14 @@ export default function Backtest() {
 
   const hitRateData = useMemo(() => {
     return (summary?.signals ?? []).map((signal) => {
-      const metric30 = signal.windows.find((w) => w.window_days === 30)
+      const metric = signal.windows.find((w) => w.window_days === selectedWindow)
       return {
         signal: signal.signal,
-        hitRate: (metric30?.hit_rate ?? 0) * 100,
+        hitRate: (metric?.hit_rate ?? 0) * 100,
         direction: signal.direction,
       }
     })
-  }, [summary?.signals])
+  }, [selectedWindow, summary?.signals])
 
   if (isLoading) {
     return (
@@ -191,14 +193,29 @@ export default function Backtest() {
         </Card>
       ) : (
         <>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">{t("backtest.window_label")}:</span>
+            {WINDOWS.map((days) => (
+              <Button
+                key={days}
+                size="sm"
+                variant={selectedWindow === days ? "default" : "outline"}
+                onClick={() => setSelectedWindow(days)}
+                className="min-h-[36px]"
+              >
+                {t("backtest.window_option", { days })}
+              </Button>
+            ))}
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {summary.signals.map((signal) => {
-              const metric30 = signal.windows.find((w) => w.window_days === 30)
+              const metric = signal.windows.find((w) => w.window_days === selectedWindow)
               return (
                 <Card key={signal.signal} className="border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center justify-between">
-                      <span>{signal.signal}</span>
+                      <span>{getSignalLabel(t, signal.signal)}</span>
                       <span
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase",
@@ -218,15 +235,16 @@ export default function Backtest() {
                       {t("backtest.card.direction")}: {signal.direction}
                     </p>
                     <p>
-                      {t("backtest.card.hit_rate_30d")}:{" "}
-                      {((metric30?.hit_rate ?? 0) * 100).toFixed(1)}%
+                      {t("backtest.card.hit_rate", { window: selectedWindow })}:{" "}
+                      {((metric?.hit_rate ?? 0) * 100).toFixed(1)}%
                     </p>
                     <p>
-                      {t("backtest.card.avg_return_30d")}:{" "}
-                      {(metric30?.avg_return_pct ?? 0).toFixed(2)}%
+                      {t("backtest.card.avg_return", { window: selectedWindow })}:{" "}
+                      {(metric?.avg_return_pct ?? 0).toFixed(2)}%
                     </p>
                     <p>
-                      {t("backtest.card.samples_30d")}: {metric30?.sample_count ?? 0}
+                      {t("backtest.card.samples", { window: selectedWindow })}:{" "}
+                      {metric?.sample_count ?? 0}
                     </p>
                   </CardContent>
                 </Card>
@@ -242,7 +260,13 @@ export default function Backtest() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={forwardReturnData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
-                  <XAxis dataKey="signal" tick={{ fill: theme.tickColor, fontSize: 11 }} />
+                  <XAxis
+                    dataKey="signal"
+                    tick={{ fill: theme.tickColor, fontSize: 11 }}
+                    tickFormatter={(value: string | number) =>
+                      getSignalLabel(t, String(value))
+                    }
+                  />
                   <YAxis tick={{ fill: theme.tickColor, fontSize: 11 }} />
                   <Tooltip contentStyle={theme.tooltipStyle} />
                   <Bar dataKey="5d" fill="#60a5fa" />
@@ -256,7 +280,7 @@ export default function Backtest() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t("backtest.hit_rate_title")}</CardTitle>
+              <CardTitle>{t("backtest.hit_rate_title", { window: selectedWindow })}</CardTitle>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -267,6 +291,9 @@ export default function Backtest() {
                     dataKey="signal"
                     type="category"
                     tick={{ fill: theme.tickColor, fontSize: 11 }}
+                    tickFormatter={(value: string | number) =>
+                      getSignalLabel(t, String(value))
+                    }
                     width={120}
                   />
                   <Tooltip
@@ -299,7 +326,7 @@ export default function Backtest() {
                     onClick={() => setActiveSignal(signal.signal)}
                     className="min-h-[40px]"
                   >
-                    {signal.signal}
+                    {getSignalLabel(t, signal.signal)}
                   </Button>
                 ))}
               </div>
@@ -317,7 +344,7 @@ export default function Backtest() {
                       </th>
                       {WINDOWS.map((days) => (
                         <th key={days} className="text-right px-3 py-2">
-                          {days}d
+                          {t("backtest.window_option", { days })}
                         </th>
                       ))}
                     </tr>

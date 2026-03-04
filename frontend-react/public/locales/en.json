@@ -465,16 +465,18 @@
     "no_data": "No historical data available yet. Data will be generated on next server startup.",
     "sop": {
       "title": "📖 Signal Backtesting: User Manual",
-      "content": "### What this page measures\n\nSignal backtesting evaluates how each scan signal performed after it appeared.\n\n- **Hit Rate**: Percentage of events that moved in the expected direction.\n- **Average Return**: Mean forward return after 5, 10, 30, and 60 trading days.\n- **False Positive Rate**: Signals that moved opposite to expectation at 30 days.\n\n### Important interpretation notes\n\n- Results are based on **historical signal events**, not guarantees.\n- Sample size differs by window (recent signals may not have 60-day outcomes yet).\n- Buy and sell signals are evaluated with opposite success directions.\n- Past performance does not guarantee future results.\n- On a fresh deployment, historical events are generated automatically in the background after startup cache prewarm finishes."
+      "content": "### What this page measures\n\nSignal backtesting evaluates how each scan signal performed after it appeared.\n\n- **Hit Rate**: Percentage of events that moved in the expected direction.\n- **Average Return**: Mean forward return after 5, 10, 30, and 60 trading days.\n- **False Positive Rate**: Signals that moved opposite to expectation at 30 days.\n\n### Important interpretation notes\n\n- Results are based on **historical signal events**, not guarantees.\n- Sample size differs by window (recent signals may not have 60-day outcomes yet).\n- Buy and sell signals are evaluated with opposite success directions.\n- Past performance does not guarantee future results.\n- On a fresh deployment, historical events are generated automatically in the background after startup cache prewarm finishes.\n- Use the **Forward Window** selector (5d / 10d / 30d / 60d) above the cards to switch the card metrics and hit-rate comparison period."
     },
     "card": {
       "direction": "Direction",
-      "hit_rate_30d": "30d Hit Rate",
-      "avg_return_30d": "30d Avg Return",
-      "samples_30d": "30d Samples"
+      "hit_rate": "{{window}}d Hit Rate",
+      "avg_return": "{{window}}d Avg Return",
+      "samples": "{{window}}d Samples"
     },
+    "window_label": "Forward Window",
+    "window_option": "{{days}}d",
     "forward_returns_title": "📊 Forward Returns by Signal",
-    "hit_rate_title": "🎯 30d Hit Rate Comparison",
+    "hit_rate_title": "🎯 Hit Rate Comparison ({{window}}d)",
     "occurrences_title": "📋 Signal Occurrences",
     "table": {
       "ticker": "Ticker",

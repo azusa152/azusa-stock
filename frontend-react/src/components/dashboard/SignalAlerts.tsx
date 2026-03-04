@@ -9,6 +9,7 @@ import {
   BUY_OPPORTUNITY_SIGNALS,
   RISK_WARNING_SIGNALS,
 } from "@/lib/constants"
+import { getSignalLabel } from "@/lib/signal-label"
 import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,8 +29,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
   const { t } = useTranslation()
   const icon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
-  const signalKey = signal.toLowerCase()
-  const signalLabel = t(`config.signal.${signalKey}`, { defaultValue: signal })
+  const signalLabel = getSignalLabel(t, signal)
 
   const isNew = activity?.is_new ?? false
   const durationDays = activity?.duration_days
@@ -43,7 +43,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
       : null
 
   const previousSignalLabel = previousSignal
-    ? t(`config.signal.${previousSignal.toLowerCase()}`, { defaultValue: previousSignal })
+    ? getSignalLabel(t, previousSignal)
     : null
 
   return (
