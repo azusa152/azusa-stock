@@ -10,6 +10,7 @@ Folio uses two signal fields per stock:
 
 - **`last_scan_signal`** — persisted from the last full scan (moat + RSI + bias). Returned by `GET /stocks` and `GET /summary`.
 - **`computed_signal`** — real-time from live RSI/bias (no moat check). Returned by `GET /stocks/enriched`. Dashboard and radar prefer this, falling back to `last_scan_signal`. `THESIS_BROKEN` always comes from the persisted value (requires moat analysis).
+- **`fundamentals`** — key valuation/profitability/growth metrics returned by `GET /stocks/enriched` (plus top-level `market_cap` and `trailing_pe` for quick card display).
 
 Both fields use the same 9-state cascade. Higher priority (lower P number) trumps lower when multiple conditions apply.
 
@@ -139,6 +140,7 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/stocks/export` | Export watchlist (JSON) |
 | `POST` | `/ticker` | Add stock |
 | `GET` | `/ticker/{ticker}/signals` | Technical signals (RSI, MA, Bias, rogue wave) |
+| `GET` | `/ticker/{ticker}/fundamentals` | Fundamentals (trailing/forward P/E, EPS, market cap, P/B, P/S, margins, ROE, growth) |
 | `GET` | `/ticker/{ticker}/moat` | Moat analysis (gross margin YoY) |
 | `POST` | `/ticker/{ticker}/thesis` | Update investment thesis |
 | `PATCH` | `/ticker/{ticker}/category` | Switch category |

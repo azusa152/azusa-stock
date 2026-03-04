@@ -122,3 +122,27 @@ export const MARKET_OPTIONS = [
   { key: "JP", labelKey: "config.market.jp", suffix: ".T", currency: "JPY" },
   { key: "HK", labelKey: "config.market.hk", suffix: ".HK", currency: "HKD" },
 ] as const
+
+type ThresholdBand = [number, number]
+type ThresholdRule = { green: ThresholdBand; yellow: ThresholdBand; red: ThresholdBand }
+
+export const FUNDAMENTAL_THRESHOLDS: Record<string, ThresholdRule> = {
+  trailing_pe: { green: [0, 15], yellow: [15, 25], red: [25, Infinity] },
+  forward_pe: { green: [0, 15], yellow: [15, 25], red: [25, Infinity] },
+  price_to_book: { green: [0, 1.5], yellow: [1.5, 3], red: [3, Infinity] },
+  return_on_equity: { green: [0.15, Infinity], yellow: [0.08, 0.15], red: [0, 0.08] },
+  revenue_growth: { green: [0.1, Infinity], yellow: [0, 0.1], red: [-Infinity, 0] },
+  profit_margins: { green: [0.15, Infinity], yellow: [0.05, 0.15], red: [0, 0.05] },
+  operating_margins: { green: [0.15, Infinity], yellow: [0.05, 0.15], red: [0, 0.05] },
+  earnings_growth: { green: [0.1, Infinity], yellow: [0, 0.1], red: [-Infinity, 0] },
+}
+
+export type HealthColor = "green" | "yellow" | "red"
+
+export function getHealthColor(metric: string, value: number): HealthColor {
+  const rule = FUNDAMENTAL_THRESHOLDS[metric]
+  if (!rule) return "yellow"
+  if (value >= rule.green[0] && value < rule.green[1]) return "green"
+  if (value >= rule.yellow[0] && value < rule.yellow[1]) return "yellow"
+  return "red"
+}

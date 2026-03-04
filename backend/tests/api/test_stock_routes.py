@@ -316,3 +316,31 @@ class TestGetSummary:
         # Assert
         assert resp.status_code == 200
         assert "text/plain" in resp.headers["content-type"]
+
+
+class TestFundamentalsRoute:
+    """Tests for GET /ticker/{ticker}/fundamentals."""
+
+    def test_get_fundamentals_should_return_200_with_shape(self, client):
+        # Act
+        resp = client.get("/ticker/NVDA/fundamentals")
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ticker"] == "NVDA"
+        for key in [
+            "trailing_pe",
+            "forward_pe",
+            "trailing_eps",
+            "forward_eps",
+            "market_cap",
+            "price_to_book",
+            "price_to_sales",
+            "profit_margins",
+            "operating_margins",
+            "return_on_equity",
+            "revenue_growth",
+            "earnings_growth",
+        ]:
+            assert key in body

@@ -15,6 +15,7 @@ export type RadarStock = components["schemas"]["StockResponse"]
 export type RemovedStock = components["schemas"]["RemovedStockResponse"]
 export type ScanStatusResponse = components["schemas"]["ScanStatusResponse"]
 export type ResonanceResponse = components["schemas"]["ResonanceResponse"]
+export type FundamentalsResponse = components["schemas"]["FundamentalsResponse"]
 
 // Request types
 export type AddStockRequest = components["schemas"]["TickerCreateRequest"]
@@ -43,6 +44,22 @@ export interface RadarSignals {
   institutional_holders?: Record<string, unknown>[]
 }
 
+export interface RadarFundamentals {
+  ticker?: string
+  trailing_pe?: number | null
+  forward_pe?: number | null
+  trailing_eps?: number | null
+  forward_eps?: number | null
+  market_cap?: number | null
+  price_to_book?: number | null
+  price_to_sales?: number | null
+  profit_margins?: number | null
+  operating_margins?: number | null
+  return_on_equity?: number | null
+  revenue_growth?: number | null
+  earnings_growth?: number | null
+}
+
 export interface RadarEnrichedStock {
   ticker: string
   category?: StockCategory
@@ -54,7 +71,10 @@ export interface RadarEnrichedStock {
   rsi?: number
   bias?: number
   volume_ratio?: number
+  market_cap?: number
+  trailing_pe?: number
   signals?: RadarSignals
+  fundamentals?: RadarFundamentals
   dividend?: {
     dividend_yield?: number
     ex_date?: string

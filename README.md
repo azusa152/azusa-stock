@@ -29,6 +29,7 @@
 - **觀點版控** — 每次更新觀點自動遞增版號，完整保留歷史演進
 - **動態標籤** — 為股票標記領域標籤（AI、Cloud、SaaS...），標籤隨觀點版控一併快照
 - **財報日曆與股息** — 自動顯示下次財報日期（14 天倒數提醒）、殖利率與除息日
+- **基本面速覽** — 雷達股票卡新增 Fundamentals 分頁：P/E、EPS、市值、P/B、P/S、ROE、營收/獲利成長等關鍵指標，並提供白話解讀
 
 ### 掃描與訊號
 
@@ -556,6 +557,8 @@ docker compose up --build -d
 |--------|------|------|
 | `POST` | `/ticker` | 新增追蹤股票（含初始觀點與標籤） |
 | `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
+| `GET` | `/stocks/enriched` | 取得股票豐富資料（技術面 + 財報 + 股息 + 基本面摘要） |
+| `GET` | `/ticker/{ticker}/fundamentals` | 取得單一股票基本面指標（P/E、EPS、市值、成長率等） |
 | `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 放大器），僅推播差異通知 |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
@@ -580,6 +583,7 @@ docker compose up --build -d
 | `GET` | `/ticker/{ticker}/moat` | 護城河健檢（毛利率 5 季走勢 + YoY 診斷） |
 | `GET` | `/ticker/{ticker}/earnings` | 取得下次財報日期（快取 24 小時） |
 | `GET` | `/ticker/{ticker}/dividend` | 取得股息殖利率與除息日 |
+| `GET` | `/ticker/{ticker}/fundamentals` | 取得基本面指標（P/E、EPS、市值、P/B、P/S、ROE、成長率） |
 | `GET` | `/ticker/{ticker}/scan-history` | 取得個股掃描歷史（含訊號與時間） |
 | `POST` | `/ticker/{ticker}/thesis` | 新增觀點（自動版控 version +1，含標籤） |
 | `GET` | `/ticker/{ticker}/thesis` | 取得觀點版控歷史 |
@@ -679,6 +683,12 @@ curl -X POST http://localhost:8000/scan
 curl -X POST http://localhost:8000/ticker/NVDA/alerts \
   -H "Content-Type: application/json" \
   -d '{"metric": "rsi", "operator": "lt", "threshold": 30}'
+```
+
+### 取得基本面指標
+
+```bash
+curl -s http://localhost:8000/ticker/NVDA/fundamentals | python3 -m json.tool
 ```
 
 ### 重新啟用已移除股票

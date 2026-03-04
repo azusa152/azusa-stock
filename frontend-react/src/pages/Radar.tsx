@@ -109,6 +109,9 @@ export default function Radar() {
             <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-muted-foreground whitespace-pre-wrap">
               {t("radar.sop.content")}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("radar.fundamentals_note")}
+            </p>
           </div>
         )}
       </div>

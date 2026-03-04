@@ -59,6 +59,10 @@ EARNINGS_CACHE_MAXSIZE = 200
 EARNINGS_CACHE_TTL = 86400  # 24 hours
 DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
+FUNDAMENTALS_CACHE_MAXSIZE = 200
+FUNDAMENTALS_CACHE_TTL = 300  # 5 minutes
+YF_INFO_CACHE_MAXSIZE = 200
+YF_INFO_CACHE_TTL = 120  # 2 minutes (share stock.info across nearby calls)
 REBALANCE_CACHE_MAXSIZE = 10
 REBALANCE_CACHE_TTL = 60  # 1 minute (dedup rapid sequential requests)
 ENRICHED_CACHE_MAXSIZE = 4
@@ -82,6 +86,7 @@ DISK_SIGNALS_TTL = (
 DISK_MOAT_TTL = 86400  # 24 hours
 DISK_EARNINGS_TTL = 604800  # 7 days
 DISK_DIVIDEND_TTL = 86400  # 24 hours
+DISK_FUNDAMENTALS_TTL = 86400  # 24 hours
 
 # ---------------------------------------------------------------------------
 # Rate Limiter
@@ -346,6 +351,7 @@ DISK_KEY_SIGNALS = "signals"
 DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
+DISK_KEY_FUNDAMENTALS = "fundamentals"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"

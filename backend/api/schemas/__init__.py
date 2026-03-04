@@ -109,6 +109,7 @@ from api.schemas.scan import (  # noqa: F401
 from api.schemas.stock import (  # noqa: F401
     CategoryUpdateRequest,
     DeactivateRequest,
+    FundamentalsResponse,
     ReactivateRequest,
     RemovedStockResponse,
     ReorderRequest,

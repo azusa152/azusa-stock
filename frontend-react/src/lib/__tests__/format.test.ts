@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { formatPrice, isMarketOpen } from "../format"
+import {
+  formatMarketCap,
+  formatPercent,
+  formatPrice,
+  formatRatio,
+  isMarketOpen,
+} from "../format"
 
 describe("formatPrice", () => {
   it("formats JPY as integer with thousands separator", () => {
@@ -111,5 +117,19 @@ describe("isMarketOpen", () => {
     // 2025-02-25 (Tuesday) 05:31 UTC = 13:31 CST
     vi.setSystemTime(new Date("2025-02-25T05:31:00Z"))
     expect(isMarketOpen("TW")).toBe(false)
+  })
+})
+
+describe("fundamental format helpers", () => {
+  it("formats market cap as compact notation", () => {
+    expect(formatMarketCap(1234567890)).toBe("1.2B")
+  })
+
+  it("formats ratio with default decimals", () => {
+    expect(formatRatio(12.3456)).toBe("12.35")
+  })
+
+  it("formats percent from decimal value", () => {
+    expect(formatPercent(0.1234)).toBe("+12.3%")
   })
 })
