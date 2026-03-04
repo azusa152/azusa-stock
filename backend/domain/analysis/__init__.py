@@ -35,6 +35,7 @@ from domain.analysis.backtest import (  # noqa: F401
     compute_forward_returns,
     compute_signal_metrics,
     deduplicate_signal_events,
+    replay_historical_signals,
 )
 from domain.analysis.fx_analysis import (  # noqa: F401
     FXRateAlert,

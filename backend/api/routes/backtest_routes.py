@@ -6,8 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session
 
 from api.rate_limit import limiter
-from api.schemas import BacktestDetailResponse, BacktestSummaryResponse
-from application.services import get_backtest_detail, get_backtest_summary
+from api.schemas import (
+    BackfillStatusResponse,
+    BacktestDetailResponse,
+    BacktestSummaryResponse,
+)
+from application.services import (
+    get_backfill_status,
+    get_backtest_detail,
+    get_backtest_summary,
+)
 from domain.analysis import SIGNAL_DIRECTION
 from infrastructure.database import get_session
 
@@ -51,3 +59,8 @@ def get_backtest_signal_detail_route(
             detail=f"No backtest data for signal: {signal_upper}",
         )
     return BacktestDetailResponse(**data)
+
+
+@router.get("/backtest/backfill-status", summary="Backfill progress")
+def get_backfill_status_route() -> BackfillStatusResponse:
+    return BackfillStatusResponse(**get_backfill_status())

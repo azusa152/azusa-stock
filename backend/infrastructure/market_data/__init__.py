@@ -10,6 +10,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     analyze_moat_trend,
     are_all_signals_in_l1,
     batch_download_history,
+    batch_download_history_extended,
     clear_all_caches,
     count_signals_in_l1,
     detect_is_etf,

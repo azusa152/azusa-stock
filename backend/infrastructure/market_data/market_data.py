@@ -53,6 +53,7 @@ from domain.analysis import (
     score_vix_linear,
 )
 from domain.constants import (
+    BACKFILL_MIN_HISTORY_DAYS,
     BETA_CACHE_MAXSIZE,
     BETA_CACHE_TTL,
     CNN_FG_API_URL,
@@ -713,6 +714,55 @@ def batch_download_history(
         return result
     except Exception as e:
         logger.warning("批次下載歷史資料失敗，回退至個別呼叫：%s", e)
+        return {}
+
+
+def batch_download_history_extended(
+    tickers: list[str],
+    period: str,
+    min_days: int = BACKFILL_MIN_HISTORY_DAYS,
+) -> dict[str, list[dict]]:
+    """
+    使用 yf.download() 一次下載多檔延長歷史資料（回填用途）。
+
+    回傳 {ticker: [{"date": "...", "close": ...}, ...]}。
+    僅保留資料筆數 >= min_days 的 ticker；失敗時回傳空 dict。
+    """
+    if not tickers:
+        return {}
+    try:
+        _rate_limiter.wait()
+        data = yf.download(
+            tickers,
+            period=period,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=True,
+        )
+        result: dict[str, list[dict]] = {}
+        for ticker in tickers:
+            try:
+                df = data[ticker] if len(tickers) > 1 else data
+                df = df.dropna(how="all")
+                if df.empty:
+                    continue
+                prices = _extract_price_history(df)
+                if len(prices) < min_days:
+                    logger.debug(
+                        "%s 回填歷史資料不足（%d 筆，需 >= %d），略過。",
+                        ticker,
+                        len(prices),
+                        min_days,
+                    )
+                    continue
+                result[ticker] = prices
+            except (KeyError, Exception) as exc:
+                logger.debug("回填擷取 %s 歷史資料失敗（略過）：%s", ticker, exc)
+        logger.info("回填批次下載完成：%d/%d 檔有效。", len(result), len(tickers))
+        return result
+    except Exception as exc:
+        logger.warning("回填批次下載失敗（略過，不重試）：%s", exc)
         return {}
 
 

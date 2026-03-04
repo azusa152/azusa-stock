@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from domain.analysis.backtest import (
     BacktestSignalEvent,
@@ -6,7 +6,9 @@ from domain.analysis.backtest import (
     compute_forward_returns,
     compute_signal_metrics,
     deduplicate_signal_events,
+    replay_historical_signals,
 )
+from domain.constants import MA200_WINDOW
 
 
 def test_deduplicate_signal_events_should_collapse_consecutive_same_signal_per_ticker():
@@ -100,3 +102,22 @@ def test_classify_confidence_should_respect_boundaries():
     assert classify_confidence(10) == "medium"
     assert classify_confidence(29) == "medium"
     assert classify_confidence(30) == "high"
+
+
+def test_replay_historical_signals_should_emit_events_at_sample_interval(mocker):
+    start = datetime(2025, 1, 1, tzinfo=UTC)
+    prices = [
+        {
+            "date": (start + timedelta(days=i)).date().isoformat(),
+            "close": float(100 + i),
+        }
+        for i in range(250)
+    ]
+    mocked = mocker.patch("domain.analysis.backtest.determine_scan_signal")
+    mocked.return_value.value = "OVERHEATED"
+
+    events = replay_historical_signals(prices, category="Growth", sample_interval=5)
+
+    expected_samples = len(range(MA200_WINDOW - 1, len(prices), 5))
+    assert len(events) == expected_samples
+    assert all(signal == "OVERHEATED" for _, signal in events)

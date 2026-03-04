@@ -182,6 +182,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan.scan_service.get_bias_distribution", {}),
     ("application.scan.scan_service.count_signals_in_l1", 0),
     ("application.scan.backtest_service.get_price_history", []),
+    ("application.scan.backfill_service.batch_download_history_extended", {}),
     # rebalance_service
     ("application.portfolio.rebalance_service.get_technical_signals", MOCK_SIGNALS),
     ("application.portfolio.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),

@@ -9,12 +9,23 @@ from datetime import date, datetime
 from statistics import median
 from typing import TYPE_CHECKING
 
+from domain.analysis.analysis import (
+    compute_bias,
+    compute_moving_average,
+    compute_rsi,
+    determine_scan_signal,
+)
 from domain.constants import (
+    BACKFILL_DEFAULT_MOAT,
+    BACKFILL_SAMPLE_INTERVAL,
     BACKTEST_FP_WINDOW,
     BACKTEST_MIN_SAMPLES_HIGH,
     BACKTEST_MIN_SAMPLES_MEDIUM,
     BACKTEST_WINDOWS,
+    MA60_WINDOW,
+    MA200_WINDOW,
 )
+from domain.enums import ScanSignal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -197,3 +208,48 @@ def compute_signal_metrics(
         "windows": window_metrics,
         "false_positive_rate": false_positive_rate,
     }
+
+
+def replay_historical_signals(
+    price_series: Sequence[dict],
+    category: str,
+    sample_interval: int = BACKFILL_SAMPLE_INTERVAL,
+) -> list[tuple[date, str]]:
+    """
+    Replay historical technical signals from close-only price history.
+
+    Returns non-NORMAL (date, signal) events sampled every N trading days.
+    """
+    if len(price_series) < MA200_WINDOW:
+        return []
+
+    sorted_prices = sorted(price_series, key=_price_date)
+    closes = [_price_close(point) for point in sorted_prices]
+    start_idx = MA200_WINDOW - 1
+    if sample_interval <= 0:
+        sample_interval = BACKFILL_SAMPLE_INTERVAL
+
+    events: list[tuple[date, str]] = []
+    for idx in range(start_idx, len(closes), sample_interval):
+        current_price = closes[idx]
+        prefix = closes[: idx + 1]
+
+        rsi = compute_rsi(prefix)
+        ma60 = compute_moving_average(prefix, MA60_WINDOW)
+        ma200 = compute_moving_average(prefix, MA200_WINDOW)
+        bias = compute_bias(current_price, ma60) if ma60 is not None else None
+        bias_200 = compute_bias(current_price, ma200) if ma200 is not None else None
+
+        signal = determine_scan_signal(
+            moat=BACKFILL_DEFAULT_MOAT,
+            rsi=rsi,
+            bias=bias,
+            bias_200=bias_200,
+            category=category,
+        ).value
+        if signal == ScanSignal.NORMAL.value:
+            continue
+
+        events.append((_price_date(sorted_prices[idx]), signal))
+
+    return events

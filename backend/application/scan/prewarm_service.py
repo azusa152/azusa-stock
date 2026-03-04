@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlmodel import Session, select
 
+from application.scan.backfill_service import backfill_scan_logs
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
@@ -155,6 +156,7 @@ def prewarm_all_caches() -> None:
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
     _set_prewarm_ready(True)
+    _prewarm_phase("scanlog_backfill", _run_scanlog_backfill)
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +338,13 @@ def _backfill_all_gurus() -> None:
                 guru.id,
                 exc,
             )
+
+
+def _run_scanlog_backfill() -> None:
+    """低優先級：在快取預熱完成後執行 ScanLog 歷史回填。"""
+    with Session(engine) as session:
+        inserted = backfill_scan_logs(session)
+    logger.info("快取預熱 [scanlog_backfill] 完成，新增 %d 筆回填掃描紀錄。", inserted)
 
 
 def _prewarm_sectors(tickers: list[str]) -> None:

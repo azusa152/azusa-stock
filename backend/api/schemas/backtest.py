@@ -44,3 +44,9 @@ class BacktestDetailResponse(BaseModel):
     summary: SignalBacktestSummary
     total_occurrences: int
     occurrences: list[BacktestOccurrence]
+
+
+class BackfillStatusResponse(BaseModel):
+    is_backfilling: bool
+    total: int
+    completed: int

@@ -40,6 +40,7 @@
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
 - **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
 - **訊號回測儀表板** — 提供 5/10/30/60 交易日視窗的命中率、平均報酬、誤報率與樣本信心分級，並可查看訊號事件明細
+- **冷啟動歷史回填** — 新部署時於背景低優先級自動回放近 2 年歷史訊號，逐步補齊回測樣本；前端可透過進度 API 顯示回填狀態
 
 ### 通知與警報
 
@@ -578,6 +579,7 @@ docker compose up --build -d
 | `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 放大器），僅推播差異通知 |
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（命中率、平均報酬、誤報率、樣本信心） |
 | `GET` | `/backtest/signal/{signal}` | 取得單一訊號回測明細（逐筆事件與各視窗前瞻報酬） |
+| `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
@@ -615,6 +617,7 @@ docker compose up --build -d
 | `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 放大器），僅推播差異通知 |
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（依訊號彙整命中率、平均報酬、誤報率） |
 | `GET` | `/backtest/signal/{signal}` | 取得指定訊號回測明細（事件列表與前瞻報酬） |
+| `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
 | `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |

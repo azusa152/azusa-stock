@@ -4,6 +4,7 @@ Consumers using `from api.schemas import X` continue to work unchanged.
 """
 
 from api.schemas.backtest import (  # noqa: F401
+    BackfillStatusResponse,
     BacktestDetailResponse,
     BacktestOccurrence,
     BacktestSummaryResponse,
