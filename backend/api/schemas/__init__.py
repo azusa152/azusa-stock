@@ -3,6 +3,13 @@
 Consumers using `from api.schemas import X` continue to work unchanged.
 """
 
+from api.schemas.backtest import (  # noqa: F401
+    BacktestDetailResponse,
+    BacktestOccurrence,
+    BacktestSummaryResponse,
+    SignalBacktestSummary,
+    SignalWindowMetrics,
+)
 from api.schemas.common import (  # noqa: F401
     AcceptedResponse,
     HealthResponse,

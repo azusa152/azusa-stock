@@ -11,6 +11,7 @@ import Radar from "./pages/Radar"
 import Allocation from "./pages/Allocation"
 import FxWatch from "./pages/FxWatch"
 import SmartMoney from "./pages/SmartMoney"
+import Backtest from "./pages/Backtest"
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt"
 import "./lib/i18n"
 
@@ -34,6 +35,7 @@ export default function App() {
                   <Route path="/allocation" element={<PageShell><Allocation /></PageShell>} />
                   <Route path="/fx-watch" element={<PageShell><FxWatch /></PageShell>} />
                   <Route path="/smart-money" element={<PageShell><SmartMoney /></PageShell>} />
+                  <Route path="/backtest" element={<PageShell><Backtest /></PageShell>} />
                 </Routes>
               </main>
             </div>

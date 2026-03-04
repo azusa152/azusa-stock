@@ -54,6 +54,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_recent_scan_logs_for_tickers,
     find_removal_history,
     find_scan_history,
+    find_scan_logs_for_backtest,
     find_scan_logs_since,
     find_sector_breakdown,
     find_stock_by_ticker,

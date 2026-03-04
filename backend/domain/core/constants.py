@@ -98,6 +98,13 @@ YFINANCE_RATE_LIMIT_CPS = (
 # ---------------------------------------------------------------------------
 # Scan & Alerts
 # ---------------------------------------------------------------------------
+BACKTEST_WINDOWS = [5, 10, 30, 60]  # forward return windows in trading days
+BACKTEST_MIN_SAMPLES_HIGH = 30
+BACKTEST_MIN_SAMPLES_MEDIUM = 10
+BACKTEST_CACHE_TTL = 3600  # 1 hour
+BACKTEST_MAX_LOOKBACK_DAYS = 365
+BACKTEST_FP_WINDOW = 30  # false-positive evaluation window in trading days
+
 SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
 ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬

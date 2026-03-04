@@ -135,9 +135,11 @@ def _clean_tables():
         session.commit()
     # Clear in-memory caches that could contaminate subsequent tests
     from application.portfolio.rebalance_service import invalidate_rebalance_cache
+    from application.scan.backtest_service import invalidate_backtest_cache
     from application.stock.stock_service import invalidate_enriched_cache
 
     invalidate_rebalance_cache()
+    invalidate_backtest_cache()
     invalidate_enriched_cache()
 
 
@@ -179,6 +181,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan.scan_service.get_fear_greed_index", MOCK_FEAR_GREED),
     ("application.scan.scan_service.get_bias_distribution", {}),
     ("application.scan.scan_service.count_signals_in_l1", 0),
+    ("application.scan.backtest_service.get_price_history", []),
     # rebalance_service
     ("application.portfolio.rebalance_service.get_technical_signals", MOCK_SIGNALS),
     ("application.portfolio.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),

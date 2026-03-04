@@ -50,6 +50,11 @@ from application.portfolio.stress_test_service import (
 # ---------------------------------------------------------------------------
 # Scan Service (scanning, price alerts, scan history)
 # ---------------------------------------------------------------------------
+from application.scan.backtest_service import (  # noqa: F401
+    get_backtest_detail,
+    get_backtest_summary,
+    invalidate_backtest_cache,
+)
 from application.scan.scan_service import (  # noqa: F401
     create_price_alert,
     delete_price_alert,

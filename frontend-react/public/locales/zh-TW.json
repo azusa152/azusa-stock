@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "投資組合總覽",
     "radar": "投資雷達",
+    "backtest": "訊號回測",
     "allocation": "個人資產配置",
     "fx_watch": "外匯監控",
     "smart_money": "大師足跡"
@@ -451,6 +452,30 @@
         "revenue_growth_tip": "公司營收相較去年同期成長速度。",
         "earnings_growth_tip": "公司獲利相較去年同期成長速度。"
       }
+    }
+  },
+  "backtest": {
+    "title": "🧪 訊號回測",
+    "caption": "檢視各訊號在不同前瞻區間的歷史表現",
+    "error": "❌ 載入回測資料失敗",
+    "computed_at": "🕐 計算時間：{{time}}",
+    "sop": {
+      "title": "📖 訊號回測：使用說明",
+      "content": "### 本頁在看什麼\n\n訊號回測會評估每種掃描訊號出現後的實際表現：\n\n- **命中率**：是否朝預期方向移動的比例\n- **平均報酬**：訊號後 5、10、30、60 個交易日的平均報酬\n- **誤報率**：30 日視窗中，走勢與預期相反的比例\n\n### 解讀注意事項\n\n- 回測基於歷史資料，不代表未來保證\n- 不同視窗樣本數可能不同（近期訊號尚未走完長天期）\n- 買進訊號與風險訊號的成功方向相反\n- 歷史績效不保證未來結果"
+    },
+    "card": {
+      "direction": "方向",
+      "hit_rate_30d": "30日命中率",
+      "avg_return_30d": "30日平均報酬",
+      "samples_30d": "30日樣本數"
+    },
+    "forward_returns_title": "📊 各訊號前瞻報酬",
+    "hit_rate_title": "🎯 30日命中率比較",
+    "occurrences_title": "📋 訊號事件明細",
+    "table": {
+      "ticker": "代號",
+      "signal_date": "訊號日期",
+      "market_status": "市場情緒"
     }
   },
   "allocation": {

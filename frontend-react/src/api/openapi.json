@@ -2009,6 +2009,119 @@
         }
       }
     },
+    "/backtest/summary": {
+      "get": {
+        "summary": "Get signal backtest summary",
+        "operationId": "get_backtest_summary_route_backtest_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backtest/signal/{signal}": {
+      "get": {
+        "summary": "Get backtest detail for a signal",
+        "operationId": "get_backtest_signal_detail_route_backtest_signal__signal__get",
+        "parameters": [
+          {
+            "name": "signal",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Signal"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/personas/templates": {
       "get": {
         "summary": "List persona templates",
@@ -5083,6 +5196,112 @@
         ],
         "title": "ActivityFeedItem",
         "description": "\u55ae\u4e00\u80a1\u7968\u7684\u8cb7\u5165\u6216\u8ce3\u51fa\u6d3b\u52d5\u6458\u8981\u3002"
+      },
+      "BacktestDetailResponse": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SignalBacktestSummary"
+          },
+          "total_occurrences": {
+            "type": "integer",
+            "title": "Total Occurrences"
+          },
+          "occurrences": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestOccurrence"
+            },
+            "type": "array",
+            "title": "Occurrences"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "direction",
+          "summary",
+          "total_occurrences",
+          "occurrences"
+        ],
+        "title": "BacktestDetailResponse"
+      },
+      "BacktestOccurrence": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "signal_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Signal Date"
+          },
+          "market_status": {
+            "type": "string",
+            "title": "Market Status"
+          },
+          "forward_returns": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Forward Returns"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "signal_date",
+          "market_status",
+          "forward_returns"
+        ],
+        "title": "BacktestOccurrence"
+      },
+      "BacktestSummaryResponse": {
+        "properties": {
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalBacktestSummary"
+            },
+            "type": "array",
+            "title": "Signals"
+          },
+          "lookback_days": {
+            "type": "integer",
+            "title": "Lookback Days"
+          },
+          "computed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Computed At"
+          },
+          "total_signals_evaluated": {
+            "type": "integer",
+            "title": "Total Signals Evaluated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signals",
+          "lookback_days",
+          "computed_at",
+          "total_signals_evaluated"
+        ],
+        "title": "BacktestSummaryResponse"
       },
       "CNNFearGreedData": {
         "properties": {
@@ -8279,6 +8498,80 @@
         ],
         "title": "SignalActivityItem",
         "description": "GET /signals/activity \u55ae\u7b46\u8a0a\u865f\u6d3b\u8e8d\u72c0\u614b\u3002"
+      },
+      "SignalBacktestSummary": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "total_occurrences": {
+            "type": "integer",
+            "title": "Total Occurrences"
+          },
+          "confidence": {
+            "type": "string",
+            "title": "Confidence"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/SignalWindowMetrics"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "false_positive_rate": {
+            "type": "number",
+            "title": "False Positive Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "direction",
+          "total_occurrences",
+          "confidence",
+          "windows",
+          "false_positive_rate"
+        ],
+        "title": "SignalBacktestSummary"
+      },
+      "SignalWindowMetrics": {
+        "properties": {
+          "window_days": {
+            "type": "integer",
+            "title": "Window Days"
+          },
+          "hit_rate": {
+            "type": "number",
+            "title": "Hit Rate"
+          },
+          "avg_return_pct": {
+            "type": "number",
+            "title": "Avg Return Pct"
+          },
+          "median_return_pct": {
+            "type": "number",
+            "title": "Median Return Pct"
+          },
+          "sample_count": {
+            "type": "integer",
+            "title": "Sample Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_days",
+          "hit_rate",
+          "avg_return_pct",
+          "median_return_pct",
+          "sample_count"
+        ],
+        "title": "SignalWindowMetrics"
       },
       "SnapshotResponse": {
         "properties": {

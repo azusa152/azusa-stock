@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "投资组合总览",
     "radar": "投资雷达",
+    "backtest": "信号回测",
     "allocation": "个人资产配置",
     "fx_watch": "外汇监控",
     "smart_money": "大师足迹"
@@ -451,6 +452,30 @@
         "revenue_growth_tip": "公司营收相较去年同期的增长速度。",
         "earnings_growth_tip": "公司利润相较去年同期的增长速度。"
       }
+    }
+  },
+  "backtest": {
+    "title": "🧪 信号回测",
+    "caption": "按多个前瞻窗口评估信号历史效果",
+    "error": "❌ 加载回测数据失败",
+    "computed_at": "🕐 计算时间：{{time}}",
+    "sop": {
+      "title": "📖 信号回测：使用说明",
+      "content": "### 本页衡量什么\n\n信号回测会评估每种扫描信号出现后的实际表现：\n\n- **命中率**：是否按预期方向运行的比例\n- **平均收益**：信号后 5、10、30、60 个交易日的平均收益\n- **误报率**：30日窗口中，走势与预期相反的比例\n\n### 解读注意事项\n\n- 回测基于历史数据，不代表未来保证\n- 不同窗口样本数会不同（近期信号尚无长周期结果）\n- 买入与风险信号的成功方向相反\n- 历史表现不代表未来表现"
+    },
+    "card": {
+      "direction": "方向",
+      "hit_rate_30d": "30日命中率",
+      "avg_return_30d": "30日平均收益",
+      "samples_30d": "30日样本数"
+    },
+    "forward_returns_title": "📊 各信号前瞻收益",
+    "hit_rate_title": "🎯 30日命中率对比",
+    "occurrences_title": "📋 信号事件明细",
+    "table": {
+      "ticker": "代码",
+      "signal_date": "信号日期",
+      "market_status": "市场情绪"
     }
   },
   "allocation": {
