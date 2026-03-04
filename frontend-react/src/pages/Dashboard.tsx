@@ -82,8 +82,8 @@ export default function Dashboard() {
   // Onboarding: no data at all
   if (!stocksLoading && !rebalanceLoading && !stocks?.length && !rebalance) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
+      <div className="p-3 sm:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("dashboard.title")}</h1>
         <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
       </div>
     )
@@ -98,14 +98,14 @@ export default function Dashboard() {
     : null
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-6">
       {/* Header row */}
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold flex-1">{t("dashboard.title")}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold flex-1">{t("dashboard.title")}</h1>
         <Button
           size="sm"
           variant="outline"
-          className="text-xs gap-1.5"
+          className="text-xs gap-1.5 min-h-[44px]"
           onClick={handleDigest}
           disabled={digestMutation.isPending}
           title={t("dashboard.digest_tooltip")}
@@ -114,7 +114,7 @@ export default function Dashboard() {
           {t("dashboard.digest_tooltip")}
         </Button>
         <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
-          <SelectTrigger className="w-28 text-xs">
+          <SelectTrigger className="w-28 text-xs min-h-[44px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -162,7 +162,7 @@ export default function Dashboard() {
       <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
 
       {/* Signal Alerts — lazy loaded (below fold) */}
-      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <SignalAlerts
           stocks={stocks ?? []}
           enrichedStocks={enrichedStocks ?? []}
@@ -172,17 +172,17 @@ export default function Dashboard() {
       </LazySection>
 
       {/* Allocation at a Glance — lazy loaded (below fold) */}
-      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
         <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
       </LazySection>
 
       {/* Top Holdings — lazy loaded (below fold) */}
-      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
         <TopHoldings rebalance={rebalance} />
       </LazySection>
 
       {/* Smart Money Resonance — lazy loaded (below fold) */}
-      <LazySection fallback={<Card><CardContent className="p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
       </LazySection>
     </div>

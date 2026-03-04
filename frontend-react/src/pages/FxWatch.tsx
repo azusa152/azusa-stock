@@ -113,7 +113,7 @@ export default function FxWatch() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-3 sm:p-6 space-y-4">
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-4 w-72" />
         <div className="grid grid-cols-4 gap-3">
@@ -130,24 +130,24 @@ export default function FxWatch() {
 
   if (isError || !watches) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-bold">{t("fx_watch.title")}</h1>
+      <div className="p-3 sm:p-6 space-y-3">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("fx_watch.title")}</h1>
         <p className="text-sm text-destructive">{t("common.error_backend")}</p>
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       {/* Toolbar row */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{t("fx_watch.title")}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{t("fx_watch.title")}</h1>
             {/* SOP info popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="rounded-full w-5 h-5 text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center">
+                <button className="rounded-full min-h-[44px] min-w-[44px] text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center">
                   ?
                 </button>
               </PopoverTrigger>
@@ -167,6 +167,7 @@ export default function FxWatch() {
           <Button
             size="sm"
             variant="outline"
+            className="min-h-[44px]"
             onClick={handleCheck}
             disabled={checkMutation.isPending || watches.length === 0}
           >
@@ -175,12 +176,13 @@ export default function FxWatch() {
           <Button
             size="sm"
             variant="outline"
+            className="min-h-[44px]"
             onClick={handleAlert}
             disabled={alertMutation.isPending || watches.length === 0}
           >
             {alertMutation.isPending ? t("fx_watch.action.sending") : t("fx_watch.action.alert")}
           </Button>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" className="min-h-[44px]" onClick={() => setDialogOpen(true)}>
             {t("fx_watch.action.add")}
           </Button>
         </div>
@@ -215,7 +217,7 @@ export default function FxWatch() {
             <div className="flex rounded-md border border-border overflow-hidden">
               <button
                 onClick={() => setFilterMode("all")}
-                className={`px-3 py-1 text-xs transition-colors ${
+                className={`px-3 py-1 text-xs min-h-[44px] transition-colors ${
                   filterMode === "all"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -225,7 +227,7 @@ export default function FxWatch() {
               </button>
               <button
                 onClick={() => setFilterMode("active_only")}
-                className={`px-3 py-1 text-xs border-l border-border transition-colors ${
+                className={`px-3 py-1 text-xs min-h-[44px] border-l border-border transition-colors ${
                   filterMode === "active_only"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -236,7 +238,7 @@ export default function FxWatch() {
             </div>
 
             <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-              <SelectTrigger className="h-7 w-36 text-xs">
+              <SelectTrigger className="w-36 text-xs min-h-[44px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -13,7 +13,7 @@ export function InfoPopover({ children, align = "start" }: InfoPopoverProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center text-muted-foreground/40 hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           aria-label="More info"
         >
           <CircleHelp className="h-3.5 w-3.5" />

@@ -93,6 +93,7 @@
 - **匯出 / 匯入** — 觀察名單支援 JSON 匯出匯入；持倉支援 JSON 與 CSV/TSV 匯入（含欄位對應與預覽）
 - **本地時間顯示** — 自動偵測瀏覽器時區，資料更新時間以本地時間呈現
 - **內建 SOP 指引** — Dashboard 內附操作說明書
+- **Mobile-Responsive PWA** — 支援安裝成 App（桌面/Android/iOS）、App Shell 離線快取、版本更新提示與手機觸控優化
 
 ## 核心邏輯
 
@@ -279,6 +280,20 @@ docker compose up --build
 - **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
 
 > **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
+
+### 2-1. 安裝 PWA（手機 / 桌面）
+
+Folio 前端已支援 PWA，可直接從瀏覽器安裝為 App：
+
+- **桌面 Chrome / Edge**：網址列右側點擊「安裝」圖示，或瀏覽器選單 `Install app`
+- **Android Chrome**：瀏覽器選單 `Add to Home screen`
+- **iOS Safari**：分享選單 `加入主畫面`
+
+安裝後可獲得：
+
+- **主畫面快速啟動**（standalone 模式，接近原生 App 體驗）
+- **離線 App Shell 快取**（已載入過的前端畫面資源可離線開啟）
+- **新版本更新提示**（部署新版本後，前端會顯示更新按鈕）
 
 ### 3. 匯入觀察名單
 

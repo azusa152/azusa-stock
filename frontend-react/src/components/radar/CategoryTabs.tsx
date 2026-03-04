@@ -63,7 +63,7 @@ export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap,
             <button
               key={m}
               onClick={() => setSelectedMarket(m)}
-              className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+              className={`px-3 py-2 min-h-[44px] rounded text-xs border transition-colors ${
                 selectedMarket === m
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-transparent text-muted-foreground border-border hover:bg-muted/40"
@@ -76,13 +76,13 @@ export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap,
       )}
 
       <Tabs defaultValue="Trend_Setter">
-        <TabsList className="flex-wrap h-auto gap-1">
+        <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
           {RADAR_CATEGORIES.map((cat) => (
-            <TabsTrigger key={cat} value={cat} className="text-xs">
+            <TabsTrigger key={cat} value={cat} className="text-xs min-h-[44px]">
               {t(tabLabelKey[cat], { count: categoryMap[cat]?.length ?? 0 })}
             </TabsTrigger>
           ))}
-          <TabsTrigger value="archive" className="text-xs">
+          <TabsTrigger value="archive" className="text-xs min-h-[44px]">
             {t("radar.tab.removed", { count: removedStocks.length })}
           </TabsTrigger>
         </TabsList>
