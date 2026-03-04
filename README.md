@@ -14,7 +14,7 @@
 | api/routes/holding\_routes.py                         |       93 |       10 |     89% |173-183, 211-214, 269 |
 | api/routes/persona\_routes.py                         |       35 |        0 |    100% |           |
 | api/routes/preferences\_routes.py                     |       16 |        0 |    100% |           |
-| api/routes/scan\_routes.py                            |       82 |        1 |     99% |       150 |
+| api/routes/scan\_routes.py                            |       82 |        1 |     99% |       186 |
 | api/routes/snapshot\_routes.py                        |       80 |        8 |     90% |37-38, 41-42, 56-57, 74, 116 |
 | api/routes/stock\_routes.py                           |      155 |       44 |     72% |127-130, 143, 149-160, 168, 182, 246-247, 256-259, 279, 295, 301, 326-331, 343-345, 359-370, 382-384, 395-397, 410-412 |
 | api/routes/telegram\_routes.py                        |       19 |        0 |    100% |           |
