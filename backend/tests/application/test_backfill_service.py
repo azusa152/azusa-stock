@@ -29,11 +29,13 @@ def test_backfill_scan_logs_should_skip_cash_and_be_idempotent(db_session) -> No
         patch(
             "application.scan.backfill_service.replay_historical_signals",
             return_value=mock_events,
-        ),
+        ) as mocked_replay,
     ):
         inserted_first = backfill_scan_logs(db_session)
 
     assert inserted_first == 2
+    mocked_replay.assert_called_once()
+    assert mocked_replay.call_args.kwargs["include_normal"] is True
     status = get_backfill_status()
     assert status["is_backfilling"] is False
     assert status["total"] == 1
@@ -49,6 +51,41 @@ def test_backfill_scan_logs_should_skip_cash_and_be_idempotent(db_session) -> No
 
     inserted_second = backfill_scan_logs(db_session)
     assert inserted_second == 0
+
+
+def test_backfill_scan_logs_should_keep_signal_after_normal_reset(db_session) -> None:
+    _seed_stock(db_session, "AAPL", StockCategory.GROWTH)
+
+    mock_prices = [{"date": "2025-01-01", "close": 100.0}] * 220
+    # A -> NORMAL -> A should keep both A events in backfill output.
+    replay_events = [
+        (date(2025, 5, 1), "OVERSOLD"),
+        (date(2025, 5, 8), "NORMAL"),
+        (date(2025, 5, 15), "OVERSOLD"),
+    ]
+
+    with (
+        patch(
+            "application.scan.backfill_service.batch_download_history_extended",
+            return_value={"AAPL": mock_prices},
+        ),
+        patch(
+            "application.scan.backfill_service.replay_historical_signals",
+            return_value=replay_events,
+        ),
+    ):
+        inserted = backfill_scan_logs(db_session)
+
+    assert inserted == 2
+    rows = list(
+        db_session.exec(
+            select(ScanLog)
+            .where(ScanLog.market_status == BACKFILL_MARKET_STATUS)
+            .order_by(ScanLog.scanned_at)
+        ).all()
+    )
+    assert len(rows) == 2
+    assert [row.signal for row in rows] == ["OVERSOLD", "OVERSOLD"]
 
 
 def test_backfill_scan_logs_should_resume_only_missing_tickers(db_session) -> None:

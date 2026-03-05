@@ -20,16 +20,19 @@ SECONDS_PER_DAY = 86400  # 判斷訊號是否為「新」（< 24 小時）
 # Decision Engine Thresholds
 # ---------------------------------------------------------------------------
 RSI_OVERSOLD = 30
-RSI_OVERBOUGHT = 70
-RSI_CONTRARIAN_BUY_THRESHOLD = 35
+RSI_OVERBOUGHT = 80
+RSI_DEEP_VALUE_THRESHOLD = 35
+RSI_CONTRARIAN_BUY_THRESHOLD = 32
 RSI_APPROACHING_BUY_THRESHOLD = 37
 RSI_WEAKENING_THRESHOLD = 38
-BIAS_OVERHEATED_THRESHOLD = 20
+BIAS_OVERHEATED_THRESHOLD = 30
 BIAS_OVERSOLD_THRESHOLD = -20
 BIAS_WEAKENING_THRESHOLD = -15
 # Same magnitude as BIAS_WEAKENING but measured against MA200 (not MA60); may diverge independently.
 MA200_DEEP_DEVIATION_THRESHOLD = -15  # buy amplifier: price deeply below MA200
-MA200_HIGH_DEVIATION_THRESHOLD = 20  # sell amplifier: price highly above MA200 (asymmetric due to positive market drift)
+MA200_HIGH_DEVIATION_THRESHOLD = (
+    20  # legacy constant (sell amplifier disabled in signal engine)
+)
 MOAT_MARGIN_DETERIORATION_THRESHOLD = -2  # percentage points YoY
 
 # Category RSI offset — derived from CATEGORY_FALLBACK_BETA via round((beta - 1.0) * 4)

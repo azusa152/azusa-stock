@@ -126,8 +126,15 @@ def backfill_scan_logs(session: Session) -> int:
                     price_series=prices,
                     category=stock.category.value,
                     sample_interval=BACKFILL_SAMPLE_INTERVAL,
+                    include_normal=True,
                 )
+                previous_signal: str | None = None
                 for signal_date, signal in events:
+                    if signal == previous_signal:
+                        continue
+                    previous_signal = signal
+                    if signal == "NORMAL":
+                        continue
                     repo.create_scan_log(
                         session,
                         ScanLog(

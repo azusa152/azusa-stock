@@ -756,8 +756,12 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     if persisted_signal != "THESIS_BROKEN":
                         rsi = (signals or {}).get("rsi")
                         bias = (signals or {}).get("bias")
+                        volume_ratio = (signals or {}).get("volume_ratio")
                         computed = determine_scan_signal(
-                            moat="NOT_AVAILABLE", rsi=rsi, bias=bias
+                            moat="NOT_AVAILABLE",
+                            rsi=rsi,
+                            bias=bias,
+                            volume_ratio=volume_ratio,
                         )
                         enriched[ticker]["computed_signal"] = computed.value
                     else:

@@ -147,16 +147,16 @@ Run `make` commands from the project root using the `exec` tool.
 
 Folio uses two signal fields: `last_scan_signal` (persisted, from full scan with moat check) and `computed_signal` (real-time RSI/bias, no moat). `THESIS_BROKEN` always comes from the persisted value.
 
-RSI thresholds are category-aware (Growth +2, Moat +1, Bond −3). A MA200 amplifier can upgrade signals when price is far from the 200-day MA.
+RSI thresholds are category-aware (Growth +2, Moat +1, Bond −3). Sell-side overbought baseline is stricter (`RSI_OVERBOUGHT=80`). MA200 amplifier is buy-side only.
 
 | Signal | Icon | What to tell the user |
 |--------|------|-----------------------|
 | `THESIS_BROKEN` | 🚨 | Fundamental thesis broken — recommend re-evaluating the holding |
 | `DEEP_VALUE` | 💎 | Both price and momentum confirm deep discount — high-conviction entry zone |
 | `OVERSOLD` | 📉 | Price at extreme low; RSI not yet confirming — watch for further confirmation |
-| `CONTRARIAN_BUY` | 🟢 | RSI oversold, price not overheated — potential contrarian entry |
+| `CONTRARIAN_BUY` | 🟢 | RSI oversold and price below MA60 — potential contrarian entry |
 | `APPROACHING_BUY` | 🎯 | Accumulation zone — approaching buy range; monitor for RSI confirmation |
-| `OVERHEATED` | 🔥 | Both indicators overheated — sell warning, avoid chasing |
+| `OVERHEATED` | 🔥 | Bias + RSI overheated with volume surge (`volume_ratio ≥ 1.5`) — sell warning, avoid chasing |
 | `CAUTION_HIGH` | ⚠️ | Single indicator elevated — reduce new positions |
 | `WEAKENING` | 🔻 | Early weakness, not yet extreme — monitor closely |
 | `NORMAL` | ➖ | No notable signal |

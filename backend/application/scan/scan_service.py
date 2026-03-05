@@ -189,7 +189,13 @@ def run_scan(session: Session) -> dict:
             alerts.append(signals["error"])
 
         signal = determine_scan_signal(
-            moat_value, rsi, bias, bias_200, stock.category.value
+            moat_value,
+            rsi,
+            bias,
+            bias_200,
+            stock.category.value,
+            volume_ratio=volume_ratio,
+            market_status=mkt_status,
         )
 
         # === Rogue Wave (瘋狗浪) ===

@@ -115,7 +115,7 @@ Common codes: `STOCK_NOT_FOUND` · `STOCK_ALREADY_EXISTS` · `HOLDING_NOT_FOUND`
 | `Bond` | 🛡️ 債券 | Fixed-income ETFs |
 | `Cash` | 💵 現金 | Idle cash |
 
-RSI thresholds are category-aware: Growth +2, Moat +1, Bond −3 offsets applied to all thresholds.
+RSI thresholds are category-aware: Growth +2, Moat +1, Bond −3 offsets applied to all thresholds. Sell-side overbought baseline is stricter (`RSI_OVERBOUGHT=80`).
 
 ## Signal Quick Reference
 
@@ -124,16 +124,16 @@ RSI thresholds are category-aware: Growth +2, Moat +1, Bond −3 offsets applied
 | `THESIS_BROKEN` | 🚨 | Fundamental thesis broken — re-evaluate holding |
 | `DEEP_VALUE` | 💎 | Both price + momentum confirm deep discount — high-conviction entry |
 | `OVERSOLD` | 📉 | Extreme price low, RSI not confirming — watch for confirmation |
-| `CONTRARIAN_BUY` | 🟢 | RSI oversold, price not overheated — potential entry |
+| `CONTRARIAN_BUY` | 🟢 | RSI oversold and price below MA60 — potential entry |
 | `APPROACHING_BUY` | 🎯 | Accumulation zone — approaching buy range |
-| `OVERHEATED` | 🔥 | Both indicators overheated — sell warning, avoid chasing |
+| `OVERHEATED` | 🔥 | Bias + RSI overheated with volume surge (`volume_ratio ≥ 1.5`) — sell warning, avoid chasing |
 | `CAUTION_HIGH` | ⚠️ | Single indicator elevated — reduce new positions |
 | `WEAKENING` | 🔻 | Early weakness — monitor closely |
 | `NORMAL` | ➖ | No notable signal |
 
 When `is_rogue_wave: true`: bias is at P95+ historically with volume surge — party is likely peaking; avoid leveraged chasing.
 
-> Full signal conditions, MA200 amplifier logic, volume qualifiers, market sentiment thresholds (US/JP/TW): read `{baseDir}/reference.md`.
+> Full signal conditions, MA200 buy-side amplifier logic, volume qualifiers, market sentiment thresholds (US/JP/TW): read `{baseDir}/reference.md`.
 
 ## Essential Tips
 

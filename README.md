@@ -576,7 +576,7 @@ docker compose up --build -d
 | `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
 | `GET` | `/stocks/enriched` | 取得股票豐富資料（技術面 + 財報 + 股息 + 基本面摘要） |
 | `GET` | `/ticker/{ticker}/fundamentals` | 取得單一股票基本面指標（P/E、EPS、市值、成長率等） |
-| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 放大器），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 買側放大器 + 過熱量能門檻 + 多頭降級機制），僅推播差異通知 |
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（命中率、平均報酬、誤報率、樣本信心） |
 | `GET` | `/backtest/signal/{signal}` | 取得單一訊號回測明細（逐筆事件與各視窗前瞻報酬） |
 | `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
@@ -615,7 +615,7 @@ docker compose up --build -d
 | `POST` | `/ticker/{ticker}/alerts` | 建立自訂價格警報（metric / operator / threshold） |
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
-| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 放大器），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 買側放大器 + 過熱量能門檻 + 多頭降級機制），僅推播差異通知 |
 | `GET` | `/backtest/summary` | 取得訊號回測總覽（依訊號彙整命中率、平均報酬、誤報率） |
 | `GET` | `/backtest/signal/{signal}` | 取得指定訊號回測明細（事件列表與前瞻報酬） |
 | `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |

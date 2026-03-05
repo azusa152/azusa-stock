@@ -13,10 +13,12 @@ from domain.analysis.analysis import (
     compute_bias,
     compute_moving_average,
     compute_rsi,
+    compute_volume_ratio,
     determine_scan_signal,
 )
 from domain.constants import (
     BACKFILL_DEFAULT_MOAT,
+    BACKFILL_MARKET_STATUS,
     BACKFILL_SAMPLE_INTERVAL,
     BACKTEST_FP_WINDOW,
     BACKTEST_MIN_SAMPLES_HIGH,
@@ -80,6 +82,13 @@ def _price_date(price_point: dict) -> date:
 
 def _price_close(price_point: dict) -> float:
     return float(price_point["close"])
+
+
+def _price_volume(price_point: dict) -> float | None:
+    value = price_point.get("volume")
+    if value is None:
+        return None
+    return float(value)
 
 
 def _find_start_index(signal_date: date, sorted_prices: Sequence[dict]) -> int | None:
@@ -214,11 +223,14 @@ def replay_historical_signals(
     price_series: Sequence[dict],
     category: str,
     sample_interval: int = BACKFILL_SAMPLE_INTERVAL,
+    include_normal: bool = False,
 ) -> list[tuple[date, str]]:
     """
     Replay historical technical signals from close-only price history.
 
-    Returns non-NORMAL (date, signal) events sampled every N trading days.
+    Returns sampled (date, signal) events every N trading days.
+    By default NORMAL events are filtered out; set include_normal=True to retain
+    full state transitions.
     """
     if len(price_series) < MA200_WINDOW:
         return []
@@ -239,6 +251,13 @@ def replay_historical_signals(
         ma200 = compute_moving_average(prefix, MA200_WINDOW)
         bias = compute_bias(current_price, ma60) if ma60 is not None else None
         bias_200 = compute_bias(current_price, ma200) if ma200 is not None else None
+        prefix_points = sorted_prices[: idx + 1]
+        volumes = [_price_volume(point) for point in prefix_points]
+        volume_ratio = (
+            None
+            if any(volume is None for volume in volumes)
+            else compute_volume_ratio([float(volume) for volume in volumes])
+        )
 
         signal = determine_scan_signal(
             moat=BACKFILL_DEFAULT_MOAT,
@@ -246,8 +265,10 @@ def replay_historical_signals(
             bias=bias,
             bias_200=bias_200,
             category=category,
+            volume_ratio=volume_ratio,
+            market_status=BACKFILL_MARKET_STATUS,
         ).value
-        if signal == ScanSignal.NORMAL.value:
+        if not include_normal and signal == ScanSignal.NORMAL.value:
             continue
 
         events.append((_price_date(sorted_prices[idx]), signal))

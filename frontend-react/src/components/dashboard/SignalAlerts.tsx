@@ -9,7 +9,8 @@ import {
   BUY_OPPORTUNITY_SIGNALS,
   RISK_WARNING_SIGNALS,
 } from "@/lib/constants"
-import { getSignalLabel } from "@/lib/signal-label"
+import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +31,13 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
   const icon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
   const signalLabel = getSignalLabel(t, signal)
+  const signalDescription = getSignalDescription(t, signal)
+
+  const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
+    ? "text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded"
+    : RISK_WARNING_SIGNALS.has(signal)
+      ? "text-xs bg-red-500/15 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded"
+      : "text-xs bg-muted px-1.5 py-0.5 rounded"
 
   const isNew = activity?.is_new ?? false
   const durationDays = activity?.duration_days
@@ -55,7 +63,20 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
           {catIcon} {stock.category}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
-          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{signalLabel}</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={signalBadgeClass}
+                  aria-label={signalDescription}
+                >
+                  {signalLabel}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>{signalDescription}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {durationBadge && (
             <span
               className={

@@ -268,7 +268,10 @@ export default function Backtest() {
                     }
                   />
                   <YAxis tick={{ fill: theme.tickColor, fontSize: 11 }} />
-                  <Tooltip contentStyle={theme.tooltipStyle} />
+                  <Tooltip
+                    contentStyle={theme.tooltipStyle}
+                    labelFormatter={(label) => getSignalLabel(t, String(label))}
+                  />
                   <Bar dataKey="5d" fill="#60a5fa" />
                   <Bar dataKey="10d" fill="#34d399" />
                   <Bar dataKey="30d" fill="#f59e0b" />
@@ -301,6 +304,7 @@ export default function Backtest() {
                     formatter={(value: number | string | undefined) =>
                       `${Number(value ?? 0).toFixed(1)}%`
                     }
+                    labelFormatter={(label) => getSignalLabel(t, String(label))}
                   />
                   <Bar dataKey="hitRate">
                     {hitRateData.map((entry) => (

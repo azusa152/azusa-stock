@@ -6,8 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SCAN_SIGNAL_ICONS, CATEGORY_ICON_SHORT, STOCK_CATEGORIES, MARKET_OPTIONS } from "@/lib/constants"
-import { getSignalLabel } from "@/lib/signal-label"
+import {
+  SCAN_SIGNAL_ICONS,
+  CATEGORY_ICON_SHORT,
+  STOCK_CATEGORIES,
+  MARKET_OPTIONS,
+  BUY_OPPORTUNITY_SIGNALS,
+  RISK_WARNING_SIGNALS,
+} from "@/lib/constants"
+import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
 import { formatMarketCap, formatPrice, isMarketOpen } from "@/lib/format"
 import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
@@ -16,6 +23,7 @@ import { PriceChart } from "@/components/radar/PriceChart"
 import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
 import { SparklineHeader } from "@/components/radar/SparklineHeader"
 import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
 
@@ -280,13 +288,21 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
     signal !== "NORMAL"
       ? getSignalLabel(t, signal)
       : ""
+  const signalDescription =
+    signal !== "NORMAL"
+      ? getSignalDescription(t, signal)
+      : ""
+  const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
+    ? "shrink-0 text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 rounded px-1.5 py-0.5"
+    : RISK_WARNING_SIGNALS.has(signal)
+      ? "shrink-0 text-[10px] bg-red-500/15 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5"
+      : "shrink-0 text-[10px] bg-muted text-muted-foreground rounded px-1.5 py-0.5"
 
   const identityParts = [
     `${signalIcon} ${stock.ticker}`,
     `${catIcon} ${stock.category.replace("_", " ")}`,
     marketLabel,
     resonanceBadge || null,
-    signalLabel || null,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -312,6 +328,22 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
           {/* Left: identity */}
           <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
             <span className="truncate">{identityParts}</span>
+              {signalLabel && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={signalBadgeClass}
+                        aria-label={signalDescription}
+                      >
+                        {signalLabel}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={6}>{signalDescription}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               {marketCap != null && (
                 <span className="shrink-0 inline-flex items-center rounded-md border border-border px-1.5 py-0 h-4 text-[10px] font-medium text-muted-foreground">
                   {t("radar.stock_card.fundamentals.market_cap_short")}: {formatMarketCap(marketCap)}
