@@ -16,7 +16,13 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { useNetWorthHistory, useNetWorthItems, useNetWorthSummary } from "@/api/hooks/useNetWorth"
+import {
+  useNetWorthHistory,
+  useNetWorthItems,
+  useNetWorthSeedPreview,
+  useNetWorthSummary,
+  useSeedNetWorth,
+} from "@/api/hooks/useNetWorth"
 import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverview"
 import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
 import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
@@ -33,6 +39,7 @@ export default function Allocation() {
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
   const [netWorthHistoryDays, setNetWorthHistoryDays] = useState<30 | 90 | 180 | 365 | 730>(30)
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const [seedFeedback, setSeedFeedback] = useState("")
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
@@ -44,6 +51,12 @@ export default function Allocation() {
     displayCurrency,
     activeTab === "net-worth",
   )
+  const showNetWorthOnboarding = (netWorthItems?.length ?? 0) === 0
+  const { data: netWorthSeedPreview } = useNetWorthSeedPreview(
+    displayCurrency,
+    activeTab === "net-worth" && showNetWorthOnboarding,
+  )
+  const seedNetWorth = useSeedNetWorth()
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
@@ -69,6 +82,16 @@ export default function Allocation() {
   }
 
   const hasSetup = holdings.length > 0
+  const hasSeedableCash = (netWorthSeedPreview?.cash_positions?.length ?? 0) > 0
+
+  const formatDisplayCurrency = (value: number) => {
+    if (privacyMode) return "***"
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      minimumFractionDigits: 2,
+    }).format(value)
+  }
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
@@ -210,10 +233,47 @@ export default function Allocation() {
             </Button>
           </div>
 
-          {(netWorthItems?.length ?? 0) === 0 ? (
+          {showNetWorthOnboarding ? (
             <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
               <p className="text-sm font-semibold">{t("net_worth.onboarding_title")}</p>
               <p className="text-xs text-muted-foreground">{t("net_worth.onboarding_desc")}</p>
+              {netWorthSeedPreview?.has_holdings && hasSeedableCash && (
+                <div className="rounded-md border border-border bg-background p-3 space-y-1">
+                  <p className="text-xs font-medium">{t("net_worth.seed_preview_title")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("net_worth.seed_preview_investment", {
+                      value: formatDisplayCurrency(netWorthSeedPreview.investment_value),
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("net_worth.seed_preview_cash", {
+                      value: formatDisplayCurrency(netWorthSeedPreview.cash_value),
+                      count: netWorthSeedPreview.cash_positions.length,
+                    })}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-2 text-xs"
+                    disabled={seedNetWorth.isPending}
+                    onClick={() => {
+                      setSeedFeedback("")
+                      seedNetWorth.mutate(undefined, {
+                        onSuccess: (result) => {
+                          const createdCount = result.created_items.length
+                          if (createdCount > 0) {
+                            setSeedFeedback(t("net_worth.seed_success", { count: createdCount }))
+                            return
+                          }
+                          setSeedFeedback(t("net_worth.seed_already_done"))
+                        },
+                      })
+                    }}
+                  >
+                    {t("net_worth.seed_import_btn")}
+                  </Button>
+                  {seedFeedback ? <p className="text-xs text-muted-foreground">{seedFeedback}</p> : null}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   size="sm"

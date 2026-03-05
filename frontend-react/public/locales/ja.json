@@ -1569,6 +1569,12 @@
     "onboarding_title": "純資産トラッキングを始めましょう",
     "onboarding_desc": "資産と負債を追加すると、推移と負債の影響をすぐ確認できます。",
     "onboarding_add_asset": "資産を追加",
-    "onboarding_add_liability": "負債を追加"
+    "onboarding_add_liability": "負債を追加",
+    "seed_preview_title": "ポートフォリオ内のデータを見つけました",
+    "seed_preview_investment": "投資ポートフォリオ: {{value}}",
+    "seed_preview_cash": "現金ポジション: {{count}}通貨で {{value}}",
+    "seed_import_btn": "現金を貯蓄資産として取り込む",
+    "seed_success": "{{count}}件の現金ポジションを貯蓄資産として取り込みました",
+    "seed_already_done": "現金ポジションはすでに取り込み済みです"
   }
 }

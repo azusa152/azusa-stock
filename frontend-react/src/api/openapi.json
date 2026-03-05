@@ -3391,6 +3391,108 @@
         }
       }
     },
+    "/net-worth/seed-preview": {
+      "get": {
+        "summary": "Get seed preview from portfolio cash holdings",
+        "operationId": "get_net_worth_seed_preview_net_worth_seed_preview_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSeedPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/seed": {
+      "post": {
+        "summary": "Seed net worth items from portfolio cash holdings",
+        "operationId": "seed_net_worth_from_portfolio_net_worth_seed_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSeedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/net-worth/items/{item_id}": {
       "put": {
         "summary": "Update net worth item",
@@ -8187,6 +8289,11 @@
             ],
             "title": "Minimum Payment"
           },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "manual"
+          },
           "note": {
             "type": "string",
             "title": "Note",
@@ -8230,6 +8337,89 @@
         ],
         "title": "NetWorthItemResponse",
         "description": "Single net worth item response."
+      },
+      "NetWorthSeedCashPosition": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "title": "NetWorthSeedCashPosition"
+      },
+      "NetWorthSeedPreviewResponse": {
+        "properties": {
+          "has_holdings": {
+            "type": "boolean",
+            "title": "Has Holdings"
+          },
+          "investment_value": {
+            "type": "number",
+            "title": "Investment Value"
+          },
+          "cash_positions": {
+            "items": {
+              "$ref": "#/components/schemas/NetWorthSeedCashPosition"
+            },
+            "type": "array",
+            "title": "Cash Positions"
+          },
+          "cash_value": {
+            "type": "number",
+            "title": "Cash Value"
+          },
+          "existing_item_count": {
+            "type": "integer",
+            "title": "Existing Item Count"
+          },
+          "display_currency": {
+            "type": "string",
+            "title": "Display Currency",
+            "default": "USD"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_holdings",
+          "investment_value",
+          "cash_positions",
+          "cash_value",
+          "existing_item_count"
+        ],
+        "title": "NetWorthSeedPreviewResponse"
+      },
+      "NetWorthSeedResponse": {
+        "properties": {
+          "created_items": {
+            "items": {
+              "$ref": "#/components/schemas/NetWorthItemResponse"
+            },
+            "type": "array",
+            "title": "Created Items"
+          },
+          "skipped_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skipped Currencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_items",
+          "skipped_currencies"
+        ],
+        "title": "NetWorthSeedResponse"
       },
       "NetWorthSnapshotResponse": {
         "properties": {

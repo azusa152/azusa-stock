@@ -240,6 +240,7 @@
     "holding_deleted": "保有 {ticker} を削除しました。",
     "net_worth_item_not_found": "純資産項目が見つかりません。",
     "net_worth_item_deleted": "純資産項目「{name}」を削除しました。",
+    "net_worth_seed_no_cash_holdings": "取り込める現金保有が見つかりません。",
     "import_item_failed": "{index} 番目のインポートに失敗",
     "import_done": "インポート完了：{count} 件成功。",
     "xray_done": "X-Ray分析完了、{count} 件の警告を送信。",

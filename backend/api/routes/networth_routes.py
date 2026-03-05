@@ -4,19 +4,21 @@ API — Net Worth routes.
 
 import json
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from api.schemas import (
     MessageResponse,
     NetWorthItemRequest,
     NetWorthItemResponse,
+    NetWorthSeedPreviewResponse,
+    NetWorthSeedResponse,
     NetWorthSnapshotResponse,
     NetWorthSummaryResponse,
     UpdateNetWorthItemRequest,
 )
 from application.portfolio import net_worth_service
-from i18n import get_user_language
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 
 router = APIRouter()
@@ -89,6 +91,41 @@ def delete_net_worth_item(
 ) -> dict:
     lang = get_user_language(session)
     return net_worth_service.delete_item(session, item_id, lang)
+
+
+@router.get(
+    "/net-worth/seed-preview",
+    response_model=NetWorthSeedPreviewResponse,
+    summary="Get seed preview from portfolio cash holdings",
+)
+def get_net_worth_seed_preview(
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> dict:
+    return net_worth_service.get_seed_preview(
+        session, display_currency=display_currency.strip().upper()
+    )
+
+
+@router.post(
+    "/net-worth/seed",
+    response_model=NetWorthSeedResponse,
+    summary="Seed net worth items from portfolio cash holdings",
+)
+def seed_net_worth_from_portfolio(
+    session: Session = Depends(get_session),
+) -> dict:
+    result = net_worth_service.seed_from_portfolio(session)
+    if not result["created_items"] and not result["skipped_currencies"]:
+        lang = get_user_language(session)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "NET_WORTH_SEED_NO_CASH_HOLDINGS",
+                "detail": t("api.net_worth_seed_no_cash_holdings", lang=lang),
+            },
+        )
+    return result
 
 
 @router.get(

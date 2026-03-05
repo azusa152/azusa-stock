@@ -1569,6 +1569,12 @@
     "onboarding_title": "开始追踪完整净资产",
     "onboarding_desc": "添加资产与负债后，即可看到趋势与负债影响。",
     "onboarding_add_asset": "新增资产",
-    "onboarding_add_liability": "新增负债"
+    "onboarding_add_liability": "新增负债",
+    "seed_preview_title": "我们在你的投资组合中发现了可用数据",
+    "seed_preview_investment": "投资组合: {{value}}",
+    "seed_preview_cash": "现金头寸: 共 {{count}} 种货币，合计 {{value}}",
+    "seed_import_btn": "将现金导入为储蓄资产",
+    "seed_success": "已导入 {{count}} 条现金头寸为储蓄资产",
+    "seed_already_done": "现金头寸已导入"
   }
 }

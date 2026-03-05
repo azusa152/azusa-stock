@@ -321,6 +321,7 @@ class NetWorthItem(SQLModel, table=True):
     minimum_payment: float | None = Field(
         default=None, description="每月最低還款金額（負債可選）"
     )
+    source: str = Field(default="manual", description="來源：manual / portfolio_cash")
     note: str = Field(default="", description="備註")
     is_active: bool = Field(default=True, description="是否啟用（軟刪除）")
     created_at: datetime = Field(

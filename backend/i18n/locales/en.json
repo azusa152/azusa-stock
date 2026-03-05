@@ -240,6 +240,7 @@
     "holding_deleted": "Holding {ticker} deleted.",
     "net_worth_item_not_found": "Net worth item not found.",
     "net_worth_item_deleted": "Net worth item '{name}' deleted.",
+    "net_worth_seed_no_cash_holdings": "No cash holdings found to import.",
     "import_item_failed": "Import item {index} failed",
     "import_done": "Import complete: {count} successful.",
     "xray_done": "X-Ray analysis complete, {count} warnings sent.",

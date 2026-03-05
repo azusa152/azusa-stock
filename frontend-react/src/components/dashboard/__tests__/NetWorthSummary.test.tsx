@@ -67,6 +67,7 @@ describe("NetWorthSummary", () => {
                 fx_rate_to_usd: null,
                 interest_rate: null,
                 minimum_payment: null,
+                source: "manual",
                 note: "",
                 is_active: true,
                 is_stale: false,

@@ -58,6 +58,8 @@ from api.schemas.guru import (  # noqa: F401
 from api.schemas.networth import (  # noqa: F401
     NetWorthItemRequest,
     NetWorthItemResponse,
+    NetWorthSeedPreviewResponse,
+    NetWorthSeedResponse,
     NetWorthSnapshotResponse,
     NetWorthSummaryResponse,
     UpdateNetWorthItemRequest,

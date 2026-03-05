@@ -240,6 +240,7 @@
     "holding_deleted": "持仓 {ticker} 已删除。",
     "net_worth_item_not_found": "净资产项目不存在。",
     "net_worth_item_deleted": "净资产项目“{name}”已删除。",
+    "net_worth_seed_no_cash_holdings": "未找到可导入的现金持仓。",
     "import_item_failed": "第 {index} 笔导入失败",
     "import_done": "导入完成：{count} 笔成功。",
     "xray_done": "X-Ray 分析完成，{count} 笔警告已发送。",

@@ -6,6 +6,7 @@ Application — Net Worth Service。
 from __future__ import annotations
 
 import json as _json
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -20,6 +21,7 @@ from domain.constants import (
 )
 from domain.entities import Holding, NetWorthItem, NetWorthSnapshot, PortfolioSnapshot
 from i18n import t
+from infrastructure.market_data import get_exchange_rates
 from logging_config import get_logger
 
 if TYPE_CHECKING:
@@ -72,6 +74,7 @@ def _item_to_dict(item: NetWorthItem, display_currency: str = "USD") -> dict:
         "fx_rate_to_usd": item.fx_rate_to_usd,
         "interest_rate": item.interest_rate,
         "minimum_payment": item.minimum_payment,
+        "source": item.source or "manual",
         "note": item.note,
         "is_active": item.is_active,
         "is_stale": days_since_update >= NET_WORTH_STALE_DAYS,
@@ -120,6 +123,7 @@ def create_item(session: Session, payload: dict) -> dict:
         fx_rate_to_usd=payload.get("fx_rate_to_usd"),
         interest_rate=payload.get("interest_rate"),
         minimum_payment=payload.get("minimum_payment"),
+        source=(payload.get("source") or "manual").strip().lower(),
         note=(payload.get("note") or "").strip(),
     )
     session.add(item)
@@ -166,30 +170,218 @@ def delete_item(session: Session, item_id: int, lang: str) -> dict:
     return {"message": t("api.net_worth_item_deleted", lang=lang, name=item.name)}
 
 
-def calculate_net_worth(session: Session, display_currency: str = "USD") -> dict:
-    currency = display_currency.strip().upper()
-    latest_snapshot = session.exec(
+def _get_latest_portfolio_snapshot(session: Session) -> PortfolioSnapshot | None:
+    return session.exec(
         select(PortfolioSnapshot).order_by(desc(PortfolioSnapshot.snapshot_date))
     ).first()
-    investment_value = float(latest_snapshot.total_value) if latest_snapshot else 0.0
-    if latest_snapshot is None:
-        holdings = list(
+
+
+def _list_user_holdings(session: Session) -> list[Holding]:
+    return list(
+        session.exec(select(Holding).where(Holding.user_id == DEFAULT_USER_ID)).all()
+    )
+
+
+def _calculate_investment_from_holdings(
+    holdings: list[Holding], display_currency: str, include_cash: bool = True
+) -> float:
+    total = 0.0
+    for holding in holdings:
+        if not include_cash and holding.is_cash:
+            continue
+        base_amount = (
+            float(holding.quantity)
+            if holding.is_cash
+            else float(holding.quantity) * float(holding.cost_basis or 0.0)
+        )
+        total += _convert_with_stored_rate(
+            base_amount,
+            holding.currency,
+            display_currency,
+            holding.purchase_fx_rate,
+        )
+    return total
+
+
+def _extract_cash_value_from_snapshot(snapshot: PortfolioSnapshot | None) -> float:
+    if snapshot is None:
+        return 0.0
+    try:
+        category_values = _json.loads(snapshot.category_values or "{}")
+    except (TypeError, ValueError):
+        return 0.0
+    return float(category_values.get("Cash", 0.0))
+
+
+def _group_cash_holdings_by_currency(
+    holdings: list[Holding],
+) -> defaultdict[str, float]:
+    cash_by_currency: defaultdict[str, float] = defaultdict(float)
+    for holding in holdings:
+        if not holding.is_cash:
+            continue
+        cash_by_currency[holding.currency.upper()] += float(holding.quantity)
+    return cash_by_currency
+
+
+def _calculate_cash_value_from_positions(
+    cash_by_currency: dict[str, float], display_currency: str
+) -> float:
+    if not cash_by_currency:
+        return 0.0
+
+    currency = display_currency.strip().upper()
+    rates = get_exchange_rates(currency, list(cash_by_currency.keys()))
+    total = 0.0
+    for holding_currency, amount in cash_by_currency.items():
+        rate = (
+            1.0
+            if holding_currency == currency
+            else float(rates.get(holding_currency, 1.0))
+        )
+        total += amount * rate
+    return total
+
+
+def _has_seeded_cash_items(session: Session) -> bool:
+    statement = select(NetWorthItem.id).where(
+        NetWorthItem.user_id == DEFAULT_USER_ID,
+        NetWorthItem.is_active == True,  # noqa: E712
+        NetWorthItem.source == "portfolio_cash",
+    )
+    return session.exec(statement).first() is not None
+
+
+def get_seed_preview(session: Session, display_currency: str = "USD") -> dict:
+    currency = display_currency.strip().upper()
+    holdings = _list_user_holdings(session)
+    latest_snapshot = _get_latest_portfolio_snapshot(session)
+    has_holdings = len(holdings) > 0
+
+    # Cash positions grouped by native currency for intuitive onboarding.
+    cash_by_currency = _group_cash_holdings_by_currency(holdings)
+
+    cash_positions = [
+        {"currency": ccy, "amount": amount}
+        for ccy, amount in sorted(cash_by_currency.items(), key=lambda item: item[0])
+        if amount > 0
+    ]
+
+    investment_non_cash = (
+        (
+            float(latest_snapshot.total_value)
+            - _extract_cash_value_from_snapshot(latest_snapshot)
+        )
+        if latest_snapshot is not None
+        else _calculate_investment_from_holdings(
+            holdings, display_currency=currency, include_cash=False
+        )
+    )
+    investment_non_cash = max(0.0, investment_non_cash)
+
+    cash_in_display_currency = (
+        _extract_cash_value_from_snapshot(latest_snapshot)
+        if latest_snapshot is not None
+        else _calculate_cash_value_from_positions(cash_by_currency, currency)
+    )
+
+    existing_item_count = len(
+        list(
             session.exec(
-                select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
+                select(NetWorthItem.id).where(
+                    NetWorthItem.user_id == DEFAULT_USER_ID,
+                    NetWorthItem.is_active == True,  # noqa: E712
+                )
             ).all()
         )
-        for holding in holdings:
-            base_amount = (
-                float(holding.quantity)
-                if holding.is_cash
-                else float(holding.quantity) * float(holding.cost_basis or 0.0)
+    )
+
+    return {
+        "has_holdings": has_holdings,
+        "investment_value": investment_non_cash,
+        "cash_positions": cash_positions,
+        "cash_value": cash_in_display_currency,
+        "existing_item_count": int(existing_item_count or 0),
+        "display_currency": currency,
+    }
+
+
+def seed_from_portfolio(session: Session) -> dict:
+    holdings = _list_user_holdings(session)
+    cash_by_currency = _group_cash_holdings_by_currency(holdings)
+
+    existing_seeded = list(
+        session.exec(
+            select(NetWorthItem).where(
+                NetWorthItem.user_id == DEFAULT_USER_ID,
+                NetWorthItem.is_active == True,  # noqa: E712
+                NetWorthItem.source == "portfolio_cash",
             )
-            investment_value += _convert_with_stored_rate(
-                base_amount,
-                holding.currency,
-                currency,
-                holding.purchase_fx_rate,
+        ).all()
+    )
+    existing_by_currency = {
+        (item.currency or "").upper() for item in existing_seeded if item.currency
+    }
+
+    created_items: list[dict] = []
+    skipped_currencies: list[str] = []
+    for currency, amount in sorted(cash_by_currency.items(), key=lambda item: item[0]):
+        if amount <= 0:
+            continue
+        if currency in existing_by_currency:
+            skipped_currencies.append(currency)
+            continue
+        item = NetWorthItem(
+            user_id=DEFAULT_USER_ID,
+            name=f"Cash ({currency})",
+            kind="asset",
+            category="savings",
+            value=amount,
+            currency=currency,
+            source="portfolio_cash",
+            note="",
+        )
+        session.add(item)
+        session.flush()
+        created_items.append(_item_to_dict(item))
+
+    session.commit()
+    return {
+        "created_items": created_items,
+        "skipped_currencies": skipped_currencies,
+    }
+
+
+def calculate_net_worth(session: Session, display_currency: str = "USD") -> dict:
+    currency = display_currency.strip().upper()
+    latest_snapshot = _get_latest_portfolio_snapshot(session)
+    investment_value = float(latest_snapshot.total_value) if latest_snapshot else 0.0
+    holdings: list[Holding] = []
+    if latest_snapshot is None:
+        holdings = _list_user_holdings(session)
+        investment_value = _calculate_investment_from_holdings(
+            holdings, display_currency=currency, include_cash=True
+        )
+
+    if _has_seeded_cash_items(session):
+        if latest_snapshot is not None:
+            investment_value = max(
+                0.0,
+                investment_value - _extract_cash_value_from_snapshot(latest_snapshot),
             )
+        else:
+            total_with_cash = _calculate_investment_from_holdings(
+                holdings,
+                display_currency=currency,
+                include_cash=True,
+            )
+            total_without_cash = _calculate_investment_from_holdings(
+                holdings,
+                display_currency=currency,
+                include_cash=False,
+            )
+            cash_only = total_with_cash - total_without_cash
+            investment_value = max(0.0, investment_value - max(0.0, cash_only))
 
     items = list_items(session, display_currency=currency)
     other_assets_value = 0.0

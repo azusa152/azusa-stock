@@ -1569,6 +1569,12 @@
     "onboarding_title": "開始追蹤完整淨資產",
     "onboarding_desc": "新增資產與負債後，即可查看趨勢與負債影響。",
     "onboarding_add_asset": "新增資產",
-    "onboarding_add_liability": "新增負債"
+    "onboarding_add_liability": "新增負債",
+    "seed_preview_title": "我們在你的投資組合中發現可用資料",
+    "seed_preview_investment": "投資組合: {{value}}",
+    "seed_preview_cash": "現金部位: 共 {{count}} 種幣別，合計 {{value}}",
+    "seed_import_btn": "將現金匯入為儲蓄資產",
+    "seed_success": "已匯入 {{count}} 筆現金部位為儲蓄資產",
+    "seed_already_done": "現金部位已匯入"
   }
 }

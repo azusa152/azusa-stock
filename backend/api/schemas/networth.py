@@ -87,6 +87,7 @@ class NetWorthItemResponse(BaseModel):
     fx_rate_to_usd: float | None = None
     interest_rate: float | None = None
     minimum_payment: float | None = None
+    source: str = "manual"
     note: str = ""
     is_active: bool
     is_stale: bool
@@ -119,3 +120,22 @@ class NetWorthSnapshotResponse(BaseModel):
     net_worth: float
     display_currency: str = "USD"
     breakdown: dict[str, dict[str, float]] = {}
+
+
+class NetWorthSeedCashPosition(BaseModel):
+    currency: str
+    amount: float
+
+
+class NetWorthSeedPreviewResponse(BaseModel):
+    has_holdings: bool
+    investment_value: float
+    cash_positions: list[NetWorthSeedCashPosition]
+    cash_value: float
+    existing_item_count: int
+    display_currency: str = "USD"
+
+
+class NetWorthSeedResponse(BaseModel):
+    created_items: list[NetWorthItemResponse]
+    skipped_currencies: list[str]

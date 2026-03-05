@@ -79,6 +79,8 @@ def _run_migrations() -> None:
         "ALTER TABLE networthitem ADD COLUMN fx_rate_to_usd REAL;",
         # NetWorthItem: optional minimum monthly payment for liabilities
         "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
+        # NetWorthItem: source tracking for seeded portfolio cash
+        "ALTER TABLE networthitem ADD COLUMN source TEXT DEFAULT 'manual';",
     ]
 
     with engine.connect() as conn:
