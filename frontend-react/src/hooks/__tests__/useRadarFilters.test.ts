@@ -164,4 +164,20 @@ describe("useRadarFilters", () => {
     expect(result.current.activeFilterCount).toBe(0)
     expect(result.current.filters).toEqual(DEFAULT_RADAR_FILTERS)
   })
+
+  it("applies presets by resetting first and then setting preset filters", () => {
+    const { result } = renderHook(() => useRadarFilters())
+
+    act(() => {
+      result.current.setFilter("heldOnly", true)
+      result.current.setFilter("rsiMin", 20)
+      result.current.applyPreset("income")
+    })
+
+    expect(result.current.filters.heldOnly).toBe(false)
+    expect(result.current.filters.rsiMin).toBeNull()
+    expect(result.current.filters.dividendYieldMin).toBe(0.03)
+    expect(result.current.filters.marketCapBuckets).toEqual(["large", "mega"])
+    expect(result.current.activeFilterCount).toBe(2)
+  })
 })

@@ -20,6 +20,13 @@ export interface RadarFilterState {
   heldOnly: boolean
 }
 
+export type RadarFilterPresetKey = "income" | "bargain" | "bluechip"
+
+export interface RadarFilterPreset {
+  key: RadarFilterPresetKey
+  filters: Partial<RadarFilterState>
+}
+
 export const DEFAULT_RADAR_FILTERS: RadarFilterState = {
   signals: [],
   rsiMin: null,
@@ -36,6 +43,29 @@ export const DEFAULT_RADAR_FILTERS: RadarFilterState = {
   tags: [],
   heldOnly: false,
 }
+
+export const FILTER_PRESETS: RadarFilterPreset[] = [
+  {
+    key: "income",
+    filters: {
+      dividendYieldMin: 0.03,
+      marketCapBuckets: ["large", "mega"],
+    },
+  },
+  {
+    key: "bargain",
+    filters: {
+      signals: ["DEEP_VALUE", "OVERSOLD", "CONTRARIAN_BUY"],
+    },
+  },
+  {
+    key: "bluechip",
+    filters: {
+      marketCapBuckets: ["large", "mega"],
+      signals: ["NORMAL"],
+    },
+  },
+]
 
 function inRange(value: number | null | undefined, min: number | null, max: number | null): boolean {
   if (min == null && max == null) return true
@@ -156,6 +186,15 @@ export function useRadarFilters() {
     setFilters(DEFAULT_RADAR_FILTERS)
   }, [])
 
+  const applyPreset = useCallback((presetKey: RadarFilterPresetKey) => {
+    const preset = FILTER_PRESETS.find((item) => item.key === presetKey)
+    if (!preset) return
+    setFilters({
+      ...DEFAULT_RADAR_FILTERS,
+      ...preset.filters,
+    })
+  }, [])
+
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters])
 
   return {
@@ -166,6 +205,7 @@ export function useRadarFilters() {
     toggleTag,
     toggleMarketCapBucket,
     resetFilters,
+    applyPreset,
     activeFilterCount,
   }
 }

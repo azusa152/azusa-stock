@@ -30,6 +30,7 @@ export default function Radar() {
     toggleTag,
     toggleMarketCapBucket,
     resetFilters,
+    applyPreset,
     activeFilterCount,
   } = useRadarFilters()
 
@@ -178,6 +179,7 @@ export default function Radar() {
         toggleTag={toggleTag}
         toggleMarketCapBucket={toggleMarketCapBucket}
         resetFilters={resetFilters}
+        applyPreset={applyPreset}
       />
 
       {/* Data freshness */}

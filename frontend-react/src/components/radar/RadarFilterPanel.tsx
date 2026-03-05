@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { CircleHelp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SCAN_SIGNAL_ICONS } from "@/lib/constants"
-import { getSignalLabel } from "@/lib/signal-label"
+import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
 import type { ScanSignal } from "@/api/types/radar"
-import { DEFAULT_RADAR_FILTERS } from "@/hooks/useRadarFilters"
-import type { MarketCapBucket, RadarFilterState } from "@/hooks/useRadarFilters"
+import { DEFAULT_RADAR_FILTERS, FILTER_PRESETS } from "@/hooks/useRadarFilters"
+import type { MarketCapBucket, RadarFilterPresetKey, RadarFilterState } from "@/hooks/useRadarFilters"
 
 const SIGNAL_ORDER: ScanSignal[] = [
   "DEEP_VALUE",
@@ -58,6 +60,53 @@ function parseNullableNumber(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
+function FilterLabel({ label, tip }: { label: string; tip: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      {label}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex min-h-[28px] min-w-[28px] items-center justify-center rounded-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            aria-label={tip}
+          >
+            <CircleHelp className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent sideOffset={6} className="max-w-xs">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  )
+}
+
+function isPresetActive(filters: RadarFilterState, presetKey: RadarFilterPresetKey): boolean {
+  const preset = FILTER_PRESETS.find((item) => item.key === presetKey)
+  if (!preset) return false
+  const merged = { ...DEFAULT_RADAR_FILTERS, ...preset.filters }
+  const sameArray = (left: string[], right: string[]) =>
+    left.length === right.length && left.every((item, idx) => item === right[idx])
+
+  return (
+    sameArray(filters.signals, merged.signals) &&
+    filters.rsiMin === merged.rsiMin &&
+    filters.rsiMax === merged.rsiMax &&
+    filters.biasMin === merged.biasMin &&
+    filters.biasMax === merged.biasMax &&
+    filters.volumeRatioMin === merged.volumeRatioMin &&
+    filters.volumeRatioMax === merged.volumeRatioMax &&
+    sameArray(filters.marketCapBuckets, merged.marketCapBuckets) &&
+    filters.peMin === merged.peMin &&
+    filters.peMax === merged.peMax &&
+    filters.dividendYieldMin === merged.dividendYieldMin &&
+    sameArray(filters.sectors, merged.sectors) &&
+    sameArray(filters.tags, merged.tags) &&
+    filters.heldOnly === merged.heldOnly
+  )
+}
+
 interface Props {
   isOpen: boolean
   onToggleOpen: () => void
@@ -71,6 +120,7 @@ interface Props {
   toggleTag: (tag: string) => void
   toggleMarketCapBucket: (bucket: MarketCapBucket) => void
   resetFilters: () => void
+  applyPreset: (presetKey: RadarFilterPresetKey) => void
 }
 
 export function RadarFilterPanel({
@@ -86,6 +136,7 @@ export function RadarFilterPanel({
   toggleTag,
   toggleMarketCapBucket,
   resetFilters,
+  applyPreset,
 }: Props) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<NumericDraftState>(() => toDraft(filters))
@@ -144,7 +195,12 @@ export function RadarFilterPanel({
   return (
     <div className="rounded-md border border-border">
       <button
-        onClick={onToggleOpen}
+        onClick={() => {
+          if (!isOpen) {
+            setDraft(toDraft(filters))
+          }
+          onToggleOpen()
+        }}
         className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
       >
         <span className="inline-flex items-center gap-2">
@@ -157,21 +213,57 @@ export function RadarFilterPanel({
       {isOpen && (
         <div className="px-4 pb-4 space-y-4">
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{t("radar.filter.signal")}</p>
+            <p className="text-xs text-muted-foreground">{t("radar.filter.presets")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {FILTER_PRESETS.map((preset) => (
+                <Tooltip key={preset.key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        applyPreset(preset.key)
+                        setDraft(toDraft({ ...DEFAULT_RADAR_FILTERS, ...preset.filters }))
+                      }}
+                      className={cn(
+                        "text-xs px-2.5 py-1.5 rounded-full border min-h-[36px] transition-colors",
+                        isPresetActive(filters, preset.key) ? "bg-foreground text-background" : "hover:bg-muted/50",
+                      )}
+                      aria-pressed={isPresetActive(filters, preset.key)}
+                    >
+                      {t(`radar.filter.preset.${preset.key}`)}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6} className="max-w-xs">
+                    {t(`radar.filter.preset.${preset.key}_desc`)}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <FilterLabel label={t("radar.filter.signal")} tip={t("radar.filter.signal_tip")} />
             <div className="flex flex-wrap gap-1.5">
               {SIGNAL_ORDER.map((signal) => {
                 const selected = filters.signals.includes(signal)
                 return (
-                  <button
-                    key={signal}
-                    onClick={() => toggleSignal(signal)}
-                    className={cn(
-                      "text-xs px-2.5 py-1.5 rounded-full border min-h-[36px] transition-colors",
-                      selected ? "bg-foreground text-background" : "hover:bg-muted/50",
-                    )}
-                  >
-                    {SCAN_SIGNAL_ICONS[signal] ?? "•"} {getSignalLabel(t, signal)}
-                  </button>
+                  <Tooltip key={signal}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => toggleSignal(signal)}
+                        className={cn(
+                          "text-xs px-2.5 py-1.5 rounded-full border min-h-[36px] transition-colors",
+                          selected ? "bg-foreground text-background" : "hover:bg-muted/50",
+                        )}
+                      >
+                        {SCAN_SIGNAL_ICONS[signal] ?? "•"} {getSignalLabel(t, signal)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={6} className="max-w-xs">
+                      {getSignalDescription(t, signal)}
+                    </TooltipContent>
+                  </Tooltip>
                 )
               })}
             </div>
@@ -179,41 +271,41 @@ export function RadarFilterPanel({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.rsi")}</p>
+              <FilterLabel label={t("radar.filter.rsi")} tip={t("radar.filter.rsi_tip")} />
               <div className="flex gap-2">
-                <Input value={draft.rsiMin} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMin: e.target.value }))} placeholder={t("radar.filter.min")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.rsiMax} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMax: e.target.value }))} placeholder={t("radar.filter.max")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.rsiMin} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMin: e.target.value }))} placeholder={t("radar.filter.rsi_min_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.rsiMax} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMax: e.target.value }))} placeholder={t("radar.filter.rsi_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.bias")}</p>
+              <FilterLabel label={t("radar.filter.bias")} tip={t("radar.filter.bias_tip")} />
               <div className="flex gap-2">
-                <Input value={draft.biasMin} onChange={(e) => setDraft((prev) => ({ ...prev, biasMin: e.target.value }))} placeholder={t("radar.filter.min")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.biasMax} onChange={(e) => setDraft((prev) => ({ ...prev, biasMax: e.target.value }))} placeholder={t("radar.filter.max")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.biasMin} onChange={(e) => setDraft((prev) => ({ ...prev, biasMin: e.target.value }))} placeholder={t("radar.filter.bias_min_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.biasMax} onChange={(e) => setDraft((prev) => ({ ...prev, biasMax: e.target.value }))} placeholder={t("radar.filter.bias_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.volume_ratio")}</p>
+              <FilterLabel label={t("radar.filter.volume_ratio")} tip={t("radar.filter.volume_ratio_tip")} />
               <div className="flex gap-2">
-                <Input value={draft.volumeRatioMin} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMin: e.target.value }))} placeholder={t("radar.filter.min")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.volumeRatioMax} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMax: e.target.value }))} placeholder={t("radar.filter.max")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.volumeRatioMin} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMin: e.target.value }))} placeholder={t("radar.filter.volume_ratio_min_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.volumeRatioMax} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMax: e.target.value }))} placeholder={t("radar.filter.volume_ratio_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.pe")}</p>
+              <FilterLabel label={t("radar.filter.pe")} tip={t("radar.filter.pe_tip")} />
               <div className="flex gap-2">
-                <Input value={draft.peMin} onChange={(e) => setDraft((prev) => ({ ...prev, peMin: e.target.value }))} placeholder={t("radar.filter.min")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.peMax} onChange={(e) => setDraft((prev) => ({ ...prev, peMax: e.target.value }))} placeholder={t("radar.filter.max")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.peMin} onChange={(e) => setDraft((prev) => ({ ...prev, peMin: e.target.value }))} placeholder={t("radar.filter.pe_min_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input value={draft.peMax} onChange={(e) => setDraft((prev) => ({ ...prev, peMax: e.target.value }))} placeholder={t("radar.filter.pe_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.dividend_yield")}</p>
-              <Input value={draft.dividendYieldMin} onChange={(e) => setDraft((prev) => ({ ...prev, dividendYieldMin: e.target.value }))} placeholder={t("radar.filter.min")} className="h-8 text-xs" inputMode="decimal" />
+              <FilterLabel label={t("radar.filter.dividend_yield")} tip={t("radar.filter.dividend_yield_tip")} />
+              <Input value={draft.dividendYieldMin} onChange={(e) => setDraft((prev) => ({ ...prev, dividendYieldMin: e.target.value }))} placeholder={t("radar.filter.dividend_yield_min_ph")} className="h-8 text-xs" inputMode="decimal" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{t("radar.filter.market_cap")}</p>
+            <FilterLabel label={t("radar.filter.market_cap")} tip={t("radar.filter.market_cap_tip")} />
             <div className="flex flex-wrap gap-1.5">
               {MARKET_CAP_BUCKETS.map((bucket) => {
                 const selected = filters.marketCapBuckets.includes(bucket)
@@ -235,7 +327,7 @@ export function RadarFilterPanel({
 
           {hasSectors && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.sector")}</p>
+              <FilterLabel label={t("radar.filter.sector")} tip={t("radar.filter.sector_tip")} />
               <div className="flex flex-wrap gap-1.5">
                 {availableSectors.map((sector) => {
                   const selected = filters.sectors.includes(sector)
@@ -258,7 +350,7 @@ export function RadarFilterPanel({
 
           {hasTags && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">{t("radar.filter.tags")}</p>
+              <FilterLabel label={t("radar.filter.tags")} tip={t("radar.filter.tags_tip")} />
               <div className="flex flex-wrap gap-1.5">
                 {availableTags.map((tag) => {
                   const selected = filters.tags.includes(tag)
