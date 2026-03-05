@@ -115,3 +115,19 @@ def test_calculate_net_worth_should_fallback_to_holdings_when_snapshot_missing(
 
     assert result["investment_value"] == 200.0
     assert result["net_worth"] == 200.0
+
+
+def test_create_item_should_store_minimum_payment(db_session: Session) -> None:
+    created = create_item(
+        db_session,
+        {
+            "name": "Card Debt",
+            "kind": "liability",
+            "category": "credit_card",
+            "value": 500.0,
+            "currency": "USD",
+            "minimum_payment": 50.0,
+        },
+    )
+
+    assert created["minimum_payment"] == 50.0

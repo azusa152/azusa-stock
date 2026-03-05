@@ -18,6 +18,8 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingValue, setEditingValue] = useState("")
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const assets = items.filter((item) => item.kind === "asset")
+  const liabilities = items.filter((item) => item.kind === "liability")
 
   const startEdit = (item: NetWorthItemResponse) => {
     setEditingId(item.id)
@@ -56,6 +58,116 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
     return <p className="text-sm text-muted-foreground">{t("net_worth.empty")}</p>
   }
 
+  const renderRows = (kindItems: NetWorthItemResponse[], kind: "asset" | "liability") =>
+    kindItems.map((item) => {
+      const annualInterest =
+        kind === "liability" && item.interest_rate != null
+          ? (item.value * item.interest_rate) / 100
+          : null
+
+      return (
+        <tr
+          key={item.id}
+          className={`border-b border-border/50 ${
+            kind === "liability" ? "border-l-2 border-l-red-400/70" : "border-l-2 border-l-green-400/70"
+          }`}
+        >
+          <td className="py-1 pr-2">
+            <p>{item.name}</p>
+            {kind === "liability" && item.interest_rate != null && (
+              <p className="text-[11px] text-muted-foreground">
+                {t("net_worth.fields.apr").replace(" (%)", "")} {item.interest_rate.toFixed(2)}%
+              </p>
+            )}
+          </td>
+          <td className="py-1 pr-2">{t(`net_worth.categories.${item.category}`)}</td>
+          <td className="py-1 pr-2 text-right">
+            {editingId === item.id ? (
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                className="h-7 w-24 text-xs text-right"
+              />
+            ) : (
+              <>
+                <p>{privacyMode ? "***" : formatPrice(item.value, item.currency)}</p>
+                {kind === "liability" && annualInterest != null && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {privacyMode
+                      ? t("net_worth.annual_interest_hint", { amount: "***" })
+                      : t("net_worth.annual_interest_hint", {
+                          amount: `${formatPrice(annualInterest, item.currency)} ${item.currency}`,
+                        })}
+                  </p>
+                )}
+              </>
+            )}
+          </td>
+          <td className="py-1 pr-2">{item.currency}</td>
+          <td className="py-1 pr-2 text-muted-foreground">
+            {item.is_stale
+              ? t("net_worth.last_updated_days", { days: item.days_since_update })
+              : "—"}
+          </td>
+          <td className="py-1 text-right whitespace-nowrap">
+            {editingId === item.id ? (
+              <>
+                <button
+                  onClick={() => saveEdit(item.id)}
+                  className="text-primary hover:underline mr-2"
+                  disabled={updateMutation.isPending}
+                >
+                  {t("common.save")}
+                </button>
+                <button
+                  onClick={() => setEditingId(null)}
+                  className="text-muted-foreground hover:underline"
+                >
+                  {t("common.cancel")}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => startEdit(item)}
+                  className="text-primary hover:underline mr-2"
+                >
+                  {t("common.edit")}
+                </button>
+                {deleteId === item.id ? (
+                  <>
+                    <button
+                      onClick={() => onDelete(item.id)}
+                      className="text-destructive hover:underline mr-2"
+                      disabled={deleteMutation.isPending}
+                    >
+                      {t("common.confirm")}
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(null)}
+                      className="text-muted-foreground hover:underline"
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setDeleteId(item.id)}
+                    className="text-destructive hover:underline"
+                  >
+                    {t("common.delete")}
+                  </button>
+                )}
+              </>
+            )}
+          </td>
+        </tr>
+      )
+    })
+
   return (
     <div className="space-y-2">
       <p className="text-sm font-semibold">{t("net_worth.items_title")}</p>
@@ -63,88 +175,32 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
         <table className="w-full text-xs">
           <thead>
             <tr className="text-muted-foreground border-b border-border">
-              <th className="text-left py-1 pr-2">{t("net_worth.fields.name")}</th>
-              <th className="text-left py-1 pr-2">{t("net_worth.fields.category")}</th>
-              <th className="text-right py-1 pr-2">{t("net_worth.fields.value")}</th>
-              <th className="text-left py-1 pr-2">{t("net_worth.fields.currency")}</th>
-              <th className="text-left py-1 pr-2">{t("common.warning")}</th>
-              <th className="text-right py-1">{t("common.edit")}</th>
+              <th scope="col" className="text-left py-1 pr-2">{t("net_worth.fields.name")}</th>
+              <th scope="col" className="text-left py-1 pr-2">{t("net_worth.fields.category")}</th>
+              <th scope="col" className="text-right py-1 pr-2">{t("net_worth.fields.value")}</th>
+              <th scope="col" className="text-left py-1 pr-2">{t("net_worth.fields.currency")}</th>
+              <th scope="col" className="text-left py-1 pr-2">{t("net_worth.stale_col")}</th>
+              <th scope="col" className="text-right py-1">{t("common.edit")}</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b border-border/50">
-                <td className="py-1 pr-2">{item.name}</td>
-                <td className="py-1 pr-2">{t(`net_worth.categories.${item.category}`)}</td>
-                <td className="py-1 pr-2 text-right">
-                  {editingId === item.id ? (
-                    <Input
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      className="h-7 w-24 text-xs text-right"
-                    />
-                  ) : (
-                    <>{privacyMode ? "***" : formatPrice(item.value, item.currency)}</>
-                  )}
-                </td>
-                <td className="py-1 pr-2">{item.currency}</td>
-                <td className="py-1 pr-2 text-muted-foreground">
-                  {item.is_stale ? t("net_worth.last_updated_days", { days: item.days_since_update }) : "—"}
-                </td>
-                <td className="py-1 text-right whitespace-nowrap">
-                  {editingId === item.id ? (
-                    <>
-                      <button
-                        onClick={() => saveEdit(item.id)}
-                        className="text-primary hover:underline mr-2"
-                        disabled={updateMutation.isPending}
-                      >
-                        {t("common.save")}
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-muted-foreground hover:underline"
-                      >
-                        {t("common.cancel")}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => startEdit(item)} className="text-primary hover:underline mr-2">
-                        {t("common.edit")}
-                      </button>
-                      {deleteId === item.id ? (
-                        <>
-                          <button
-                            onClick={() => onDelete(item.id)}
-                            className="text-destructive hover:underline mr-2"
-                            disabled={deleteMutation.isPending}
-                          >
-                            {t("common.confirm")}
-                          </button>
-                          <button
-                            onClick={() => setDeleteId(null)}
-                            className="text-muted-foreground hover:underline"
-                          >
-                            {t("common.cancel")}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => setDeleteId(item.id)}
-                          className="text-destructive hover:underline"
-                        >
-                          {t("common.delete")}
-                        </button>
-                      )}
-                    </>
-                  )}
+            {assets.length > 0 && (
+              <tr>
+                <td colSpan={6} className="pt-3 pb-1 text-[11px] font-semibold text-green-600">
+                  {t("net_worth.kind.asset")}
                 </td>
               </tr>
-            ))}
+            )}
+            {renderRows(assets, "asset")}
+
+            {liabilities.length > 0 && (
+              <tr>
+                <td colSpan={6} className="pt-3 pb-1 text-[11px] font-semibold text-red-600">
+                  {t("net_worth.kind.liability")}
+                </td>
+              </tr>
+            )}
+            {renderRows(liabilities, "liability")}
           </tbody>
         </table>
       </div>

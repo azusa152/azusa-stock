@@ -17,6 +17,23 @@ def test_create_net_worth_item_should_return_200(client) -> None:
     assert body["kind"] == "asset"
 
 
+def test_create_net_worth_item_should_accept_minimum_payment(client) -> None:
+    resp = client.post(
+        "/net-worth/items",
+        json={
+            "name": "Credit Card",
+            "kind": "liability",
+            "category": "credit_card",
+            "value": 2000.0,
+            "currency": "USD",
+            "minimum_payment": 120.0,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["minimum_payment"] == 120.0
+
+
 def test_get_net_worth_summary_should_return_200(client) -> None:
     client.post("/net-worth/items", json=NET_WORTH_ITEM_PAYLOAD)
 
@@ -60,6 +77,38 @@ def test_create_net_worth_item_should_return_422_on_invalid_category(client) -> 
 def test_update_net_worth_item_should_return_404_when_not_found(client) -> None:
     resp = client.put("/net-worth/items/99999", json={"value": 100})
     assert resp.status_code == 404
+
+
+def test_update_net_worth_item_should_accept_minimum_payment(client) -> None:
+    create_resp = client.post(
+        "/net-worth/items",
+        json={
+            "name": "Car Loan",
+            "kind": "liability",
+            "category": "loan",
+            "value": 5000.0,
+            "currency": "USD",
+        },
+    )
+    item_id = create_resp.json()["id"]
+    resp = client.put(
+        f"/net-worth/items/{item_id}",
+        json={"minimum_payment": 250.0},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["minimum_payment"] == 250.0
+
+
+def test_get_net_worth_history_should_return_200(client) -> None:
+    client.post("/net-worth/items", json=NET_WORTH_ITEM_PAYLOAD)
+    client.post("/net-worth/snapshot")
+
+    resp = client.get("/net-worth/history", params={"days": 30})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, list)
+    assert len(body) >= 1
+    assert "net_worth" in body[0]
 
 
 def test_delete_net_worth_item_should_return_404_when_not_found(client) -> None:

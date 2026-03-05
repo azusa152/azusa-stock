@@ -71,6 +71,7 @@ def _item_to_dict(item: NetWorthItem, display_currency: str = "USD") -> dict:
         "currency": item.currency,
         "fx_rate_to_usd": item.fx_rate_to_usd,
         "interest_rate": item.interest_rate,
+        "minimum_payment": item.minimum_payment,
         "note": item.note,
         "is_active": item.is_active,
         "is_stale": days_since_update >= NET_WORTH_STALE_DAYS,
@@ -118,6 +119,7 @@ def create_item(session: Session, payload: dict) -> dict:
         currency=payload.get("currency", "USD").strip().upper(),
         fx_rate_to_usd=payload.get("fx_rate_to_usd"),
         interest_rate=payload.get("interest_rate"),
+        minimum_payment=payload.get("minimum_payment"),
         note=(payload.get("note") or "").strip(),
     )
     session.add(item)
@@ -143,6 +145,8 @@ def update_item(session: Session, item_id: int, payload: dict, lang: str) -> dic
         item.fx_rate_to_usd = payload["fx_rate_to_usd"]
     if "interest_rate" in payload:
         item.interest_rate = payload["interest_rate"]
+    if "minimum_payment" in payload:
+        item.minimum_payment = payload["minimum_payment"]
     if "note" in payload:
         item.note = str(payload["note"] or "").strip()
     item.updated_at = datetime.now(UTC)

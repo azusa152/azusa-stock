@@ -1530,14 +1530,45 @@
       "kind": "类型",
       "category": "分类",
       "value": "金额",
+      "outstanding_balance": "未偿余额",
       "currency": "币别",
       "interest_rate": "利率 (%)",
+      "apr": "APR (%)",
+      "minimum_payment": "每月最低还款",
       "note": "备注"
     },
+    "stale_col": "状态",
     "stale_warning": "此项目已 {{days}} 天未更新，建议重新确认数值。",
     "last_updated_days": "{{days}} 天前更新",
     "segment_investments": "投资",
     "segment_assets": "资产",
-    "segment_liabilities": "负债"
+    "segment_liabilities": "负债",
+    "history_title": "净资产趋势",
+    "history_empty": "持续记录快照后即可查看净资产趋势。",
+    "timeframe": {
+      "1m": "1个月",
+      "3m": "3个月",
+      "6m": "6个月",
+      "1y": "1年",
+      "max": "全部"
+    },
+    "preset": {
+      "mortgage": "房贷",
+      "mortgage_subtitle": "住房贷款",
+      "loan": "贷款",
+      "loan_subtitle": "每月固定还款",
+      "credit_card": "信用卡",
+      "credit_card_subtitle": "循环余额",
+      "other_liability": "其他负债"
+    },
+    "annual_interest_hint": "年利息约 ~{{amount}}",
+    "sop_what": "净资产 = 投资 + 其他资产 - 负债，帮助你看清整体财务状况。",
+    "sop_steps": "使用步骤：1) 添加资产 2) 添加负债 3) 每月更新一次金额。",
+    "sop_tips": "建议：房产估值每几个月更新一次；信用卡余额在账单出来后更新。",
+    "stale_banner": "有 {{count}} 个项目超过 90 天未更新，点击查看。",
+    "onboarding_title": "开始追踪完整净资产",
+    "onboarding_desc": "添加资产与负债后，即可看到趋势与负债影响。",
+    "onboarding_add_asset": "新增资产",
+    "onboarding_add_liability": "新增负债"
   }
 }

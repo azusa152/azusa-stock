@@ -1530,14 +1530,45 @@
       "kind": "タイプ",
       "category": "カテゴリ",
       "value": "金額",
+      "outstanding_balance": "残高",
       "currency": "通貨",
       "interest_rate": "金利 (%)",
+      "apr": "APR (%)",
+      "minimum_payment": "毎月の最低返済額",
       "note": "メモ"
     },
+    "stale_col": "状態",
     "stale_warning": "{{days}} 日間更新されていません。金額の見直しをおすすめします。",
     "last_updated_days": "{{days}}日前に更新",
     "segment_investments": "投資",
     "segment_assets": "資産",
-    "segment_liabilities": "負債"
+    "segment_liabilities": "負債",
+    "history_title": "純資産トレンド",
+    "history_empty": "スナップショットを継続すると純資産の推移を確認できます。",
+    "timeframe": {
+      "1m": "1か月",
+      "3m": "3か月",
+      "6m": "6か月",
+      "1y": "1年",
+      "max": "全期間"
+    },
+    "preset": {
+      "mortgage": "住宅ローン",
+      "mortgage_subtitle": "住宅向けローン",
+      "loan": "ローン",
+      "loan_subtitle": "毎月定額返済",
+      "credit_card": "クレジットカード",
+      "credit_card_subtitle": "リボ残高",
+      "other_liability": "その他負債"
+    },
+    "annual_interest_hint": "年間利息の目安 ~{{amount}}",
+    "sop_what": "純資産は「投資 + その他資産 - 負債」で、全体の家計状況を把握できます。",
+    "sop_steps": "使い方: 1) 資産を追加 2) 負債を追加 3) 毎月金額を見直す。",
+    "sop_tips": "ヒント: 不動産評価額は数か月ごとに更新、カード残高は請求確定後に更新しましょう。",
+    "stale_banner": "{{count}}件が90日以上未更新です。確認してください。",
+    "onboarding_title": "純資産トラッキングを始めましょう",
+    "onboarding_desc": "資産と負債を追加すると、推移と負債の影響をすぐ確認できます。",
+    "onboarding_add_asset": "資産を追加",
+    "onboarding_add_liability": "負債を追加"
   }
 }

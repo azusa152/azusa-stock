@@ -1530,14 +1530,45 @@
       "kind": "Type",
       "category": "Category",
       "value": "Value",
+      "outstanding_balance": "Outstanding Balance",
       "currency": "Currency",
       "interest_rate": "Interest Rate (%)",
+      "apr": "APR (%)",
+      "minimum_payment": "Minimum Payment / Month",
       "note": "Note"
     },
+    "stale_col": "Status",
     "stale_warning": "Last updated {{days}} days ago. Consider reviewing this value.",
     "last_updated_days": "Updated {{days}}d ago",
     "segment_investments": "Investments",
     "segment_assets": "Assets",
-    "segment_liabilities": "Debt"
+    "segment_liabilities": "Debt",
+    "history_title": "Net Worth Trend",
+    "history_empty": "Take snapshots regularly to see your net worth trend.",
+    "timeframe": {
+      "1m": "1M",
+      "3m": "3M",
+      "6m": "6M",
+      "1y": "1Y",
+      "max": "Max"
+    },
+    "preset": {
+      "mortgage": "Mortgage",
+      "mortgage_subtitle": "Home loan",
+      "loan": "Loan",
+      "loan_subtitle": "Fixed monthly payment",
+      "credit_card": "Credit Card",
+      "credit_card_subtitle": "Revolving balance",
+      "other_liability": "Other Liability"
+    },
+    "annual_interest_hint": "~{{amount}} / yr interest",
+    "sop_what": "Net worth helps you see your full financial picture: investments + other assets - liabilities.",
+    "sop_steps": "How to use: 1) Add your assets, 2) Add your liabilities, 3) Review and update values monthly.",
+    "sop_tips": "Tips: Update property values every few months; update credit card balances after each statement.",
+    "stale_banner": "{{count}} items haven't been updated in 90+ days. Tap to review.",
+    "onboarding_title": "Start tracking your full net worth",
+    "onboarding_desc": "Add assets and liabilities to view your trend and debt impact over time.",
+    "onboarding_add_asset": "Add an Asset",
+    "onboarding_add_liability": "Add a Liability"
   }
 }

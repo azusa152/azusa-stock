@@ -77,6 +77,8 @@ def _run_migrations() -> None:
         "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
         # NetWorthItem: optional manual FX rate for zero-external-call conversion
         "ALTER TABLE networthitem ADD COLUMN fx_rate_to_usd REAL;",
+        # NetWorthItem: optional minimum monthly payment for liabilities
+        "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
     ]
 
     with engine.connect() as conn:

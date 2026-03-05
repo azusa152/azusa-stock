@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -16,10 +16,11 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { useNetWorthItems, useNetWorthSummary } from "@/api/hooks/useNetWorth"
+import { useNetWorthHistory, useNetWorthItems, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverview"
 import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
 import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
+import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
 
 export default function Allocation() {
   const { t } = useTranslation()
@@ -28,13 +29,21 @@ export default function Allocation() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "net-worth" ? "net-worth" : "portfolio")
   const [netWorthSheetOpen, setNetWorthSheetOpen] = useState(false)
+  const [netWorthSheetKind, setNetWorthSheetKind] = useState<"asset" | "liability">("asset")
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
+  const [netWorthHistoryDays, setNetWorthHistoryDays] = useState<30 | 90 | 180 | 365 | 730>(30)
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading } = useHoldings()
   const { data: netWorthSummary } = useNetWorthSummary(displayCurrency, activeTab === "net-worth")
   const { data: netWorthItems } = useNetWorthItems(displayCurrency, activeTab === "net-worth")
+  const { data: netWorthHistory, isLoading: netWorthHistoryLoading } = useNetWorthHistory(
+    netWorthHistoryDays,
+    displayCurrency,
+    activeTab === "net-worth",
+  )
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
@@ -148,6 +157,18 @@ export default function Allocation() {
 
         {/* Net Worth tab */}
         <TabsContent value="net-worth" className="mt-4 space-y-4">
+          {(netWorthItems?.length ?? 0) > 0 && (netWorthSummary?.stale_count ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                netWorthTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }}
+              className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-300"
+            >
+              {t("net_worth.stale_banner", { count: netWorthSummary?.stale_count ?? 0 })}
+            </button>
+          )}
+
           <div className="rounded-md border border-border">
             <button
               onClick={() => setNetWorthSopOpen((v) => !v)}
@@ -158,20 +179,80 @@ export default function Allocation() {
             </button>
             {netWorthSopOpen && (
               <div className="px-4 pb-4 text-xs text-muted-foreground space-y-1">
-                <p>{t("net_worth.summary_formula")}</p>
-                <p>{t("net_worth.empty")}</p>
+                <p>{t("net_worth.sop_what")}</p>
+                <p>{t("net_worth.sop_steps")}</p>
+                <p>{t("net_worth.sop_tips")}</p>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={() => setNetWorthSheetOpen(true)} className="text-xs min-h-[44px]">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t("allocation.display_currency")}</span>
+              <select
+                value={displayCurrency}
+                onChange={(e) => setDisplayCurrency(e.target.value)}
+                className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
+              >
+                {DISPLAY_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <Button
+              onClick={() => {
+                setNetWorthSheetKind("asset")
+                setNetWorthSheetOpen(true)
+              }}
+              className="text-xs min-h-[44px]"
+            >
               {t("net_worth.add_item")}
             </Button>
           </div>
 
-          <NetWorthOverview summary={netWorthSummary} privacyMode={privacyMode} />
-          <NetWorthItemsTable items={netWorthItems ?? []} privacyMode={privacyMode} />
+          {(netWorthItems?.length ?? 0) === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
+              <p className="text-sm font-semibold">{t("net_worth.onboarding_title")}</p>
+              <p className="text-xs text-muted-foreground">{t("net_worth.onboarding_desc")}</p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setNetWorthSheetKind("asset")
+                    setNetWorthSheetOpen(true)
+                  }}
+                  className="text-xs"
+                >
+                  {t("net_worth.onboarding_add_asset")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setNetWorthSheetKind("liability")
+                    setNetWorthSheetOpen(true)
+                  }}
+                  className="text-xs"
+                >
+                  {t("net_worth.onboarding_add_liability")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <NetWorthOverview summary={netWorthSummary} privacyMode={privacyMode} />
+              <NetWorthHistoryChart
+                history={netWorthHistory ?? []}
+                isLoading={netWorthHistoryLoading}
+                privacyMode={privacyMode}
+                timeframe={netWorthHistoryDays}
+                onTimeframeChange={setNetWorthHistoryDays}
+              />
+              <div ref={netWorthTableRef}>
+                <NetWorthItemsTable items={netWorthItems ?? []} privacyMode={privacyMode} />
+              </div>
+            </>
+          )}
         </TabsContent>
 
         {/* Settings tab */}
@@ -188,7 +269,11 @@ export default function Allocation() {
 
       {/* Add Holding sidebar sheet */}
       <AddHoldingSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
-      <AddNetWorthItemSheet open={netWorthSheetOpen} onClose={() => setNetWorthSheetOpen(false)} />
+      <AddNetWorthItemSheet
+        open={netWorthSheetOpen}
+        onClose={() => setNetWorthSheetOpen(false)}
+        initialKind={netWorthSheetKind}
+      />
     </div>
   )
 }

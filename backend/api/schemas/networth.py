@@ -20,6 +20,7 @@ class NetWorthItemRequest(BaseModel):
     currency: str = Field(default="USD", min_length=3, max_length=3)
     fx_rate_to_usd: float | None = Field(default=None, gt=0)
     interest_rate: float | None = Field(default=None, ge=0)
+    minimum_payment: float | None = Field(default=None, ge=0)
     note: str | None = Field(default="", max_length=500)
 
     @field_validator("currency")
@@ -49,6 +50,7 @@ class UpdateNetWorthItemRequest(BaseModel):
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     fx_rate_to_usd: float | None = Field(default=None, gt=0)
     interest_rate: float | None = Field(default=None, ge=0)
+    minimum_payment: float | None = Field(default=None, ge=0)
     note: str | None = Field(default=None, max_length=500)
 
     @field_validator("currency")
@@ -84,6 +86,7 @@ class NetWorthItemResponse(BaseModel):
     currency: str
     fx_rate_to_usd: float | None = None
     interest_rate: float | None = None
+    minimum_payment: float | None = None
     note: str = ""
     is_active: bool
     is_stale: bool

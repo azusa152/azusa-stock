@@ -8088,6 +8088,18 @@
             ],
             "title": "Interest Rate"
           },
+          "minimum_payment": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payment"
+          },
           "note": {
             "anyOf": [
               {
@@ -8163,6 +8175,17 @@
               }
             ],
             "title": "Interest Rate"
+          },
+          "minimum_payment": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payment"
           },
           "note": {
             "type": "string",
@@ -10091,6 +10114,18 @@
               }
             ],
             "title": "Interest Rate"
+          },
+          "minimum_payment": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payment"
           },
           "note": {
             "anyOf": [

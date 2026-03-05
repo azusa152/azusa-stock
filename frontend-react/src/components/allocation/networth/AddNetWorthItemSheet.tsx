@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -10,11 +10,17 @@ import { useCreateNetWorthItem } from "@/api/hooks/useNetWorth"
 interface Props {
   open: boolean
   onClose: () => void
+  initialKind?: ItemKind
 }
 
 type ItemKind = "asset" | "liability"
+type LiabilityPreset = "mortgage" | "loan" | "credit_card" | "other_liability"
 
-export function AddNetWorthItemSheet({ open, onClose }: Props) {
+export function AddNetWorthItemSheet({
+  open,
+  onClose,
+  initialKind = "asset",
+}: Props) {
   const { t } = useTranslation()
   const createMutation = useCreateNetWorthItem()
   const [name, setName] = useState("")
@@ -23,6 +29,7 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
   const [value, setValue] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [interestRate, setInterestRate] = useState("")
+  const [minimumPayment, setMinimumPayment] = useState("")
   const [note, setNote] = useState("")
 
   const categories = useMemo(
@@ -30,15 +37,21 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
     [kind],
   )
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setName("")
-    setKind("asset")
-    setCategory("property")
+    setKind(initialKind)
+    setCategory(initialKind === "asset" ? "property" : "mortgage")
     setValue("")
     setCurrency("USD")
     setInterestRate("")
+    setMinimumPayment("")
     setNote("")
-  }
+  }, [initialKind])
+
+  useEffect(() => {
+    if (!open) return
+    reset()
+  }, [reset, open])
 
   const onSubmit = () => {
     const parsed = Number(value)
@@ -54,6 +67,7 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
         value: parsed,
         currency,
         interest_rate: interestRate ? Number(interestRate) : undefined,
+        minimum_payment: minimumPayment ? Number(minimumPayment) : undefined,
         note: note.trim() || null,
       },
       {
@@ -75,12 +89,12 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
         </SheetHeader>
         <div className="mt-4 space-y-3">
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.name")}</p>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="text-xs" />
+            <label htmlFor="nw-name" className="text-xs font-medium">{t("net_worth.fields.name")}</label>
+            <Input id="nw-name" value={name} onChange={(e) => setName(e.target.value)} className="text-xs" />
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.kind")}</p>
+            <span className="text-xs font-medium">{t("net_worth.fields.kind")}</span>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -109,24 +123,59 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.category")}</p>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded border border-border bg-background px-3 py-2 text-xs min-h-[40px]"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {t(`net_worth.categories.${cat}`)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {kind === "asset" ? (
+            <div className="space-y-1">
+              <label htmlFor="nw-category" className="text-xs font-medium">{t("net_worth.fields.category")}</label>
+              <select
+                id="nw-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-xs min-h-[40px]"
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {t(`net_worth.categories.${cat}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">{t("net_worth.fields.category")}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(NET_WORTH_LIABILITY_CATEGORIES as readonly LiabilityPreset[]).map(
+                  (preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCategory(preset)}
+                      className={`rounded border px-2 py-2 text-left text-xs transition-colors ${
+                        category === preset
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:bg-muted/40"
+                      }`}
+                    >
+                      <p className="font-medium">{t(`net_worth.preset.${preset}`)}</p>
+                      {preset !== "other_liability" && (
+                        <p className="text-muted-foreground">
+                          {t(`net_worth.preset.${preset}_subtitle`)}
+                        </p>
+                      )}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.value")}</p>
+            <label htmlFor="nw-value" className="text-xs font-medium">
+              {kind === "liability"
+                ? t("net_worth.fields.outstanding_balance")
+                : t("net_worth.fields.value")}
+            </label>
             <Input
+              id="nw-value"
               type="number"
               min={0}
               step="any"
@@ -137,27 +186,44 @@ export function AddNetWorthItemSheet({ open, onClose }: Props) {
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.currency")}</p>
-            <Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} className="text-xs" />
+            <label htmlFor="nw-currency" className="text-xs font-medium">{t("net_worth.fields.currency")}</label>
+            <Input id="nw-currency" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} className="text-xs" />
           </div>
 
           {kind === "liability" && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium">{t("net_worth.fields.interest_rate")}</p>
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                value={interestRate}
-                onChange={(e) => setInterestRate(e.target.value)}
-                className="text-xs"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label htmlFor="nw-apr" className="text-xs font-medium">{t("net_worth.fields.apr")}</label>
+                <Input
+                  id="nw-apr"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="nw-min-payment" className="text-xs font-medium">
+                  {t("net_worth.fields.minimum_payment")}
+                </label>
+                <Input
+                  id="nw-min-payment"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={minimumPayment}
+                  onChange={(e) => setMinimumPayment(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
             </div>
           )}
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("net_worth.fields.note")}</p>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} className="text-xs" />
+            <label htmlFor="nw-note" className="text-xs font-medium">{t("net_worth.fields.note")}</label>
+            <Input id="nw-note" value={note} onChange={(e) => setNote(e.target.value)} className="text-xs" />
           </div>
 
           <Button onClick={onSubmit} disabled={createMutation.isPending} className="w-full min-h-[44px]">

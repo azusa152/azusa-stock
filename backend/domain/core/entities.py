@@ -318,6 +318,9 @@ class NetWorthItem(SQLModel, table=True):
         default=None, description="1 單位項目幣別 = ? 單位 USD（手動提供，可選）"
     )
     interest_rate: float | None = Field(default=None, description="年利率（負債可選）")
+    minimum_payment: float | None = Field(
+        default=None, description="每月最低還款金額（負債可選）"
+    )
     note: str = Field(default="", description="備註")
     is_active: bool = Field(default=True, description="是否啟用（軟刪除）")
     created_at: datetime = Field(

@@ -16,6 +16,7 @@ def test_net_worth_item_should_have_expected_defaults() -> None:
     assert item.currency == "USD"
     assert item.is_active is True
     assert item.note == ""
+    assert item.minimum_payment is None
     assert item.user_id == "default"
 
 
