@@ -35,7 +35,6 @@ from domain.constants import (
     JP_VI_OFFSET,
     JP_VI_SLOPE,
     MA200_DEEP_DEVIATION_THRESHOLD,
-    MA200_HIGH_DEVIATION_THRESHOLD,
     MARKET_BEARISH_MAX_PCT,
     MARKET_BULLISH_MAX_PCT,
     MARKET_NEUTRAL_MAX_PCT,
@@ -46,6 +45,7 @@ from domain.constants import (
     ROGUE_WAVE_VOLUME_RATIO_THRESHOLD,
     RSI_APPROACHING_BUY_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
+    RSI_DEEP_VALUE_THRESHOLD,
     RSI_OVERBOUGHT,
     RSI_PERIOD,
     RSI_WEAKENING_THRESHOLD,
@@ -304,6 +304,8 @@ def determine_scan_signal(
     bias: float | None,
     bias_200: float | None = None,
     category: str | None = None,
+    volume_ratio: float | None = None,
+    market_status: str | None = None,
 ) -> ScanSignal:
     """
     9 優先級掃描訊號決策引擎（兩階段架構）。
@@ -317,16 +319,16 @@ def determine_scan_signal(
     | P1    | moat == DETERIORATING                       | THESIS_BROKEN    |
     | P2    | bias < -20 AND rsi < (35+offset)            | DEEP_VALUE       |
     | P3    | bias < -20                                  | OVERSOLD         |
-    | P4    | rsi < (35+offset) AND bias < 20             | CONTRARIAN_BUY   |
+    | P4    | rsi < (35+offset) AND bias < 0              | CONTRARIAN_BUY   |
     | P4.5  | rsi < (37+offset) AND bias < -15            | APPROACHING_BUY  |
-    | P5    | bias > 20 AND rsi > (70+offset)             | OVERHEATED       |
-    | P6    | bias > 20 OR rsi > (70+offset)              | CAUTION_HIGH     |
+    | P5    | bias > 30 AND rsi > (80+offset) AND vol>=1.5| OVERHEATED       |
+    | P6    | bias > 30 OR rsi > (80+offset)              | CAUTION_HIGH     |
     | P7    | bias < -15 AND rsi < (38+offset)            | WEAKENING        |
     | P8    | 其他                                         | NORMAL           |
 
-    ── Phase 2：對稱 MA200 放大器 ──────────────────────────────────────────────
+    ── Phase 2：MA200 買側放大器 ───────────────────────────────────────────────
     - 買側（bias_200 < -15%）：WEAKENING → APPROACHING_BUY → CONTRARIAN_BUY
-    - 賣側（bias_200 > +20%，非對稱：市場長期向上偏移）：CAUTION_HIGH → OVERHEATED
+    - 賣側放大器已停用（避免在長期上升趨勢中誤放大賣出訊號）
     - P1-P3 及已確認的 OVERHEATED/NORMAL 不受影響。
 
     ── category 對應的 RSI 偏移 ────────────────────────────────────────────────
@@ -335,14 +337,14 @@ def determine_scan_signal(
 
     ── None 處理設計決策 ────────────────────────────────────────────────────────
     - rsi=None  → P2, P4, P4.5, P5(RSI), P6(RSI), P7 跳過；P3 在 bias < -20 時仍觸發。
-    - bias=None → P2, P3, P4.5, P5(bias), P6(bias), P7 跳過。
-    - P4 with bias=None：允許 CONTRARIAN_BUY（RSI < threshold 已足夠，避免新掛牌股票漏報）。
+    - bias=None → P2, P3, P4, P4.5, P5(bias), P6(bias), P7 跳過。
     - bias_200=None → Phase 2 放大器整體跳過。
     - Both None → 僅 P1 (THESIS_BROKEN) 或 P8 (NORMAL) 可觸達。
     """
     # ── Phase 1：分類感知優先漏斗 ────────────────────────────────────────────
     rsi_offset = CATEGORY_RSI_OFFSET.get(category, 0) if category else 0
 
+    rsi_deep_value = RSI_DEEP_VALUE_THRESHOLD + rsi_offset
     rsi_contrarian = RSI_CONTRARIAN_BUY_THRESHOLD + rsi_offset
     rsi_approaching = RSI_APPROACHING_BUY_THRESHOLD + rsi_offset
     rsi_weakening = RSI_WEAKENING_THRESHOLD + rsi_offset
@@ -357,7 +359,7 @@ def determine_scan_signal(
         bias is not None
         and bias < BIAS_OVERSOLD_THRESHOLD
         and rsi is not None
-        and rsi < rsi_contrarian
+        and rsi < rsi_deep_value
     ):
         signal = ScanSignal.DEEP_VALUE
 
@@ -366,11 +368,7 @@ def determine_scan_signal(
         signal = ScanSignal.OVERSOLD
 
     # P4: RSI 超賣 + 乖離率未過熱（防止矛盾訊號）
-    elif (
-        rsi is not None
-        and rsi < rsi_contrarian
-        and (bias is None or bias < BIAS_OVERHEATED_THRESHOLD)
-    ):
+    elif rsi is not None and rsi < rsi_contrarian and bias is not None and bias < 0:
         signal = ScanSignal.CONTRARIAN_BUY
 
     # P4.5: 接近買入區（RSI 進入累積區，bias 偏弱但未達極端）
@@ -388,6 +386,8 @@ def determine_scan_signal(
         and bias > BIAS_OVERHEATED_THRESHOLD
         and rsi is not None
         and rsi > rsi_overbought
+        and volume_ratio is not None
+        and volume_ratio >= 1.5
     ):
         signal = ScanSignal.OVERHEATED
 
@@ -410,21 +410,21 @@ def determine_scan_signal(
     else:
         signal = ScanSignal.NORMAL
 
-    # ── Phase 2：對稱 MA200 放大器 ──────────────────────────────────────────
-    if bias_200 is not None:
-        # 買側：深度偏離 MA200 → 升級信號（均值回歸確認）
-        if bias_200 < MA200_DEEP_DEVIATION_THRESHOLD:
-            if signal == ScanSignal.WEAKENING:
-                signal = ScanSignal.APPROACHING_BUY
-            elif signal == ScanSignal.APPROACHING_BUY:
-                signal = ScanSignal.CONTRARIAN_BUY
+    # Bull regime dampener: keep caution visibility, soften strongest sell signal.
+    if (
+        market_status
+        in {MarketSentiment.STRONG_BULLISH.value, MarketSentiment.BULLISH.value}
+        and signal == ScanSignal.OVERHEATED
+    ):
+        signal = ScanSignal.CAUTION_HIGH
 
-        # 賣側：顯著高於 MA200 → 升級至過熱（+20% 非對稱：市場長期向上偏移）
-        elif (
-            bias_200 > MA200_HIGH_DEVIATION_THRESHOLD
-            and signal == ScanSignal.CAUTION_HIGH
-        ):
-            signal = ScanSignal.OVERHEATED
+    # ── Phase 2：MA200 買側放大器 ───────────────────────────────────────────
+    if bias_200 is not None and bias_200 < MA200_DEEP_DEVIATION_THRESHOLD:
+        # 買側：深度偏離 MA200 → 升級信號（均值回歸確認）
+        if signal == ScanSignal.WEAKENING:
+            signal = ScanSignal.APPROACHING_BUY
+        elif signal == ScanSignal.APPROACHING_BUY:
+            signal = ScanSignal.CONTRARIAN_BUY
 
     return signal
 

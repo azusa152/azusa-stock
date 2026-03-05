@@ -46,10 +46,17 @@ from application.portfolio.rebalance_service import (  # noqa: F401
 from application.portfolio.stress_test_service import (
     calculate_stress_test,  # noqa: F401
 )
+from application.scan.backfill_service import get_backfill_status  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Scan Service (scanning, price alerts, scan history)
 # ---------------------------------------------------------------------------
+from application.scan.backtest_service import (  # noqa: F401
+    get_backtest_all_occurrences,
+    get_backtest_detail,
+    get_backtest_summary,
+    invalidate_backtest_cache,
+)
 from application.scan.scan_service import (  # noqa: F401
     create_price_alert,
     delete_price_alert,

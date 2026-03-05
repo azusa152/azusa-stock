@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import { InfoPopover } from "./InfoPopover"
+import { getSignalLabel } from "@/lib/signal-label"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -451,7 +452,9 @@ export function PortfolioPulse({
                       {nonNormalStocks.map(({ ticker, signal }) => (
                         <li key={ticker} className="text-xs flex gap-1.5">
                           <span className="font-medium">{ticker}</span>
-                          <span className="text-muted-foreground">{signal}</span>
+                          <span className="text-muted-foreground">
+                            {getSignalLabel(t, signal)}
+                          </span>
                         </li>
                       ))}
                     </ul>

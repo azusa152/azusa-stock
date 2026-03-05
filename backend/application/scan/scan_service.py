@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from sqlmodel import Session, select
 
 from application.formatters import format_fear_greed_label
+from application.scan.backtest_service import invalidate_backtest_cache
 from application.stock.stock_service import _get_stock_or_raise
 from domain.analysis import (
     compute_bias_percentile,
@@ -188,7 +189,13 @@ def run_scan(session: Session) -> dict:
             alerts.append(signals["error"])
 
         signal = determine_scan_signal(
-            moat_value, rsi, bias, bias_200, stock.category.value
+            moat_value,
+            rsi,
+            bias,
+            bias_200,
+            stock.category.value,
+            volume_ratio=volume_ratio,
+            market_status=mkt_status,
         )
 
         # === Rogue Wave (瘋狗浪) ===
@@ -513,6 +520,9 @@ def run_scan(session: Session) -> dict:
             logger.info("掃描訊號通知已被使用者停用，跳過發送。")
     else:
         logger.info("掃描完成，訊號無變化，跳過通知。")
+
+    # Backtest summary must be recalculated after new scan logs are persisted.
+    invalidate_backtest_cache()
 
     return {
         "market_status": market_sentiment,

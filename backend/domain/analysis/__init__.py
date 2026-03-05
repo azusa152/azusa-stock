@@ -28,6 +28,15 @@ from domain.analysis.analysis import (  # noqa: F401
     score_tw_vol_linear,
     score_vix_linear,
 )
+from domain.analysis.backtest import (  # noqa: F401
+    SIGNAL_DIRECTION,
+    BacktestSignalEvent,
+    classify_confidence,
+    compute_forward_returns,
+    compute_signal_metrics,
+    deduplicate_signal_events,
+    replay_historical_signals,
+)
 from domain.analysis.fx_analysis import (  # noqa: F401
     FXRateAlert,
     FXTimingResult,

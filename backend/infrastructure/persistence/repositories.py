@@ -321,6 +321,29 @@ def find_scan_logs_since(session: Session, since: datetime) -> list[ScanLog]:
     return list(session.exec(statement).all())
 
 
+def find_scan_logs_for_backtest(
+    session: Session,
+    since: datetime,
+    exclude_signals: list[str] | None = None,
+) -> list[ScanLog]:
+    """
+    取得回測用掃描紀錄（時間升序，供訊號轉折去重）。
+
+    預設排除 NORMAL，避免把「無動作」訊號視為回測樣本。
+    """
+    excluded = exclude_signals or ["NORMAL"]
+    statement = (
+        select(ScanLog)
+        .where(ScanLog.scanned_at >= since)  # type: ignore[operator]
+        .where(~ScanLog.signal.in_(excluded))  # type: ignore[union-attr]
+        .order_by(
+            ScanLog.stock_ticker,  # type: ignore[union-attr]
+            ScanLog.scanned_at.asc(),  # type: ignore[union-attr]
+        )
+    )
+    return list(session.exec(statement).all())
+
+
 # ===========================================================================
 # PriceAlert Repository
 # ===========================================================================

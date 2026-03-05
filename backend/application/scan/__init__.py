@@ -1,5 +1,14 @@
 """application.scan sub-package — re-exports public API for backward compatibility."""
 
+from application.scan.backfill_service import (  # noqa: F401
+    backfill_scan_logs,
+    get_backfill_status,
+)
+from application.scan.backtest_service import (  # noqa: F401
+    get_backtest_detail,
+    get_backtest_summary,
+    invalidate_backtest_cache,
+)
 from application.scan.prewarm_service import (  # noqa: F401
     _batch_prewarm_signals,
     _collect_tickers,

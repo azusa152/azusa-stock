@@ -31,6 +31,7 @@ import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 const NAV_ITEMS = [
   { path: "/", labelKey: "nav.dashboard", icon: "📊" },
   { path: "/radar", labelKey: "nav.radar", icon: "📡" },
+  { path: "/backtest", labelKey: "nav.backtest", icon: "🧪" },
   { path: "/allocation", labelKey: "nav.allocation", icon: "💼" },
   { path: "/fx-watch", labelKey: "nav.fx_watch", icon: "💱" },
   { path: "/smart-money", labelKey: "nav.smart_money", icon: "🏦" },

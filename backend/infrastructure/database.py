@@ -200,6 +200,25 @@ def _run_smart_money_migrations() -> None:
                 conn.rollback()
 
 
+def _run_backtest_migrations() -> None:
+    """Backtest/ScanLog 索引遷移（補充查詢效能所需的 index）。"""
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+
+    migrations = [
+        "CREATE INDEX IF NOT EXISTS ix_scanlog_stock_ticker_scanned_at ON scanlog (stock_ticker, scanned_at);",
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.debug("Backtest 索引遷移成功：%s", sql.strip())
+            except OperationalError:
+                conn.rollback()
+
+
 def _backfill_signal_since() -> None:
     """
     回填 Stock.signal_since：對已有非 NORMAL 訊號但 signal_since 為 NULL 的股票，
@@ -257,6 +276,7 @@ def create_db_and_tables() -> None:
 
     _run_migrations()
     _run_smart_money_migrations()
+    _run_backtest_migrations()
 
     logger.info("載入系統人格範本...")
     _load_system_personas()

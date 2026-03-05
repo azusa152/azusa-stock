@@ -72,13 +72,13 @@ class TestBuildSignalStatusMa200:
 
 class TestBuildSignalStatusBias:
     def test_bias_overheated(self):
-        """bias > BIAS_OVERHEATED_THRESHOLD (20) → bias_overheated part (previously uncovered)."""
+        """bias > BIAS_OVERHEATED_THRESHOLD (30) → bias_overheated part."""
         # Include ma200 to suppress the insufficient-data part so we can isolate bias
-        parts = build_signal_status({"price": 110.0, "ma200": 100.0, "bias": 25.0})
+        parts = build_signal_status({"price": 110.0, "ma200": 100.0, "bias": 35.0})
         # ma200 part + bias overheated part
         assert len(parts) == 2
         combined = " ".join(parts)
-        assert "25.0" in combined or "過熱" in combined
+        assert "35.0" in combined or "過熱" in combined
 
     def test_bias_oversold(self):
         """bias < BIAS_OVERSOLD_THRESHOLD (-20) → bias_oversold part (previously uncovered)."""
@@ -109,7 +109,7 @@ class TestBuildSignalStatusCombined:
             "price": 110.0,
             "ma200": 100.0,
             "ma60": 105.0,
-            "bias": 25.0,
+            "bias": 35.0,
         }
         parts = build_signal_status(signals)
         # rsi + ma200 + ma60 + bias = 4 parts

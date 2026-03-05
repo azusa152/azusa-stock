@@ -39,6 +39,8 @@
 - **即時訊號燈號** — 股票卡片標題顯示最新掃描訊號（🚨💎📉🟢🎯🔥⚠️🔻➖），9 級分類感知 RSI 閾值（Growth/Moat/Bond 依 beta 動態調整），MA200 放大器自動升級邊緣訊號
 - **掃描歷史** — 持久化每次掃描結果，可查看個股時間軸與連續異常次數
 - **瘋狗浪偵測 (Rogue Wave)** — 比對當前乖離率與個股 3 年歷史百分位，乖離率 ≥ P95 且量比 ≥ 1.5x 時觸發警示；疊加於既有訊號之上，股票卡片顯示 🌊 警示 Banner
+- **訊號回測儀表板** — 提供 5/10/30/60 交易日視窗（可於頁面切換）的命中率、平均報酬、誤報率與樣本信心分級，並可查看訊號事件明細
+- **冷啟動歷史回填** — 新部署時於背景低優先級自動回放近 2 年歷史訊號，逐步補齊回測樣本；前端可透過進度 API 顯示回填狀態
 
 ### 通知與警報
 
@@ -83,7 +85,7 @@
 
 ### 介面與操作
 
-- **五頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）、外匯監控、大師足跡
+- **六頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、訊號回測、個人資產配置（War Room）、外匯監控、大師足跡
 - **雷達市場篩選器** — 當追蹤清單涵蓋多個市場（美股 + 台股 + 日股 + 港股）時，雷達頁面自動顯示市場篩選藥丸，一鍵只看指定市場的股票
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + **多基準切換**：S&P 500 / VT 全球 / 日經 225 / 台灣加權 + **績效評語**自動生成 + 資料起始日標注 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
@@ -574,7 +576,11 @@ docker compose up --build -d
 | `GET` | `/stocks` | 取得所有追蹤股票（含 `last_scan_signal` 持久化訊號） |
 | `GET` | `/stocks/enriched` | 取得股票豐富資料（技術面 + 財報 + 股息 + 基本面摘要） |
 | `GET` | `/ticker/{ticker}/fundamentals` | 取得單一股票基本面指標（P/E、EPS、市值、成長率等） |
-| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 放大器），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，分類感知 RSI + MA200 買側放大器 + 過熱量能門檻 + 多頭降級機制），僅推播差異通知 |
+| `GET` | `/backtest/summary` | 取得訊號回測總覽（命中率、平均報酬、誤報率、樣本信心） |
+| `GET` | `/backtest/signal/{signal}` | 取得單一訊號回測明細（逐筆事件與各視窗前瞻報酬） |
+| `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
+| `GET` | `/backtest/export-csv` | 匯出回測事件 CSV（跨所有訊號，單列事件資料） |
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
@@ -609,7 +615,11 @@ docker compose up --build -d
 | `POST` | `/ticker/{ticker}/alerts` | 建立自訂價格警報（metric / operator / threshold） |
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
-| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 放大器），僅推播差異通知 |
+| `POST` | `/scan` | V2 三層漏斗掃描（9 級訊號燈號，非同步，分類感知 RSI + MA200 買側放大器 + 過熱量能門檻 + 多頭降級機制），僅推播差異通知 |
+| `GET` | `/backtest/summary` | 取得訊號回測總覽（依訊號彙整命中率、平均報酬、誤報率） |
+| `GET` | `/backtest/signal/{signal}` | 取得指定訊號回測明細（事件列表與前瞻報酬） |
+| `GET` | `/backtest/backfill-status` | 取得冷啟動回填進度（`is_backfilling` / `total` / `completed`） |
+| `GET` | `/backtest/export-csv` | 匯出回測事件 CSV（跨所有訊號，單列事件資料） |
 | `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
 | `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
@@ -1036,7 +1046,7 @@ azusa-stock/
 │   │   ├── components/               # 頁面元件（allocation/{holdings,analysis,tools,settings}/, dashboard/, radar/, fxwatch/, smartmoney/）
 │   │   ├── hooks/                    # useTheme, usePrivacyMode, useLanguage, usePlotlyTheme
 │   │   ├── lib/                      # constants.ts、i18n.ts
-│   │   └── pages/                    # Dashboard, Radar, Allocation, FxWatch, SmartMoney
+│   │   └── pages/                    # Dashboard, Radar, Backtest, Allocation, FxWatch, SmartMoney
 │   └── public/locales/               # i18n JSON（en, zh-TW, ja, zh-CN）
 │
 ├── scripts/

@@ -297,11 +297,14 @@ class TestEtfHoldingsSentinelCaching:
     def test_sentinel_cached_in_l1_prevents_repeated_fetches(self):
         """After a failed fetch, the L1 sentinel prevents further yfinance calls."""
         from infrastructure.market_data.market_data import (
+            DISK_KEY_ETF_HOLDINGS,
+            _disk_cache,
             _etf_holdings_cache,
             get_etf_top_holdings,
         )
 
         _etf_holdings_cache.pop("TEST_SENTINEL_TICKER", None)
+        _disk_cache.delete(f"{DISK_KEY_ETF_HOLDINGS}:TEST_SENTINEL_TICKER")
 
         mock_fetch = patch(
             "infrastructure.market_data.market_data._fetch_etf_top_holdings",

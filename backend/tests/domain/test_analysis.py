@@ -250,7 +250,7 @@ class TestDetermineScanSignal:
         )
 
     def test_p2_deep_value_boundary_exactly_at_thresholds(self):
-        # bias=-20.01, rsi=34.99 → both just cross the boundary
+        # bias=-20.01, rsi=34.99 → both just cross the deep-value boundary
         assert (
             determine_scan_signal(STABLE, rsi=34.99, bias=-20.01)
             == ScanSignal.DEEP_VALUE
@@ -280,41 +280,39 @@ class TestDetermineScanSignal:
 
     def test_p4_contrarian_buy_rsi_oversold_bias_normal(self):
         assert (
-            determine_scan_signal(STABLE, rsi=32.0, bias=-5.0)
+            determine_scan_signal(STABLE, rsi=31.0, bias=-5.0)
             == ScanSignal.CONTRARIAN_BUY
         )
 
     def test_p4_contrarian_buy_bias_just_misses_p2_and_p3(self):
-        # bias=-19.99 (doesn't cross -20), rsi=34.99 → falls to P4
+        # bias=-19.99 (doesn't cross -20), rsi=31.99 (<32) → falls to P4
         assert (
-            determine_scan_signal(STABLE, rsi=34.99, bias=-19.99)
+            determine_scan_signal(STABLE, rsi=31.99, bias=-19.99)
             == ScanSignal.CONTRARIAN_BUY
         )
 
-    def test_p4_contrarian_buy_with_bias_none(self):
-        # bias=None: P2/P3 skipped; P4 condition `bias is None or bias < 20` → True
-        assert (
-            determine_scan_signal(STABLE, rsi=32.0, bias=None)
-            == ScanSignal.CONTRARIAN_BUY
-        )
+    def test_p4_not_contrarian_buy_with_bias_none(self):
+        # bias=None: P4 requires concrete bias < 0
+        assert determine_scan_signal(STABLE, rsi=32.0, bias=None) == ScanSignal.NORMAL
 
-    def test_p4_not_contrarian_buy_when_bias_over_20_contradicts(self):
-        # Issue 2 fix: RSI=30 + bias=+25 must NOT be CONTRARIAN_BUY
-        result = determine_scan_signal(STABLE, rsi=30.0, bias=25.0)
+    def test_p4_not_contrarian_buy_when_bias_positive_contradicts(self):
+        # RSI oversold but positive bias must NOT trigger CONTRARIAN_BUY.
+        result = determine_scan_signal(STABLE, rsi=30.0, bias=5.0)
         assert result != ScanSignal.CONTRARIAN_BUY
-        assert result == ScanSignal.CAUTION_HIGH
+        assert result == ScanSignal.NORMAL
 
     # --- P5: OVERHEATED ---
 
     def test_p5_overheated_when_both_indicators_confirm(self):
         assert (
-            determine_scan_signal(STABLE, rsi=75.0, bias=25.0) == ScanSignal.OVERHEATED
+            determine_scan_signal(STABLE, rsi=82.0, bias=35.0, volume_ratio=1.5)
+            == ScanSignal.OVERHEATED
         )
 
     def test_p5_overheated_boundary_exactly_at_thresholds(self):
-        # bias=20.01, rsi=70.01 → both just cross
+        # bias=30.01, rsi=80.01, volume=1.5 → all just cross
         assert (
-            determine_scan_signal(STABLE, rsi=70.01, bias=20.01)
+            determine_scan_signal(STABLE, rsi=80.01, bias=30.01, volume_ratio=1.5)
             == ScanSignal.OVERHEATED
         )
 
@@ -322,31 +320,31 @@ class TestDetermineScanSignal:
 
     def test_p6_caution_high_bias_only(self):
         assert (
-            determine_scan_signal(STABLE, rsi=50.0, bias=22.0)
+            determine_scan_signal(STABLE, rsi=50.0, bias=32.0)
             == ScanSignal.CAUTION_HIGH
         )
 
     def test_p6_caution_high_rsi_only(self):
         assert (
-            determine_scan_signal(STABLE, rsi=72.0, bias=5.0) == ScanSignal.CAUTION_HIGH
+            determine_scan_signal(STABLE, rsi=82.0, bias=5.0) == ScanSignal.CAUTION_HIGH
         )
 
     def test_p6_caution_high_bias_only_rsi_none(self):
         assert (
-            determine_scan_signal(STABLE, rsi=None, bias=22.0)
+            determine_scan_signal(STABLE, rsi=None, bias=32.0)
             == ScanSignal.CAUTION_HIGH
         )
 
     def test_p6_caution_high_rsi_only_bias_none(self):
         assert (
-            determine_scan_signal(STABLE, rsi=72.0, bias=None)
+            determine_scan_signal(STABLE, rsi=82.0, bias=None)
             == ScanSignal.CAUTION_HIGH
         )
 
     def test_p6_caution_high_boundary_rsi_just_misses_p5(self):
-        # bias=20.01, rsi=69.99 → bias crosses P5 bias threshold but RSI misses → P6
+        # bias=30.01, rsi=79.99 → bias crosses P5 bias threshold but RSI misses → P6
         assert (
-            determine_scan_signal(STABLE, rsi=69.99, bias=20.01)
+            determine_scan_signal(STABLE, rsi=79.99, bias=30.01, volume_ratio=1.5)
             == ScanSignal.CAUTION_HIGH
         )
 
@@ -394,6 +392,34 @@ class TestDetermineScanSignal:
         # rsi=50, bias=None → no thresholds triggered → NORMAL
         assert determine_scan_signal(STABLE, rsi=50.0, bias=None) == ScanSignal.NORMAL
 
+    def test_overheated_without_volume_confirmation_falls_to_caution_high(self):
+        assert (
+            determine_scan_signal(STABLE, rsi=82.0, bias=35.0, volume_ratio=1.0)
+            == ScanSignal.CAUTION_HIGH
+        )
+
+    def test_overheated_with_none_volume_falls_to_caution_high(self):
+        assert (
+            determine_scan_signal(STABLE, rsi=82.0, bias=35.0, volume_ratio=None)
+            == ScanSignal.CAUTION_HIGH
+        )
+
+    def test_defaults_are_backward_compatible(self):
+        # New params default to None and should keep callsites valid.
+        assert determine_scan_signal(STABLE, rsi=50.0, bias=0.0) == ScanSignal.NORMAL
+
+    def test_bull_market_dampens_overheated_to_caution_high(self):
+        assert (
+            determine_scan_signal(
+                STABLE,
+                rsi=82.0,
+                bias=35.0,
+                volume_ratio=1.8,
+                market_status=MarketSentiment.BULLISH.value,
+            )
+            == ScanSignal.CAUTION_HIGH
+        )
+
     # --- Real-world regression (2026-02-19 scan log) ---
 
     def test_regression_app_oversold(self):
@@ -409,38 +435,35 @@ class TestDetermineScanSignal:
         )
 
     def test_regression_amzn_contrarian_buy(self):
-        # AMZN: RSI=31.95, bias=-10.66 → was NORMAL, now CONTRARIAN_BUY
+        # AMZN: RSI=31.95, bias=-10.66 → still CONTRARIAN_BUY under stricter threshold 32
         assert (
             determine_scan_signal(STABLE, rsi=31.95, bias=-10.66)
             == ScanSignal.CONTRARIAN_BUY
         )
 
     def test_regression_googl_contrarian_buy(self):
-        # GOOGL: RSI=31.84, bias=-5.04 → was NORMAL, now CONTRARIAN_BUY
+        # GOOGL: RSI=31.84, bias=-5.04 → still CONTRARIAN_BUY under stricter threshold 32
         assert (
             determine_scan_signal(STABLE, rsi=31.84, bias=-5.04)
             == ScanSignal.CONTRARIAN_BUY
         )
 
     def test_regression_asml_caution_high(self):
-        # ASML: RSI=64.81, bias=20.41 → was OVERHEATED, now CAUTION_HIGH (RSI<70)
+        # ASML: RSI=64.81, bias=20.41 → now NORMAL with higher sell threshold (bias <= 30)
+        assert determine_scan_signal(STABLE, rsi=64.81, bias=20.41) == ScanSignal.NORMAL
+
+    def test_regression_lite_overheated(self):
+        # LITE: RSI=74.03, bias=54.63 → now CAUTION_HIGH (RSI not above 80)
         assert (
-            determine_scan_signal(STABLE, rsi=64.81, bias=20.41)
+            determine_scan_signal(STABLE, rsi=74.03, bias=54.63)
             == ScanSignal.CAUTION_HIGH
         )
 
-    def test_regression_lite_overheated(self):
-        # LITE: RSI=74.03, bias=54.63 → still OVERHEATED
-        assert (
-            determine_scan_signal(STABLE, rsi=74.03, bias=54.63)
-            == ScanSignal.OVERHEATED
-        )
-
     def test_regression_vrt_overheated(self):
-        # VRT: RSI=71.62, bias=34.56 → still OVERHEATED
+        # VRT: RSI=71.62, bias=34.56 → now CAUTION_HIGH (RSI not above 80)
         assert (
             determine_scan_signal(STABLE, rsi=71.62, bias=34.56)
-            == ScanSignal.OVERHEATED
+            == ScanSignal.CAUTION_HIGH
         )
 
     def test_regression_snps_thesis_broken(self):
@@ -456,7 +479,7 @@ class TestDetermineScanSignal:
 
 
 class TestDetermineScanSignalEnhancements:
-    """Tests for P4.5 APPROACHING_BUY, category-aware thresholds, and MA200 amplifier."""
+    """Tests for P4.5 APPROACHING_BUY, category-aware thresholds, and MA200 buy amplifier."""
 
     # --- P4.5: APPROACHING_BUY base signal ---
 
@@ -486,11 +509,11 @@ class TestDetermineScanSignalEnhancements:
 
     # --- Category-aware thresholds: buy side ---
 
-    def test_category_growth_offset_upgrades_to_contrarian_buy(self):
-        # Growth offset=+2; rsi_contrarian=37; RSI=36 < 37 → CONTRARIAN_BUY
+    def test_category_growth_offset_does_not_reach_contrarian_buy(self):
+        # Growth offset=+2; rsi_contrarian=34; RSI=36 > 34 and bias not weak enough.
         assert (
             determine_scan_signal(STABLE, rsi=36.0, bias=-5.0, category="Growth")
-            == ScanSignal.CONTRARIAN_BUY
+            == ScanSignal.NORMAL
         )
 
     def test_category_trend_setter_no_offset_stays_approaching_buy(self):
@@ -524,30 +547,36 @@ class TestDetermineScanSignalEnhancements:
     # --- Category-aware thresholds: sell side ---
 
     def test_category_growth_rsi71_stays_caution_high(self):
-        # Growth offset=+2; rsi_overbought=72; RSI=71 < 72, bias=21 > 20 → only bias triggers → CAUTION_HIGH
+        # Growth offset=+2; rsi_overbought=82; RSI=71 < 82, bias=21 <= 30 → no sell trigger
         assert (
             determine_scan_signal(STABLE, rsi=71.0, bias=21.0, category="Growth")
-            == ScanSignal.CAUTION_HIGH
+            == ScanSignal.NORMAL
         )
 
     def test_category_trend_setter_rsi71_becomes_overheated(self):
-        # Trend_Setter offset=0; rsi_overbought=70; RSI=71 > 70 AND bias=21 > 20 → OVERHEATED
+        # Trend_Setter offset=0; RSI=71 < 80 and bias=21 <= 30 → NORMAL
         assert (
             determine_scan_signal(STABLE, rsi=71.0, bias=21.0, category="Trend_Setter")
-            == ScanSignal.OVERHEATED
+            == ScanSignal.NORMAL
         )
 
     def test_category_bond_rsi68_becomes_overheated(self):
-        # Bond offset=-3; rsi_overbought=67; RSI=68 > 67 AND bias=21 > 20 → OVERHEATED
+        # Bond offset=-3; rsi_overbought=77; RSI=68 < 77 and bias=21 <= 30 → NORMAL
         assert (
             determine_scan_signal(STABLE, rsi=68.0, bias=21.0, category="Bond")
-            == ScanSignal.OVERHEATED
+            == ScanSignal.NORMAL
         )
 
-    def test_category_growth_rsi72_becomes_overheated(self):
-        # Growth offset=+2; rsi_overbought=72; RSI=72.5 > 72 AND bias=22 > 20 → OVERHEATED
+    def test_category_growth_rsi82_and_bias31_is_overheated_with_volume(self):
+        # Growth offset=+2; rsi_overbought=82; RSI=82.5 > 82 AND bias=31 > 30 with volume gate
         assert (
-            determine_scan_signal(STABLE, rsi=72.5, bias=22.0, category="Growth")
+            determine_scan_signal(
+                STABLE,
+                rsi=82.5,
+                bias=31.0,
+                category="Growth",
+                volume_ratio=1.5,
+            )
             == ScanSignal.OVERHEATED
         )
 
@@ -574,26 +603,12 @@ class TestDetermineScanSignalEnhancements:
             == ScanSignal.WEAKENING
         )
 
-    # --- MA200 sell-side amplifier ---
+    # --- MA200 sell-side amplifier disabled ---
 
-    def test_ma200_sell_amplifier_caution_high_to_overheated(self):
-        # P6 CAUTION_HIGH (bias=22, RSI=65); bias_200=21 > 20 → upgraded to OVERHEATED
+    def test_ma200_sell_amplifier_is_disabled(self):
+        # Even with high bias_200, CAUTION_HIGH is not upgraded to OVERHEATED.
         assert (
-            determine_scan_signal(STABLE, rsi=65.0, bias=22.0, bias_200=21.0)
-            == ScanSignal.OVERHEATED
-        )
-
-    def test_ma200_sell_amplifier_no_double_upgrade_already_overheated(self):
-        # Already OVERHEATED (RSI=75, bias=25); bias_200=21 > 20 → still OVERHEATED
-        assert (
-            determine_scan_signal(STABLE, rsi=75.0, bias=25.0, bias_200=21.0)
-            == ScanSignal.OVERHEATED
-        )
-
-    def test_ma200_sell_amplifier_no_op_when_bias_200_below_threshold(self):
-        # CAUTION_HIGH + bias_200=19 (< 20) → no upgrade
-        assert (
-            determine_scan_signal(STABLE, rsi=65.0, bias=22.0, bias_200=19.0)
+            determine_scan_signal(STABLE, rsi=65.0, bias=35.0, bias_200=40.0)
             == ScanSignal.CAUTION_HIGH
         )
 
@@ -631,13 +646,13 @@ class TestDetermineScanSignalEnhancements:
         )
 
     def test_combined_bond_and_ma200_sell_amplifier(self):
-        # Bond offset=-3; rsi_overbought=67; RSI=65 < 67, bias=22 → CAUTION_HIGH
-        # bias_200=21 > 20 → upgraded to OVERHEATED
+        # Bond offset=-3; rsi_overbought=77; RSI=65 < 77, bias=35 > 30 → CAUTION_HIGH
+        # Sell-side MA200 amplifier disabled, so stays CAUTION_HIGH.
         assert (
             determine_scan_signal(
-                STABLE, rsi=65.0, bias=22.0, bias_200=21.0, category="Bond"
+                STABLE, rsi=65.0, bias=35.0, bias_200=40.0, category="Bond"
             )
-            == ScanSignal.OVERHEATED
+            == ScanSignal.CAUTION_HIGH
         )
 
     # --- Regression: CRWD-like scenario ---

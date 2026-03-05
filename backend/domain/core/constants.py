@@ -20,16 +20,19 @@ SECONDS_PER_DAY = 86400  # 判斷訊號是否為「新」（< 24 小時）
 # Decision Engine Thresholds
 # ---------------------------------------------------------------------------
 RSI_OVERSOLD = 30
-RSI_OVERBOUGHT = 70
-RSI_CONTRARIAN_BUY_THRESHOLD = 35
+RSI_OVERBOUGHT = 80
+RSI_DEEP_VALUE_THRESHOLD = 35
+RSI_CONTRARIAN_BUY_THRESHOLD = 32
 RSI_APPROACHING_BUY_THRESHOLD = 37
 RSI_WEAKENING_THRESHOLD = 38
-BIAS_OVERHEATED_THRESHOLD = 20
+BIAS_OVERHEATED_THRESHOLD = 30
 BIAS_OVERSOLD_THRESHOLD = -20
 BIAS_WEAKENING_THRESHOLD = -15
 # Same magnitude as BIAS_WEAKENING but measured against MA200 (not MA60); may diverge independently.
 MA200_DEEP_DEVIATION_THRESHOLD = -15  # buy amplifier: price deeply below MA200
-MA200_HIGH_DEVIATION_THRESHOLD = 20  # sell amplifier: price highly above MA200 (asymmetric due to positive market drift)
+MA200_HIGH_DEVIATION_THRESHOLD = (
+    20  # legacy constant (sell amplifier disabled in signal engine)
+)
 MOAT_MARGIN_DETERIORATION_THRESHOLD = -2  # percentage points YoY
 
 # Category RSI offset — derived from CATEGORY_FALLBACK_BETA via round((beta - 1.0) * 4)
@@ -98,6 +101,18 @@ YFINANCE_RATE_LIMIT_CPS = (
 # ---------------------------------------------------------------------------
 # Scan & Alerts
 # ---------------------------------------------------------------------------
+BACKTEST_WINDOWS = [5, 10, 30, 60]  # forward return windows in trading days
+BACKTEST_MIN_SAMPLES_HIGH = 30
+BACKTEST_MIN_SAMPLES_MEDIUM = 10
+BACKTEST_CACHE_TTL = 3600  # 1 hour
+BACKTEST_MAX_LOOKBACK_DAYS = 365
+BACKTEST_FP_WINDOW = 30  # false-positive evaluation window in trading days
+BACKFILL_HISTORY_PERIOD = "2y"
+BACKFILL_SAMPLE_INTERVAL = 5
+BACKFILL_MARKET_STATUS = "BACKFILL"
+BACKFILL_DEFAULT_MOAT = "STABLE"
+BACKFILL_MIN_HISTORY_DAYS = 200  # MA200 warmup requirement for replay
+
 SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
 ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬
