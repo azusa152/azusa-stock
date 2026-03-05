@@ -74,6 +74,7 @@ export function CategoryTabs({
     Moat: "radar.tab.moat",
     Growth: "radar.tab.growth",
     Bond: "radar.tab.bond",
+    Crypto: "radar.tab.crypto",
   }
 
   return (

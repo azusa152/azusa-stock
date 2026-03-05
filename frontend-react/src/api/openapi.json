@@ -10347,6 +10347,17 @@
               }
             ],
             "title": "Is Etf"
+          },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
           }
         },
         "type": "object",

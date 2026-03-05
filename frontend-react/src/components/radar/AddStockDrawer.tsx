@@ -21,8 +21,9 @@ import {
   useTriggerScan,
   useImportStocks,
 } from "@/api/hooks/useRadar"
+import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import client from "@/api/client"
-import type { StockCategory, StockImportItem } from "@/api/types/radar"
+import type { AddStockRequest, StockCategory, StockImportItem } from "@/api/types/radar"
 
 interface Props {
   open: boolean
@@ -30,7 +31,7 @@ interface Props {
   isScanning: boolean
 }
 
-type AssetType = "stock" | "bond"
+type AssetType = "stock" | "bond" | "crypto"
 
 export function AddStockDrawer({ open, onClose, isScanning }: Props) {
   const { t } = useTranslation()
@@ -45,6 +46,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
   // Bond form state (reuses ticker + thesis from stock form)
   const [bondCurrency, setBondCurrency] = useState("USD")
+  const [cryptoQuery, setCryptoQuery] = useState("")
+  const [cryptoCoinId, setCryptoCoinId] = useState<string | null>(null)
 
   // Feedback
   const [addFeedback, setAddFeedback] = useState<string | null>(null)
@@ -57,6 +60,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
   const addStock = useAddStock()
   const triggerScan = useTriggerScan()
   const importStocks = useImportStocks()
+  const { data: cryptoSearchResults } = useCryptoSearch(cryptoQuery)
 
   const marketInfo = MARKET_OPTIONS.find((m) => m.key === market) ?? MARKET_OPTIONS[0]
 
@@ -126,6 +130,40 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
         },
       },
     )
+  }
+
+  const handleAddCrypto = () => {
+    if (!ticker.trim()) {
+      setAddFeedback(t("radar.form.crypto_select_required"))
+      return
+    }
+    if (!thesis.trim()) {
+      setAddFeedback(t("radar.form.error_no_thesis"))
+      return
+    }
+    const fullTicker = ticker.trim().toUpperCase()
+    const payload: AddStockRequest = {
+      ticker: fullTicker,
+      category: "Crypto",
+      thesis: thesis.trim(),
+      tags: ["Crypto", "USD"],
+      coingecko_id: cryptoCoinId ?? undefined,
+    }
+    addStock.mutate(payload, {
+      onSuccess: () => {
+        setAddFeedback(t("radar.form.success_added", { ticker: fullTicker }))
+        toast.success(t("radar.form.success_added", { ticker: fullTicker }))
+        setTicker("")
+        setThesis("")
+        setSelectedTags([])
+        setCryptoQuery("")
+        setCryptoCoinId(null)
+      },
+      onError: () => {
+        setAddFeedback(t("common.error"))
+        toast.error(t("common.error"))
+      },
+    })
   }
 
   const handleScan = () => {
@@ -242,6 +280,12 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
               >
                 {t("radar.form.asset_bond")}
               </button>
+              <button
+                onClick={() => { setAssetType("crypto"); setAddFeedback(null) }}
+                className={`flex-1 rounded py-1 text-xs font-medium border transition-colors ${assetType === "crypto" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {t("radar.form.asset_crypto")}
+              </button>
             </div>
 
             {assetType === "stock" ? (
@@ -330,7 +374,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                   {t("radar.form.add_button")}
                 </Button>
               </div>
-            ) : (
+            ) : assetType === "bond" ? (
               <div className="space-y-2">
                 {/* Bond ticker */}
                 <div>
@@ -395,6 +439,62 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                 <Button size="sm" className="w-full" onClick={handleAddBond} disabled={addStock.isPending}>
                   {t("radar.form.add_button")}
                 </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("radar.form.crypto_search")}</label>
+                  <input
+                    className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+                    placeholder={t("radar.form.crypto_search_placeholder")}
+                    value={cryptoQuery}
+                    onChange={(e) => {
+                      setCryptoQuery(e.target.value)
+                      setTicker("")
+                      setCryptoCoinId(null)
+                    }}
+                  />
+                </div>
+                {cryptoSearchResults && cryptoSearchResults.length > 0 && (
+                  <div className="max-h-36 overflow-y-auto rounded border border-border p-1 space-y-1">
+                    {cryptoSearchResults.map((coin) => (
+                      <button
+                        type="button"
+                        key={`${coin.id}-${coin.symbol}`}
+                        className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted/40"
+                        onClick={() => {
+                          setTicker(coin.ticker)
+                          setCryptoCoinId(coin.id)
+                          setCryptoQuery(`${coin.name} (${coin.symbol})`)
+                        }}
+                      >
+                        {coin.name} ({coin.symbol}) - {coin.ticker}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("radar.form.ticker")}</label>
+                  <input
+                    className="mt-0.5 w-full rounded-md border border-input bg-muted/40 px-2 py-1 text-sm"
+                    value={ticker}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("radar.form.thesis")}</label>
+                  <textarea
+                    className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
+                    rows={3}
+                    placeholder={t("radar.form.thesis_placeholder")}
+                    value={thesis}
+                    onChange={(e) => setThesis(e.target.value)}
+                  />
+                </div>
+                <Button size="sm" className="w-full" onClick={handleAddCrypto} disabled={addStock.isPending}>
+                  {t("radar.form.add_button")}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">{t("allocation.crypto.market_24h")}</p>
               </div>
             )}
 

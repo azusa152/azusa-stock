@@ -4,7 +4,7 @@ Exit 1 if any drift is detected.
 
 Constant groups verified:
   - Stock categories:  CATEGORY_DISPLAY_ORDER  ↔  STOCK_CATEGORIES
-  - Radar categories:  CATEGORY_DISPLAY_ORDER (no Cash/Crypto)  ↔  RADAR_CATEGORIES
+  - Radar categories:  CATEGORY_DISPLAY_ORDER (no Cash)  ↔  RADAR_CATEGORIES
   - Category icons:    CATEGORY_ICON  ↔  CATEGORY_ICON_SHORT
   - Supported currencies: SUPPORTED_CURRENCIES  ↔  FX_CURRENCY_OPTIONS
 """
@@ -129,15 +129,15 @@ def check_categories() -> list[str]:
 
 
 def check_radar_categories() -> list[str]:
-    """Verify RADAR_CATEGORIES equals CATEGORY_DISPLAY_ORDER minus cash-like assets."""
+    """Verify RADAR_CATEGORIES equals CATEGORY_DISPLAY_ORDER minus Cash."""
     errors = []
     backend_all = extract_python_list(BACKEND_CONSTANTS, "CATEGORY_DISPLAY_ORDER")
-    backend_radar = [c for c in backend_all if c not in {"Cash", "Crypto"}]
+    backend_radar = [c for c in backend_all if c != "Cash"]
     frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "RADAR_CATEGORIES"))
     if backend_radar != frontend:
         errors.append(
             f"RADAR_CATEGORIES mismatch:\n"
-            f"  backend  (CATEGORY_DISPLAY_ORDER - Cash/Crypto): {backend_radar}\n"
+            f"  backend  (CATEGORY_DISPLAY_ORDER - Cash): {backend_radar}\n"
             f"  frontend RADAR_CATEGORIES:                {frontend}"
         )
     return errors

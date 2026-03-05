@@ -145,7 +145,8 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 # ---------------------------------------------------------------------------
 # Shared Messages
 # ---------------------------------------------------------------------------
-SKIP_SIGNALS_CATEGORIES = ["Cash", "Crypto"]  # 非訊號類資產不進行技術訊號掃描
+SKIP_RSI_CATEGORIES = ["Cash", "Crypto"]  # 非 RSI 類資產不進行技術訊號掃描
+SKIP_PRICE_FETCH_CATEGORIES = ["Cash"]  # 不需要抓取價格的資產（如現金）
 SKIP_MOAT_CATEGORIES = ["Bond", "Cash", "Crypto"]  # 非股票類不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 

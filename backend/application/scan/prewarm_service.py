@@ -18,7 +18,8 @@ from domain.constants import (
     GURU_BACKFILL_YEARS,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
-    SKIP_SIGNALS_CATEGORIES,
+    SKIP_PRICE_FETCH_CATEGORIES,
+    SKIP_RSI_CATEGORIES,
 )
 from domain.entities import Holding, Stock
 from domain.enums import StockCategory
@@ -205,12 +206,12 @@ def _collect_tickers() -> dict[str, list[str]]:
     # ETF tickers from watchlist（用於排除 moat 分析，含持倉中的 ETF 標的）
     known_etf_tickers = {t for t, s in stock_map.items() if s.is_etf}
 
-    # Signals: 排除 Cash 類
+    # Signals: 排除不需要價格抓取的類別（目前為 Cash）
     signals_tickers = [
         t
         for t in all_tickers
         if t not in stock_map
-        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+        or stock_map[t].category.value not in SKIP_PRICE_FETCH_CATEGORIES
     ]
 
     # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）。
@@ -245,13 +246,12 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
-    # Sector: 熱力圖需要包含 Bond 類標的（Bond 有 GICS 板塊，只是不做訊號/護城河）
-    # SKIP_SIGNALS_CATEGORIES（僅 Cash）排除的標的，其餘均需板塊資訊
+    # Sector: 熱力圖需排除 Cash/Crypto；Bond 仍需要板塊資訊
+    # SKIP_RSI_CATEGORIES（Cash/Crypto）排除的標的，其餘均需板塊資訊
     sector_tickers = [
         t
         for t in all_tickers
-        if t not in stock_map
-        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+        if t not in stock_map or stock_map[t].category.value not in SKIP_RSI_CATEGORIES
     ]
 
     return {

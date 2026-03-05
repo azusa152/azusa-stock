@@ -22,6 +22,9 @@ class Stock(SQLModel, table=True):
 
     ticker: str = Field(primary_key=True, description="股票代號")
     category: StockCategory = Field(description="分類")
+    coingecko_id: str | None = Field(
+        default=None, description="CoinGecko 幣種 ID（加密貨幣用）"
+    )
     current_thesis: str = Field(default="", description="最新觀點")
     current_tags: str = Field(default="", description="最新標籤（逗號分隔）")
     display_order: int = Field(default=0, description="顯示順位（數字越小越前面）")

@@ -68,6 +68,8 @@ def _run_migrations() -> None:
         "ALTER TABLE holding ADD COLUMN purchase_fx_rate REAL;",
         # Holding: 新增加密貨幣對應 CoinGecko ID 欄位
         "ALTER TABLE holding ADD COLUMN coingecko_id VARCHAR;",
+        # Stock: 新增加密貨幣對應 CoinGecko ID 欄位（Radar 追蹤用）
+        "ALTER TABLE stock ADD COLUMN coingecko_id VARCHAR;",
         # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
         "ALTER TABLE guru ADD COLUMN style VARCHAR;",
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",

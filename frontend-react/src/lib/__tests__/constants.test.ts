@@ -86,8 +86,12 @@ describe("RADAR_CATEGORIES", () => {
     expect(RADAR_CATEGORIES).not.toContain("Cash");
   });
 
-  it("has 4 categories total", () => {
-    expect(RADAR_CATEGORIES).toHaveLength(4);
+  it("includes Crypto for radar monitoring", () => {
+    expect(RADAR_CATEGORIES).toContain("Crypto");
+  });
+
+  it("has 5 categories total", () => {
+    expect(RADAR_CATEGORIES).toHaveLength(5);
   });
 });
 

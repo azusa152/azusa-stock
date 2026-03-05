@@ -86,6 +86,7 @@ def create_ticker_route(
             payload.thesis,
             payload.tags,
             is_etf=payload.is_etf,
+            coingecko_id=payload.coingecko_id,
         )
     except StockAlreadyExistsError as e:
         raise HTTPException(

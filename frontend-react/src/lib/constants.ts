@@ -57,6 +57,7 @@ export const RADAR_CATEGORIES = [
   "Moat",
   "Growth",
   "Bond",
+  "Crypto",
 ] as const
 
 export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
