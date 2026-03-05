@@ -13,12 +13,25 @@ import {
 } from "@/api/hooks/useRadar"
 import { CategoryTabs } from "@/components/radar/CategoryTabs"
 import { AddStockDrawer } from "@/components/radar/AddStockDrawer"
+import { RadarFilterPanel } from "@/components/radar/RadarFilterPanel"
 import type { RadarEnrichedStock } from "@/api/types/radar"
+import { filterStocks, useRadarFilters } from "@/hooks/useRadarFilters"
 
 export default function Radar() {
   const { t } = useTranslation()
   const [sopOpen, setSopOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const {
+    filters,
+    setFilter,
+    toggleSignal,
+    toggleSector,
+    toggleTag,
+    toggleMarketCapBucket,
+    resetFilters,
+    activeFilterCount,
+  } = useRadarFilters()
 
   const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useRadarStocks()
   const { data: enrichedStocks } = useRadarEnrichedStocks()
@@ -43,6 +56,36 @@ export default function Radar() {
   const heldTickers = useMemo(
     () => new Set((holdings ?? []).filter((h) => !h.is_cash).map((h) => h.ticker.toUpperCase())),
     [holdings],
+  )
+
+  const availableSectors = useMemo(() => {
+    const sectors = new Set<string>()
+    for (const stock of stocks ?? []) {
+      const sector = enrichedMap[stock.ticker]?.sector?.trim()
+      if (sector) sectors.add(sector)
+    }
+    return Array.from(sectors).sort((a, b) => a.localeCompare(b))
+  }, [stocks, enrichedMap])
+
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>()
+    for (const stock of stocks ?? []) {
+      for (const tag of stock.current_tags ?? []) {
+        const trimmed = tag.trim()
+        if (trimmed) tags.add(trimmed)
+      }
+    }
+    return Array.from(tags).sort((a, b) => a.localeCompare(b))
+  }, [stocks])
+
+  const filteredStocks = useMemo(
+    () => filterStocks(stocks ?? [], enrichedMap, heldTickers, filters),
+    [stocks, enrichedMap, heldTickers, filters],
+  )
+  const totalActiveCount = useMemo(() => (stocks ?? []).filter((s) => s.is_active).length, [stocks])
+  const filteredActiveCount = useMemo(
+    () => filteredStocks.filter((s) => s.is_active).length,
+    [filteredStocks],
   )
 
   if (stocksLoading) {
@@ -115,9 +158,27 @@ export default function Radar() {
             <p className="mt-1 text-xs text-muted-foreground">
               {t("radar.pwa_note")}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("radar.filter.note")}
+            </p>
           </div>
         )}
       </div>
+
+      <RadarFilterPanel
+        isOpen={filterOpen}
+        onToggleOpen={() => setFilterOpen((v) => !v)}
+        filters={filters}
+        activeFilterCount={activeFilterCount}
+        availableSectors={availableSectors}
+        availableTags={availableTags}
+        setFilter={setFilter}
+        toggleSignal={toggleSignal}
+        toggleSector={toggleSector}
+        toggleTag={toggleTag}
+        toggleMarketCapBucket={toggleMarketCapBucket}
+        resetFilters={resetFilters}
+      />
 
       {/* Data freshness */}
       <p className="text-xs text-muted-foreground -mt-2">
@@ -125,12 +186,16 @@ export default function Radar() {
           ? t("radar.last_scan_time", { time: scanTs })
           : t("radar.no_scan_yet")}
         {" · "}
-        {t("radar.loading.success", { count: stocks.filter((s) => s.is_active).length })}
+        {activeFilterCount > 0
+          ? t("radar.filter.showing_filtered", { filtered: filteredActiveCount, total: totalActiveCount })
+          : t("radar.loading.success", { count: totalActiveCount })}
       </p>
 
       {/* Category tabs */}
       <CategoryTabs
-        stocks={stocks}
+        stocks={filteredStocks}
+        totalStocks={stocks}
+        hasActiveFilters={activeFilterCount > 0}
         removedStocks={removedStocks ?? []}
         enrichedMap={enrichedMap}
         resonanceMap={resonanceMap ?? {}}
