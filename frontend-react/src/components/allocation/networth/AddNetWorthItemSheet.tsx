@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -24,8 +24,8 @@ export function AddNetWorthItemSheet({
   const { t } = useTranslation()
   const createMutation = useCreateNetWorthItem()
   const [name, setName] = useState("")
-  const [kind, setKind] = useState<ItemKind>("asset")
-  const [category, setCategory] = useState("property")
+  const [kind, setKind] = useState<ItemKind>(initialKind)
+  const [category, setCategory] = useState(initialKind === "asset" ? "property" : "mortgage")
   const [value, setValue] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [interestRate, setInterestRate] = useState("")
@@ -37,7 +37,7 @@ export function AddNetWorthItemSheet({
     [kind],
   )
 
-  const reset = useCallback(() => {
+  const reset = () => {
     setName("")
     setKind(initialKind)
     setCategory(initialKind === "asset" ? "property" : "mortgage")
@@ -46,12 +46,7 @@ export function AddNetWorthItemSheet({
     setInterestRate("")
     setMinimumPayment("")
     setNote("")
-  }, [initialKind])
-
-  useEffect(() => {
-    if (!open) return
-    reset()
-  }, [reset, open])
+  }
 
   const onSubmit = () => {
     const parsed = Number(value)

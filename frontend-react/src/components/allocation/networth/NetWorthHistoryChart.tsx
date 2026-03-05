@@ -112,9 +112,9 @@ export function NetWorthHistoryChart({
                 />
                 <YAxis hide={privacyMode} tick={{ fontSize: 11 }} width={72} />
                 <Tooltip
-                  formatter={(value: number | string) => {
+                  formatter={(value: number | string | undefined) => {
                     if (privacyMode) return "***"
-                    const numeric = typeof value === "number" ? value : Number(value)
+                    const numeric = typeof value === "number" ? value : Number(value ?? 0)
                     return Number.isFinite(numeric) ? numeric.toFixed(2) : "0.00"
                   }}
                 />

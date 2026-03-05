@@ -270,6 +270,7 @@ export default function Allocation() {
       {/* Add Holding sidebar sheet */}
       <AddHoldingSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
       <AddNetWorthItemSheet
+        key={`${netWorthSheetOpen ? "open" : "closed"}-${netWorthSheetKind}`}
         open={netWorthSheetOpen}
         onClose={() => setNetWorthSheetOpen(false)}
         initialKind={netWorthSheetKind}

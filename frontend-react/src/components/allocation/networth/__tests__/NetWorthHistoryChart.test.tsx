@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react"
+import type { ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { NetWorthHistoryChart } from "../NetWorthHistoryChart"
 
@@ -9,8 +10,8 @@ vi.mock("react-i18next", () => ({
 }))
 
 vi.mock("recharts", () => ({
-  ResponsiveContainer: ({ children }: { children: unknown }) => <div>{children as any}</div>,
-  AreaChart: ({ children }: { children: unknown }) => <div>{children as any}</div>,
+  ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AreaChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Area: () => <div />,
   CartesianGrid: () => <div />,
   XAxis: () => <div />,
