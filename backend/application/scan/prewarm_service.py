@@ -21,6 +21,7 @@ from domain.constants import (
     SKIP_SIGNALS_CATEGORIES,
 )
 from domain.entities import Holding, Stock
+from domain.enums import StockCategory
 from infrastructure.database import engine
 from infrastructure.market_data import (
     batch_download_history,
@@ -28,6 +29,7 @@ from infrastructure.market_data import (
     get_fear_greed_index,
     get_ticker_sector,
     prewarm_beta_batch,
+    prewarm_crypto_prices,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
@@ -82,13 +84,14 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, crypto=%d, etf_sector_weights=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
         len(tickers["sector"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
+        len(tickers["crypto"]),
         len(tickers["etf"]),
     )
 
@@ -139,6 +142,10 @@ def prewarm_all_caches() -> None:
         )
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
+    if tickers["crypto"]:
+        parallel_phases.append(
+            ("crypto", lambda: prewarm_crypto_prices(tickers["crypto"]))
+        )
 
     with ThreadPoolExecutor(max_workers=min(len(parallel_phases), 4)) as pool:
         phase_futures = {
@@ -255,6 +262,17 @@ def _collect_tickers() -> dict[str, list[str]]:
         "beta": sorted(beta_tickers),
         "equity": sorted(equity_tickers),
         "sector": sorted(sector_tickers),
+        "crypto": sorted(
+            {
+                h.coingecko_id
+                for h in holdings
+                if (
+                    h.category == StockCategory.CRYPTO
+                    and not h.is_cash
+                    and getattr(h, "coingecko_id", None)
+                )
+            }
+        ),
     }
 
 

@@ -116,6 +116,28 @@ class TestCreateHolding:
         create_holding(db_session, _make_payload(), _LANG)
         assert len(list_holdings(db_session)) == 1
 
+    def test_crypto_holding_requires_usd_currency(self, db_session: Session) -> None:
+        with pytest.raises(HTTPException) as exc_info:
+            create_holding(
+                db_session,
+                _make_payload(category=StockCategory.CRYPTO, currency="TWD"),
+                _LANG,
+            )
+        assert exc_info.value.status_code == 400
+
+    def test_crypto_holding_normalizes_coingecko_id(self, db_session: Session) -> None:
+        result = create_holding(
+            db_session,
+            _make_payload(
+                ticker="btc-usd",
+                category=StockCategory.CRYPTO,
+                currency="USD",
+                coingecko_id=" Bitcoin ",
+            ),
+            _LANG,
+        )
+        assert result["coingecko_id"] == "bitcoin"
+
 
 # ---------------------------------------------------------------------------
 # create_cash_holding
@@ -162,6 +184,17 @@ class TestUpdateHolding:
         result = update_holding(db_session, holding.id, payload, _LANG)  # type: ignore[arg-type]
         assert result["ticker"] == "TSLA"
         assert result["currency"] == "JPY"
+
+    def test_crypto_update_rejects_non_usd_currency(self, db_session: Session) -> None:
+        holding = _seed_holding(db_session, ticker="BTC-USD")
+        payload = _make_payload(
+            category=StockCategory.CRYPTO,
+            currency="JPY",
+            coingecko_id="bitcoin",
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            update_holding(db_session, holding.id, payload, _LANG)  # type: ignore[arg-type]
+        assert exc_info.value.status_code == 400
 
 
 # ---------------------------------------------------------------------------
@@ -242,5 +275,21 @@ class TestImportHoldings:
     def test_records_errors_for_invalid_items(self, db_session: Session) -> None:
         bad_item = {"ticker": "BAD"}  # missing required fields
         result = import_holdings(db_session, [bad_item], _LANG)
+        assert result["imported"] == 0
+        assert len(result["errors"]) == 1
+
+    def test_import_crypto_with_non_usd_currency_records_error(
+        self, db_session: Session
+    ) -> None:
+        payload = [
+            {
+                "ticker": "BTC-USD",
+                "category": StockCategory.CRYPTO,
+                "quantity": 1.25,
+                "currency": "TWD",
+                "is_cash": False,
+            }
+        ]
+        result = import_holdings(db_session, payload, _LANG)
         assert result["imported"] == 0
         assert len(result["errors"]) == 1

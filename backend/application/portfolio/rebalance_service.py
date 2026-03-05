@@ -20,7 +20,7 @@ from domain.constants import (
     XRAY_SKIP_CATEGORIES,
 )
 from domain.entities import Holding, Stock, UserInvestmentProfile
-from domain.enums import FX_ALERT_LABEL
+from domain.enums import FX_ALERT_LABEL, StockCategory
 from domain.fx_analysis import (
     FXRateAlert,
     analyze_fx_rate_changes,
@@ -35,6 +35,7 @@ from domain.rebalance import (
 from i18n import get_user_language, t
 from infrastructure.market_data import (
     are_all_signals_in_l1,
+    get_crypto_price,
     get_etf_sector_weights,
     get_etf_top_holdings,
     get_exchange_rates,
@@ -42,6 +43,7 @@ from infrastructure.market_data import (
     get_forex_history_long,
     get_technical_signals,
     get_ticker_sector,
+    prewarm_crypto_prices,
     prewarm_etf_holdings_batch,
     prewarm_etf_sector_weights_batch,
     prewarm_signals_batch,
@@ -115,6 +117,36 @@ def _compute_holding_market_values(
             cash_currency_values[h.currency] = (
                 cash_currency_values.get(h.currency, 0.0) + market_value
             )
+        elif h.category == StockCategory.CRYPTO:
+            crypto_data = get_crypto_price(
+                getattr(h, "coingecko_id", None),
+                h.ticker,
+            )
+            price = crypto_data.get("price_usd") if crypto_data else None
+            change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
+            if (
+                price is not None
+                and isinstance(price, (int, float))
+                and change_24h_pct is not None
+                and isinstance(change_24h_pct, (int, float))
+                and (1 + change_24h_pct / 100) != 0
+            ):
+                previous_close = price / (1 + change_24h_pct / 100)
+            else:
+                previous_close = None
+
+            if price is not None and isinstance(price, (int, float)):
+                market_value = h.quantity * price * fx
+            elif h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis * fx
+            else:
+                market_value = 0.0
+
+            if previous_close is not None and isinstance(previous_close, (int, float)):
+                previous_market_value = h.quantity * previous_close * fx
+                has_prev_close = True
+            else:
+                previous_market_value = market_value
         else:
             # 非現金持倉：取得當前與前一交易日價格
             signals = get_technical_signals(h.ticker)
@@ -269,16 +301,36 @@ def _do_calculate_rebalance(
         {k: round(v, 4) for k, v in fx_rates.items()},
     )
 
-    # 3.5) 並行預熱所有非現金持倉的技術訊號（避免逐一串行呼叫 yfinance）
-    non_cash_tickers = list({h.ticker for h in holdings if not h.is_cash})
-    if non_cash_tickers:
-        if are_all_signals_in_l1(non_cash_tickers):
+    # 3.5) 並行預熱：股票技術訊號 + 加密貨幣價格
+    stock_tickers = list(
+        {
+            h.ticker
+            for h in holdings
+            if not h.is_cash and h.category != StockCategory.CRYPTO
+        }
+    )
+    crypto_ids = list(
+        {
+            h.coingecko_id
+            for h in holdings
+            if (
+                not h.is_cash
+                and h.category == StockCategory.CRYPTO
+                and getattr(h, "coingecko_id", None)
+            )
+        }
+    )
+    if stock_tickers:
+        if are_all_signals_in_l1(stock_tickers):
             logger.debug(
-                "所有 %d 檔股票技術訊號已在 L1 快取，略過預熱。", len(non_cash_tickers)
+                "所有 %d 檔股票技術訊號已在 L1 快取，略過預熱。", len(stock_tickers)
             )
         else:
-            logger.info("並行預熱 %d 檔股票技術訊號...", len(non_cash_tickers))
-            prewarm_signals_batch(non_cash_tickers)
+            logger.info("並行預熱 %d 檔股票技術訊號...", len(stock_tickers))
+            prewarm_signals_batch(stock_tickers)
+    if crypto_ids:
+        logger.info("並行預熱 %d 檔加密貨幣報價...", len(crypto_ids))
+        prewarm_crypto_prices(crypto_ids)
 
     # 4) 使用共用邏輯計算各持倉市值
     _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
@@ -345,7 +397,9 @@ def _do_calculate_rebalance(
                 "ticker": ticker,
                 "category": agg["category"],
                 "currency": agg["currency"],
-                "quantity": round(agg["qty"], 4),
+                "quantity": round(
+                    agg["qty"], 8 if agg["category"] == StockCategory.CRYPTO else 4
+                ),
                 "market_value": round(agg["mv"], 2),
                 "weight_pct": weight_pct,
                 "avg_cost": avg_cost,
@@ -695,9 +749,28 @@ def calculate_currency_exposure(
     )
 
     # 3.5) 並行預熱所有非現金持倉的技術訊號
-    non_cash_tickers = list({h.ticker for h in holdings if not h.is_cash})
-    if non_cash_tickers:
-        prewarm_signals_batch(non_cash_tickers)
+    stock_tickers = list(
+        {
+            h.ticker
+            for h in holdings
+            if not h.is_cash and h.category != StockCategory.CRYPTO
+        }
+    )
+    crypto_ids = list(
+        {
+            h.coingecko_id
+            for h in holdings
+            if (
+                not h.is_cash
+                and h.category == StockCategory.CRYPTO
+                and getattr(h, "coingecko_id", None)
+            )
+        }
+    )
+    if stock_tickers:
+        prewarm_signals_batch(stock_tickers)
+    if crypto_ids:
+        prewarm_crypto_prices(crypto_ids)
 
     # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
     currency_values, cash_currency_values, _ticker_agg = _compute_holding_market_values(
@@ -1074,6 +1147,15 @@ def calculate_withdrawal(
         if h.is_cash:
             market_value = h.quantity * fx
             price = 1.0
+        elif h.category == StockCategory.CRYPTO:
+            crypto_data = get_crypto_price(getattr(h, "coingecko_id", None), h.ticker)
+            price = crypto_data.get("price_usd") if crypto_data else None
+            if price is not None and isinstance(price, (int, float)):
+                market_value = h.quantity * price * fx
+            elif h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis * fx
+            else:
+                market_value = 0.0
         else:
             signals = get_technical_signals(h.ticker)
             price = signals.get("price") if signals else None

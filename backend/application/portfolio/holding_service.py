@@ -38,6 +38,7 @@ def _holding_to_dict(h: Holding) -> dict:
     return {
         "id": h.id,
         "ticker": h.ticker,
+        "coingecko_id": h.coingecko_id,
         "category": h.category,
         "quantity": h.quantity,
         "cost_basis": h.cost_basis,
@@ -48,6 +49,37 @@ def _holding_to_dict(h: Holding) -> dict:
         "purchase_fx_rate": h.purchase_fx_rate,
         "updated_at": h.updated_at.isoformat(),
     }
+
+
+def _normalize_coingecko_id(raw_value: str | None) -> str | None:
+    if raw_value is None:
+        return None
+    value = raw_value.strip().lower()
+    return value or None
+
+
+def _validate_crypto_payload(
+    *,
+    category: StockCategory,
+    currency: str,
+    coingecko_id: str | None,
+    lang: str,
+) -> tuple[str, float, str | None]:
+    if category != StockCategory.CRYPTO:
+        purchase_fx_rate = (
+            get_exchange_rate("USD", currency) if currency != "USD" else 1.0
+        )
+        return currency, purchase_fx_rate, None
+
+    if currency != "USD":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
+    return "USD", 1.0, _normalize_coingecko_id(coingecko_id)
 
 
 def _get_holding_or_raise(session: Session, holding_id: int, lang: str) -> Holding:
@@ -76,12 +108,24 @@ def list_holdings(session: Session) -> list[dict]:
 
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a new holding. Returns the created holding dict."""
-    currency = payload["currency"].strip().upper()
-    purchase_fx_rate = get_exchange_rate("USD", currency) if currency != "USD" else 1.0
+    input_category = payload["category"]
+    category = (
+        input_category
+        if isinstance(input_category, StockCategory)
+        else StockCategory(str(input_category))
+    )
+    input_currency = payload["currency"].strip().upper()
+    currency, purchase_fx_rate, coingecko_id = _validate_crypto_payload(
+        category=category,
+        currency=input_currency,
+        coingecko_id=payload.get("coingecko_id"),
+        lang=lang,
+    )
     holding = Holding(
         user_id=DEFAULT_USER_ID,
         ticker=payload["ticker"].strip().upper(),
-        category=payload["category"],
+        coingecko_id=coingecko_id,
+        category=category,
         quantity=payload["quantity"],
         cost_basis=payload.get("cost_basis"),
         broker=payload.get("broker"),
@@ -127,7 +171,12 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
     if "ticker" in payload:
         holding.ticker = payload["ticker"].strip().upper()
     if "category" in payload:
-        holding.category = payload["category"]
+        input_category = payload["category"]
+        holding.category = (
+            input_category
+            if isinstance(input_category, StockCategory)
+            else StockCategory(str(input_category))
+        )
     if "quantity" in payload:
         holding.quantity = payload["quantity"]
     if "cost_basis" in payload:
@@ -140,6 +189,20 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
         holding.account_type = payload["account_type"]
     if "is_cash" in payload:
         holding.is_cash = payload["is_cash"]
+
+    if "coingecko_id" in payload:
+        holding.coingecko_id = _normalize_coingecko_id(payload["coingecko_id"])
+
+    currency, purchase_fx_rate, normalized_coingecko_id = _validate_crypto_payload(
+        category=holding.category,
+        currency=holding.currency,
+        coingecko_id=holding.coingecko_id,
+        lang=lang,
+    )
+    holding.currency = currency
+    holding.purchase_fx_rate = purchase_fx_rate
+    holding.coingecko_id = normalized_coingecko_id
+
     holding.updated_at = datetime.now(UTC)
     saved = repo.save_holding(session, holding)
     return _holding_to_dict(saved)
@@ -160,6 +223,7 @@ def export_holdings(session: Session) -> list[dict]:
     return [
         {
             "ticker": h.ticker,
+            "coingecko_id": h.coingecko_id,
             "category": h.category.value
             if hasattr(h.category, "value")
             else h.category,
@@ -193,14 +257,29 @@ def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
         try:
             holding = Holding(
                 user_id=DEFAULT_USER_ID,
-                ticker=item["ticker"],
-                category=item["category"],
+                ticker=item["ticker"].strip().upper(),
+                coingecko_id=None,
+                category=(
+                    item["category"]
+                    if isinstance(item["category"], StockCategory)
+                    else StockCategory(str(item["category"]))
+                ),
                 quantity=item["quantity"],
                 cost_basis=item.get("cost_basis"),
                 broker=item.get("broker"),
-                currency=item["currency"],
+                currency=item["currency"].strip().upper(),
                 account_type=item.get("account_type"),
                 is_cash=item.get("is_cash", False),
+            )
+            (
+                holding.currency,
+                holding.purchase_fx_rate,
+                holding.coingecko_id,
+            ) = _validate_crypto_payload(
+                category=holding.category,
+                currency=holding.currency,
+                coingecko_id=item.get("coingecko_id"),
+                lang=lang,
             )
             session.add(holding)
             count += 1

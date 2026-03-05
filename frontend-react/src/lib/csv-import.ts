@@ -3,7 +3,13 @@ import type { components } from "@/api/types/generated"
 
 export type HoldingImportItem = components["schemas"]["HoldingImportItem"]
 
-type HoldingCategory = "Trend_Setter" | "Moat" | "Growth" | "Bond" | "Cash"
+type HoldingCategory =
+  | "Trend_Setter"
+  | "Moat"
+  | "Growth"
+  | "Bond"
+  | "Crypto"
+  | "Cash"
 
 export type CsvRow = Record<string, string>
 
@@ -54,6 +60,10 @@ export const CSV_CATEGORY_MAP: Record<string, HoldingCategory> = {
   moat: "Moat",
   growth: "Growth",
   bond: "Bond",
+  crypto: "Crypto",
+  cryptocurrency: "Crypto",
+  "digital asset": "Crypto",
+  bitcoin: "Crypto",
   cash: "Cash",
   stock: "Growth",
   equity: "Growth",
@@ -67,6 +77,7 @@ const ALLOWED_CATEGORIES = new Set<HoldingCategory>([
   "Moat",
   "Growth",
   "Bond",
+  "Crypto",
   "Cash",
 ])
 

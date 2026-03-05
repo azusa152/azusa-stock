@@ -2212,6 +2212,136 @@
         }
       }
     },
+    "/crypto/search": {
+      "get": {
+        "summary": "Search cryptocurrencies by name/symbol",
+        "operationId": "search_crypto_crypto_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CryptoSearchResult"
+                  },
+                  "title": "Response Search Crypto Crypto Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crypto/price/{ticker}": {
+      "get": {
+        "summary": "Get crypto price by ticker",
+        "operationId": "get_crypto_price_crypto_price__ticker__get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "coingecko_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Coingecko Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CryptoPrice"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/personas/templates": {
       "get": {
         "summary": "List persona templates",
@@ -3391,108 +3521,6 @@
         }
       }
     },
-    "/net-worth/seed-preview": {
-      "get": {
-        "summary": "Get seed preview from portfolio cash holdings",
-        "operationId": "get_net_worth_seed_preview_net_worth_seed_preview_get",
-        "parameters": [
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSeedPreviewResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/seed": {
-      "post": {
-        "summary": "Seed net worth items from portfolio cash holdings",
-        "operationId": "seed_net_worth_from_portfolio_net_worth_seed_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSeedResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/net-worth/items/{item_id}": {
       "put": {
         "summary": "Update net worth item",
@@ -3594,6 +3622,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/seed-preview": {
+      "get": {
+        "summary": "Get seed preview from portfolio cash holdings",
+        "operationId": "get_net_worth_seed_preview_net_worth_seed_preview_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSeedPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/seed": {
+      "post": {
+        "summary": "Seed net worth items from portfolio cash holdings",
+        "operationId": "seed_net_worth_from_portfolio_net_worth_seed_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSeedResponse"
                 }
               }
             }
@@ -6139,6 +6269,83 @@
         "title": "ConsensusStockItem",
         "description": "\u88ab\u591a\u4f4d\u5927\u5e2b\u540c\u6642\u6301\u6709\u7684\u5171\u8b58\u80a1\u7968\u3002"
       },
+      "CryptoPrice": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
+          },
+          "price_usd": {
+            "type": "number",
+            "title": "Price Usd"
+          },
+          "change_24h_pct": {
+            "type": "number",
+            "title": "Change 24H Pct"
+          },
+          "market_cap": {
+            "type": "number",
+            "title": "Market Cap",
+            "default": 0.0
+          },
+          "volume_24h": {
+            "type": "number",
+            "title": "Volume 24H",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "price_usd",
+          "change_24h_pct"
+        ],
+        "title": "CryptoPrice"
+      },
+      "CryptoSearchResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "thumb": {
+            "type": "string",
+            "title": "Thumb"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "thumb",
+          "ticker"
+        ],
+        "title": "CryptoSearchResult"
+      },
       "CurrencyBreakdown": {
         "properties": {
           "currency": {
@@ -7799,6 +8006,18 @@
             "minLength": 1,
             "title": "Ticker"
           },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
+          },
           "category": {
             "type": "string",
             "maxLength": 50,
@@ -7874,6 +8093,17 @@
             "type": "string",
             "title": "Ticker"
           },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
+          },
           "category": {
             "$ref": "#/components/schemas/StockCategory"
           },
@@ -7943,6 +8173,17 @@
           "ticker": {
             "type": "string",
             "title": "Ticker"
+          },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
           },
           "category": {
             "$ref": "#/components/schemas/StockCategory"
@@ -9665,7 +9906,8 @@
           "Moat",
           "Growth",
           "Bond",
-          "Cash"
+          "Cash",
+          "Crypto"
         ],
         "title": "StockCategory",
         "description": "\u80a1\u7968\u5206\u985e\uff1a\u98a8\u5411\u7403 / \u8b77\u57ce\u6cb3 / \u6210\u9577\u5922\u60f3 / \u50b5\u5238 / \u73fe\u91d1"
@@ -10210,6 +10452,17 @@
                 "type": "null"
               }
             ]
+          },
+          "coingecko_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coingecko Id"
           }
         },
         "type": "object",

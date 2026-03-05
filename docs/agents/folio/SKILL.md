@@ -82,6 +82,8 @@ Webhook response envelope: `{"success": true, "message": "...", "data": {}}`
 | `POST` | `/fx-watch/alert` | Analyze + send Telegram (with cooldown) |
 | `GET` | `/holdings` | All holdings |
 | `POST` | `/holdings` | Add holding (auto-snapshots FX rate) |
+| `GET` | `/crypto/search` | Search crypto by name/symbol (for holdings autocomplete) |
+| `GET` | `/crypto/price/{ticker}` | Crypto quote (CoinGecko primary, yfinance fallback) |
 | `GET` | `/holdings/export` | Export holdings (JSON) |
 | `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
 | `POST` | `/withdraw` | Smart withdrawal (Liquidity Waterfall) |
@@ -114,6 +116,7 @@ Common codes: `STOCK_NOT_FOUND` · `STOCK_ALREADY_EXISTS` · `HOLDING_NOT_FOUND`
 | `Growth` | 🚀 成長夢想 | High-volatility growth |
 | `Bond` | 🛡️ 債券 | Fixed-income ETFs |
 | `Cash` | 💵 現金 | Idle cash |
+| `Crypto` | ₿ 加密貨幣 | BTC/ETH and other crypto assets (24h market) |
 
 RSI thresholds are category-aware: Growth +2, Moat +1, Bond −3 offsets applied to all thresholds. Sell-side overbought baseline is stricter (`RSI_OVERBOUGHT=80`).
 

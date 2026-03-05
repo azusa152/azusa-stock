@@ -134,6 +134,9 @@ class Holding(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     ticker: str = Field(description="資產代號（股票代號或幣別如 USD）")
+    coingecko_id: str | None = Field(
+        default=None, description="CoinGecko 幣種 ID（加密貨幣用，可選）"
+    )
     category: StockCategory = Field(description="資產分類")
     quantity: float = Field(description="持有數量（股數或金額）")
     cost_basis: float | None = Field(default=None, description="成本基礎（每單位）")

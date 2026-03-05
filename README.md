@@ -52,6 +52,7 @@
 ### 資產配置
 
 - **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析、聰明提款
+- **加密貨幣追蹤** — 支援 BTC、ETH 等主流幣，整合 CoinGecko 報價（24h 漲跌 / 市值 / 交易量）並與股票、債券、現金同一投資組合檢視
 - **購買匯率快照 & FX 報酬拆解** — 新增持倉時自動記錄當下匯率（`purchase_fx_rate`），持倉明細同時顯示**本幣報酬**（本地股價漲跌 + 匯率影響）與**匯率報酬**，完整呈現跨幣別投資的真實損益
 - **壓力測試** — 模擬大盤崩盤情境（-50% 至 0%），基於 CAPM Beta 計算各持倉預期損失與痛苦等級（微風輕拂 / 有感修正 / 傷筋動骨 / 睡不著覺），檢視投資組合抗跌能力
 - **穿透式持倉 X-Ray** — 自動解析 ETF 成分股，計算直接+間接真實曝險，超門檻自動警告
@@ -543,7 +544,10 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 # 2. 將 Key 加入 .env（專案根目錄）
 FERNET_KEY=your-generated-fernet-key-here
 
-# 3. 重啟服務（自動加密既有 Token）
+# 3. （可選）若需要較高額度的加密貨幣報價 API，可設定 CoinGecko Pro Key
+COINGECKO_API_KEY=your-coingecko-pro-key
+
+# 4. 重啟服務（自動加密既有 Token）
 docker compose up --build -d
 ```
 
@@ -586,6 +590,8 @@ docker compose up --build -d
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
+| `GET` | `/crypto/search?q=bitcoin` | 搜尋加密貨幣（新增持倉 autocomplete） |
+| `GET` | `/crypto/price/{ticker}` | 取得加密貨幣價格（支援 `coingecko_id` 查詢參數） |
 | `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債） |
 | `GET` | `/net-worth/items` | 取得淨資產項目清單（資產 / 負債） |
 | `POST` | `/net-worth/items` | 新增淨資產項目 |
@@ -650,6 +656,8 @@ docker compose up --build -d
 | `DELETE` | `/holdings/{id}` | 刪除持倉 |
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
+| `GET` | `/crypto/search` | 搜尋加密貨幣（回傳 `id/symbol/name/thumb/ticker`） |
+| `GET` | `/crypto/price/{ticker}` | 取得加密貨幣即時價格（CoinGecko 主來源，yfinance fallback） |
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
 | `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債），支援 `?display_currency=USD` |
 | `GET` | `/net-worth/items` | 取得淨資產項目清單（含 stale 標記與顯示幣別換算） |

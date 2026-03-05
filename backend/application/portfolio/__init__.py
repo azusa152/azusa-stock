@@ -1,5 +1,11 @@
 """application.portfolio sub-package — re-exports public API for backward compatibility."""
 
+from application.portfolio.crypto_service import (  # noqa: F401
+    get_crypto_details,
+    get_crypto_holding_prices,
+    get_crypto_price_for_ticker,
+    search_crypto_coins,
+)
 from application.portfolio.fx_watch_service import (  # noqa: F401
     check_fx_watches,
     create_watch,

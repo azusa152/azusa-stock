@@ -4,6 +4,7 @@ export const CATEGORY_ICON_SHORT: Record<string, string> = {
   Growth: "🚀",
   Bond: "🛡️",
   Cash: "💵",
+  Crypto: "₿",
 }
 
 export const CATEGORY_COLOR_MAP: Record<string, string> = {
@@ -12,6 +13,7 @@ export const CATEGORY_COLOR_MAP: Record<string, string> = {
   Growth: "#F59E0B",
   Bond: "#8B5CF6",
   Cash: "#9CA3AF",
+  Crypto: "#F7931A",
 }
 
 export const CATEGORY_COLOR_FALLBACK = "#CBD5E1"
@@ -46,6 +48,7 @@ export const STOCK_CATEGORIES = [
   "Moat",
   "Growth",
   "Bond",
+  "Crypto",
   "Cash",
 ] as const
 
