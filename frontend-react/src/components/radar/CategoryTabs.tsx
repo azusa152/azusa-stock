@@ -9,6 +9,8 @@ import type { RadarStock, RemovedStock, RadarEnrichedStock, ResonanceMap, StockC
 
 interface Props {
   stocks: RadarStock[]
+  totalStocks: RadarStock[]
+  hasActiveFilters: boolean
   removedStocks: RemovedStock[]
   enrichedMap: Record<string, RadarEnrichedStock>
   resonanceMap: ResonanceMap
@@ -22,17 +24,26 @@ function inferMarket(ticker: string): string {
   return "US"
 }
 
-export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap, heldTickers }: Props) {
+export function CategoryTabs({
+  stocks,
+  totalStocks,
+  hasActiveFilters,
+  removedStocks,
+  enrichedMap,
+  resonanceMap,
+  heldTickers,
+}: Props) {
   const { t } = useTranslation()
   const [selectedMarket, setSelectedMarket] = useState("ALL")
 
   const activeStocks = stocks.filter((s) => s.is_active)
+  const allActiveStocks = totalStocks.filter((s) => s.is_active)
 
   // Derive available markets from active stocks
   const markets = useMemo(() => {
-    const set = new Set(activeStocks.map((s) => inferMarket(s.ticker)))
+    const set = new Set(allActiveStocks.map((s) => inferMarket(s.ticker)))
     return ["ALL", ...Array.from(set).sort()]
-  }, [activeStocks])
+  }, [allActiveStocks])
 
   // Apply market filter
   const filteredStocks = useMemo(
@@ -43,8 +54,19 @@ export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap,
     [activeStocks, selectedMarket],
   )
 
+  const totalMarketStocks = useMemo(
+    () =>
+      selectedMarket === "ALL"
+        ? allActiveStocks
+        : allActiveStocks.filter((s) => inferMarket(s.ticker) === selectedMarket),
+    [allActiveStocks, selectedMarket],
+  )
+
   const categoryMap = Object.fromEntries(
     RADAR_CATEGORIES.map((cat) => [cat, filteredStocks.filter((s) => s.category === cat)]),
+  ) as Record<StockCategory, RadarStock[]>
+  const totalCategoryMap = Object.fromEntries(
+    RADAR_CATEGORIES.map((cat) => [cat, totalMarketStocks.filter((s) => s.category === cat)]),
   ) as Record<StockCategory, RadarStock[]>
 
   const tabLabelKey: Record<string, string> = {
@@ -80,6 +102,9 @@ export function CategoryTabs({ stocks, removedStocks, enrichedMap, resonanceMap,
           {RADAR_CATEGORIES.map((cat) => (
             <TabsTrigger key={cat} value={cat} className="text-xs min-h-[44px]">
               {t(tabLabelKey[cat], { count: categoryMap[cat]?.length ?? 0 })}
+              {hasActiveFilters && (
+                <> ({categoryMap[cat]?.length ?? 0}/{totalCategoryMap[cat]?.length ?? 0})</>
+              )}
             </TabsTrigger>
           ))}
           <TabsTrigger value="archive" className="text-xs min-h-[44px]">

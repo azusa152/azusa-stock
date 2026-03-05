@@ -64,6 +64,7 @@
   - 彈性警報控制：獨立啟用/停用兩種偵測條件（OR 邏輯），自訂冷卻時間（1-168 小時）避免重複通知
   - 一鍵操作：內嵌切換啟用/停用按鈕、刪除按鈕，手動檢查（不發通知）、立即發送 Telegram 警報
 - **隱私模式** — 一鍵遮蔽金額與數量，設定儲存於資料庫，跨裝置同步
+- **淨資產追蹤 (Net Worth)** — 在 Asset Allocation 新增 Net Worth 分頁，追蹤非投資資產（房產 / 儲蓄 / 車輛）與負債（房貸 / 貸款 / 信用卡）；提供 1M/3M/6M/1Y/Max 趨勢圖、負債類型快速預設（房貸 / 貸款 / 信用卡）與每月最低還款欄位，Dashboard 也會顯示「投資資產 + 其他資產 - 負債」淨資產摘要
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 
@@ -87,6 +88,7 @@
 
 - **六頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、訊號回測、個人資產配置（War Room）、外匯監控、大師足跡
 - **雷達市場篩選器** — 當追蹤清單涵蓋多個市場（美股 + 台股 + 日股 + 港股）時，雷達頁面自動顯示市場篩選藥丸，一鍵只看指定市場的股票
+- **雷達多指標篩選** — 雷達頁面提供多指標篩選面板，可組合訊號、RSI/Bias/成交量區間、市值分桶、P/E、殖利率、產業、標籤與僅持有條件，即時顯示篩選結果
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、YTD TWR、配置圓餅圖、Drift 長條圖、訊號警報（即時 computed_signal，與雷達頁一致）、歷史績效折線圖（多期間選擇 + **多基準切換**：S&P 500 / VT 全球 / 日經 225 / 台灣加權 + **績效評語**自動生成 + 資料起始日標注 + 迷你走勢圖）、持倉含成本/報酬欄位、YTD 股息估算
 - **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
@@ -584,6 +586,13 @@ docker compose up --build -d
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
+| `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債） |
+| `GET` | `/net-worth/items` | 取得淨資產項目清單（資產 / 負債） |
+| `POST` | `/net-worth/items` | 新增淨資產項目 |
+| `PUT` | `/net-worth/items/{item_id}` | 更新淨資產項目 |
+| `DELETE` | `/net-worth/items/{item_id}` | 刪除淨資產項目（soft delete） |
+| `GET` | `/net-worth/history` | 取得淨資產歷史快照（`?days=30`） |
+| `POST` | `/net-worth/snapshot` | 手動觸發淨資產快照 |
 | `GET` | `/snapshots` | 歷史投資組合快照（`?days=30` 或 `?start=&end=`） |
 | `GET` | `/snapshots/twr` | 時間加權報酬率（YTD 或自訂日期範圍） |
 | `POST` | `/snapshots/take` | 手動觸發當日快照建立 |
@@ -642,6 +651,13 @@ docker compose up --build -d
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
+| `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債），支援 `?display_currency=USD` |
+| `GET` | `/net-worth/items` | 取得淨資產項目清單（含 stale 標記與顯示幣別換算） |
+| `POST` | `/net-worth/items` | 新增淨資產項目（`kind=asset|liability`、`category`、`value`、`currency`） |
+| `PUT` | `/net-worth/items/{item_id}` | 更新淨資產項目（支援部分更新） |
+| `DELETE` | `/net-worth/items/{item_id}` | 刪除淨資產項目（soft delete，保留歷史） |
+| `GET` | `/net-worth/history` | 取得淨資產歷史快照，支援 `?days=30` 與 `?display_currency=` |
+| `POST` | `/net-worth/snapshot` | 手動觸發淨資產快照建立（upsert 當日資料） |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），支援 `display_currency` 指定幣別、`notify` 控制 Telegram 通知 |
 | `GET` | `/stress-test` | 壓力測試分析（scenario_drop_pct: -50 至 0，display_currency），回傳組合 Beta、預期損失、痛苦等級、各持倉明細 |

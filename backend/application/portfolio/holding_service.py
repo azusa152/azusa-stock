@@ -98,6 +98,9 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
 def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a cash holding. Returns the created holding dict."""
     currency_upper = payload["currency"].strip().upper()
+    purchase_fx_rate = (
+        get_exchange_rate("USD", currency_upper) if currency_upper != "USD" else 1.0
+    )
     holding = Holding(
         user_id=DEFAULT_USER_ID,
         ticker=currency_upper,
@@ -108,6 +111,7 @@ def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
         currency=currency_upper,
         account_type=payload.get("account_type"),
         is_cash=True,
+        purchase_fx_rate=purchase_fx_rate,
     )
     saved = repo.save_holding(session, holding)
     logger.info("新增現金持倉：%s %.2f", saved.ticker, saved.quantity)

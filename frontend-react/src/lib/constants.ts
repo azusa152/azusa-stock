@@ -73,6 +73,14 @@ export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 
 export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
+export const NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"] as const
+export const NET_WORTH_LIABILITY_CATEGORIES = [
+  "mortgage",
+  "loan",
+  "credit_card",
+  "other_liability",
+] as const
+export const NET_WORTH_STALE_DAYS = 90
 
 /** Shared chart color palette for pie/bar/treemap charts without category semantics. */
 export const CHART_COLOR_PALETTE = [

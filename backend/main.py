@@ -26,6 +26,7 @@ from api.routes.fx_watch_routes import router as fx_watch_router
 from api.routes.guru_routes import resonance_router
 from api.routes.guru_routes import router as guru_router
 from api.routes.holding_routes import router as holding_router
+from api.routes.networth_routes import router as networth_router
 from api.routes.persona_routes import router as persona_router
 from api.routes.preferences_routes import router as preferences_router
 from api.routes.scan_routes import router as scan_router
@@ -159,6 +160,7 @@ app.include_router(scan_router, dependencies=auth_deps)
 app.include_router(backtest_router, dependencies=auth_deps)
 app.include_router(persona_router, dependencies=auth_deps)
 app.include_router(holding_router, dependencies=auth_deps)
+app.include_router(networth_router, dependencies=auth_deps)
 app.include_router(telegram_router, dependencies=auth_deps)
 app.include_router(preferences_router, dependencies=auth_deps)
 app.include_router(forex_router, dependencies=auth_deps)

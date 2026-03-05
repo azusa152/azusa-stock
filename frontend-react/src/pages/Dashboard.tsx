@@ -17,6 +17,7 @@ import {
   useGreatMinds,
 } from "@/api/hooks/useDashboard"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
+import { useNetWorthHistory, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import { TopHoldings } from "@/components/dashboard/TopHoldings"
 import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
+import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -59,6 +61,8 @@ export default function Dashboard() {
   const { data: snapshots, isLoading: snapshotsLoading } = useSnapshots(730)
   const { data: twr } = useTwr()
   const { data: profile } = useProfile()
+  const { data: netWorthSummary, isLoading: netWorthLoading } = useNetWorthSummary(displayCurrency)
+  const { data: netWorthHistory } = useNetWorthHistory(30, displayCurrency)
 
   // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
   // both depend on it. Its response is cached on the backend (60s TTL) so repeat
@@ -150,6 +154,13 @@ export default function Dashboard() {
         enrichedStocks={enrichedStocks ?? []}
         holdings={holdings ?? []}
         isLoading={heroLoading}
+      />
+
+      {/* Net Worth Summary */}
+      <NetWorthSummary
+        summary={netWorthSummary}
+        history={netWorthHistory ?? []}
+        isLoading={netWorthLoading}
       />
 
       {/* Stock Heat Map */}
