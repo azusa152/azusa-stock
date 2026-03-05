@@ -170,6 +170,8 @@
     "button_add_holdings": "💼 Add Holdings",
     "market_sentiment": "Market Sentiment",
     "total_market_value": "Total Market Value",
+    "net_worth_title": "Net Worth",
+    "net_worth_manage": "Manage in Allocation",
     "health_score": "Health Score",
     "health_delta": "{{normal}}/{{total}} Normal",
     "allocation_title": "🎯 Target vs Actual Allocation",
@@ -662,7 +664,8 @@
       "portfolio": "📊 Portfolio",
       "risk": "🛡️ Risk",
       "actions": "💡 Actions",
-      "settings": "⚙️ Settings"
+      "settings": "⚙️ Settings",
+      "net_worth": "💎 Net Worth"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
     "step2_title": "💼 Step 2 — Holdings Management",
@@ -1498,5 +1501,43 @@
     "tier_1": "Legendary",
     "tier_2": "Elite",
     "tier_3": "Notable"
+  },
+  "net_worth": {
+    "title": "💎 Net Worth",
+    "caption": "Track all assets and liabilities beyond your portfolio",
+    "manage": "Manage in Allocation",
+    "summary_formula": "Net Worth = Investments + Other Assets - Liabilities",
+    "empty": "Add your assets and liabilities to see your full net worth.",
+    "add_item": "Add Item",
+    "items_title": "Items",
+    "overview_title": "Overview",
+    "kind": {
+      "asset": "Asset",
+      "liability": "Liability"
+    },
+    "categories": {
+      "property": "Property",
+      "savings": "Savings",
+      "vehicle": "Vehicle",
+      "other_asset": "Other Asset",
+      "mortgage": "Mortgage",
+      "loan": "Loan",
+      "credit_card": "Credit Card",
+      "other_liability": "Other Liability"
+    },
+    "fields": {
+      "name": "Name",
+      "kind": "Type",
+      "category": "Category",
+      "value": "Value",
+      "currency": "Currency",
+      "interest_rate": "Interest Rate (%)",
+      "note": "Note"
+    },
+    "stale_warning": "Last updated {{days}} days ago. Consider reviewing this value.",
+    "last_updated_days": "Updated {{days}}d ago",
+    "segment_investments": "Investments",
+    "segment_assets": "Assets",
+    "segment_liabilities": "Debt"
   }
 }

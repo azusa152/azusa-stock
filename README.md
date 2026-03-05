@@ -64,6 +64,7 @@
   - 彈性警報控制：獨立啟用/停用兩種偵測條件（OR 邏輯），自訂冷卻時間（1-168 小時）避免重複通知
   - 一鍵操作：內嵌切換啟用/停用按鈕、刪除按鈕，手動檢查（不發通知）、立即發送 Telegram 警報
 - **隱私模式** — 一鍵遮蔽金額與數量，設定儲存於資料庫，跨裝置同步
+- **淨資產追蹤 (Net Worth)** — 在 Asset Allocation 新增 Net Worth 分頁，追蹤非投資資產（房產 / 儲蓄 / 車輛）與負債（房貸 / 貸款 / 信用卡），並在 Dashboard 顯示「投資資產 + 其他資產 - 負債」的淨資產摘要與 30 日趨勢
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 
@@ -585,6 +586,13 @@ docker compose up --build -d
 | `GET` | `/summary` | 純文字投資組合摘要（AI agent 適用，含總值 + 日漲跌 + 前三名 + 偏移 + Smart Money） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
 | `GET` | `/rebalance` | 再平衡分析（含 X-Ray 穿透式持倉） |
+| `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債） |
+| `GET` | `/net-worth/items` | 取得淨資產項目清單（資產 / 負債） |
+| `POST` | `/net-worth/items` | 新增淨資產項目 |
+| `PUT` | `/net-worth/items/{item_id}` | 更新淨資產項目 |
+| `DELETE` | `/net-worth/items/{item_id}` | 刪除淨資產項目（soft delete） |
+| `GET` | `/net-worth/history` | 取得淨資產歷史快照（`?days=30`） |
+| `POST` | `/net-worth/snapshot` | 手動觸發淨資產快照 |
 | `GET` | `/snapshots` | 歷史投資組合快照（`?days=30` 或 `?start=&end=`） |
 | `GET` | `/snapshots/twr` | 時間加權報酬率（YTD 或自訂日期範圍） |
 | `POST` | `/snapshots/take` | 手動觸發當日快照建立 |
@@ -643,6 +651,13 @@ docker compose up --build -d
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
+| `GET` | `/net-worth` | 取得淨資產摘要（投資資產 + 其他資產 - 負債），支援 `?display_currency=USD` |
+| `GET` | `/net-worth/items` | 取得淨資產項目清單（含 stale 標記與顯示幣別換算） |
+| `POST` | `/net-worth/items` | 新增淨資產項目（`kind=asset|liability`、`category`、`value`、`currency`） |
+| `PUT` | `/net-worth/items/{item_id}` | 更新淨資產項目（支援部分更新） |
+| `DELETE` | `/net-worth/items/{item_id}` | 刪除淨資產項目（soft delete，保留歷史） |
+| `GET` | `/net-worth/history` | 取得淨資產歷史快照，支援 `?days=30` 與 `?display_currency=` |
+| `POST` | `/net-worth/snapshot` | 手動觸發淨資產快照建立（upsert 當日資料） |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），支援 `display_currency` 指定幣別、`notify` 控制 Telegram 通知 |
 | `GET` | `/stress-test` | 壓力測試分析（scenario_drop_pct: -50 至 0，display_currency），回傳組合 Beta、預期損失、痛苦等級、各持倉明細 |

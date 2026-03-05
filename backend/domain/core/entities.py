@@ -304,6 +304,54 @@ class PortfolioSnapshot(SQLModel, table=True):
     )
 
 
+class NetWorthItem(SQLModel, table=True):
+    """淨資產追蹤項目（資產 / 負債）。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    name: str = Field(description="項目名稱（如：自住房、房貸）")
+    kind: str = Field(description="項目類型：asset / liability")
+    category: str = Field(description="子分類（如 property, mortgage）")
+    value: float = Field(description="項目金額（正數）")
+    currency: str = Field(default="USD", description="項目幣別")
+    fx_rate_to_usd: float | None = Field(
+        default=None, description="1 單位項目幣別 = ? 單位 USD（手動提供，可選）"
+    )
+    interest_rate: float | None = Field(default=None, description="年利率（負債可選）")
+    note: str = Field(default="", description="備註")
+    is_active: bool = Field(default=True, description="是否啟用（軟刪除）")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="建立時間",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新時間",
+    )
+
+
+class NetWorthSnapshot(SQLModel, table=True):
+    """每日淨資產快照（供 Dashboard 趨勢圖使用）。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    snapshot_date: date = Field(
+        index=True, unique=True, description="快照日期（每日唯一）"
+    )
+    investment_value: float = Field(description="投資資產總額")
+    other_assets_value: float = Field(description="非投資資產總額")
+    liabilities_value: float = Field(description="負債總額")
+    net_worth: float = Field(description="淨資產 = 投資 + 資產 - 負債")
+    display_currency: str = Field(default="USD", description="顯示幣別")
+    breakdown: str = Field(
+        default="{}",
+        description='分類明細 JSON，如 {"asset":{"property":1000},"liability":{"mortgage":500}}',
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="建立時間",
+    )
+
+
 class FXWatchConfig(SQLModel, table=True):
     """外匯換匯時機監控配置。"""
 

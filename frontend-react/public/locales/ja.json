@@ -170,6 +170,8 @@
     "button_add_holdings": "💼 保有銘柄を追加",
     "market_sentiment": "市場センチメント",
     "total_market_value": "ポートフォリオ評価額",
+    "net_worth_title": "純資産",
+    "net_worth_manage": "配分ページで管理",
     "health_score": "健全性スコア",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目標 vs 実際の配分",
@@ -662,7 +664,8 @@
       "portfolio": "📊 ポートフォリオ",
       "risk": "🛡️ リスク分析",
       "actions": "💡 アクション",
-      "settings": "⚙️ 設定"
+      "settings": "⚙️ 設定",
+      "net_worth": "💎 純資産"
     },
     "step1_title": "🎯 Step 1 — 目標配分の設定",
     "step2_title": "💼 Step 2 — 保有銘柄管理",
@@ -1498,5 +1501,43 @@
     "tier_1": "レジェンド",
     "tier_2": "エリート",
     "tier_3": "注目"
+  },
+  "net_worth": {
+    "title": "💎 純資産",
+    "caption": "投資以外の資産と負債を追跡",
+    "manage": "配分ページで管理",
+    "summary_formula": "純資産 = 投資資産 + その他資産 - 負債",
+    "empty": "資産と負債を追加すると純資産が表示されます。",
+    "add_item": "項目を追加",
+    "items_title": "項目一覧",
+    "overview_title": "概要",
+    "kind": {
+      "asset": "資産",
+      "liability": "負債"
+    },
+    "categories": {
+      "property": "不動産",
+      "savings": "預金",
+      "vehicle": "車両",
+      "other_asset": "その他資産",
+      "mortgage": "住宅ローン",
+      "loan": "ローン",
+      "credit_card": "クレジットカード",
+      "other_liability": "その他負債"
+    },
+    "fields": {
+      "name": "名称",
+      "kind": "タイプ",
+      "category": "カテゴリ",
+      "value": "金額",
+      "currency": "通貨",
+      "interest_rate": "金利 (%)",
+      "note": "メモ"
+    },
+    "stale_warning": "{{days}} 日間更新されていません。金額の見直しをおすすめします。",
+    "last_updated_days": "{{days}}日前に更新",
+    "segment_investments": "投資",
+    "segment_assets": "資産",
+    "segment_liabilities": "負債"
   }
 }

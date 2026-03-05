@@ -75,6 +75,8 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
         # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
         "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
+        # NetWorthItem: optional manual FX rate for zero-external-call conversion
+        "ALTER TABLE networthitem ADD COLUMN fx_rate_to_usd REAL;",
     ]
 
     with engine.connect() as conn:

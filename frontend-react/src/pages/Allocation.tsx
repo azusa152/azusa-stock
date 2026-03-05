@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -15,16 +16,25 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { useNetWorthItems, useNetWorthSummary } from "@/api/hooks/useNetWorth"
+import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverview"
+import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
+import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
 
 export default function Allocation() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("portfolio")
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "net-worth" ? "net-worth" : "portfolio")
+  const [netWorthSheetOpen, setNetWorthSheetOpen] = useState(false)
+  const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
   const [displayCurrency, setDisplayCurrency] = useState("USD")
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading } = useHoldings()
+  const { data: netWorthSummary } = useNetWorthSummary(displayCurrency, activeTab === "net-worth")
+  const { data: netWorthItems } = useNetWorthItems(displayCurrency, activeTab === "net-worth")
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
@@ -102,6 +112,7 @@ export default function Allocation() {
           <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
           <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
           <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
+          <TabsTrigger value="net-worth" className="min-h-[44px]">{t("allocation.tab.net_worth")}</TabsTrigger>
           <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
         </TabsList>
 
@@ -135,6 +146,34 @@ export default function Allocation() {
           <SmartWithdrawal privacyMode={privacyMode} />
         </TabsContent>
 
+        {/* Net Worth tab */}
+        <TabsContent value="net-worth" className="mt-4 space-y-4">
+          <div className="rounded-md border border-border">
+            <button
+              onClick={() => setNetWorthSopOpen((v) => !v)}
+              className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
+            >
+              <span>{t("net_worth.title")}</span>
+              <span className="text-muted-foreground text-xs">{netWorthSopOpen ? "▲" : "▼"}</span>
+            </button>
+            {netWorthSopOpen && (
+              <div className="px-4 pb-4 text-xs text-muted-foreground space-y-1">
+                <p>{t("net_worth.summary_formula")}</p>
+                <p>{t("net_worth.empty")}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={() => setNetWorthSheetOpen(true)} className="text-xs min-h-[44px]">
+              {t("net_worth.add_item")}
+            </Button>
+          </div>
+
+          <NetWorthOverview summary={netWorthSummary} privacyMode={privacyMode} />
+          <NetWorthItemsTable items={netWorthItems ?? []} privacyMode={privacyMode} />
+        </TabsContent>
+
         {/* Settings tab */}
         <TabsContent value="settings" className="mt-4 space-y-8">
           <TargetAllocation />
@@ -149,6 +188,7 @@ export default function Allocation() {
 
       {/* Add Holding sidebar sheet */}
       <AddHoldingSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <AddNetWorthItemSheet open={netWorthSheetOpen} onClose={() => setNetWorthSheetOpen(false)} />
     </div>
   )
 }

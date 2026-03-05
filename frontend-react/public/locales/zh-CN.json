@@ -170,6 +170,8 @@
     "button_add_holdings": "💼 前往新增持仓",
     "market_sentiment": "市场情绪",
     "total_market_value": "总市值",
+    "net_worth_title": "净资产",
+    "net_worth_manage": "前往配置管理",
     "health_score": "健康分数",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目标 vs 实际配置",
@@ -662,7 +664,8 @@
       "portfolio": "📊 投资组合",
       "risk": "🛡️ 风险分析",
       "actions": "💡 操作建议",
-      "settings": "⚙️ 设定"
+      "settings": "⚙️ 设定",
+      "net_worth": "💎 净资产"
     },
     "step1_title": "🎯 Step 1 — 设定目标配置",
     "step2_title": "💼 Step 2 — 持仓管理",
@@ -1498,5 +1501,43 @@
     "tier_1": "传奇",
     "tier_2": "精英",
     "tier_3": "值得关注"
+  },
+  "net_worth": {
+    "title": "💎 净资产",
+    "caption": "追踪投资组合外的资产与负债",
+    "manage": "前往配置页管理",
+    "summary_formula": "净资产 = 投资资产 + 其他资产 - 负债",
+    "empty": "新增资产与负债后即可看到完整净资产。",
+    "add_item": "新增项目",
+    "items_title": "项目列表",
+    "overview_title": "总览",
+    "kind": {
+      "asset": "资产",
+      "liability": "负债"
+    },
+    "categories": {
+      "property": "房产",
+      "savings": "储蓄",
+      "vehicle": "车辆",
+      "other_asset": "其他资产",
+      "mortgage": "房贷",
+      "loan": "贷款",
+      "credit_card": "信用卡",
+      "other_liability": "其他负债"
+    },
+    "fields": {
+      "name": "名称",
+      "kind": "类型",
+      "category": "分类",
+      "value": "金额",
+      "currency": "币别",
+      "interest_rate": "利率 (%)",
+      "note": "备注"
+    },
+    "stale_warning": "此项目已 {{days}} 天未更新，建议重新确认数值。",
+    "last_updated_days": "{{days}} 天前更新",
+    "segment_investments": "投资",
+    "segment_assets": "资产",
+    "segment_liabilities": "负债"
   }
 }

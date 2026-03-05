@@ -3221,6 +3221,422 @@
         }
       }
     },
+    "/net-worth": {
+      "get": {
+        "summary": "Get net worth summary",
+        "operationId": "get_net_worth_net_worth_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/items": {
+      "get": {
+        "summary": "List net worth items",
+        "operationId": "list_net_worth_items_net_worth_items_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NetWorthItemResponse"
+                  },
+                  "title": "Response List Net Worth Items Net Worth Items Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create net worth item",
+        "operationId": "create_net_worth_item_net_worth_items_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetWorthItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/items/{item_id}": {
+      "put": {
+        "summary": "Update net worth item",
+        "operationId": "update_net_worth_item_net_worth_items__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNetWorthItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete net worth item",
+        "operationId": "delete_net_worth_item_net_worth_items__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/history": {
+      "get": {
+        "summary": "Get net worth history",
+        "operationId": "get_net_worth_history_net_worth_history_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 730,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NetWorthSnapshotResponse"
+                  },
+                  "title": "Response Get Net Worth History Net Worth History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net-worth/snapshot": {
+      "post": {
+        "summary": "Take net worth snapshot",
+        "operationId": "take_net_worth_snapshot_net_worth_snapshot_post",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthSnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/telegram": {
       "get": {
         "summary": "Get Telegram settings",
@@ -7617,6 +8033,294 @@
         "title": "MessageResponse",
         "description": "\u901a\u7528\u64cd\u4f5c\u7d50\u679c\u56de\u61c9\uff08\u522a\u9664\u3001\u505c\u7528\u3001\u91cd\u65b0\u555f\u7528\u3001\u532f\u5165\u7b49\uff09\u3002"
       },
+      "NetWorthItemRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^(asset|liability)$",
+            "title": "Kind"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "value": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Value"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "USD"
+          },
+          "fx_rate_to_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate To Usd"
+          },
+          "interest_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interest Rate"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "category",
+          "value"
+        ],
+        "title": "NetWorthItemRequest",
+        "description": "POST /net-worth/items request."
+      },
+      "NetWorthItemResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "value_display": {
+            "type": "number",
+            "title": "Value Display"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "fx_rate_to_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate To Usd"
+          },
+          "interest_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interest Rate"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          },
+          "days_since_update": {
+            "type": "integer",
+            "title": "Days Since Update"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "category",
+          "value",
+          "value_display",
+          "currency",
+          "is_active",
+          "is_stale",
+          "days_since_update",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NetWorthItemResponse",
+        "description": "Single net worth item response."
+      },
+      "NetWorthSnapshotResponse": {
+        "properties": {
+          "snapshot_date": {
+            "type": "string",
+            "title": "Snapshot Date"
+          },
+          "investment_value": {
+            "type": "number",
+            "title": "Investment Value"
+          },
+          "other_assets_value": {
+            "type": "number",
+            "title": "Other Assets Value"
+          },
+          "liabilities_value": {
+            "type": "number",
+            "title": "Liabilities Value"
+          },
+          "net_worth": {
+            "type": "number",
+            "title": "Net Worth"
+          },
+          "display_currency": {
+            "type": "string",
+            "title": "Display Currency",
+            "default": "USD"
+          },
+          "breakdown": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Breakdown",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshot_date",
+          "investment_value",
+          "other_assets_value",
+          "liabilities_value",
+          "net_worth"
+        ],
+        "title": "NetWorthSnapshotResponse",
+        "description": "GET /net-worth/history entry."
+      },
+      "NetWorthSummaryResponse": {
+        "properties": {
+          "display_currency": {
+            "type": "string",
+            "title": "Display Currency",
+            "default": "USD"
+          },
+          "investment_value": {
+            "type": "number",
+            "title": "Investment Value"
+          },
+          "other_assets_value": {
+            "type": "number",
+            "title": "Other Assets Value"
+          },
+          "liabilities_value": {
+            "type": "number",
+            "title": "Liabilities Value"
+          },
+          "net_worth": {
+            "type": "number",
+            "title": "Net Worth"
+          },
+          "breakdown": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Breakdown"
+          },
+          "stale_count": {
+            "type": "integer",
+            "title": "Stale Count",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NetWorthItemResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "calculated_at": {
+            "type": "string",
+            "title": "Calculated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "investment_value",
+          "other_assets_value",
+          "liabilities_value",
+          "net_worth",
+          "breakdown",
+          "calculated_at"
+        ],
+        "title": "NetWorthSummaryResponse",
+        "description": "GET /net-worth summary response."
+      },
       "PersonaTemplateResponse": {
         "properties": {
           "id": {
@@ -9298,6 +10002,112 @@
         "type": "object",
         "title": "UpdateHoldingRequest",
         "description": "PUT /holdings/{id} \u8acb\u6c42 Body \u2014 \u6240\u6709\u6b04\u4f4d\u5747\u70ba\u9078\u586b\uff0c\u50c5\u66f4\u65b0\u63d0\u4f9b\u7684\u6b04\u4f4d\u3002"
+      },
+      "UpdateNetWorthItemRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(asset|liability)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 3,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "fx_rate_to_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate To Usd"
+          },
+          "interest_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interest Rate"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "UpdateNetWorthItemRequest",
+        "description": "PUT /net-worth/items/{item_id} request (partial update)."
       },
       "VIXData": {
         "properties": {

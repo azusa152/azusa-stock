@@ -249,7 +249,34 @@ check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to
 	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json
 
 backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors CI security job)
-	cd $(BACKEND_DIR) && uv run pip-audit --desc --ignore-vuln CVE-2025-69872
+	@set -e; \
+	attempt=1; \
+	max_attempts=3; \
+	while [ $$attempt -le $$max_attempts ]; do \
+		echo "backend-security: pip-audit attempt $$attempt/$$max_attempts"; \
+		log_file=$$(mktemp); \
+		if cd $(BACKEND_DIR) && uv run pip-audit --desc --ignore-vuln CVE-2025-69872 > "$$log_file" 2>&1; then \
+			cat "$$log_file"; \
+			rm -f "$$log_file"; \
+			exit 0; \
+		fi; \
+		if rg -q "SSLError|MaxRetryError|UNEXPECTED_EOF_WHILE_READING|Connection.*timed out|Temporary failure in name resolution" "$$log_file"; then \
+			cat "$$log_file"; \
+			rm -f "$$log_file"; \
+			if [ $$attempt -lt $$max_attempts ]; then \
+				sleep_seconds=$$((attempt * 3)); \
+				echo "backend-security: transient network error, retrying in $$sleep_seconds seconds..."; \
+				sleep $$sleep_seconds; \
+				attempt=$$((attempt + 1)); \
+				continue; \
+			fi; \
+			echo "backend-security: failed after $$max_attempts attempts due to transient network issues."; \
+			exit 1; \
+		fi; \
+		cat "$$log_file"; \
+		rm -f "$$log_file"; \
+		exit 1; \
+	done
 
 check-ci: .venv-check ## Verify make ci covers all GitHub CI pipeline jobs
 	cd $(BACKEND_DIR) && uv run python ../scripts/check_ci_completeness.py

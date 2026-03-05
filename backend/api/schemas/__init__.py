@@ -55,6 +55,13 @@ from api.schemas.guru import (  # noqa: F401
     SyncAllResponse,
     SyncResponse,
 )
+from api.schemas.networth import (  # noqa: F401
+    NetWorthItemRequest,
+    NetWorthItemResponse,
+    NetWorthSnapshotResponse,
+    NetWorthSummaryResponse,
+    UpdateNetWorthItemRequest,
+)
 from api.schemas.notification import (  # noqa: F401
     PersonaTemplateResponse,
     PreferencesRequest,

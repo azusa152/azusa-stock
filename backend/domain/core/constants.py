@@ -205,6 +205,16 @@ DISK_FOREX_TTL = 86400  # 24 hours
 # ---------------------------------------------------------------------------
 SUPPORTED_CURRENCIES = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 
+# Net Worth tracking categories
+NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"]
+NET_WORTH_LIABILITY_CATEGORIES = [
+    "mortgage",
+    "loan",
+    "credit_card",
+    "other_liability",
+]
+NET_WORTH_STALE_DAYS = 90
+
 # ---------------------------------------------------------------------------
 # Price History Cache
 # ---------------------------------------------------------------------------
@@ -476,6 +486,7 @@ ERROR_STOCK_ALREADY_INACTIVE = "STOCK_ALREADY_INACTIVE"
 ERROR_STOCK_ALREADY_ACTIVE = "STOCK_ALREADY_ACTIVE"
 ERROR_CATEGORY_UNCHANGED = "CATEGORY_UNCHANGED"
 ERROR_HOLDING_NOT_FOUND = "HOLDING_NOT_FOUND"
+ERROR_NET_WORTH_ITEM_NOT_FOUND = "NET_WORTH_ITEM_NOT_FOUND"
 ERROR_PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
 ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS"
 ERROR_DIGEST_IN_PROGRESS = "DIGEST_IN_PROGRESS"

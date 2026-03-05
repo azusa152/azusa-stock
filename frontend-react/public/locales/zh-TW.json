@@ -170,6 +170,8 @@
     "button_add_holdings": "💼 前往新增持倉",
     "market_sentiment": "市場情緒",
     "total_market_value": "總市值",
+    "net_worth_title": "淨資產",
+    "net_worth_manage": "前往配置管理",
     "health_score": "健康分數",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目標 vs 實際配置",
@@ -662,7 +664,8 @@
       "portfolio": "📊 投資組合",
       "risk": "🛡️ 風險分析",
       "actions": "💡 操作建議",
-      "settings": "⚙️ 設定"
+      "settings": "⚙️ 設定",
+      "net_worth": "💎 淨資產"
     },
     "step1_title": "🎯 Step 1 — 設定目標配置",
     "step2_title": "💼 Step 2 — 持倉管理",
@@ -1498,5 +1501,43 @@
     "tier_1": "傳奇",
     "tier_2": "菁英",
     "tier_3": "值得關注"
+  },
+  "net_worth": {
+    "title": "💎 淨資產",
+    "caption": "追蹤投資組合外的資產與負債",
+    "manage": "前往配置頁管理",
+    "summary_formula": "淨資產 = 投資資產 + 其他資產 - 負債",
+    "empty": "新增資產與負債後即可看到完整淨資產。",
+    "add_item": "新增項目",
+    "items_title": "項目列表",
+    "overview_title": "總覽",
+    "kind": {
+      "asset": "資產",
+      "liability": "負債"
+    },
+    "categories": {
+      "property": "房產",
+      "savings": "儲蓄",
+      "vehicle": "車輛",
+      "other_asset": "其他資產",
+      "mortgage": "房貸",
+      "loan": "貸款",
+      "credit_card": "信用卡",
+      "other_liability": "其他負債"
+    },
+    "fields": {
+      "name": "名稱",
+      "kind": "類型",
+      "category": "分類",
+      "value": "金額",
+      "currency": "幣別",
+      "interest_rate": "利率 (%)",
+      "note": "備註"
+    },
+    "stale_warning": "此項目已 {{days}} 天未更新，建議重新確認數值。",
+    "last_updated_days": "{{days}} 天前更新",
+    "segment_investments": "投資",
+    "segment_assets": "資產",
+    "segment_liabilities": "負債"
   }
 }
