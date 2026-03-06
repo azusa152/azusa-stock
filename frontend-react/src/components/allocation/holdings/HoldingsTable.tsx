@@ -16,6 +16,16 @@ function fmtMasked(v: number | null | undefined, privacyMode: boolean, decimals 
   return fmt(v, decimals)
 }
 
+function fmtQuantity(ticker: string, category: string, quantity: number, privacyMode: boolean): string {
+  if (privacyMode) return "***"
+  if (category !== "Crypto") return fmt(quantity, 2)
+  const max = ticker.startsWith("BTC") ? 8 : ticker.startsWith("ETH") ? 6 : 4
+  return quantity.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: max,
+  })
+}
+
 function fmtPct(v: number, showSign = true): string {
   const sign = showSign && v >= 0 ? "+" : ""
   return `${sign}${v.toFixed(2)}%`
@@ -52,6 +62,7 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
           </thead>
           <tbody>
             {holdings.map((h, i) => {
+              const isCrypto = h.category === "Crypto"
               const fxReturn = computeFxReturn(h.purchase_fx_rate, h.current_fx_rate)
               const showFxBreakdown = h.purchase_fx_rate != null && fxReturn != null && h.currency !== "USD"
 
@@ -65,7 +76,7 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
                 <tr key={i} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
-                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.quantity, privacyMode, 2)}</td>
+                  <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
                   <td className="py-0.5 pr-2 text-right">{fmtMasked(h.market_value, privacyMode)}</td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
@@ -75,8 +86,13 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
                     <div
                       style={{ color: h.change_pct != null ? (h.change_pct >= 0 ? "#22c55e" : "#ef4444") : undefined }}
                     >
-                      {h.change_pct != null ? fmtPct(h.change_pct) : "—"}
+                      {h.change_pct != null ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}` : "—"}
                     </div>
+                    {isCrypto && h.change_pct != null && Math.abs(h.change_pct) >= 5 && (
+                      <div className="text-[10px] text-amber-500 leading-tight mt-0.5">
+                        {t("allocation.crypto.volatility_warning")}
+                      </div>
+                    )}
                     {showFxBreakdown && (
                       <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
                         {homeReturn != null && (

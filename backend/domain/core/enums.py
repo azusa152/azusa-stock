@@ -20,6 +20,7 @@ class StockCategory(StrEnum):
     GROWTH = "Growth"
     BOND = "Bond"
     CASH = "Cash"
+    CRYPTO = "Crypto"
 
 
 class MoatStatus(StrEnum):
@@ -81,6 +82,7 @@ CATEGORY_LABEL: dict[str, str] = {
     "Growth": "成長夢想",
     "Bond": "債券",
     "Cash": "現金",
+    "Crypto": "加密貨幣",
 }
 
 

@@ -603,7 +603,7 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
 
         # 機構持倉 (best-effort；批次預熱路徑 stock=None 故跳過，待首次 cache miss 時再補抓)
         institutional_holders = None
-        if stock is not None:
+        if stock is not None and not ticker.startswith("^"):
             try:
                 _rate_limiter.wait()
                 holders_df = stock.institutional_holders

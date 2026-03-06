@@ -12,12 +12,14 @@ interface Props {
   rebalance?: RebalanceResponse | null
 }
 
-function ChangeCell({ value }: { value?: number | null }) {
+function ChangeCell({ value, category, change24hLabel }: { value?: number | null; category: string; change24hLabel: string }) {
   if (value == null) return <td className="text-right px-3 py-2 text-sm">N/A</td>
   const isPos = value >= 0
+  const isCrypto = category === "Crypto"
   return (
     <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? "text-green-500" : "text-red-500"}`}>
       {isPos ? "▲" : "▼"}{Math.abs(value).toFixed(2)}%
+      {isCrypto ? <span className="ml-1 text-[10px] text-muted-foreground">({change24hLabel})</span> : null}
     </td>
   )
 }
@@ -101,7 +103,11 @@ export function TopHoldings({ rebalance }: Props) {
                   <td className="text-right px-3 py-2">
                     {isPrivate ? "***" : `$${h.market_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                   </td>
-                  <ChangeCell value={h.change_pct} />
+                  <ChangeCell
+                    value={h.change_pct}
+                    category={h.category}
+                    change24hLabel={t("allocation.crypto.change_24h_short")}
+                  />
                   <ReturnCells holding={h} isPrivate={isPrivate} />
                 </tr>
               ))}

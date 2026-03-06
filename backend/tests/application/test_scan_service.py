@@ -1,11 +1,11 @@
 """
-Tests for scan_service: Rogue Wave integration, _check_price_alerts, and scan alert isolation.
+Tests for scan_service: Rogue Wave integration, crypto price path, _check_price_alerts, and scan alert isolation.
 
 Covers:
 - bias_percentile and is_rogue_wave present in scan results
 - rogue_wave_alert appended when conditions met
 - rogue_wave_alert NOT appended when conditions unmet (high bias but low volume)
-- is_rogue_wave skipped for Cash category (SKIP_SIGNALS_CATEGORIES)
+- is_rogue_wave skipped for Cash category (SKIP_RSI_CATEGORIES)
 - get_bias_distribution empty dict → bias_percentile stays None, no rogue wave
 - _check_price_alerts: threshold trigger, cooldown, naive datetime safety, isolation
 """
@@ -81,6 +81,18 @@ def _add_growth_stock(session: Session, ticker: str = "AAPL") -> None:
 def _add_cash_stock(session: Session, ticker: str = "CASH") -> None:
     session.add(
         Stock(ticker=ticker, category=StockCategory.CASH, current_thesis="cash")
+    )
+    session.commit()
+
+
+def _add_crypto_stock(session: Session, ticker: str = "BTC-USD") -> None:
+    session.add(
+        Stock(
+            ticker=ticker,
+            category=StockCategory.CRYPTO,
+            current_thesis="crypto test",
+            coingecko_id="bitcoin",
+        )
     )
     session.commit()
 
@@ -496,6 +508,79 @@ class TestCheckPriceAlerts:
 
         # Scan signal alert should still have been attempted
         mock_telegram.assert_called()
+
+
+@patch("application.scan.scan_service.batch_download_history", new=lambda *a, **kw: {})
+class TestScanCryptoPricePath:
+    @patch("application.scan.scan_service.send_telegram_message_dual")
+    @patch("application.scan.scan_service.get_fear_greed_index")
+    @patch("application.scan.scan_service.analyze_moat_trend")
+    @patch("application.scan.scan_service.get_technical_signals")
+    @patch("application.scan.scan_service.get_crypto_price")
+    @patch("application.scan.scan_service.analyze_market_sentiment")
+    def test_crypto_scan_should_fetch_price_without_rsi_signal_path(
+        self,
+        mock_sentiment,
+        mock_crypto_price,
+        mock_signals,
+        mock_moat,
+        mock_fg,
+        mock_telegram,
+        db_session: Session,
+    ) -> None:
+        _add_crypto_stock(db_session, ticker="BTC-USD")
+        mock_sentiment.return_value = _MOCK_MARKET_SENTIMENT
+        mock_crypto_price.return_value = {"price_usd": 101000.0, "change_24h_pct": 3.2}
+        mock_signals.return_value = _BASE_SIGNALS
+        mock_moat.return_value = _MOCK_MOAT
+        mock_fg.return_value = _MOCK_FG
+
+        result = run_scan(db_session)
+
+        assert len(result["results"]) == 1
+        row = result["results"][0]
+        assert row["ticker"] == "BTC-USD"
+        assert row["price"] == 101000.0
+        assert row["rsi"] is None
+        assert row["bias"] is None
+        assert row["volume_ratio"] is None
+        mock_crypto_price.assert_called_once_with("bitcoin", "BTC-USD")
+        mock_signals.assert_not_called()
+
+    @patch("application.scan.scan_service.send_telegram_message_dual")
+    @patch("application.scan.scan_service.get_fear_greed_index")
+    @patch("application.scan.scan_service.analyze_moat_trend")
+    @patch("application.scan.scan_service.get_crypto_price")
+    @patch("application.scan.scan_service.analyze_market_sentiment")
+    def test_crypto_price_alert_should_trigger_from_crypto_price(
+        self,
+        mock_sentiment,
+        mock_crypto_price,
+        mock_moat,
+        mock_fg,
+        mock_telegram,
+        db_session: Session,
+    ) -> None:
+        _add_crypto_stock(db_session, ticker="BTC-USD")
+        db_session.add(
+            PriceAlert(
+                stock_ticker="BTC-USD",
+                metric="price",
+                operator="gt",
+                threshold=100000.0,
+            )
+        )
+        db_session.commit()
+
+        mock_sentiment.return_value = _MOCK_MARKET_SENTIMENT
+        mock_crypto_price.return_value = {"price_usd": 101000.0, "change_24h_pct": 3.2}
+        mock_moat.return_value = _MOCK_MOAT
+        mock_fg.return_value = _MOCK_FG
+
+        run_scan(db_session)
+
+        # price alert message should be sent
+        assert mock_telegram.call_count >= 1
 
 
 class TestScanWarmL1SkipBatchDownload:

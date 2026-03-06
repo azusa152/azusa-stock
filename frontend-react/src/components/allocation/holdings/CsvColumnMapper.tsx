@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { ColumnMapping } from "@/lib/csv-import"
+import { STOCK_CATEGORIES } from "@/lib/constants"
 
 interface Props {
   headers: string[]
@@ -17,8 +18,6 @@ interface Props {
 }
 
 const SKIP = "__skip__"
-
-const CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond", "Cash"] as const
 
 export function CsvColumnMapper({ headers, mapping, onMappingChange }: Props) {
   const { t } = useTranslation()
@@ -88,7 +87,7 @@ export function CsvColumnMapper({ headers, mapping, onMappingChange }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORY_OPTIONS.map((option) => (
+                {STOCK_CATEGORIES.map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
                   </SelectItem>

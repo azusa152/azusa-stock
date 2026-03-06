@@ -15,6 +15,7 @@ class HoldingRequest(BaseModel):
     """POST /holdings 請求 Body。"""
 
     ticker: str
+    coingecko_id: str | None = None
     category: StockCategory
     quantity: float
     cost_basis: float | None = None
@@ -31,6 +32,7 @@ class UpdateHoldingRequest(BaseModel):
     cost_basis: float | None = Field(default=None, ge=0)
     broker: str | None = None
     category: StockCategory | None = None
+    coingecko_id: str | None = None
 
 
 class CashHoldingRequest(BaseModel):
@@ -60,6 +62,7 @@ class HoldingResponse(BaseModel):
 
     id: int
     ticker: str
+    coingecko_id: str | None = None
     category: StockCategory
     quantity: float
     cost_basis: float | None = None
@@ -75,6 +78,7 @@ class HoldingImportItem(BaseModel):
     """POST /holdings/import 單筆匯入資料。"""
 
     ticker: str = Field(..., min_length=1, max_length=20)
+    coingecko_id: str | None = Field(default=None, max_length=100)
     category: str = Field(..., min_length=1, max_length=50)
     quantity: float = Field(..., gt=0)
     cost_basis: float | None = Field(default=None, ge=0)
@@ -100,6 +104,7 @@ class HoldingExportItem(BaseModel):
     """匯出持倉單一紀錄。"""
 
     ticker: str
+    coingecko_id: str | None = None
     category: str
     quantity: float
     cost_basis: float | None = None

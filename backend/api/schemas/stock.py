@@ -19,6 +19,7 @@ class TickerCreateRequest(BaseModel):
     thesis: str
     tags: list[str] = []
     is_etf: bool | None = None
+    coingecko_id: str | None = None
 
 
 class ThesisCreateRequest(BaseModel):

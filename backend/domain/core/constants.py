@@ -43,6 +43,7 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Growth": 2,  # beta ~1.5
     "Bond": -3,  # beta ~0.3
     "Cash": 0,
+    "Crypto": 0,  # crypto 不參與 RSI 掃描，保留 0 作為相容值
 }
 # Market sentiment thresholds — % of Trend Setter stocks below 60MA
 MARKET_STRONG_BULLISH_MAX_PCT = 10  # ≤10%  → ☀️ Strong Bullish
@@ -70,6 +71,7 @@ REBALANCE_CACHE_MAXSIZE = 10
 REBALANCE_CACHE_TTL = 60  # 1 minute (dedup rapid sequential requests)
 ENRICHED_CACHE_MAXSIZE = 4
 ENRICHED_CACHE_TTL = 60  # 1 minute (same window as rebalance cache)
+RESONANCE_CACHE_TTL = 60  # 1 minute (dedup repeated page-load resonance queries)
 
 # ---------------------------------------------------------------------------
 # Persistent Data Directory — root for all app-written state files
@@ -97,6 +99,8 @@ DISK_FUNDAMENTALS_TTL = 86400  # 24 hours
 YFINANCE_RATE_LIMIT_CPS = (
     0.4  # calls per second — 2 req/5 sec (yfinance official recommendation)
 )
+COINGECKO_RATE_LIMIT_CPS = 0.5  # calls per second — 30 req/min (free tier)
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 # ---------------------------------------------------------------------------
 # Scan & Alerts
@@ -142,8 +146,9 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 # ---------------------------------------------------------------------------
 # Shared Messages
 # ---------------------------------------------------------------------------
-SKIP_SIGNALS_CATEGORIES = ["Cash"]  # Cash 類不進行 yfinance 訊號掃描
-SKIP_MOAT_CATEGORIES = ["Bond", "Cash"]  # 債券與現金不適用護城河分析
+SKIP_RSI_CATEGORIES = ["Cash", "Crypto"]  # 非 RSI 類資產不進行技術訊號掃描
+SKIP_PRICE_FETCH_CATEGORIES = ["Cash"]  # 不需要抓取價格的資產（如現金）
+SKIP_MOAT_CATEGORIES = ["Bond", "Cash", "Crypto"]  # 非股票類不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 
 # ---------------------------------------------------------------------------
@@ -158,7 +163,7 @@ DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 # ---------------------------------------------------------------------------
 # Category Display Order & Icons
 # ---------------------------------------------------------------------------
-CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "Bond", "Cash"]
+CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto", "Cash"]
 
 CATEGORY_ICON: dict[str, str] = {
     "Trend_Setter": "🌊",
@@ -166,6 +171,7 @@ CATEGORY_ICON: dict[str, str] = {
     "Growth": "🚀",
     "Bond": "🛡️",
     "Cash": "💵",
+    "Crypto": "₿",
 }
 
 # ---------------------------------------------------------------------------
@@ -190,7 +196,7 @@ LANGUAGE_LABELS = {
 # Smart Withdrawal (聰明提款機)
 # ---------------------------------------------------------------------------
 # 流動性優先順序：最容易變現的排最前面，複利核心資產排最後
-CATEGORY_LIQUIDITY_ORDER = ["Cash", "Bond", "Growth", "Moat", "Trend_Setter"]
+CATEGORY_LIQUIDITY_ORDER = ["Cash", "Crypto", "Bond", "Growth", "Moat", "Trend_Setter"]
 WITHDRAWAL_MIN_SELL_VALUE = 10.0  # 最小賣出金額（避免灰塵交易）
 
 # ---------------------------------------------------------------------------
@@ -383,6 +389,7 @@ DISK_KEY_ETF_HOLDINGS = "etf_holdings"
 DISK_KEY_ETF_SECTOR_WEIGHTS = "etf_sector_weights"
 DISK_KEY_FEAR_GREED = "fear_greed"
 DISK_KEY_ROGUE_WAVE = "rogue_wave"
+DISK_KEY_CRYPTO = "crypto"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages (use t("webhook.missing_ticker") at call sites)
@@ -422,7 +429,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": True,
         "params": {
             "ticker": "str (required)",
-            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Cash)",
+            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Crypto|Cash)",
             "thesis": "str (investment thesis)",
             "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
         },
@@ -546,6 +553,7 @@ CATEGORY_FALLBACK_BETA: dict[str, float] = {
     "Growth": 1.5,
     "Bond": 0.3,
     "Cash": 0.0,
+    "Crypto": 0.0,
 }
 
 # ---------------------------------------------------------------------------
@@ -720,6 +728,18 @@ DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
 EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})
+
+# ---------------------------------------------------------------------------
+# Crypto Market Data Cache
+# ---------------------------------------------------------------------------
+CRYPTO_CACHE_MAXSIZE = 200
+CRYPTO_CACHE_TTL = 120  # L1: 2 minutes
+DISK_CRYPTO_TTL = 600  # L2: 10 minutes
+
+# Crypto UI thresholds
+CRYPTO_VOLATILITY_HIGH_PCT = 5.0
+CRYPTO_VOLATILITY_EXTREME_PCT = 10.0
+CRYPTO_QUANTITY_MAX_DECIMALS = 8
 
 # ---------------------------------------------------------------------------
 # J-Quants API (optional JP data supplement)

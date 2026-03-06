@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useRef } from "react"
 import client from "@/api/client"
 import type {
   RadarStock,
@@ -69,7 +70,8 @@ export function useScanStatus() {
       return data as unknown as ScanStatusResponse
     },
     staleTime: 0,
-    refetchInterval: 60 * 1000,
+    refetchInterval: (query) => (query.state.data?.is_running ? 5_000 : 60_000),
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -113,6 +115,7 @@ export function useThesisHistory(ticker: string, enabled: boolean) {
     },
     enabled,
     staleTime: 0,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -128,7 +131,24 @@ export function useRemovalHistory(ticker: string, enabled: boolean) {
     },
     enabled,
     staleTime: 0,
+    refetchOnWindowFocus: false,
   })
+}
+
+export function useScanCompletionEffect() {
+  const queryClient = useQueryClient()
+  const wasRunningRef = useRef(false)
+  const { data: status } = useScanStatus()
+  const isRunning = status?.is_running ?? false
+
+  useEffect(() => {
+    if (wasRunningRef.current && !isRunning) {
+      queryClient.invalidateQueries({ queryKey: ["scan", "last"] })
+      queryClient.invalidateQueries({ queryKey: ["stocks"] })
+      queryClient.invalidateQueries({ queryKey: ["signals", "activity"] })
+    }
+    wasRunningRef.current = isRunning
+  }, [isRunning, queryClient])
 }
 
 export interface PricePoint {

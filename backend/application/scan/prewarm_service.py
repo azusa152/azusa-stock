@@ -18,9 +18,11 @@ from domain.constants import (
     GURU_BACKFILL_YEARS,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
-    SKIP_SIGNALS_CATEGORIES,
+    SKIP_PRICE_FETCH_CATEGORIES,
+    SKIP_RSI_CATEGORIES,
 )
 from domain.entities import Holding, Stock
+from domain.enums import StockCategory
 from infrastructure.database import engine
 from infrastructure.market_data import (
     batch_download_history,
@@ -28,6 +30,7 @@ from infrastructure.market_data import (
     get_fear_greed_index,
     get_ticker_sector,
     prewarm_beta_batch,
+    prewarm_crypto_prices,
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
@@ -82,38 +85,43 @@ def prewarm_all_caches() -> None:
         return
 
     logger.info(
-        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, etf_sector_weights=%d）",
+        "快取預熱：共 %d 檔標的（signals=%d, moat=%d, sector=%d, etf=%d, beta=%d, crypto=%d, etf_sector_weights=%d）",
         len(tickers["all"]),
         len(tickers["signals"]),
         len(tickers["moat"]),
         len(tickers["sector"]),
         len(tickers["etf"]),
         len(tickers["beta"]),
+        len(tickers["crypto"]),
         len(tickers["etf"]),
     )
 
-    # Phase 1: 技術訊號（批次下載，大幅減少 HTTP 請求數量）。
-    # 同時將 hist_batch 傳給 Phase 2 的 beta 預熱，避免逐一呼叫 yfinance info。
+    # signals 與其餘 phase 並行執行；beta 透過 event 等待 signals 準備好 hist_batch。
     hist_batch: dict = {}
-    phase1_start = time.monotonic()
-    try:
-        hist_batch = _batch_prewarm_signals(tickers["signals"])
-        logger.info(
-            "快取預熱 [signals] 完成，耗時 %.1f 秒。", time.monotonic() - phase1_start
-        )
-    except Exception as exc:
-        logger.warning(
-            "快取預熱 [signals] 異常中止，耗時 %.1f 秒：%s",
-            time.monotonic() - phase1_start,
-            exc,
-            exc_info=True,
-        )
+    hist_batch_lock = threading.Lock()
+    hist_batch_ready = threading.Event()
 
-    # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
+    def _run_signals_phase() -> None:
+        nonlocal hist_batch
+        try:
+            local_hist_batch = _batch_prewarm_signals(tickers["signals"])
+            with hist_batch_lock:
+                hist_batch = local_hist_batch
+        finally:
+            hist_batch_ready.set()
+
+    def _run_beta_phase() -> None:
+        hist_batch_ready.wait()
+        with hist_batch_lock:
+            local_hist_batch = hist_batch
+        prewarm_beta_batch(tickers["beta"], hist_batch=local_hist_batch)
+
+    # 其餘階段與 signals 同步並行啟動；beta 會等 signals 提供 hist_batch 後再執行。
     # moat 預熱使用 4 個工作執行緒（預設 SCAN_THREAD_POOL_SIZE=2 限制吞吐量；
     # 提高並行度讓執行緒在全域限流器釋放時立即接手，縮短整體等待時間）
     _MOAT_PREWARM_WORKERS = 4
     parallel_phases: list[tuple[str, object]] = [
+        ("signals", _run_signals_phase),
         ("fear_greed", get_fear_greed_index),
         (
             "moat",
@@ -131,14 +139,13 @@ def prewarm_all_caches() -> None:
             ("etf_sector_weights", lambda: _prewarm_etf_sector_weights(tickers["etf"]))
         )
     if tickers["beta"]:
-        parallel_phases.append(
-            (
-                "beta",
-                lambda: prewarm_beta_batch(tickers["beta"], hist_batch=hist_batch),
-            )
-        )
+        parallel_phases.append(("beta", _run_beta_phase))
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
+    if tickers["crypto"]:
+        parallel_phases.append(
+            ("crypto", lambda: prewarm_crypto_prices(tickers["crypto"]))
+        )
 
     with ThreadPoolExecutor(max_workers=min(len(parallel_phases), 4)) as pool:
         phase_futures = {
@@ -198,12 +205,12 @@ def _collect_tickers() -> dict[str, list[str]]:
     # ETF tickers from watchlist（用於排除 moat 分析，含持倉中的 ETF 標的）
     known_etf_tickers = {t for t, s in stock_map.items() if s.is_etf}
 
-    # Signals: 排除 Cash 類
+    # Signals: 排除不需要價格抓取的類別（目前為 Cash）
     signals_tickers = [
         t
         for t in all_tickers
         if t not in stock_map
-        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+        or stock_map[t].category.value not in SKIP_PRICE_FETCH_CATEGORIES
     ]
 
     # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）。
@@ -238,13 +245,12 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
-    # Sector: 熱力圖需要包含 Bond 類標的（Bond 有 GICS 板塊，只是不做訊號/護城河）
-    # SKIP_SIGNALS_CATEGORIES（僅 Cash）排除的標的，其餘均需板塊資訊
+    # Sector: 熱力圖需排除 Cash/Crypto；Bond 仍需要板塊資訊
+    # SKIP_RSI_CATEGORIES（Cash/Crypto）排除的標的，其餘均需板塊資訊
     sector_tickers = [
         t
         for t in all_tickers
-        if t not in stock_map
-        or stock_map[t].category.value not in SKIP_SIGNALS_CATEGORIES
+        if t not in stock_map or stock_map[t].category.value not in SKIP_RSI_CATEGORIES
     ]
 
     return {
@@ -255,6 +261,17 @@ def _collect_tickers() -> dict[str, list[str]]:
         "beta": sorted(beta_tickers),
         "equity": sorted(equity_tickers),
         "sector": sorted(sector_tickers),
+        "crypto": sorted(
+            {
+                h.coingecko_id
+                for h in holdings
+                if (
+                    h.category == StockCategory.CRYPTO
+                    and not h.is_cash
+                    and getattr(h, "coingecko_id", None)
+                )
+            }
+        ),
     }
 
 

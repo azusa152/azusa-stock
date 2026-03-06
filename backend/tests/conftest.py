@@ -134,10 +134,12 @@ def _clean_tables():
             session.exec(table.delete())  # type: ignore[arg-type]
         session.commit()
     # Clear in-memory caches that could contaminate subsequent tests
+    from application.guru.resonance_service import invalidate_resonance_cache
     from application.portfolio.rebalance_service import invalidate_rebalance_cache
     from application.scan.backtest_service import invalidate_backtest_cache
     from application.stock.stock_service import invalidate_enriched_cache
 
+    invalidate_resonance_cache()
     invalidate_rebalance_cache()
     invalidate_backtest_cache()
     invalidate_enriched_cache()

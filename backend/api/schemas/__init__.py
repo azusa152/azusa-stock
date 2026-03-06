@@ -17,6 +17,10 @@ from api.schemas.common import (  # noqa: F401
     ImportResponse,
     MessageResponse,
 )
+from api.schemas.crypto import (  # noqa: F401
+    CryptoPrice,
+    CryptoSearchResult,
+)
 from api.schemas.fx_watch import (  # noqa: F401
     FXTimingResultResponse,
     FXWatchAlertResponse,

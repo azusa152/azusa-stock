@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet"
 import { CsvImportDialog } from "@/components/allocation/holdings/CsvImportDialog"
 import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
+import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
 import type { StockCategory } from "@/api/types/allocation"
@@ -21,7 +22,7 @@ interface Props {
   onClose: () => void
 }
 
-type AssetType = "stock" | "bond" | "cash"
+type AssetType = "stock" | "bond" | "cash" | "crypto"
 
 export function AddHoldingSheet({ open, onClose }: Props) {
   const { t } = useTranslation()
@@ -37,6 +38,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const [cashAmount, setCashAmount] = useState("")
   const [cashBank, setCashBank] = useState("")
   const [cashAccountType, setCashAccountType] = useState("")
+  const [cryptoQuery, setCryptoQuery] = useState("")
+  const [cryptoCoinId, setCryptoCoinId] = useState<string | null>(null)
 
   const [feedback, setFeedback] = useState<string | null>(null)
   const [importFeedback, setImportFeedback] = useState<string | null>(null)
@@ -49,6 +52,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const addCashMutation = useAddCashHolding()
   const importMutation = useImportHoldings()
   const { data: holdings } = useHoldings()
+  const { data: cryptoSearchResults } = useCryptoSearch(cryptoQuery)
 
   const resetForm = () => {
     setTicker("")
@@ -58,6 +62,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     setCashAmount("")
     setCashBank("")
     setCashAccountType("")
+    setCryptoQuery("")
+    setCryptoCoinId(null)
     setFeedback(null)
   }
 
@@ -154,6 +160,40 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     )
   }
 
+  const handleSubmitCrypto = () => {
+    if (!ticker.trim()) {
+      setFeedback(t("allocation.sidebar.crypto_select_required"))
+      return
+    }
+    if (!quantity.trim() || isNaN(Number(quantity))) {
+      setFeedback(t("allocation.sidebar.error_quantity"))
+      return
+    }
+    setFeedback(null)
+    addHoldingMutation.mutate(
+      {
+        ticker: ticker.trim().toUpperCase(),
+        coingecko_id: cryptoCoinId ?? undefined,
+        category: "Crypto",
+        quantity: Number(quantity),
+        cost_basis: avgCost ? Number(avgCost) : undefined,
+        broker: broker || undefined,
+        currency: "USD",
+      },
+      {
+        onSuccess: () => {
+          setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          resetForm()
+        },
+        onError: () => {
+          setFeedback(t("common.error"))
+          toast.error(t("common.error"))
+        },
+      },
+    )
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -226,7 +266,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("allocation.sidebar.asset_type")}</p>
             <div className="flex gap-1">
-              {(["stock", "bond", "cash"] as AssetType[]).map((type) => (
+              {(["stock", "bond", "cash", "crypto"] as AssetType[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => { setAssetType(type); resetForm() }}
@@ -394,6 +434,76 @@ export function AddHoldingSheet({ open, onClose }: Props) {
               >
                 {t("allocation.sidebar.add_button")}
               </Button>
+            </div>
+          )}
+
+          {/* Crypto form */}
+          {assetType === "crypto" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("allocation.sidebar.crypto_search")}</p>
+                <Input
+                  value={cryptoQuery}
+                  onChange={(e) => {
+                    setCryptoQuery(e.target.value)
+                    setTicker("")
+                    setCryptoCoinId(null)
+                  }}
+                  placeholder={t("allocation.sidebar.crypto_search_placeholder")}
+                  className="text-xs"
+                />
+              </div>
+              {cryptoSearchResults && cryptoSearchResults.length > 0 && (
+                <div className="max-h-36 overflow-y-auto rounded border border-border p-1 space-y-1">
+                  {cryptoSearchResults.map((coin) => (
+                    <button
+                      type="button"
+                      key={`${coin.id}-${coin.symbol}`}
+                      className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted/40"
+                      onClick={() => {
+                        setTicker(coin.ticker)
+                        setCryptoCoinId(coin.id)
+                        setCryptoQuery(`${coin.name} (${coin.symbol})`)
+                      }}
+                    >
+                      {coin.name} ({coin.symbol}) - {coin.ticker}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("allocation.sidebar.stock_ticker")}</p>
+                <Input value={ticker} readOnly className="text-xs" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("allocation.sidebar.crypto_quantity")}</p>
+                <Input
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  type="number"
+                  step="any"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("allocation.sidebar.avg_cost")}</p>
+                <Input
+                  value={avgCost}
+                  onChange={(e) => setAvgCost(e.target.value)}
+                  type="number"
+                  step="any"
+                  className="text-xs"
+                />
+              </div>
+              <Button
+                onClick={handleSubmitCrypto}
+                disabled={addHoldingMutation.isPending}
+                className="w-full"
+                size="sm"
+              >
+                {t("allocation.sidebar.add_button")}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">{t("allocation.crypto.market_24h")}</p>
             </div>
           )}
 

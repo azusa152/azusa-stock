@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -46,6 +46,7 @@ interface Props {
   enrichment?: RadarEnrichedStock
   resonance?: ResonanceMap[string]
   isHeld?: boolean
+  index?: number
 }
 
 function MetricChip({ label, value, color }: { label: string; value: string | number | null | undefined; color?: string }) {
@@ -250,19 +251,28 @@ function RemoveSection({ ticker }: { ticker: string }) {
 
 type TabKey = "metrics" | "fundamentals" | "thesis" | "category" | "remove"
 
-export function StockCard({ stock, enrichment, resonance, isHeld = false }: Props) {
+export function StockCard({ stock, enrichment, resonance, isHeld = false, index = 0 }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
+  const [sparklineEnabled, setSparklineEnabled] = useState(index === 0)
 
-  // Fetch price history only when the card is expanded. Previously this was always
-  // `true`, causing 20+ parallel yfinance requests on Radar page load.
-  // Trade-off: the collapsed-row sparkline (SparklineHeader) is hidden until first
-  // expand, after which it persists (React Query cache). A small skeleton is shown
-  // in its place so the card layout remains stable.
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded)
+  useEffect(() => {
+    if (sparklineEnabled || expanded) return
+
+    const timer = window.setTimeout(() => {
+      setSparklineEnabled(true)
+    }, index * 200)
+
+    return () => window.clearTimeout(timer)
+  }, [expanded, index, sparklineEnabled])
+
+  // Keep header sparkline responsive by prefetching progressively across cards,
+  // while still allowing immediate fetch when users expand a card early.
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded || sparklineEnabled)
   const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
-  const showMoatChart = moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
+  const isCrypto = stock.category === "Crypto"
+  const showMoatChart = !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
   const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
@@ -367,7 +377,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
                   <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
                     {isUp ? "▲" : "▼"}{" "}
                     {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
-                    ({Math.abs(changePct).toFixed(2)}%)
+                    ({Math.abs(changePct).toFixed(2)}%{isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
                   </span>
                 )}
               </span>
@@ -389,10 +399,14 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
         <CardContent className="pt-0 pb-3 px-3 space-y-3">
           {/* At-a-Glance metrics */}
           <div className="flex flex-wrap gap-1.5 text-xs">
-            <MetricChip label="RSI" value={rsi != null ? rsi.toFixed(1) : null} color={rsi != null && rsi < 35 ? "border-green-500 text-green-600" : rsi != null && rsi > 70 ? "border-red-500 text-red-600" : undefined} />
-            <MetricChip label="Bias" value={bias != null ? `${bias.toFixed(1)}%` : null} color={bias != null && bias > 20 ? "border-red-500 text-red-600" : bias != null && bias < -5 ? "border-green-500 text-green-600" : undefined} />
-            {volumeRatio != null && (
-              <MetricChip label="Vol" value={`${volumeRatio.toFixed(1)}x`} />
+            {!isCrypto && (
+              <>
+                <MetricChip label="RSI" value={rsi != null ? rsi.toFixed(1) : null} color={rsi != null && rsi < 35 ? "border-green-500 text-green-600" : rsi != null && rsi > 70 ? "border-red-500 text-red-600" : undefined} />
+                <MetricChip label="Bias" value={bias != null ? `${bias.toFixed(1)}%` : null} color={bias != null && bias > 20 ? "border-red-500 text-red-600" : bias != null && bias < -5 ? "border-green-500 text-green-600" : undefined} />
+                {volumeRatio != null && (
+                  <MetricChip label="Vol" value={`${volumeRatio.toFixed(1)}x`} />
+                )}
+              </>
             )}
           </div>
 
@@ -464,11 +478,14 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false }: Prop
                     {enrichment?.signals?.price != null && (
                       <span>Price: {currency.symbol}{formatPrice(enrichment.signals.price as number, currency.code)}</span>
                     )}
-                    {enrichment?.signals?.ma200 != null && (
+                    {!isCrypto && enrichment?.signals?.ma200 != null && (
                       <span>MA200: {currency.symbol}{formatPrice(enrichment.signals.ma200 as number, currency.code)}</span>
                     )}
-                    {enrichment?.signals?.ma60 != null && (
+                    {!isCrypto && enrichment?.signals?.ma60 != null && (
                       <span>MA60: {currency.symbol}{formatPrice(enrichment.signals.ma60 as number, currency.code)}</span>
+                    )}
+                    {isCrypto && changePct != null && (
+                      <span>{t("allocation.crypto.change_24h_short")}: {changePct >= 0 ? "+" : "-"}{Math.abs(changePct).toFixed(2)}%</span>
                     )}
                   </div>
 

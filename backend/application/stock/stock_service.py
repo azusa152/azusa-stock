@@ -17,7 +17,7 @@ from domain.constants import (
     ENRICHED_THREAD_POOL_SIZE,
     REMOVAL_REASON_UNKNOWN,
     SKIP_MOAT_CATEGORIES,
-    SKIP_SIGNALS_CATEGORIES,
+    SKIP_PRICE_FETCH_CATEGORIES,
 )
 from domain.entities import RemovalLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, ScanSignal, StockCategory
@@ -27,6 +27,7 @@ from infrastructure.market_data import (
     analyze_moat_trend,
     detect_is_etf,
     get_bias_distribution,
+    get_crypto_price,
     get_dividend_info,
     get_earnings_date,
     get_fear_greed_index,
@@ -131,6 +132,7 @@ def create_stock(
     thesis: str,
     tags: list[str] | None = None,
     is_etf: bool | None = None,
+    coingecko_id: str | None = None,
 ) -> Stock:
     """
     新增股票到追蹤清單，同時建立第一筆觀點紀錄。
@@ -156,6 +158,7 @@ def create_stock(
     stock = Stock(
         ticker=ticker_upper,
         category=category,
+        coingecko_id=coingecko_id.strip().lower() if coingecko_id else None,
         current_thesis=thesis,
         current_tags=tags_str,
         is_active=True,
@@ -686,7 +689,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
         }
 
     def _fetch_enrichment(
-        ticker: str, cat_value: str
+        ticker: str, cat_value: str, coingecko_id: str | None
     ) -> tuple[str, dict | None, dict | None, dict | None, dict | None]:
         """並行取得單一股票的附加資料。"""
         signals = None
@@ -694,7 +697,29 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
         dividend = None
         fundamentals = None
 
-        if cat_value not in SKIP_SIGNALS_CATEGORIES:
+        if cat_value == StockCategory.CRYPTO.value:
+            crypto_data = get_crypto_price(coingecko_id, ticker)
+            price = (
+                crypto_data.get("price_usd")
+                if crypto_data
+                and isinstance(crypto_data.get("price_usd"), (int, float))
+                else None
+            )
+            change_pct = (
+                crypto_data.get("change_24h_pct")
+                if crypto_data
+                and isinstance(crypto_data.get("change_24h_pct"), (int, float))
+                else None
+            )
+            signals = {
+                "price": price,
+                "change_pct": change_pct,
+                "rsi": None,
+                "bias": None,
+                "bias_200": None,
+                "volume_ratio": None,
+            }
+        elif cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
             signals = get_technical_signals(ticker)
 
         try:
@@ -724,6 +749,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                 stock.category.value
                 if hasattr(stock.category, "value")
                 else str(stock.category),
+                stock.coingecko_id,
             ): stock.ticker
             for stock in stocks
         }

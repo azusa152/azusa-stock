@@ -28,7 +28,8 @@ from domain.constants import (
     SCAN_L1_WARM_THRESHOLD,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
-    SKIP_SIGNALS_CATEGORIES,
+    SKIP_PRICE_FETCH_CATEGORIES,
+    SKIP_RSI_CATEGORIES,
     VOLUME_SURGE_THRESHOLD,
     VOLUME_THIN_THRESHOLD,
 )
@@ -48,6 +49,7 @@ from infrastructure.market_data import (
     batch_download_history,
     count_signals_in_l1,
     get_bias_distribution,
+    get_crypto_price,
     get_fear_greed_index,
     get_technical_signals,
     prime_signals_cache_batch,
@@ -105,7 +107,9 @@ def run_scan(session: Session) -> dict:
 
     # === 批次預取價格歷史並預熱訊號快取（減少個別 yfinance 呼叫） ===
     scan_tickers = [
-        s.ticker for s in all_stocks if s.category.value not in SKIP_SIGNALS_CATEGORIES
+        s.ticker
+        for s in all_stocks
+        if s.category.value not in SKIP_PRICE_FETCH_CATEGORIES
     ]
     l1_hits = count_signals_in_l1(scan_tickers)
     l1_hit_rate = l1_hits / len(scan_tickers) if scan_tickers else 1.0
@@ -169,9 +173,24 @@ def run_scan(session: Session) -> dict:
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
         moat_details = moat_result.get("details", "")
 
-        # Cash 類不取得技術訊號
-        if stock.category.value in SKIP_SIGNALS_CATEGORIES:
+        # Cash 不取價格；Crypto 走價格路徑但不做 RSI/bias 計算
+        if stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
             signals = None
+        elif stock.category == StockCategory.CRYPTO:
+            crypto_data = get_crypto_price(stock.coingecko_id, ticker)
+            crypto_price = (
+                crypto_data.get("price_usd")
+                if crypto_data
+                and isinstance(crypto_data.get("price_usd"), (int, float))
+                else None
+            )
+            signals = {
+                "price": crypto_price,
+                "rsi": None,
+                "bias": None,
+                "bias_200": None,
+                "volume_ratio": None,
+            }
         else:
             signals = get_technical_signals(ticker)
         rsi: float | None = None
@@ -201,7 +220,7 @@ def run_scan(session: Session) -> dict:
         # === Rogue Wave (瘋狗浪) ===
         bias_percentile: float | None = None
         is_rogue_wave = False
-        if bias is not None and stock.category.value not in SKIP_SIGNALS_CATEGORIES:
+        if bias is not None and stock.category.value not in SKIP_RSI_CATEGORIES:
             dist = get_bias_distribution(ticker)
             if dist:
                 bias_percentile = compute_bias_percentile(

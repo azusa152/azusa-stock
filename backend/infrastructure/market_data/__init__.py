@@ -4,6 +4,14 @@ Re-exports the public API of market_data.market_data so that
 ``from infrastructure.market_data import X`` continues to work unchanged.
 """
 
+from infrastructure.market_data.crypto_adapter import (  # noqa: F401
+    get_crypto_market_data,
+    get_crypto_price,
+    get_crypto_prices_batch,
+    prewarm_crypto_prices,
+    resolve_coingecko_id,
+    search_crypto,
+)
 from infrastructure.market_data.market_data import (  # noqa: F401
     RateLimiter,
     analyze_market_sentiment,

@@ -74,6 +74,7 @@ export function CategoryTabs({
     Moat: "radar.tab.moat",
     Growth: "radar.tab.growth",
     Bond: "radar.tab.bond",
+    Crypto: "radar.tab.crypto",
   }
 
   return (
@@ -117,10 +118,11 @@ export function CategoryTabs({
             {categoryMap[cat]?.length ? (
               <>
                 <ReorderSection stocks={categoryMap[cat]} />
-                {categoryMap[cat].map((stock) => (
+                {categoryMap[cat].map((stock, index) => (
                   <StockCard
                     key={stock.ticker}
                     stock={stock}
+                    index={index}
                     enrichment={enrichedMap[stock.ticker]}
                     resonance={resonanceMap[stock.ticker]}
                     isHeld={heldTickers.has(stock.ticker.toUpperCase())}

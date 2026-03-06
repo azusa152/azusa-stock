@@ -16,7 +16,7 @@ from domain.constants import (
     BACKFILL_MARKET_STATUS,
     BACKFILL_MIN_HISTORY_DAYS,
     BACKFILL_SAMPLE_INTERVAL,
-    SKIP_SIGNALS_CATEGORIES,
+    SKIP_RSI_CATEGORIES,
 )
 from domain.entities import ScanLog
 from infrastructure import repositories as repo
@@ -76,7 +76,7 @@ def backfill_scan_logs(session: Session) -> int:
         stocks = [
             stock
             for stock in repo.find_active_stocks(session)
-            if stock.category.value not in SKIP_SIGNALS_CATEGORIES
+            if stock.category.value not in SKIP_RSI_CATEGORIES
         ]
         if not stocks:
             logger.info("No eligible stocks for ScanLog backfill.")

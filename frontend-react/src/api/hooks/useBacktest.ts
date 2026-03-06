@@ -45,5 +45,6 @@ export function useBackfillStatus() {
     // Keep polling so the UI can detect the transition from idle -> backfilling
     // without requiring a manual page refresh.
     refetchInterval: 3000,
+    refetchOnWindowFocus: false,
   })
 }

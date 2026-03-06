@@ -129,7 +129,7 @@ def check_categories() -> list[str]:
 
 
 def check_radar_categories() -> list[str]:
-    """Verify RADAR_CATEGORIES equals CATEGORY_DISPLAY_ORDER minus 'Cash'."""
+    """Verify RADAR_CATEGORIES equals CATEGORY_DISPLAY_ORDER minus Cash."""
     errors = []
     backend_all = extract_python_list(BACKEND_CONSTANTS, "CATEGORY_DISPLAY_ORDER")
     backend_radar = [c for c in backend_all if c != "Cash"]

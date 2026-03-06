@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
-import { useRadarStocks, useAddStock } from "../useRadar";
+import { useRadarStocks, useAddStock, useScanCompletionEffect } from "../useRadar";
 import client from "@/api/client";
 
 vi.mock("@/api/client", () => ({
@@ -25,6 +25,11 @@ function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  return ({ children }: { children: React.ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
+function createWrapperWithClient(queryClient: QueryClient) {
   return ({ children }: { children: React.ReactNode }) =>
     createElement(QueryClientProvider, { client: queryClient }, children);
 }
@@ -106,5 +111,75 @@ describe("useAddStock", () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+describe("useScanCompletionEffect", () => {
+  it("does not invalidate on initial mount when scan is not running", async () => {
+    mockClient.GET.mockResolvedValueOnce({ data: { is_running: false }, error: undefined });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useScanCompletionEffect(), {
+      wrapper: createWrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockClient.GET).toHaveBeenCalledWith("/scan/status");
+    });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it("invalidates dependent caches when scan transitions from running to stopped", async () => {
+    mockClient.GET.mockResolvedValueOnce({ data: { is_running: true }, error: undefined });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useScanCompletionEffect(), {
+      wrapper: createWrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockClient.GET).toHaveBeenCalledWith("/scan/status");
+    });
+    await waitFor(() => {
+      expect(queryClient.getQueryData(["scan", "status"])).toMatchObject({ is_running: true });
+    });
+
+    act(() => {
+      queryClient.setQueryData(["scan", "status"], { is_running: false });
+    });
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["scan", "last"] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["stocks"] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["signals", "activity"] });
+    });
+  });
+
+  it("does not invalidate when scan remains running", async () => {
+    mockClient.GET.mockResolvedValueOnce({ data: { is_running: true }, error: undefined });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useScanCompletionEffect(), {
+      wrapper: createWrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockClient.GET).toHaveBeenCalledWith("/scan/status");
+    });
+
+    act(() => {
+      queryClient.setQueryData(["scan", "status"], { is_running: true });
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });
