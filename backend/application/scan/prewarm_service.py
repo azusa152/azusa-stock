@@ -96,28 +96,32 @@ def prewarm_all_caches() -> None:
         len(tickers["etf"]),
     )
 
-    # Phase 1: 技術訊號（批次下載，大幅減少 HTTP 請求數量）。
-    # 同時將 hist_batch 傳給 Phase 2 的 beta 預熱，避免逐一呼叫 yfinance info。
+    # signals 與其餘 phase 並行執行；beta 透過 event 等待 signals 準備好 hist_batch。
     hist_batch: dict = {}
-    phase1_start = time.monotonic()
-    try:
-        hist_batch = _batch_prewarm_signals(tickers["signals"])
-        logger.info(
-            "快取預熱 [signals] 完成，耗時 %.1f 秒。", time.monotonic() - phase1_start
-        )
-    except Exception as exc:
-        logger.warning(
-            "快取預熱 [signals] 異常中止，耗時 %.1f 秒：%s",
-            time.monotonic() - phase1_start,
-            exc,
-            exc_info=True,
-        )
+    hist_batch_lock = threading.Lock()
+    hist_batch_ready = threading.Event()
 
-    # Phase 2+: 其餘階段並行執行（互相獨立，不依賴 Phase 1 結果）
+    def _run_signals_phase() -> None:
+        nonlocal hist_batch
+        try:
+            local_hist_batch = _batch_prewarm_signals(tickers["signals"])
+            with hist_batch_lock:
+                hist_batch = local_hist_batch
+        finally:
+            hist_batch_ready.set()
+
+    def _run_beta_phase() -> None:
+        hist_batch_ready.wait()
+        with hist_batch_lock:
+            local_hist_batch = hist_batch
+        prewarm_beta_batch(tickers["beta"], hist_batch=local_hist_batch)
+
+    # 其餘階段與 signals 同步並行啟動；beta 會等 signals 提供 hist_batch 後再執行。
     # moat 預熱使用 4 個工作執行緒（預設 SCAN_THREAD_POOL_SIZE=2 限制吞吐量；
     # 提高並行度讓執行緒在全域限流器釋放時立即接手，縮短整體等待時間）
     _MOAT_PREWARM_WORKERS = 4
     parallel_phases: list[tuple[str, object]] = [
+        ("signals", _run_signals_phase),
         ("fear_greed", get_fear_greed_index),
         (
             "moat",
@@ -135,12 +139,7 @@ def prewarm_all_caches() -> None:
             ("etf_sector_weights", lambda: _prewarm_etf_sector_weights(tickers["etf"]))
         )
     if tickers["beta"]:
-        parallel_phases.append(
-            (
-                "beta",
-                lambda: prewarm_beta_batch(tickers["beta"], hist_batch=hist_batch),
-            )
-        )
+        parallel_phases.append(("beta", _run_beta_phase))
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
     if tickers["crypto"]:

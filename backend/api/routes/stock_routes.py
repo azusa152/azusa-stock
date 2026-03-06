@@ -24,6 +24,7 @@ from api.schemas import (
     WebhookRequest,
     WebhookResponse,
 )
+from application.guru.resonance_service import invalidate_resonance_cache
 from application.services import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -70,6 +71,12 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+def _invalidate_radar_caches() -> None:
+    """Invalidate cache layers impacted by watchlist mutations."""
+    invalidate_enriched_cache()
+    invalidate_resonance_cache()
+
+
 @router.post(
     "/ticker", response_model=StockResponse, summary="Add a stock to the watchlist"
 )
@@ -94,7 +101,7 @@ def create_ticker_route(
             detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
         ) from e
 
-    invalidate_enriched_cache()
+    _invalidate_radar_caches()
     return StockResponse(
         ticker=stock.ticker,
         category=stock.category,
@@ -231,7 +238,7 @@ def deactivate_ticker_route(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_INACTIVE, "detail": str(e)},
         ) from e
-    invalidate_enriched_cache()
+    _invalidate_radar_caches()
     return result
 
 
@@ -286,7 +293,7 @@ def reactivate_ticker_route(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_ACTIVE, "detail": str(e)},
         ) from e
-    invalidate_enriched_cache()
+    _invalidate_radar_caches()
     return result
 
 
@@ -442,7 +449,7 @@ def import_stocks_route(
     # Convert Pydantic models to dicts for the service layer
     payload_dicts = [item.model_dump() for item in payload]
     result = import_stocks(session, payload_dicts)
-    invalidate_enriched_cache()
+    _invalidate_radar_caches()
 
     # Transform service response to match ImportResponse schema
     return {

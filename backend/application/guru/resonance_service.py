@@ -7,8 +7,12 @@ Application — Resonance Service：計算使用者投資組合與大師持倉�
 3. get_great_minds_list         — 「英雄所見略同」清單（使用者 + 大師雙重持有的股票）
 """
 
+import threading
+
+from cachetools import TTLCache
 from sqlmodel import Session, select
 
+from domain.constants import RESONANCE_CACHE_TTL
 from domain.entities import Holding, Stock
 from domain.smart_money import compute_resonance_matches
 from infrastructure.repositories import (
@@ -20,6 +24,20 @@ from infrastructure.repositories import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_resonance_cache: TTLCache = TTLCache(maxsize=1, ttl=RESONANCE_CACHE_TTL)
+_resonance_cache_lock = threading.Lock()
+_resonance_in_progress: threading.Event | None = None
+
+
+def invalidate_resonance_cache() -> None:
+    """主動清除共鳴計算快取。"""
+    global _resonance_in_progress
+    with _resonance_cache_lock:
+        _resonance_cache.clear()
+        if _resonance_in_progress is not None:
+            _resonance_in_progress.set()
+        _resonance_in_progress = None
 
 
 def compute_portfolio_resonance(session: Session) -> list[dict]:
@@ -43,6 +61,46 @@ def compute_portfolio_resonance(session: Session) -> list[dict]:
             overlap_count (int),
             holdings (list[dict]: ticker, action, weight_pct, change_pct)
     """
+    global _resonance_in_progress
+    cache_key = "portfolio_resonance"
+
+    while True:
+        with _resonance_cache_lock:
+            cached = _resonance_cache.get(cache_key)
+            if cached is not None:
+                return cached
+
+            if _resonance_in_progress is None:
+                _resonance_in_progress = threading.Event()
+                event_owner = True
+            else:
+                event_to_wait = _resonance_in_progress
+                event_owner = False
+
+        if not event_owner:
+            event_to_wait.wait(timeout=120)
+            continue
+        break
+
+    try:
+        results = _compute_portfolio_resonance_uncached(session)
+    except Exception:
+        with _resonance_cache_lock:
+            if _resonance_in_progress is not None:
+                _resonance_in_progress.set()
+            _resonance_in_progress = None
+        raise
+
+    with _resonance_cache_lock:
+        _resonance_cache[cache_key] = results
+        if _resonance_in_progress is not None:
+            _resonance_in_progress.set()
+        _resonance_in_progress = None
+    return results
+
+
+def _compute_portfolio_resonance_uncached(session: Session) -> list[dict]:
+    """實際執行共鳴計算（不含快取包裝）。"""
     gurus = find_all_active_gurus(session)
     if not gurus:
         logger.info("無啟用中大師，跳過共鳴計算。")

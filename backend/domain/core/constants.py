@@ -71,6 +71,7 @@ REBALANCE_CACHE_MAXSIZE = 10
 REBALANCE_CACHE_TTL = 60  # 1 minute (dedup rapid sequential requests)
 ENRICHED_CACHE_MAXSIZE = 4
 ENRICHED_CACHE_TTL = 60  # 1 minute (same window as rebalance cache)
+RESONANCE_CACHE_TTL = 60  # 1 minute (dedup repeated page-load resonance queries)
 
 # ---------------------------------------------------------------------------
 # Persistent Data Directory — root for all app-written state files

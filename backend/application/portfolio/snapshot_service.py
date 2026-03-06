@@ -5,6 +5,7 @@ Application — Portfolio Snapshot Service：每日快照的建立與查詢。
 """
 
 import json as _json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 
 from sqlmodel import Session, select
@@ -43,13 +44,23 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
 
     benchmark_tickers = ["^GSPC", "VT", "^N225", "^TWII"]
     benchmark_prices: dict[str, float | None] = {}
-    for ticker in benchmark_tickers:
+
+    def _fetch_benchmark_price(ticker: str) -> tuple[str, float | None]:
         try:
             data = get_technical_signals(ticker)
-            benchmark_prices[ticker] = data.get("price") if data is not None else None
+            price = data.get("price") if data is not None else None
+            return ticker, price
         except Exception as exc:
             logger.warning("無法取得基準指數 %s 價格：%s", ticker, exc)
-            benchmark_prices[ticker] = None
+            return ticker, None
+
+    with ThreadPoolExecutor(max_workers=len(benchmark_tickers)) as executor:
+        futures = {
+            executor.submit(_fetch_benchmark_price, t): t for t in benchmark_tickers
+        }
+        for future in as_completed(futures):
+            ticker, price = future.result()
+            benchmark_prices[ticker] = price
     benchmark_value: float | None = benchmark_prices.get("^GSPC")
 
     today = datetime.now(UTC).date()
