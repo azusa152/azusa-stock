@@ -154,7 +154,8 @@ export default function Dashboard() {
       {(priceTs || scanTs) && (
         <p className="text-xs text-muted-foreground -mt-4">
           {priceTs && <span>{t("dashboard.price_updated", { timestamp: priceTs })}</span>}
-          {priceTs && scanTs && <span>{` ${t("dashboard.timestamp_separator")} `}</span>}
+          {/* eslint-disable-next-line i18next/no-literal-string */}
+          {priceTs && scanTs && <span> ｜ </span>}
           {scanTs && (
             <span className={isScanStale ? "text-amber-500 font-medium" : undefined}>
               {t("dashboard.last_scan", { timestamp: scanTs })}
