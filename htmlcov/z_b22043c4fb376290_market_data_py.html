@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">1070 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">595<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">475<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">597<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">473<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b22043c4fb376290_market_data_resolver_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-03-05 10:16 +0000
+            created at 2026-03-06 08:01 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -551,7 +551,7 @@
     <p class="pln"><span class="n"><a id="t469" href="#t469">469</a></span><span class="t"><span class="str">    """</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t470" href="#t470">470</a></span><span class="t">    <span class="nam">cached</span> <span class="op">=</span> <span class="nam">_yf_info_cache</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">ticker</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t471" href="#t471">471</a></span><span class="t">    <span class="key">if</span> <span class="nam">cached</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t472" href="#t472">472</a></span><span class="t">        <span class="key">return</span> <span class="nam">cached</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t472" href="#t472">472</a></span><span class="t">        <span class="key">return</span> <span class="nam">cached</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t473" href="#t473">473</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t474" href="#t474">474</a></span><span class="t">    <span class="nam">stock</span> <span class="op">=</span> <span class="nam">yf</span><span class="op">.</span><span class="nam">Ticker</span><span class="op">(</span><span class="nam">ticker</span><span class="op">,</span> <span class="nam">session</span><span class="op">=</span><span class="nam">_get_session</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t475" href="#t475">475</a></span><span class="t">    <span class="nam">_rate_limiter</span><span class="op">.</span><span class="nam">wait</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -685,7 +685,7 @@
     <p class="pln"><span class="n"><a id="t603" href="#t603">603</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t604" href="#t604">604</a></span><span class="t">        <span class="com"># &#27231;&#27083;&#25345;&#20489; (best-effort&#65307;&#25209;&#27425;&#38928;&#29105;&#36335;&#24465; stock=None &#25925;&#36339;&#36942;&#65292;&#24453;&#39318;&#27425; cache miss &#26178;&#20877;&#35036;&#25235;)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t605" href="#t605">605</a></span><span class="t">        <span class="nam">institutional_holders</span> <span class="op">=</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t606" href="#t606">606</a></span><span class="t">        <span class="key">if</span> <span class="nam">stock</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t606" href="#t606">606</a></span><span class="t">        <span class="key">if</span> <span class="nam">stock</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span> <span class="key">and</span> <span class="key">not</span> <span class="nam">ticker</span><span class="op">.</span><span class="nam">startswith</span><span class="op">(</span><span class="str">"^"</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t607" href="#t607">607</a></span><span class="t">            <span class="key">try</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t608" href="#t608">608</a></span><span class="t">                <span class="nam">_rate_limiter</span><span class="op">.</span><span class="nam">wait</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t609" href="#t609">609</a></span><span class="t">                <span class="nam">holders_df</span> <span class="op">=</span> <span class="nam">stock</span><span class="op">.</span><span class="nam">institutional_holders</span>&nbsp;</span><span class="r"></span></p>
@@ -828,7 +828,7 @@
     <p class="run"><span class="n"><a id="t746" href="#t746">746</a></span><span class="t">                <span class="nam">df</span> <span class="op">=</span> <span class="nam">data</span><span class="op">[</span><span class="nam">ticker</span><span class="op">]</span> <span class="key">if</span> <span class="nam">len</span><span class="op">(</span><span class="nam">tickers</span><span class="op">)</span> <span class="op">></span> <span class="num">1</span> <span class="key">else</span> <span class="nam">data</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t747" href="#t747">747</a></span><span class="t">                <span class="nam">df</span> <span class="op">=</span> <span class="nam">df</span><span class="op">.</span><span class="nam">dropna</span><span class="op">(</span><span class="nam">how</span><span class="op">=</span><span class="str">"all"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t748" href="#t748">748</a></span><span class="t">                <span class="key">if</span> <span class="nam">df</span><span class="op">.</span><span class="nam">empty</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t749" href="#t749">749</a></span><span class="t">                    <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t749" href="#t749">749</a></span><span class="t">                    <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t750" href="#t750">750</a></span><span class="t">                <span class="nam">prices</span> <span class="op">=</span> <span class="nam">_extract_price_history</span><span class="op">(</span><span class="nam">df</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t751" href="#t751">751</a></span><span class="t">                <span class="key">if</span> <span class="nam">len</span><span class="op">(</span><span class="nam">prices</span><span class="op">)</span> <span class="op">&lt;</span> <span class="nam">min_days</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t752" href="#t752">752</a></span><span class="t">                    <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
@@ -2731,7 +2731,7 @@
             <a class="nav" href="z_b22043c4fb376290_market_data_resolver_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-03-05 10:16 +0000
+            created at 2026-03-06 08:01 +0000
         </p>
     </div>
 </footer>
