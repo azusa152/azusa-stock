@@ -805,6 +805,8 @@ class TestGetGuruQoQ:
 # ===========================================================================
 
 GRAND_PORTFOLIO_TARGET = "api.routes.guru_routes.get_grand_portfolio"
+HEATMAP_TARGET = "api.routes.guru_routes.get_heatmap"
+GURU_BACKTEST_TARGET = "api.routes.guru_routes.get_guru_backtest"
 
 _GRAND_PORTFOLIO_DATA = {
     "items": [
@@ -929,3 +931,133 @@ class TestDashboardStyleFilter:
         with patch(DASHBOARD_TARGET, return_value=_DASHBOARD_DATA):
             resp = client.get("/gurus/dashboard")
         assert resp.status_code == 200
+
+
+_HEATMAP_DATA = {
+    "items": [
+        {
+            "ticker": "AAPL",
+            "company_name": "Apple Inc",
+            "sector": "Technology",
+            "guru_count": 2,
+            "gurus": [
+                {
+                    "guru_id": 1,
+                    "guru_display_name": "Warren Buffett",
+                    "weight_pct": 5.0,
+                    "action": "INCREASED",
+                    "value": 100000.0,
+                }
+            ],
+            "combined_value": 100000.0,
+            "combined_weight_pct": 10.2,
+            "dominant_action": "INCREASED",
+            "action_breakdown": {"INCREASED": 2},
+        }
+    ],
+    "sectors": [
+        {
+            "sector": "Technology",
+            "total_value": 100000.0,
+            "holding_count": 1,
+            "weight_pct": 100.0,
+        }
+    ],
+    "report_date": "2024-12-31",
+    "filing_delay_note": "delayed",
+    "generated_at": "2026-03-06T10:00:00+00:00",
+}
+
+_BACKTEST_DATA = {
+    "guru_id": 1,
+    "guru_display_name": "Warren Buffett",
+    "benchmark": "SPY",
+    "quarters": [
+        {
+            "report_date": "2024-12-31",
+            "filing_date": "2025-02-14",
+            "clone_return_pct": 4.2,
+            "benchmark_return_pct": 2.1,
+            "alpha_pct": 2.1,
+            "holdings_count": 20,
+            "top5_holdings": ["AAPL", "KO"],
+        }
+    ],
+    "cumulative_series": {
+        "dates": ["2025-02-14", "2025-02-18"],
+        "clone_returns": [0.0, 0.3],
+        "benchmark_returns": [0.0, 0.1],
+    },
+    "cumulative_clone_return": 4.2,
+    "cumulative_benchmark_return": 2.1,
+    "alpha": 2.1,
+    "computed_at": "2026-03-06T10:00:00+00:00",
+    "disclaimer": "test",
+}
+
+
+class TestHeatmapEndpoint:
+    def test_should_return_200_with_heatmap_shape(self, client):
+        with patch(HEATMAP_TARGET, return_value=_HEATMAP_DATA):
+            resp = client.get("/gurus/heatmap")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["report_date"] == "2024-12-31"
+        assert len(body["items"]) == 1
+        assert body["items"][0]["ticker"] == "AAPL"
+        assert body["items"][0]["action_breakdown"]["INCREASED"] == 2
+
+    def test_should_reject_invalid_style(self, client):
+        resp = client.get("/gurus/heatmap?style=INVALID")
+        assert resp.status_code == 422
+
+    def test_should_forward_style_param_to_service(self, client):
+        with patch(HEATMAP_TARGET, return_value=_HEATMAP_DATA) as mock:
+            resp = client.get("/gurus/heatmap?style=VALUE")
+
+        assert resp.status_code == 200
+        mock.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("style") == "VALUE"
+
+
+class TestGuruBacktestEndpoint:
+    def test_should_return_200_when_backtest_data_exists(self, client):
+        with patch(GURU_BACKTEST_TARGET, return_value=_BACKTEST_DATA):
+            resp = client.get("/gurus/1/backtest?quarters=4&benchmark=SPY")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["guru_id"] == 1
+        assert body["benchmark"] == "SPY"
+        assert body["alpha"] == 2.1
+        assert len(body["quarters"]) == 1
+
+    def test_should_return_404_when_guru_not_found(self, client):
+        with patch(GURU_BACKTEST_TARGET, return_value=None):
+            resp = client.get("/gurus/999/backtest")
+        assert resp.status_code == 404
+
+    def test_should_return_400_when_not_enough_filings(self, client):
+        with patch(GURU_BACKTEST_TARGET, side_effect=ValueError("not_enough_filings")):
+            resp = client.get("/gurus/1/backtest")
+        assert resp.status_code == 400
+
+    def test_should_return_503_when_benchmark_data_missing(self, client):
+        with patch(
+            GURU_BACKTEST_TARGET, side_effect=ValueError("benchmark_data_missing")
+        ):
+            resp = client.get("/gurus/1/backtest")
+        assert resp.status_code == 503
+
+    def test_should_forward_query_params_to_service(self, client):
+        with patch(GURU_BACKTEST_TARGET, return_value=_BACKTEST_DATA) as mock:
+            resp = client.get("/gurus/1/backtest?quarters=6&benchmark=VT")
+
+        assert resp.status_code == 200
+        mock.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("guru_id") == 1
+        assert kwargs.get("quarters") == 6
+        assert kwargs.get("benchmark") == "VT"

@@ -1389,6 +1389,42 @@
       "combined_weight": "合计权重",
       "table_header": "全部持仓"
     },
+    "heatmap": {
+      "tab": "🧩 13F 热力图",
+      "empty": "暂无热力图数据。",
+      "delay_note": "⚠️ 13F 持仓基准日：{{report_date}}。数据至少延迟 45 天，可能不代表当前仓位。",
+      "sop_title": "📖 热力图使用说明",
+      "sop_content": "### 热力图在看什么\n\n每个方块代表最新 13F 申报中的一只股票。\n\n- **大小**：跨大师合并权重\n- **颜色**：主导动作（新建仓 / 加仓 / 减仓 / 清仓 / 持平）\n- **分组**：可切换为行业或大师视图\n\n### 重要限制\n\n13F 为延迟披露数据，即使解析准确，披露时也可能已滞后 45 天以上。请作为研究辅助，而非实时交易信号。",
+      "view_by_sector": "按行业查看",
+      "view_by_guru": "按大师查看",
+      "all_sectors": "全部行业"
+    },
+    "backtest": {
+      "tab": "🧪 大师回测",
+      "disclaimer": "这是一个假设性模拟，并非真实业绩。假设按申报日收盘价买入、交易成本为 0、季度内不调仓。13F 不包含做空、期权和非美国持仓。",
+      "sop_title": "📖 回测方法说明",
+      "sop_content": "### 计算方法\n\n回测会在每个申报日模拟复制大师持仓，持有到下一次申报日。\n\n### 主要假设\n\n- 申报日收盘价进场（非基准日）\n- 按披露权重建仓\n- 不计交易成本与滑点\n- 季度内不调仓\n\n### 解读提醒\n\n回测结果仅供教育和研究参考，不应作为唯一投资依据。",
+      "guru_label": "大师",
+      "quarters_label": "季度数",
+      "benchmark_label": "基准",
+      "run": "运行回测",
+      "run_hint": "选择参数后点击“运行回测”。",
+      "computing": "正在计算回测... 首次运行可能需要 20 秒。",
+      "error": "加载大师回测数据失败。",
+      "clone_return": "复制组合收益",
+      "benchmark_return": "基准收益",
+      "alpha": "Alpha",
+      "clone_line": "复制组合",
+      "benchmark_line": "基准",
+      "col": {
+        "report_date": "基准日",
+        "filing_date": "申报日",
+        "clone_return": "复制组合",
+        "benchmark_return": "基准",
+        "alpha": "Alpha",
+        "holdings": "持仓数"
+      }
+    },
     "qoq": {
       "trend": "趋势",
       "no_data": "无历史数据",

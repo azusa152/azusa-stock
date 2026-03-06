@@ -46,6 +46,14 @@ from domain.analysis.fx_analysis import (  # noqa: F401
     determine_fx_risk_level,
     is_recent_high,
 )
+from domain.analysis.guru_backtest import (  # noqa: F401
+    HoldingSnapshot,
+    QuarterInput,
+    QuarterResult,
+    compute_alpha,
+    compute_clone_returns,
+    compute_quarter_return,
+)
 from domain.analysis.smart_money import (  # noqa: F401
     classify_holding_change,
     compute_change_pct,

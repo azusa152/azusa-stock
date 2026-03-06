@@ -295,7 +295,11 @@
     "sync_complete": "✅ {guru_name} の今四半期 13F レポートを同期しました（基準日：{report_date}）",
     "lagging_disclaimer": "⚠️ このデータは {days_ago} 日前の保有スナップショットです。リアルタイムではありません",
     "report_date_label": "保有基準日",
-    "filing_date_label": "申告日"
+    "filing_date_label": "申告日",
+    "heatmap_filing_delay_note": "⚠️ 13F 保有データの基準日は {report_date} です。公開には最低 45 日の遅延があり、現在の実際の保有を反映しない場合があります。",
+    "backtest_disclaimer": "これは仮想シミュレーションであり、実際の運用成績ではありません。申告日の終値で買付、売買コスト 0、四半期内のポジション変更なしを前提としています。13F は米国株ロングのみを対象とし、ショート、オプション、米国外保有は含まれません。過去の成績は将来の成果を保証しません。",
+    "backtest_not_enough_filings": "バックテストには最低 2 件の申告データが必要です。先に 13F 同期または履歴バックフィルを実行してください。",
+    "backtest_benchmark_data_missing": "ベンチマーク価格データを一時的に取得できません。しばらくしてから再試行してください。"
   },
   "fx": {
     "period_1d": "1日",

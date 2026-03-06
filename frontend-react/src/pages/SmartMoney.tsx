@@ -8,11 +8,15 @@ import { useGurus, useSyncAllGurus } from "@/api/hooks/useSmartMoney"
 import { OverviewTab } from "@/components/smartmoney/OverviewTab"
 import { GuruTab } from "@/components/smartmoney/GuruTab"
 import { GrandPortfolioTab } from "@/components/smartmoney/GrandPortfolioTab"
+import { HeatmapTab } from "@/components/smartmoney/HeatmapTab"
+import { GuruBacktestTab } from "@/components/smartmoney/GuruBacktestTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
 import { cn } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
 const GRAND_PORTFOLIO_TAB = "grand_portfolio"
+const HEATMAP_TAB = "heatmap"
+const BACKTEST_TAB = "backtest"
 const ADD_GURU_TAB = "add_guru"
 
 export default function SmartMoney() {
@@ -33,6 +37,8 @@ export default function SmartMoney() {
   const resolvedTab =
     activeTab !== OVERVIEW_TAB &&
     activeTab !== GRAND_PORTFOLIO_TAB &&
+    activeTab !== HEATMAP_TAB &&
+    activeTab !== BACKTEST_TAB &&
     activeTab !== ADD_GURU_TAB &&
     !filteredGuruIds.has(activeTab)
       ? OVERVIEW_TAB
@@ -115,7 +121,15 @@ export default function SmartMoney() {
       )}
       {syncAllMutation.isError && (
         <p className="text-xs text-destructive">
-          {t("smart_money.sidebar.sync_error", { msg: "" })}
+          {t("smart_money.sidebar.sync_error", {
+            msg: String(
+              (syncAllMutation.error as { detail?: string; message?: string } | null)
+                ?.detail ??
+                (syncAllMutation.error as { message?: string } | null)?.message ??
+                syncAllMutation.error ??
+                "",
+            ),
+          })}
         </p>
       )}
 
@@ -146,13 +160,19 @@ export default function SmartMoney() {
         </div>
       )}
 
-      {/* Tab bar: Overview + Grand Portfolio + per-guru + Add Guru */}
+      {/* Tab bar: Overview + Grand Portfolio + Heat Map + Backtest + per-guru + Add Guru */}
       <Tabs value={resolvedTab} onValueChange={setActiveTab}>
         <ScrollArea className="w-full">
           <TabsList ref={tabsListRef} className="inline-flex w-max min-h-[44px] gap-1">
             <TabsTrigger value={OVERVIEW_TAB} className="min-h-[44px]">{t("smart_money.overview.tab")}</TabsTrigger>
             <TabsTrigger value={GRAND_PORTFOLIO_TAB} className="min-h-[44px]">
               {t("smart_money.grand_portfolio.tab")}
+            </TabsTrigger>
+            <TabsTrigger value={HEATMAP_TAB} className="min-h-[44px]">
+              {t("smart_money.heatmap.tab")}
+            </TabsTrigger>
+            <TabsTrigger value={BACKTEST_TAB} className="min-h-[44px]">
+              {t("smart_money.backtest.tab")}
             </TabsTrigger>
             {filteredGurus.map((guru) => (
               <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)} className="min-h-[44px]">
@@ -176,6 +196,16 @@ export default function SmartMoney() {
         {/* Grand Portfolio tab */}
         <TabsContent value={GRAND_PORTFOLIO_TAB} className="mt-4">
           <GrandPortfolioTab style={styleFilter} />
+        </TabsContent>
+
+        {/* Heat map tab */}
+        <TabsContent value={HEATMAP_TAB} className="mt-4">
+          <HeatmapTab style={styleFilter} enabled={resolvedTab === HEATMAP_TAB} />
+        </TabsContent>
+
+        {/* Guru backtest tab */}
+        <TabsContent value={BACKTEST_TAB} className="mt-4">
+          <GuruBacktestTab gurus={filteredGurus} enabled={resolvedTab === BACKTEST_TAB} />
         </TabsContent>
 
         {/* Per-guru tabs */}

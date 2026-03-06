@@ -35,12 +35,14 @@ from api.schemas import (
     GrandPortfolioResponse,
     GreatMindsEntryResponse,
     GreatMindsResponse,
+    GuruBacktestResponse,
     GuruCreate,
     GuruFilingResponse,
     GuruHoldingResponse,
     GuruResponse,
     GuruStyleLiteral,
     GuruSummaryItem,
+    HeatmapResponse,
     QoQResponse,
     ResonanceEntryResponse,
     ResonanceResponse,
@@ -51,11 +53,17 @@ from api.schemas import (
     SyncAllResponse,
     SyncResponse,
 )
+from application.guru.backtest_service import (
+    get_guru_backtest,
+    invalidate_guru_backtest_cache,
+)
 from application.guru.guru_service import add_guru, list_gurus, remove_guru
+from application.guru.heatmap_service import get_heatmap, invalidate_heatmap_cache
 from application.guru.resonance_service import (
     compute_portfolio_resonance,
     get_great_minds_list,
     get_resonance_for_ticker,
+    invalidate_resonance_cache,
 )
 from application.messaging.notification_service import send_filing_season_digest
 from application.stock.filing_service import (
@@ -71,7 +79,12 @@ from application.stock.filing_service import (
 from application.stock.filing_service import (
     get_top_holdings as filing_get_top_holdings,
 )
-from domain.constants import GURU_HOLDING_CHANGES_DISPLAY_LIMIT, GURU_TOP_HOLDINGS_COUNT
+from domain.constants import (
+    GURU_BACKTEST_MAX_QUARTERS,
+    GURU_HOLDING_CHANGES_DISPLAY_LIMIT,
+    GURU_TOP_HOLDINGS_COUNT,
+)
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -182,6 +195,10 @@ def sync_all(
     finally:
         _sync_lock.release()
 
+    invalidate_resonance_cache()
+    invalidate_heatmap_cache()
+    invalidate_guru_backtest_cache()
+
     sync_results = []
     synced = skipped = errors = 0
     for r in raw_results:
@@ -228,6 +245,10 @@ def sync_one(
     status = result.get("status", "error")
     if status == "error" and result.get("error") == "guru not found":
         raise HTTPException(status_code=404, detail=f"Guru {guru_id} not found")
+    if status == "synced":
+        invalidate_resonance_cache()
+        invalidate_heatmap_cache()
+        invalidate_guru_backtest_cache()
     return SyncResponse(
         status=status,
         guru_id=result.get("guru_id"),
@@ -258,6 +279,65 @@ def get_grand_portfolio_endpoint(
     """跨所有啟用中大師的最新 13F 持倉聚合視圖。當提供 style 時，僅彙總該風格大師的持倉。"""
     data = get_grand_portfolio(session, style=style)
     return GrandPortfolioResponse(**data)
+
+
+@router.get(
+    "/heatmap",
+    response_model=HeatmapResponse,
+    summary="13F heat map data across tracked gurus",
+)
+@limiter.limit("20/minute")
+def get_heatmap_endpoint(
+    request: Request,
+    style: GuruStyleLiteral | None = Query(
+        default=None, description="Filter by guru style"
+    ),
+    session: Session = Depends(get_session),
+) -> HeatmapResponse:
+    lang = get_user_language(session)
+    data = get_heatmap(session, style=style, lang=lang)
+    return HeatmapResponse(**data)
+
+
+@router.get(
+    "/{guru_id}/backtest",
+    response_model=GuruBacktestResponse,
+    summary="Guru clone-portfolio backtest versus benchmark",
+)
+@limiter.limit("5/minute")
+def get_guru_backtest_endpoint(
+    request: Request,
+    guru_id: int,
+    quarters: int = Query(default=4, ge=2, le=GURU_BACKTEST_MAX_QUARTERS),
+    benchmark: str = Query(default="SPY", description="Benchmark ticker (SPY or VT)"),
+    session: Session = Depends(get_session),
+) -> GuruBacktestResponse:
+    lang = get_user_language(session)
+    try:
+        data = get_guru_backtest(
+            session=session,
+            guru_id=guru_id,
+            quarters=quarters,
+            benchmark=benchmark,
+            lang=lang,
+        )
+    except ValueError as exc:
+        detail_key = str(exc)
+        if detail_key == "not_enough_filings":
+            raise HTTPException(
+                status_code=400,
+                detail=t("guru.backtest_not_enough_filings", lang=lang),
+            ) from exc
+        if detail_key == "benchmark_data_missing":
+            raise HTTPException(
+                status_code=503,
+                detail=t("guru.backtest_benchmark_data_missing", lang=lang),
+            ) from exc
+        raise HTTPException(status_code=400, detail=detail_key) from exc
+
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Guru {guru_id} not found")
+    return GuruBacktestResponse(**data)
 
 
 # ===========================================================================

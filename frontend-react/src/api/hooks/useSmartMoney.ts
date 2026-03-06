@@ -4,6 +4,8 @@ import type {
   Guru,
   DashboardResponse,
   GrandPortfolioResponse,
+  HeatmapResponse,
+  GuruBacktestResponse,
   GuruFiling,
   GuruHolding,
   FilingHistoryResponse,
@@ -144,6 +146,45 @@ export function useGrandPortfolio(style?: string | null) {
   })
 }
 
+export function useGuruHeatmap(style?: string | null, enabled = true) {
+  return useQuery<HeatmapResponse>({
+    queryKey: ["guruHeatmap", style ?? "all"],
+    queryFn: async () => {
+      const { data, error } = await client.GET("/gurus/heatmap", {
+        params: { query: style ? { style: style as GuruStyle } : undefined },
+      })
+      if (error) throw error
+      return data as unknown as HeatmapResponse
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled,
+  })
+}
+
+export function useGuruBacktest(
+  guruId: number | null,
+  quarters: number,
+  benchmark: string,
+  enabled = true,
+) {
+  return useQuery<GuruBacktestResponse>({
+    queryKey: ["guruBacktest", guruId ?? "none", quarters, benchmark],
+    queryFn: async () => {
+      if (!guruId) throw new Error("guruId is required")
+      const { data, error } = await client.GET("/gurus/{guru_id}/backtest", {
+        params: {
+          path: { guru_id: guruId },
+          query: { quarters, benchmark },
+        },
+      })
+      if (error) throw error
+      return data as unknown as GuruBacktestResponse
+    },
+    staleTime: 60 * 60 * 1000,
+    enabled: enabled && !!guruId,
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Mutation hooks
 // ---------------------------------------------------------------------------
@@ -159,6 +200,9 @@ export function useAddGuru() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })
       queryClient.invalidateQueries({ queryKey: ["guruDashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["grandPortfolio"] })
+      queryClient.invalidateQueries({ queryKey: ["guruHeatmap"] })
+      queryClient.invalidateQueries({ queryKey: ["guruBacktest"] })
     },
   })
 }
@@ -180,6 +224,8 @@ export function useSyncGuru() {
       queryClient.invalidateQueries({ queryKey: ["guruTopHoldings", id] })
       queryClient.invalidateQueries({ queryKey: ["guruDashboard"] })
       queryClient.invalidateQueries({ queryKey: ["gurus"] })
+      queryClient.invalidateQueries({ queryKey: ["guruHeatmap"] })
+      queryClient.invalidateQueries({ queryKey: ["guruBacktest"] })
     },
   })
 }
@@ -195,6 +241,8 @@ export function useSyncAllGurus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })
       queryClient.invalidateQueries({ queryKey: ["guruDashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["guruHeatmap"] })
+      queryClient.invalidateQueries({ queryKey: ["guruBacktest"] })
     },
   })
 }
@@ -211,6 +259,9 @@ export function useDeactivateGuru() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })
       queryClient.invalidateQueries({ queryKey: ["guruDashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["grandPortfolio"] })
+      queryClient.invalidateQueries({ queryKey: ["guruHeatmap"] })
+      queryClient.invalidateQueries({ queryKey: ["guruBacktest"] })
     },
   })
 }
