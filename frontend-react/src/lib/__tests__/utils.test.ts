@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cn, parseUtc, formatLocalTime } from "../utils";
+import { cn, parseUtc, formatLocalTime, formatRelativeTime } from "../utils";
 
 describe("cn", () => {
   it("returns a single class unchanged", () => {
@@ -62,5 +62,28 @@ describe("formatLocalTime", () => {
   it("contains the year in the formatted string", () => {
     const result = formatLocalTime("2026-02-23T08:36:17");
     expect(result).toContain("2026");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("formats 0 seconds as at least 1 minute ago", () => {
+    expect(formatRelativeTime(0, "en")).toBe("1 minute ago");
+  });
+
+  it("formats minute/hour/day boundaries correctly", () => {
+    expect(formatRelativeTime(59 * 60, "en")).toBe("59 minutes ago");
+    expect(formatRelativeTime(60 * 60, "en")).toBe("1 hour ago");
+    expect(formatRelativeTime(23 * 60 * 60, "en")).toBe("23 hours ago");
+    expect(formatRelativeTime(24 * 60 * 60, "en")).toBe("yesterday");
+  });
+
+  it("forwards the locale to Intl.RelativeTimeFormat", () => {
+    const ja = formatRelativeTime(60 * 60, "ja");
+    expect(ja).toContain("前");
+  });
+
+  it("returns an empty string for non-finite values", () => {
+    expect(formatRelativeTime(Number.NaN, "en")).toBe("");
+    expect(formatRelativeTime(Number.POSITIVE_INFINITY, "en")).toBe("");
   });
 });

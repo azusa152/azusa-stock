@@ -1,8 +1,8 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { SendHorizonal } from "lucide-react"
-import { formatLocalTime } from "@/lib/utils"
+import { formatLocalTime, formatRelativeTime } from "@/lib/utils"
 import {
   useStocks,
   useEnrichedStocks,
@@ -16,6 +16,7 @@ import {
   useTwr,
   useGreatMinds,
 } from "@/api/hooks/useDashboard"
+import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useNetWorthHistory, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import {
@@ -40,11 +41,19 @@ import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
+const STALE_SCAN_THRESHOLD_SECONDS = 6 * 60 * 60
 
 export default function Dashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [displayCurrency, setDisplayCurrency] = useState("USD")
   const digestMutation = useTriggerDigest()
+  const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
+
+  useEffect(() => {
+    const updateNow = () => setNowEpochSeconds(Math.floor(Date.now() / 1000))
+    const timer = window.setInterval(updateNow, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const handleDigest = () => {
     digestMutation.mutate(undefined, {
@@ -63,6 +72,7 @@ export default function Dashboard() {
   const { data: profile } = useProfile()
   const { data: netWorthSummary, isLoading: netWorthLoading } = useNetWorthSummary(displayCurrency)
   const { data: netWorthHistory } = useNetWorthHistory(30, displayCurrency)
+  useScanCompletionEffect()
 
   // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
   // both depend on it. Its response is cached on the backend (60s TTL) so repeat
@@ -100,6 +110,15 @@ export default function Dashboard() {
   const scanTs = lastScan?.last_scanned_at
     ? formatLocalTime(lastScan.last_scanned_at)
     : null
+  const scanAgeSeconds = lastScan?.epoch
+    ? Math.max(0, nowEpochSeconds - lastScan.epoch)
+    : null
+  const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > STALE_SCAN_THRESHOLD_SECONDS
+  const scanStaleSuffix = isScanStale && scanAgeSeconds !== null
+    ? t("dashboard.scan_stale_suffix", {
+        relative: formatRelativeTime(scanAgeSeconds, i18n.language),
+      })
+    : null
 
   return (
     <div className="p-3 sm:p-6 space-y-6">
@@ -134,12 +153,14 @@ export default function Dashboard() {
       {/* Timestamps */}
       {(priceTs || scanTs) && (
         <p className="text-xs text-muted-foreground -mt-4">
-          {[
-            priceTs && t("dashboard.price_updated", { timestamp: priceTs }),
-            scanTs && t("dashboard.last_scan", { timestamp: scanTs }),
-          ]
-            .filter(Boolean)
-            .join(" ｜ ")}
+          {priceTs && <span>{t("dashboard.price_updated", { timestamp: priceTs })}</span>}
+          {priceTs && scanTs && <span>{` ${t("dashboard.timestamp_separator")} `}</span>}
+          {scanTs && (
+            <span className={isScanStale ? "text-amber-500 font-medium" : undefined}>
+              {t("dashboard.last_scan", { timestamp: scanTs })}
+              {scanStaleSuffix && ` ${scanStaleSuffix}`}
+            </span>
+          )}
         </p>
       )}
 

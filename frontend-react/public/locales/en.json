@@ -145,6 +145,8 @@
     "currency_selector": "Display Currency",
     "price_updated": "💰 Price updated: {{timestamp}}",
     "last_scan": "🔍 Last scan: {{timestamp}}",
+    "timestamp_separator": "｜",
+    "scan_stale_suffix": "(stale: {{relative}})",
     "no_update_record": "⏳ No update record available",
     "digest_tooltip": "Send Weekly Digest",
     "welcome": "👋 Welcome to Folio! Start setting up your portfolio.",

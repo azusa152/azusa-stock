@@ -9,6 +9,7 @@ import {
   useRadarEnrichedStocks,
   useRemovedStocks,
   useScanStatus,
+  useScanCompletionEffect,
   useResonance,
 } from "@/api/hooks/useRadar"
 import { CategoryTabs } from "@/components/radar/CategoryTabs"
@@ -41,6 +42,7 @@ export default function Radar() {
   const { data: scanStatus } = useScanStatus()
   const { data: resonanceMap } = useResonance()
   const { data: holdings } = useHoldings()
+  useScanCompletionEffect()
 
   const isScanning = scanStatus?.is_running ?? false
 

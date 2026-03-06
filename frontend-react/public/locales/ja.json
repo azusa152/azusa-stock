@@ -145,6 +145,8 @@
     "currency_selector": "表示通貨",
     "price_updated": "💰 価格更新：{{timestamp}}",
     "last_scan": "🔍 前回スキャン：{{timestamp}}",
+    "timestamp_separator": "｜",
+    "scan_stale_suffix": "（古いデータ：{{relative}}）",
     "no_update_record": "⏳ 更新記録がありません",
     "digest_tooltip": "週次レポートを送信",
     "welcome": "👋 Folioへようこそ！ポートフォリオの設定を始めましょう。",

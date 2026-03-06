@@ -25,3 +25,37 @@ export function parseUtc(iso: string): Date {
 export function formatLocalTime(iso: string): string {
   return parseUtc(iso).toLocaleString()
 }
+
+const relativeTimeFormatterCache = new Map<string, Intl.RelativeTimeFormat>()
+
+function getRelativeTimeFormatter(locale?: string): Intl.RelativeTimeFormat {
+  const cacheKey = locale ?? ""
+  const cached = relativeTimeFormatterCache.get(cacheKey)
+  if (cached) return cached
+
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+  relativeTimeFormatterCache.set(cacheKey, formatter)
+  return formatter
+}
+
+/**
+ * Format elapsed seconds into a localized relative time string.
+ */
+export function formatRelativeTime(seconds: number, locale?: string): string {
+  if (!Number.isFinite(seconds)) return ""
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const rtf = getRelativeTimeFormatter(locale)
+
+  if (safeSeconds < 60 * 60) {
+    const minutes = Math.max(1, Math.floor(safeSeconds / 60))
+    return rtf.format(-minutes, "minute")
+  }
+
+  if (safeSeconds < 24 * 60 * 60) {
+    const hours = Math.max(1, Math.floor(safeSeconds / (60 * 60)))
+    return rtf.format(-hours, "hour")
+  }
+
+  const days = Math.max(1, Math.floor(safeSeconds / (24 * 60 * 60)))
+  return rtf.format(-days, "day")
+}

@@ -145,6 +145,8 @@
     "currency_selector": "显示币别",
     "price_updated": "💰 价格资料更新：{{timestamp}}",
     "last_scan": "🔍 上次扫描：{{timestamp}}",
+    "timestamp_separator": "｜",
+    "scan_stale_suffix": "（数据偏旧：{{relative}}）",
     "no_update_record": "⏳ 尚无资料更新记录",
     "digest_tooltip": "发送每周摘要",
     "welcome": "👋 欢迎使用 Folio！开始设定你的投资组合。",

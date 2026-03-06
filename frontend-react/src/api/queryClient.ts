@@ -6,7 +6,7 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000,   // 5 min (matches backend cache TTL)
       gcTime: 10 * 60 * 1000,     // 10 min garbage collection
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
     },
   },
 })
