@@ -146,6 +146,7 @@
     "price_updated": "💰 Price updated: {{timestamp}}",
     "last_scan": "🔍 Last scan: {{timestamp}}",
     "scan_stale_suffix": "(stale: {{relative}})",
+    "market_closed": "(market closed)",
     "no_update_record": "⏳ No update record available",
     "digest_tooltip": "Send Weekly Digest",
     "welcome": "👋 Welcome to Folio! Start setting up your portfolio.",

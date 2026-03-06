@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { SendHorizonal } from "lucide-react"
+import { isMarketOpen } from "@/lib/format"
 import { formatLocalTime, formatRelativeTime } from "@/lib/utils"
 import {
   useStocks,
@@ -41,7 +42,6 @@ import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
-const STALE_SCAN_THRESHOLD_SECONDS = 6 * 60 * 60
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
@@ -113,7 +113,9 @@ export default function Dashboard() {
   const scanAgeSeconds = lastScan?.epoch
     ? Math.max(0, nowEpochSeconds - lastScan.epoch)
     : null
-  const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > STALE_SCAN_THRESHOLD_SECONDS
+  const usMarketOpen = isMarketOpen("US")
+  const staleScanThresholdSeconds = usMarketOpen ? 30 * 60 : 18 * 60 * 60
+  const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > staleScanThresholdSeconds
   const scanStaleSuffix = isScanStale && scanAgeSeconds !== null
     ? t("dashboard.scan_stale_suffix", {
         relative: formatRelativeTime(scanAgeSeconds, i18n.language),
@@ -159,6 +161,12 @@ export default function Dashboard() {
           {scanTs && (
             <span className={isScanStale ? "text-amber-500 font-medium" : undefined}>
               {t("dashboard.last_scan", { timestamp: scanTs })}
+              {!usMarketOpen && (
+                <span className="text-muted-foreground font-normal">
+                  {" "}
+                  {t("dashboard.market_closed")}
+                </span>
+              )}
               {scanStaleSuffix && ` ${scanStaleSuffix}`}
             </span>
           )}

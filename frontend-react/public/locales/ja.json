@@ -146,6 +146,7 @@
     "price_updated": "💰 価格更新：{{timestamp}}",
     "last_scan": "🔍 前回スキャン：{{timestamp}}",
     "scan_stale_suffix": "（古いデータ：{{relative}}）",
+    "market_closed": "（休場）",
     "no_update_record": "⏳ 更新記録がありません",
     "digest_tooltip": "週次レポートを送信",
     "welcome": "👋 Folioへようこそ！ポートフォリオの設定を始めましょう。",
