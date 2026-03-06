@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -46,6 +46,7 @@ interface Props {
   enrichment?: RadarEnrichedStock
   resonance?: ResonanceMap[string]
   isHeld?: boolean
+  index?: number
 }
 
 function MetricChip({ label, value, color }: { label: string; value: string | number | null | undefined; color?: string }) {
@@ -250,17 +251,25 @@ function RemoveSection({ ticker }: { ticker: string }) {
 
 type TabKey = "metrics" | "fundamentals" | "thesis" | "category" | "remove"
 
-export function StockCard({ stock, enrichment, resonance, isHeld = false }: Props) {
+export function StockCard({ stock, enrichment, resonance, isHeld = false, index = 0 }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("metrics")
+  const [sparklineEnabled, setSparklineEnabled] = useState(index === 0)
 
-  // Fetch price history only when the card is expanded. Previously this was always
-  // `true`, causing 20+ parallel yfinance requests on Radar page load.
-  // Trade-off: the collapsed-row sparkline (SparklineHeader) is hidden until first
-  // expand, after which it persists (React Query cache). A small skeleton is shown
-  // in its place so the card layout remains stable.
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded)
+  useEffect(() => {
+    if (sparklineEnabled || expanded) return
+
+    const timer = window.setTimeout(() => {
+      setSparklineEnabled(true)
+    }, index * 200)
+
+    return () => window.clearTimeout(timer)
+  }, [expanded, index, sparklineEnabled])
+
+  // Keep header sparkline responsive by prefetching progressively across cards,
+  // while still allowing immediate fetch when users expand a card early.
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded || sparklineEnabled)
   const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
   const isCrypto = stock.category === "Crypto"
   const showMoatChart = !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
