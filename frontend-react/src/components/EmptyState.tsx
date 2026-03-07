@@ -1,24 +1,60 @@
-interface Props {
-  icon?: string
-  message: string
-  action?: {
-    label: string
-    onClick: () => void
-  }
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
+interface EmptyStateAction {
+  label: string
+  onClick: () => void
+  variant?: "default" | "outline"
 }
 
-export function EmptyState({ icon = "📭", message, action }: Props) {
+interface Props {
+  icon?: string
+  /** Legacy single-line message (kept for backward compatibility) */
+  message: string
+  title?: string
+  description?: string
+  action?: EmptyStateAction
+  secondaryAction?: EmptyStateAction
+  className?: string
+}
+
+export function EmptyState({
+  icon = "📭",
+  message,
+  title,
+  description,
+  action,
+  secondaryAction,
+  className,
+}: Props) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+    <div className={cn("flex flex-col items-center justify-center gap-3 py-10 text-center", className)}>
       <p className="text-3xl">{icon}</p>
-      <p className="text-sm text-muted-foreground">{message}</p>
-      {action && (
-        <button
-          onClick={action.onClick}
-          className="text-xs text-primary hover:underline"
-        >
-          {action.label}
-        </button>
+      {title && <p className="text-base font-semibold">{title}</p>}
+      <p className="text-sm text-muted-foreground max-w-md">
+        {description ?? message}
+      </p>
+      {(action || secondaryAction) && (
+        <div className="flex items-center gap-2 mt-1">
+          {action && (
+            <Button
+              size="sm"
+              variant={action.variant ?? "default"}
+              onClick={action.onClick}
+            >
+              {action.label}
+            </Button>
+          )}
+          {secondaryAction && (
+            <Button
+              size="sm"
+              variant={secondaryAction.variant ?? "outline"}
+              onClick={secondaryAction.onClick}
+            >
+              {secondaryAction.label}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   )

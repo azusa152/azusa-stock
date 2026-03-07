@@ -355,26 +355,28 @@ export function PortfolioPulse({
   return (
     <Card>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-        {/* Left: Total Portfolio Value */}
+        {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
         <div className="space-y-1 md:col-span-1">
           <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
           {totalVal != null ? (
             <>
-              <p className="text-3xl font-bold tabular-nums">{maskMoney(totalVal)}</p>
-              {changePct != null && changeAmt != null && (
-                <p className={`text-sm font-medium ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                  {changePct >= 0 ? "▲" : "▼"}
-                  {Math.abs(changePct).toFixed(2)}%
-                  {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
-                </p>
-              )}
-              {ytdTwr != null && (
-                <p className={`text-sm ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                  <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{t("dashboard.ytd_return")}</GlossaryTerm>{" "}
-                  {ytdTwr >= 0 ? "▲" : "▼"}
-                  {Math.abs(ytdTwr).toFixed(2)}%
-                </p>
-              )}
+              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal)}</p>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                {changePct != null && changeAmt != null && (
+                  <span className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                    {changePct >= 0 ? "▲" : "▼"}
+                    {Math.abs(changePct).toFixed(2)}%
+                    {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
+                  </span>
+                )}
+                {ytdTwr != null && (
+                  <span className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{t("dashboard.ytd_return")}</GlossaryTerm>{" "}
+                    {ytdTwr >= 0 ? "▲" : "▼"}
+                    {Math.abs(ytdTwr).toFixed(2)}%
+                  </span>
+                )}
+              </div>
               {snapshots.length >= 2 && !isPrivate && (
                 <SparklineMini snapshots={snapshots} />
               )}
@@ -466,7 +468,7 @@ export function PortfolioPulse({
                 </p>
               </InfoPopover>
             </div>
-            <p className="text-lg font-semibold">{sentimentLabel}</p>
+            <p className="text-base font-semibold">{sentimentLabel}</p>
           </div>
           <div>
             <div className="flex items-center gap-1">
@@ -500,7 +502,7 @@ export function PortfolioPulse({
             </div>
             {totalCnt > 0 ? (
               <>
-                <p className={`text-lg font-semibold ${healthScoreColor(healthPct)}`}>
+                <p className={`text-base font-semibold ${healthScoreColor(healthPct)}`}>
                   {healthPct.toFixed(0)}%
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -508,7 +510,7 @@ export function PortfolioPulse({
                 </p>
               </>
             ) : (
-              <p className="text-lg font-semibold text-muted-foreground">N/A</p>
+              <p className="text-base font-semibold text-muted-foreground">N/A</p>
             )}
           </div>
           <div>

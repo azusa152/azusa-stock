@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/EmptyState"
 import {
   CATEGORY_ICON_SHORT,
   SCAN_SIGNAL_ICONS,
@@ -144,18 +144,21 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{t("dashboard.signal_alerts_title")}</CardTitle>
-          {activeStocks.length === 0 && (
-            <Button size="sm" variant="outline" onClick={() => navigate("/radar")}>
-              {t("dashboard.button_goto_radar")}
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-base">{t("dashboard.signal_alerts_title")}</CardTitle>
       </CardHeader>
       <CardContent>
         {activeStocks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("dashboard.no_tracking_stocks")}</p>
+          <EmptyState
+            icon="📡"
+            message={t("dashboard.no_tracking_stocks")}
+            title={t("dashboard.no_tracking_stocks_title")}
+            description={t("dashboard.no_tracking_stocks_description")}
+            className="py-6"
+            action={{
+              label: t("dashboard.button_goto_radar"),
+              onClick: () => navigate("/radar"),
+            }}
+          />
         ) : buyStocks.length === 0 && riskStocks.length === 0 ? (
           <div className="flex items-center gap-2 rounded-md bg-green-500/10 text-green-700 dark:text-green-400 px-3 py-2 text-sm">
             {t("dashboard.all_signals_normal")}

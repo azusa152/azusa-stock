@@ -38,4 +38,40 @@ describe("EmptyState", () => {
     await user.click(button);
     expect(handleClick).toHaveBeenCalledOnce();
   });
+
+  it("renders title when provided", () => {
+    render(<EmptyState message="fallback" title="Get Started" />);
+    expect(screen.getByText("Get Started")).toBeInTheDocument();
+  });
+
+  it("renders description instead of message when both provided", () => {
+    render(
+      <EmptyState message="fallback" description="Add stocks to begin" />
+    );
+    expect(screen.getByText("Add stocks to begin")).toBeInTheDocument();
+    expect(screen.queryByText("fallback")).not.toBeInTheDocument();
+  });
+
+  it("renders primary and secondary action buttons", async () => {
+    const user = userEvent.setup();
+    const primaryClick = vi.fn();
+    const secondaryClick = vi.fn();
+    render(
+      <EmptyState
+        message="No data"
+        action={{ label: "Go to Radar", onClick: primaryClick }}
+        secondaryAction={{
+          label: "Add Holdings",
+          onClick: secondaryClick,
+          variant: "outline",
+        }}
+      />
+    );
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Go to Radar" }));
+    expect(primaryClick).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: "Add Holdings" }));
+    expect(secondaryClick).toHaveBeenCalledOnce();
+  });
 });

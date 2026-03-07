@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { SendHorizonal } from "lucide-react"
@@ -30,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
+import { EmptyState } from "@/components/EmptyState"
 import { LazySection } from "@/components/LazySection"
 import { PortfolioPulse } from "@/components/dashboard/PortfolioPulse"
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
@@ -45,6 +47,7 @@ const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [displayCurrency, setDisplayCurrency] = useState("USD")
   const digestMutation = useTriggerDigest()
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
@@ -98,7 +101,21 @@ export default function Dashboard() {
     return (
       <div className="p-3 sm:p-6 space-y-4">
         <h1 className="text-xl sm:text-2xl font-bold">{t("dashboard.title")}</h1>
-        <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
+        <EmptyState
+          icon="🚀"
+          message={t("dashboard.welcome")}
+          title={t("dashboard.onboarding_title")}
+          description={t("dashboard.onboarding_description")}
+          action={{
+            label: t("dashboard.onboarding_goto_radar"),
+            onClick: () => navigate("/radar"),
+          }}
+          secondaryAction={{
+            label: t("dashboard.onboarding_goto_allocation"),
+            onClick: () => navigate("/allocation"),
+            variant: "outline",
+          }}
+        />
       </div>
     )
   }
@@ -173,7 +190,9 @@ export default function Dashboard() {
         </p>
       )}
 
-      {/* Portfolio Pulse hero */}
+      {/* ── Market Pulse ── */}
+      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_market_pulse")}</h2>
+
       <PortfolioPulse
         rebalance={rebalance}
         fearGreed={fearGreed}
@@ -186,23 +205,6 @@ export default function Dashboard() {
         isLoading={heroLoading}
       />
 
-      {/* Net Worth Summary */}
-      <NetWorthSummary
-        summary={netWorthSummary}
-        history={netWorthHistory ?? []}
-        isLoading={netWorthLoading}
-      />
-
-      {/* Stock Heat Map */}
-      <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
-
-      {/* YTD Dividend Income */}
-      <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
-
-      {/* Performance Chart */}
-      <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
-
-      {/* Signal Alerts — lazy loaded (below fold) */}
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <SignalAlerts
           stocks={stocks ?? []}
@@ -212,17 +214,32 @@ export default function Dashboard() {
         />
       </LazySection>
 
-      {/* Allocation at a Glance — lazy loaded (below fold) */}
+      {/* ── Portfolio Overview ── */}
+      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_portfolio_overview")}</h2>
+
+      <NetWorthSummary
+        summary={netWorthSummary}
+        history={netWorthHistory ?? []}
+        isLoading={netWorthLoading}
+      />
+
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
         <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
       </LazySection>
 
-      {/* Top Holdings — lazy loaded (below fold) */}
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
         <TopHoldings rebalance={rebalance} />
       </LazySection>
 
-      {/* Smart Money Resonance — lazy loaded (below fold) */}
+      {/* ── Deep Dive ── */}
+      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_deep_dive")}</h2>
+
+      <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
+
+      <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
+
+      <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
+
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
       </LazySection>
