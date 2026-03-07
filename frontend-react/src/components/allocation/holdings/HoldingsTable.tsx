@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import type { HoldingDetail } from "@/api/types/allocation"
+import { FINANCE_TEXT } from "@/lib/colors"
 
 interface Props {
   holdings: HoldingDetail[]
@@ -84,23 +85,23 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
                   <td className="py-0.5 pr-2 text-right">{fmtMasked(h.cost_total, privacyMode)}</td>
                   <td className="py-0.5 text-right">
                     <div
-                      style={{ color: h.change_pct != null ? (h.change_pct >= 0 ? "#22c55e" : "#ef4444") : undefined }}
+                      className={h.change_pct != null ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss) : undefined}
                     >
                       {h.change_pct != null ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}` : "—"}
                     </div>
                     {isCrypto && h.change_pct != null && Math.abs(h.change_pct) >= 5 && (
-                      <div className="text-[10px] text-amber-500 leading-tight mt-0.5">
+                      <div className={`text-[10px] leading-tight mt-0.5 ${FINANCE_TEXT.warning}`}>
                         {t("allocation.crypto.volatility_warning")}
                       </div>
                     )}
                     {showFxBreakdown && (
                       <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
                         {homeReturn != null && (
-                          <div style={{ color: homeReturn >= 0 ? "#22c55e" : "#ef4444" }}>
+                          <div className={homeReturn >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}>
                             {t("allocation.col.home_return", { pct: fmtPct(homeReturn) })}
                           </div>
                         )}
-                        <div style={{ color: fxReturn >= 0 ? "#22c55e" : "#ef4444" }}>
+                        <div className={fxReturn >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}>
                           {t("allocation.col.fx_return", { pct: fmtPct(fxReturn) })}
                         </div>
                       </div>

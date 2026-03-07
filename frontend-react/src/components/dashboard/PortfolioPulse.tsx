@@ -7,6 +7,7 @@ import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import { InfoPopover } from "./InfoPopover"
 import { getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -18,11 +19,11 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#ef4444", label: "EF" },
+  { range: [0, 25] as [number, number], color: "#dc2626", label: "EF" },
   { range: [25, 45] as [number, number], color: "#f97316", label: "F" },
   { range: [45, 55] as [number, number], color: "#eab308", label: "N" },
   { range: [55, 75] as [number, number], color: "#86efac", label: "G" },
-  { range: [75, 100] as [number, number], color: "#22c55e", label: "EG" },
+  { range: [75, 100] as [number, number], color: "#16a34a", label: "EG" },
 ]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
@@ -45,9 +46,9 @@ function computeHealthScore(
 }
 
 function healthScoreColor(pct: number): string {
-  if (pct >= 80) return "text-green-500"
-  if (pct >= 50) return "text-yellow-500"
-  return "text-red-500"
+  if (pct >= 80) return FINANCE_TEXT.gain
+  if (pct >= 50) return FINANCE_TEXT.warning
+  return FINANCE_TEXT.loss
 }
 
 /** Semi-circle SVG gauge for Fear & Greed (0-100). */
@@ -208,8 +209,8 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
       })
 
       const series = chart.addSeries(AreaSeries, {
-        lineColor: isUp ? "#22c55e" : "#ef4444",
-        topColor: isUp ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)",
+        lineColor: isUp ? "#16a34a" : "#dc2626",
+        topColor: isUp ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
         bottomColor: "rgba(0,0,0,0)",
         lineWidth: 1,
         priceLineVisible: false,
@@ -348,14 +349,14 @@ export function PortfolioPulse({
             <>
               <p className="text-3xl font-bold tabular-nums">{maskMoney(totalVal)}</p>
               {changePct != null && changeAmt != null && (
-                <p className={`text-sm font-medium ${changePct >= 0 ? "text-green-500" : "text-red-500"}`}>
+                <p className={`text-sm font-medium ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
                   {changePct >= 0 ? "▲" : "▼"}
                   {Math.abs(changePct).toFixed(2)}%
                   {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
                 </p>
               )}
               {ytdTwr != null && (
-                <p className={`text-sm ${ytdTwr >= 0 ? "text-green-500" : "text-red-500"}`}>
+                <p className={`text-sm ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
                   {t("dashboard.ytd_return")} {ytdTwr >= 0 ? "▲" : "▼"}
                   {Math.abs(ytdTwr).toFixed(2)}%
                 </p>

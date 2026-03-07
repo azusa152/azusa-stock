@@ -24,8 +24,8 @@ export function SparklineHeader({ data }: Props) {
       const last = data[data.length - 1]?.close ?? 0
       const first = data[0]?.close ?? 0
       const isUp = last >= first
-      const lineColor = isUp ? "#22c55e" : "#ef4444"
-      const topColor = isUp ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"
+      const lineColor = isUp ? "#16a34a" : "#dc2626"
+      const topColor = isUp ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"
 
       const series = chart.addSeries(AreaSeries, {
         lineColor,

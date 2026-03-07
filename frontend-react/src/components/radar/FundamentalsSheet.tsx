@@ -9,6 +9,7 @@ import { useFundamentals } from "@/api/hooks/useRadar"
 import type { RadarFundamentals } from "@/api/types/radar"
 import { formatMarketCap, formatPercent, formatRatio } from "@/lib/format"
 import { getHealthColor } from "@/lib/constants"
+import { FINANCE_CHIP } from "@/lib/colors"
 
 interface Props {
   ticker: string
@@ -29,10 +30,10 @@ function HealthBadge({ metric, value }: { metric: string; value?: number | null 
   const color = getHealthColor(metric, value)
   const klass =
     color === "green"
-      ? "border-green-500 text-green-600"
+      ? FINANCE_CHIP.gain
       : color === "red"
-        ? "border-red-500 text-red-600"
-        : "border-amber-500 text-amber-600"
+        ? FINANCE_CHIP.loss
+        : FINANCE_CHIP.warning
   return (
     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${klass}`}>
       {color}

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -17,7 +18,7 @@ function ChangeCell({ value, category, change24hLabel }: { value?: number | null
   const isPos = value >= 0
   const isCrypto = category === "Crypto"
   return (
-    <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? "text-green-500" : "text-red-500"}`}>
+    <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
       {isPos ? "▲" : "▼"}{Math.abs(value).toFixed(2)}%
       {isCrypto ? <span className="ml-1 text-[10px] text-muted-foreground">({change24hLabel})</span> : null}
     </td>
@@ -37,7 +38,7 @@ function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate
   const gainLoss = market_value - cost_total
   const returnPct = (gainLoss / cost_total) * 100
   const isPos = returnPct >= 0
-  const colorClass = isPos ? "text-green-500" : "text-red-500"
+  const colorClass = isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
   return (
     <>
       <td className={`text-right px-3 py-2 text-sm font-medium ${colorClass}`}>

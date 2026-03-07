@@ -24,6 +24,7 @@ import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
 import { SparklineHeader } from "@/components/radar/SparklineHeader"
 import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { FINANCE_BADGE, FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
 
@@ -303,9 +304,9 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
       ? getSignalDescription(t, signal)
       : ""
   const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
-    ? "shrink-0 text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 rounded px-1.5 py-0.5"
+    ? `shrink-0 text-[10px] rounded px-1.5 py-0.5 ${FINANCE_BADGE.gain}`
     : RISK_WARNING_SIGNALS.has(signal)
-      ? "shrink-0 text-[10px] bg-red-500/15 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5"
+      ? `shrink-0 text-[10px] rounded px-1.5 py-0.5 ${FINANCE_BADGE.loss}`
       : "shrink-0 text-[10px] bg-muted text-muted-foreground rounded px-1.5 py-0.5"
 
   const identityParts = [
@@ -326,7 +327,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   ]
 
   const isUp = changePct != null ? changePct >= 0 : null
-  const changeColor = isUp === null ? "" : isUp ? "text-green-500" : "text-red-500"
+  const changeColor = isUp === null ? "" : isUp ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
 
   return (
     <Card className={cn("border-border/70", isHeld && "border-l-[3px] border-l-primary")}>
@@ -387,7 +388,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
                 ? <SparklineHeader data={priceHistory} />
                 : <Skeleton className="h-8 w-20 shrink-0" />
             )}
-            <span className={`text-[10px] ${marketOpen ? "text-green-500" : "text-muted-foreground"}`}>
+            <span className={`text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}>
               {marketOpen ? "●" : "○"}
             </span>
             <span className="text-muted-foreground text-xs">{expanded ? "▲" : "▼"}</span>
@@ -401,8 +402,28 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
           <div className="flex flex-wrap gap-1.5 text-xs">
             {!isCrypto && (
               <>
-                <MetricChip label="RSI" value={rsi != null ? rsi.toFixed(1) : null} color={rsi != null && rsi < 35 ? "border-green-500 text-green-600" : rsi != null && rsi > 70 ? "border-red-500 text-red-600" : undefined} />
-                <MetricChip label="Bias" value={bias != null ? `${bias.toFixed(1)}%` : null} color={bias != null && bias > 20 ? "border-red-500 text-red-600" : bias != null && bias < -5 ? "border-green-500 text-green-600" : undefined} />
+                <MetricChip
+                  label="RSI"
+                  value={rsi != null ? rsi.toFixed(1) : null}
+                  color={
+                    rsi != null && rsi < 35
+                      ? FINANCE_CHIP.gain
+                      : rsi != null && rsi > 70
+                        ? FINANCE_CHIP.loss
+                        : undefined
+                  }
+                />
+                <MetricChip
+                  label="Bias"
+                  value={bias != null ? `${bias.toFixed(1)}%` : null}
+                  color={
+                    bias != null && bias > 20
+                      ? FINANCE_CHIP.loss
+                      : bias != null && bias < -5
+                        ? FINANCE_CHIP.gain
+                        : undefined
+                  }
+                />
                 {volumeRatio != null && (
                   <MetricChip label="Vol" value={`${volumeRatio.toFixed(1)}x`} />
                 )}
