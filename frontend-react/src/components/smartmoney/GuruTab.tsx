@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import {
   useGuruQoQ,
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
+import { cn } from "@/lib/utils"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
 import { ActionBadge } from "./ActionBadge"
 import { QoQTable } from "./QoQTable"
@@ -154,7 +156,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                   count: filingsResp.filings.length,
                 })
               : t("smart_money.tab.changes")}
-            <span>{historyOpen ? "▲" : "▼"}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", historyOpen && "rotate-180")} />
           </button>
           {historyOpen && filingsResp && (
             <div className="space-y-0.5 pl-2 border-l border-border">
@@ -383,7 +385,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.great_minds")}
-        <span className="text-muted-foreground text-xs">{greatMindsOpen ? "▲" : "▼"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", greatMindsOpen && "rotate-180")} />
       </button>
       {greatMindsOpen && (
         <>
@@ -430,7 +432,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.qoq")}
-        <span className="text-muted-foreground text-xs">{qoqOpen ? "▲" : "▼"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", qoqOpen && "rotate-180")} />
       </button>
       {qoqOpen &&
         (qoqData ? (

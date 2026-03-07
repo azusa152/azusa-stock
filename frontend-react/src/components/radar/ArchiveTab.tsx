@@ -1,10 +1,12 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import { useReactivateStock, useRemovalHistory, useThesisHistory } from "@/api/hooks/useRadar"
 import type { RemovedStock, StockCategory } from "@/api/types/radar"
 
@@ -23,7 +25,10 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
         onClick={() => setOpen((v) => !v)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        {open ? "▲" : "▼"} {t("radar.removed.history_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          {t("radar.removed.history_title", { ticker })}
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-1">
@@ -56,7 +61,10 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
         onClick={() => setOpen((v) => !v)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        {open ? "▲" : "▼"} {t("radar.removed.thesis_history_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          {t("radar.removed.thesis_history_title", { ticker })}
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-1">
@@ -94,7 +102,10 @@ function ReactivateSection({ ticker }: { ticker: string }) {
         onClick={() => setOpen(true)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        ▼ {t("radar.removed.reactivate_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200" />
+          {t("radar.removed.reactivate_title", { ticker })}
+        </span>
       </button>
     )
   }
@@ -125,7 +136,10 @@ function ReactivateSection({ ticker }: { ticker: string }) {
         onClick={() => setOpen(false)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        ▲ {t("radar.removed.reactivate_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className="h-3.5 w-3.5 rotate-180 transition-transform duration-200" />
+          {t("radar.removed.reactivate_title", { ticker })}
+        </span>
       </button>
       <Select value={category} onValueChange={(v) => setCategory(v as StockCategory)}>
         <SelectTrigger className="text-xs h-8">

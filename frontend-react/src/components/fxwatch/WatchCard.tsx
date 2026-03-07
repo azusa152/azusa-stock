@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { formatLocalTime } from "@/lib/utils"
+import { cn, formatLocalTime } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -180,9 +181,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
             </div>
 
             {/* Chevron */}
-            <span className="text-muted-foreground text-xs shrink-0">
-              {expanded ? "▲" : "▼"}
-            </span>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform duration-200", expanded && "rotate-180")} />
           </div>
         </button>
 

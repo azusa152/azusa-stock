@@ -1,8 +1,10 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import { useTelegramSettings, useSaveTelegram, useTestTelegram, useTriggerDigest } from "@/api/hooks/useAllocation"
 
 interface Props {
@@ -112,7 +114,8 @@ export function TelegramSettings({ privacyMode }: Props) {
         onClick={() => editOpen ? setEditOpen(false) : handleEditOpen()}
         className="text-xs text-primary hover:underline flex items-center gap-1"
       >
-        {t("allocation.telegram.edit_title")} {editOpen ? "▲" : "▼"}
+        {t("allocation.telegram.edit_title")}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", editOpen && "rotate-180")} />
       </button>
 
       {editOpen && (

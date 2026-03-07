@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -142,7 +143,10 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
         onClick={() => setOpen((v) => !v)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        {open ? "▲" : "▼"} {t("radar.stock_card.history")}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          {t("radar.stock_card.history")}
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-2">
@@ -407,7 +411,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
             <span className={`text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}>
               {marketOpen ? "●" : "○"}
             </span>
-            <span className="text-muted-foreground text-xs">{expanded ? "▲" : "▼"}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
           </span>
         </span>
       </button>

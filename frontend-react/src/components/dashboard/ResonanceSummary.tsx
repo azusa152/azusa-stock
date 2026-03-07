@@ -1,8 +1,10 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { GreatMindsResponse } from "@/api/types/dashboard"
 
 const HOLDING_ACTION_ICONS: Record<string, string> = {
@@ -80,7 +82,10 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
               onClick={() => setExpanded((v) => !v)}
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
             >
-              {expanded ? "▲" : "▼"} {t("dashboard.resonance.details_expander")}
+              <span className="inline-flex items-center gap-1">
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", expanded && "rotate-180")} />
+                {t("dashboard.resonance.details_expander")}
+              </span>
             </button>
 
             {expanded && (
