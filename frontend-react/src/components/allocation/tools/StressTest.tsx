@@ -44,16 +44,20 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
       {/* Slider */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{t("allocation.stress.slider_label")}</span>
-          <span className="text-sm font-semibold text-red-500">-{sliderValue}%</span>
+          <label htmlFor="stress-market-drop" className="text-xs text-muted-foreground">{t("allocation.stress.slider_label")}</label>
+          <span className="text-sm font-semibold text-red-600 dark:text-red-400">-{sliderValue}%</span>
         </div>
         <input
+          id="stress-market-drop"
           type="range"
           min={5}
           max={50}
           step={5}
           value={sliderValue}
           onChange={(e) => setSliderValue(Number(e.target.value))}
+          aria-valuemin={5}
+          aria-valuemax={50}
+          aria-valuenow={sliderValue}
           className="w-full"
         />
         <div className="flex justify-between text-xs text-muted-foreground">

@@ -381,7 +381,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
           {crosshair ? (
             <span
               className={`text-xs font-mono tabular-nums shrink-0 ${
-                crosshair.portfolio >= 0 ? "text-green-500" : "text-red-500"
+                crosshair.portfolio >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
               }`}
             >
               {crosshair.portfolio >= 0 ? "+" : ""}
@@ -398,7 +398,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
             periodStats && (
               <span
                 className={`text-sm font-bold tabular-nums shrink-0 ${
-                  periodStats.returnPct >= 0 ? "text-green-500" : "text-red-500"
+                  periodStats.returnPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                 }`}
               >
                 {periodStats.returnPct >= 0 ? "+" : ""}
@@ -481,7 +481,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
         {hasSnapshots ? (
           <div className="relative">
             {/* Chart is mounted once — never remounted on period change */}
-            <LightweightChartWrapper height={280} onInit={onInit} />
+            <LightweightChartWrapper height={280} onInit={onInit} ariaLabel={t("accessibility.chart_performance")} />
             {/* Overlay when selected period has no data yet */}
             {!hasPeriodData && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/70 rounded">

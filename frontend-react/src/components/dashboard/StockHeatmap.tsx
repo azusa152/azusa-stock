@@ -231,15 +231,17 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
           </span>
           <span className="text-muted-foreground/60">· {t("dashboard.heatmap_grouped_by")}</span>
         </div>
-        <ResponsiveContainer width="100%" height={320}>
-          <Treemap
-            data={treeData}
-            dataKey="size"
-            content={<HeatCell />}
-          >
-            <Tooltip content={<HeatmapTooltip theme={theme} t={t} />} />
-          </Treemap>
-        </ResponsiveContainer>
+        <div role="img" aria-label={t("accessibility.chart_heatmap")}>
+          <ResponsiveContainer width="100%" height={320}>
+            <Treemap
+              data={treeData}
+              dataKey="size"
+              content={<HeatCell />}
+            >
+              <Tooltip content={<HeatmapTooltip theme={theme} t={t} />} />
+            </Treemap>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   )

@@ -117,23 +117,30 @@ export function TargetAllocation() {
 
       {/* Sliders */}
       <div className="space-y-3 max-w-sm">
-        {STOCK_CATEGORIES.map((cat) => (
-          <div key={cat} className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium">{t(`config.category.${cat.toLowerCase()}`)}</label>
-              <span className="text-xs font-semibold">{sliders[cat] ?? 0}%</span>
+        {STOCK_CATEGORIES.map((cat) => {
+          const sliderId = `target-${cat.toLowerCase()}`
+          return (
+            <div key={cat} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor={sliderId} className="text-xs font-medium">{t(`config.category.${cat.toLowerCase()}`)}</label>
+                <span className="text-xs font-semibold">{sliders[cat] ?? 0}%</span>
+              </div>
+              <input
+                id={sliderId}
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={sliders[cat] ?? 0}
+                onChange={(e) => handleSliderChange(cat, Number(e.target.value))}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={sliders[cat] ?? 0}
+                className="w-full"
+              />
             </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={sliders[cat] ?? 0}
-              onChange={(e) => handleSliderChange(cat, Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-        ))}
+          )
+        })}
 
         {/* Sum validation */}
         <div className={`text-xs font-semibold ${Math.abs(remaining) < 0.01 ? "text-green-600" : "text-yellow-600"}`}>

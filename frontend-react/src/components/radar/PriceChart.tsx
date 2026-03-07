@@ -135,7 +135,7 @@ export function PriceChart({ data }: Props) {
           </button>
         ))}
       </div>
-      <LightweightChartWrapper key={period} height={200} onInit={onInit} />
+      <LightweightChartWrapper key={period} height={200} onInit={onInit} ariaLabel={t("accessibility.chart_price_trend")} />
     </div>
   )
 }

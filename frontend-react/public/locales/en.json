@@ -41,6 +41,14 @@
     "error_render": "Something went wrong",
     "retry": "Retry"
   },
+  "accessibility": {
+    "skip_to_content": "Skip to content",
+    "chart_performance": "Portfolio performance over selected period",
+    "chart_price_trend": "Price trend chart for selected stock",
+    "chart_fx_rate": "Exchange rate trend chart",
+    "chart_heatmap": "Stock heatmap grouped by sector showing daily changes",
+    "chart_net_worth": "Net worth history chart showing assets and liabilities over time"
+  },
   "pwa": {
     "offline_ready": "Folio is ready for offline use",
     "new_content": "A new version is available",

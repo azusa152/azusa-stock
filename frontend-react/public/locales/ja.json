@@ -41,6 +41,14 @@
     "error_render": "エラーが発生しました",
     "retry": "再試行"
   },
+  "accessibility": {
+    "skip_to_content": "メインコンテンツへスキップ",
+    "chart_performance": "選択期間のポートフォリオパフォーマンス",
+    "chart_price_trend": "選択銘柄の価格トレンドチャート",
+    "chart_fx_rate": "為替レートのトレンドチャート",
+    "chart_heatmap": "セクター別の株式ヒートマップ（日次変動）",
+    "chart_net_worth": "資産・負債を含む純資産推移チャート"
+  },
   "pwa": {
     "offline_ready": "Folio はオフラインで利用できます",
     "new_content": "新しいバージョンがあります",

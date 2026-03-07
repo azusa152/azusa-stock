@@ -137,7 +137,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                     className={`text-xs font-medium tabular-nums ${
                       (dailyChangePct ?? 0) >= 0
                         ? "text-green-600 dark:text-green-400"
-                        : "text-red-500"
+                        : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {dailyChangeStr}

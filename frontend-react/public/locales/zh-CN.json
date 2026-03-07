@@ -41,6 +41,14 @@
     "error_render": "发生错误",
     "retry": "重试"
   },
+  "accessibility": {
+    "skip_to_content": "跳至主要内容",
+    "chart_performance": "所选期间的投资组合绩效",
+    "chart_price_trend": "所选股票的价格趋势图",
+    "chart_fx_rate": "汇率趋势图",
+    "chart_heatmap": "按行业分类的股票热力图，显示每日涨跌",
+    "chart_net_worth": "净资产历史图表，显示资产与负债随时间的变化"
+  },
   "pwa": {
     "offline_ready": "Folio 已可离线使用",
     "new_content": "有新版本可更新",

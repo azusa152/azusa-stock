@@ -121,14 +121,14 @@ export function FxChart({ data, recentHighDays }: Props) {
         {changePctFormatted && (
           <span
             className={`text-xs font-medium tabular-nums ${
-              (periodChangePct ?? 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"
+              (periodChangePct ?? 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
             }`}
           >
             {changePctFormatted}
           </span>
         )}
       </div>
-      <LightweightChartWrapper key={period} height={220} onInit={onInit} />
+      <LightweightChartWrapper key={period} height={220} onInit={onInit} ariaLabel={t("accessibility.chart_fx_rate")} />
     </div>
   )
 }

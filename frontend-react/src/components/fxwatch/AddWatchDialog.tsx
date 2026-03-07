@@ -107,30 +107,38 @@ export function AddWatchDialog({ open, onClose }: Props) {
           {/* Sliders */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground">
+              <label htmlFor="add-recent-high-days" className="text-xs text-muted-foreground">
                 {t("fx_watch.form.recent_high_days")}: {recentHighDays}
               </label>
               <input
+                id="add-recent-high-days"
                 type="range"
                 min={5}
                 max={90}
                 step={5}
                 value={recentHighDays}
                 onChange={(e) => setRecentHighDays(Number(e.target.value))}
+                aria-valuemin={5}
+                aria-valuemax={90}
+                aria-valuenow={recentHighDays}
                 className="w-full mt-0.5"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">
+              <label htmlFor="add-consecutive-days" className="text-xs text-muted-foreground">
                 {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
               </label>
               <input
+                id="add-consecutive-days"
                 type="range"
                 min={2}
                 max={10}
                 step={1}
                 value={consecutiveDays}
                 onChange={(e) => setConsecutiveDays(Number(e.target.value))}
+                aria-valuemin={2}
+                aria-valuemax={10}
+                aria-valuenow={consecutiveDays}
                 className="w-full mt-0.5"
               />
             </div>

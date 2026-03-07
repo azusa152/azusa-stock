@@ -82,32 +82,40 @@ export function EditWatchPopover({ watch }: Props) {
 
         {/* Recent high days */}
         <div>
-          <label className="text-xs text-muted-foreground">
+          <label htmlFor={`edit-recent-high-${watch.id}`} className="text-xs text-muted-foreground">
             {t("fx_watch.form.recent_high_days")}: {recentHighDays}
           </label>
           <input
+            id={`edit-recent-high-${watch.id}`}
             type="range"
             min={5}
             max={90}
             step={5}
             value={recentHighDays}
             onChange={(e) => setRecentHighDays(Number(e.target.value))}
+            aria-valuemin={5}
+            aria-valuemax={90}
+            aria-valuenow={recentHighDays}
             className="w-full"
           />
         </div>
 
         {/* Consecutive days */}
         <div>
-          <label className="text-xs text-muted-foreground">
+          <label htmlFor={`edit-consecutive-${watch.id}`} className="text-xs text-muted-foreground">
             {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
           </label>
           <input
+            id={`edit-consecutive-${watch.id}`}
             type="range"
             min={2}
             max={10}
             step={1}
             value={consecutiveDays}
             onChange={(e) => setConsecutiveDays(Number(e.target.value))}
+            aria-valuemin={2}
+            aria-valuemax={10}
+            aria-valuenow={consecutiveDays}
             className="w-full"
           />
         </div>

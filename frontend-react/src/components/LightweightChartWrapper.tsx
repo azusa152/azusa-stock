@@ -7,13 +7,15 @@ interface Props {
   /** Called once with the chart instance on mount; return cleanup if needed. */
   onInit: (chart: IChartApi, container: HTMLDivElement) => (() => void) | void
   className?: string
+  /** Accessible label describing chart content for screen readers. */
+  ariaLabel?: string
 }
 
 /**
  * Reusable wrapper for lightweight-charts.
  * Handles: chart creation, ResizeObserver, theme reactivity, and cleanup.
  */
-export function LightweightChartWrapper({ height = 200, onInit, className }: Props) {
+export function LightweightChartWrapper({ height = 200, onInit, className, ariaLabel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesCleanupRef = useRef<(() => void) | void>(undefined)
@@ -99,5 +101,12 @@ export function LightweightChartWrapper({ height = 200, onInit, className }: Pro
     }
   }, [theme, applyTheme])
 
-  return <div ref={containerRef} style={{ height }} className={className ?? "w-full"} />
+  return (
+    <div
+      ref={containerRef}
+      {...(ariaLabel ? { role: "img" as const, "aria-label": ariaLabel } : { "aria-hidden": true })}
+      style={{ height }}
+      className={className ?? "w-full"}
+    />
+  )
 }

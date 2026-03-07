@@ -41,6 +41,14 @@
     "error_render": "發生錯誤",
     "retry": "重試"
   },
+  "accessibility": {
+    "skip_to_content": "跳至主要內容",
+    "chart_performance": "所選期間的投資組合績效",
+    "chart_price_trend": "所選股票的價格趨勢圖",
+    "chart_fx_rate": "匯率趨勢圖",
+    "chart_heatmap": "依產業分類的股票熱力圖，顯示每日漲跌",
+    "chart_net_worth": "淨資產歷史圖表，顯示資產與負債隨時間的變化"
+  },
   "pwa": {
     "offline_ready": "Folio 已可離線使用",
     "new_content": "有新版本可更新",

@@ -98,7 +98,7 @@ export function NetWorthHistoryChart({
             {t("net_worth.history_empty")}
           </div>
         ) : (
-          <div className="h-64">
+          <div className="h-64" role="img" aria-label={t("accessibility.chart_net_worth")}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
