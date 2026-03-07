@@ -108,14 +108,15 @@
     "privacy_mode": "🙈 プライバシーモード",
     "cnn_unavailable": "⚠️ CNNデータ取得不可、VIXのみ使用",
     "signal": {
-      "thesis_broken": "ファンダメンタルズ悪化",
-      "deep_value": "ディープバリュー",
-      "oversold": "売られすぎ",
-      "contrarian_buy": "逆張り買い",
-      "approaching_buy": "買い場接近",
-      "overheated": "過熱",
-      "caution_high": "高値警戒",
-      "weakening": "弱含み",
+      "thesis_broken": "投資仮説に注意",
+      "deep_value": "割安チャンス",
+      "oversold": "急落シグナル",
+      "contrarian_buy": "反発初動",
+      "approaching_buy": "買い場に接近",
+      "overheated": "過熱リスク",
+      "caution_high": "警戒レベル高",
+      "weakening": "勢い鈍化",
+      "rogue_wave": "異常な値動き",
       "normal": "正常"
     },
     "signal_desc": {
@@ -127,6 +128,7 @@
       "overheated": "価格が伸びすぎで出来高も増加。追い買いは注意。",
       "caution_high": "リスク指標の一部が上昇中。新規エントリーは抑えめに。",
       "weakening": "モメンタムが弱まっています。継続監視してください。",
+      "rogue_wave": "乖離率が極端で出来高も急増する急落局面です。リスク追加は避けてください。",
       "normal": "現時点で大きな警戒または好機シグナルはありません。"
     },
     "pain_level": {
@@ -135,6 +137,19 @@
       "high": "orange",
       "panic": "red"
     }
+  },
+  "glossary": {
+    "twr": "TWRは入出金の影響を除いて運用成績を示す指標です。",
+    "rsi": "RSIは株価の買われすぎ・売られすぎを0から100で示します。",
+    "bias": "Biasは価格が移動平均から何％離れているかを示します。",
+    "ma200": "MA200は約200営業日の平均価格で長期トレンドを示します。",
+    "ma60": "MA60は約60営業日の平均価格で中期トレンドを示します。",
+    "volume_ratio": "出来高比率は当日の出来高を最近の平均出来高と比較した値です。",
+    "fear_greed": "恐怖と強欲は市場心理を0から100で表す指数です。",
+    "market_sentiment": "市場センチメントは市場全体の地合いを要約した評価です。",
+    "health_score": "健康スコアは追跡銘柄のうちNORMALの割合を示します。",
+    "resonance": "共鳴はあなたの銘柄とグル保有銘柄の重なりを示します。",
+    "moat": "モートは企業の利益を守る持続的な競争優位を意味します。"
   },
   "dashboard": {
     "title": "📊 ポートフォリオ概要",

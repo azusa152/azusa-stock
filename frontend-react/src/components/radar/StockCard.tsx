@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   SCAN_SIGNAL_ICONS,
@@ -27,6 +28,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { FINANCE_BADGE, FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
 
 const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
+const GLOSSARY_KEYS = {
+  rsi: "rsi",
+  bias: "bias",
+  volumeRatio: "volume_ratio",
+  ma200: "ma200",
+  ma60: "ma60",
+} as const
 
 function infer_market_label(ticker: string): string {
   if (ticker.endsWith(".TW")) return "🇹🇼 TW"
@@ -50,7 +58,15 @@ interface Props {
   index?: number
 }
 
-function MetricChip({ label, value, color }: { label: string; value: string | number | null | undefined; color?: string }) {
+function MetricChip({
+  label,
+  value,
+  color,
+}: {
+  label: ReactNode
+  value: string | number | null | undefined
+  color?: string
+}) {
   if (value == null) return null
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${color ?? "border-border text-foreground"}`}>
@@ -403,7 +419,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
             {!isCrypto && (
               <>
                 <MetricChip
-                  label="RSI"
+                  label={<GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>}
                   value={rsi != null ? rsi.toFixed(1) : null}
                   color={
                     rsi != null && rsi < 35
@@ -414,7 +430,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
                   }
                 />
                 <MetricChip
-                  label="Bias"
+                  label={<GlossaryTerm termKey={GLOSSARY_KEYS.bias}>{t("utils.signals.bias")}</GlossaryTerm>}
                   value={bias != null ? `${bias.toFixed(1)}%` : null}
                   color={
                     bias != null && bias > 20
@@ -425,7 +441,14 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
                   }
                 />
                 {volumeRatio != null && (
-                  <MetricChip label="Vol" value={`${volumeRatio.toFixed(1)}x`} />
+                  <MetricChip
+                    label={
+                      <GlossaryTerm termKey={GLOSSARY_KEYS.volumeRatio}>
+                        {t("utils.signals.volume_ratio")}
+                      </GlossaryTerm>
+                    }
+                    value={`${volumeRatio.toFixed(1)}x`}
+                  />
                 )}
               </>
             )}
@@ -497,13 +520,19 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
                   {/* Text metrics row */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {enrichment?.signals?.price != null && (
-                      <span>Price: {currency.symbol}{formatPrice(enrichment.signals.price as number, currency.code)}</span>
+                      <span>{t("utils.signals.price")}: {currency.symbol}{formatPrice(enrichment.signals.price as number, currency.code)}</span>
                     )}
                     {!isCrypto && enrichment?.signals?.ma200 != null && (
-                      <span>MA200: {currency.symbol}{formatPrice(enrichment.signals.ma200 as number, currency.code)}</span>
+                      <span>
+                        <GlossaryTerm termKey={GLOSSARY_KEYS.ma200}>{t("utils.signals.ma200")}</GlossaryTerm>:{" "}
+                        {currency.symbol}{formatPrice(enrichment.signals.ma200 as number, currency.code)}
+                      </span>
                     )}
                     {!isCrypto && enrichment?.signals?.ma60 != null && (
-                      <span>MA60: {currency.symbol}{formatPrice(enrichment.signals.ma60 as number, currency.code)}</span>
+                      <span>
+                        <GlossaryTerm termKey={GLOSSARY_KEYS.ma60}>{t("utils.signals.ma60")}</GlossaryTerm>:{" "}
+                        {currency.symbol}{formatPrice(enrichment.signals.ma60 as number, currency.code)}
+                      </span>
                     )}
                     {isCrypto && changePct != null && (
                       <span>{t("allocation.crypto.change_24h_short")}: {changePct >= 0 ? "+" : "-"}{Math.abs(changePct).toFixed(2)}%</span>

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { InfoPopover } from "./InfoPopover"
 import { getSignalLabel } from "@/lib/signal-label"
 import { FINANCE_TEXT } from "@/lib/colors"
@@ -19,17 +20,24 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#dc2626", label: "EF" },
-  { range: [25, 45] as [number, number], color: "#f97316", label: "F" },
-  { range: [45, 55] as [number, number], color: "#eab308", label: "N" },
-  { range: [55, 75] as [number, number], color: "#86efac", label: "G" },
-  { range: [75, 100] as [number, number], color: "#16a34a", label: "EG" },
+  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear" },
+  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear" },
+  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral" },
+  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed" },
+  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed" },
 ]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
   positive: "bullish",
   caution: "bearish",
 }
+
+const GLOSSARY_KEYS = {
+  twr: "twr",
+  fearGreed: "fear_greed",
+  marketSentiment: "market_sentiment",
+  healthScore: "health_score",
+} as const
 
 function computeHealthScore(
   stocks: Stock[],
@@ -53,6 +61,7 @@ function healthScoreColor(pct: number): string {
 
 /** Semi-circle SVG gauge for Fear & Greed (0-100). */
 function FearGreedGauge({ score, level }: { score: number; level: string }) {
+  const { t } = useTranslation()
   const cx = 100
   const cy = 100
   const r = 70
@@ -86,7 +95,11 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
   const tipY = cy - (r - strokeW / 2 - 4) * Math.sin(Math.PI - (needleAngleDeg * Math.PI) / 180)
 
   // Label display
-  const gaugeTitle = level.includes(" ") ? level.split(" ").slice(1).join(" ") : level
+  const clampedScore = Math.max(0, Math.min(100, score))
+  const currentBand = FEAR_GREED_BANDS.find(
+    (band) => clampedScore >= band.range[0] && clampedScore <= band.range[1],
+  )
+  const gaugeTitle = currentBand ? t(currentBand.labelKey) : level
 
   return (
     <svg viewBox="0 0 200 110" className="w-full" style={{ maxHeight: 160 }}>
@@ -102,7 +115,7 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
       {/* Colored band arcs */}
       {FEAR_GREED_BANDS.map((band) => (
         <path
-          key={band.label}
+          key={band.labelKey}
           d={arcPath(band.range[0], band.range[1])}
           fill="none"
           stroke={band.color}
@@ -357,7 +370,8 @@ export function PortfolioPulse({
               )}
               {ytdTwr != null && (
                 <p className={`text-sm ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                  {t("dashboard.ytd_return")} {ytdTwr >= 0 ? "▲" : "▼"}
+                  <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{t("dashboard.ytd_return")}</GlossaryTerm>{" "}
+                  {ytdTwr >= 0 ? "▲" : "▼"}
                   {Math.abs(ytdTwr).toFixed(2)}%
                 </p>
               )}
@@ -373,7 +387,9 @@ export function PortfolioPulse({
         {/* Center: Fear & Greed Gauge */}
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1">
-            <p className="text-xs text-muted-foreground">{t("dashboard.fear_greed_title")}</p>
+            <p className="text-xs text-muted-foreground">
+              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>{t("dashboard.fear_greed_title")}</GlossaryTerm>
+            </p>
             {fearGreed && (
               <InfoPopover align="center">
                 <p className="text-xs font-medium">
@@ -405,6 +421,14 @@ export function PortfolioPulse({
           {fearGreed ? (
             <>
               <FearGreedGauge score={fgScore} level={fgLevel} />
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {FEAR_GREED_BANDS.map((band) => (
+                  <span key={band.labelKey} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: band.color }} />
+                    {t(band.labelKey)}
+                  </span>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground text-center">
                 {vixVal != null && (
                   <>
@@ -428,7 +452,9 @@ export function PortfolioPulse({
         <div className="space-y-4">
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground">{t("dashboard.market_sentiment")}</p>
+              <p className="text-xs text-muted-foreground">
+                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>{t("dashboard.market_sentiment")}</GlossaryTerm>
+              </p>
               <InfoPopover align="end">
                 {lastScan?.market_status_details ? (
                   <p className="text-xs">{lastScan.market_status_details}</p>
@@ -444,7 +470,9 @@ export function PortfolioPulse({
           </div>
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground">{t("dashboard.health_score")}</p>
+              <p className="text-xs text-muted-foreground">
+                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>{t("dashboard.health_score")}</GlossaryTerm>
+              </p>
               <InfoPopover align="end">
                 {nonNormalStocks.length > 0 ? (
                   <>

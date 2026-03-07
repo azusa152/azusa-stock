@@ -108,14 +108,15 @@
     "privacy_mode": "🙈 隱私模式",
     "cnn_unavailable": "⚠️ CNN 資料不可用，僅使用 VIX",
     "signal": {
-      "thesis_broken": "基本面惡化",
-      "deep_value": "深度價值",
-      "oversold": "超賣",
-      "contrarian_buy": "逆向買入",
-      "approaching_buy": "接近買點",
-      "overheated": "過熱",
-      "caution_high": "高度警戒",
-      "weakening": "轉弱",
+      "thesis_broken": "投資論點有風險",
+      "deep_value": "低估機會",
+      "oversold": "急跌訊號",
+      "contrarian_buy": "反彈起點",
+      "approaching_buy": "接近進場區",
+      "overheated": "過熱風險",
+      "caution_high": "風險偏高",
+      "weakening": "動能轉弱",
+      "rogue_wave": "異常價跌",
       "normal": "正常"
     },
     "signal_desc": {
@@ -127,6 +128,7 @@
       "overheated": "價格偏離過大且量能偏高，避免追高。",
       "caution_high": "已有風險指標升高，新增部位請更保守。",
       "weakening": "動能正在轉弱，建議持續觀察。",
+      "rogue_wave": "乖離率極端且量能放大時出現急跌，建議避免再增加風險部位。",
       "normal": "目前沒有明確的風險或機會訊號。"
     },
     "pain_level": {
@@ -135,6 +137,19 @@
       "high": "orange",
       "panic": "red"
     }
+  },
+  "glossary": {
+    "twr": "TWR 是排除資金流入流出影響後的投資報酬率。",
+    "rsi": "RSI 用 0 到 100 顯示股價是否可能超賣或過熱。",
+    "bias": "Bias 代表目前價格相對移動平均線的偏離百分比。",
+    "ma200": "MA200 是約 200 個交易日平均價，用來看長期趨勢。",
+    "ma60": "MA60 是約 60 個交易日平均價，用來看中期趨勢。",
+    "volume_ratio": "量比是今天成交量與近期平均成交量的比較值。",
+    "fear_greed": "恐懼與貪婪指數用 0 到 100 表示市場情緒。",
+    "market_sentiment": "市場情緒是整體市場偏多、觀望或偏空的摘要判斷。",
+    "health_score": "健康分數是追蹤股票中訊號為 NORMAL 的比例。",
+    "resonance": "共鳴表示你的持股與追蹤大師持股有重疊。",
+    "moat": "護城河是公司能長期守住獲利能力的競爭優勢。"
   },
   "dashboard": {
     "title": "📊 投資組合總覽",

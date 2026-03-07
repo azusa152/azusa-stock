@@ -108,14 +108,15 @@
     "privacy_mode": "🙈 Privacy Mode",
     "cnn_unavailable": "⚠️ CNN data unavailable, using VIX only",
     "signal": {
-      "thesis_broken": "Fundamentals Declining",
-      "deep_value": "Strong Buy Zone",
-      "oversold": "Price Drop Alert",
-      "contrarian_buy": "Buy Opportunity",
-      "approaching_buy": "Near Buy Zone",
-      "overheated": "Overpriced Warning",
-      "caution_high": "High Price Alert",
-      "weakening": "Momentum Slowing",
+      "thesis_broken": "Thesis At Risk",
+      "deep_value": "Undervalued Opportunity",
+      "oversold": "Heavy Selloff",
+      "contrarian_buy": "Early Rebound Setup",
+      "approaching_buy": "Near Entry Zone",
+      "overheated": "Overheating Risk",
+      "caution_high": "Elevated Risk",
+      "weakening": "Momentum Weakening",
+      "rogue_wave": "Unusual Price Drop",
       "normal": "Normal"
     },
     "signal_desc": {
@@ -127,6 +128,7 @@
       "overheated": "Price is stretched and trading activity is elevated. Avoid chasing.",
       "caution_high": "One risk indicator is elevated. Consider reducing new exposure.",
       "weakening": "Momentum is fading. Monitor closely before making new entries.",
+      "rogue_wave": "Price dropped sharply with extreme bias and high volume. Avoid adding risk.",
       "normal": "No major warning or opportunity signal is active."
     },
     "pain_level": {
@@ -135,6 +137,19 @@
       "high": "orange",
       "panic": "red"
     }
+  },
+  "glossary": {
+    "twr": "Time-weighted return shows portfolio performance without cash deposit or withdrawal effects.",
+    "rsi": "RSI shows whether a stock may be oversold or overbought on a 0 to 100 scale.",
+    "bias": "Bias is how far price is above or below a moving average in percent.",
+    "ma200": "MA200 is the average price over about 200 trading days to show long-term trend.",
+    "ma60": "MA60 is the average price over about 60 trading days to show medium-term trend.",
+    "volume_ratio": "Volume ratio compares today's trading volume with the recent average volume.",
+    "fear_greed": "Fear and Greed is a 0 to 100 market mood score from panic to euphoria.",
+    "market_sentiment": "Market sentiment summarizes whether broad market conditions look strong, mixed, or weak.",
+    "health_score": "Health score is the share of tracked stocks currently in a normal signal state.",
+    "resonance": "Resonance means your holdings overlap with stocks also held by tracked investment gurus.",
+    "moat": "Moat describes a company's durable competitive advantage that helps protect profits."
   },
   "dashboard": {
     "title": "📊 Portfolio Overview",

@@ -108,14 +108,15 @@
     "privacy_mode": "🙈 隐私模式",
     "cnn_unavailable": "⚠️ CNN 数据不可用，仅使用 VIX",
     "signal": {
-      "thesis_broken": "基本面恶化",
-      "deep_value": "深度价值",
-      "oversold": "超卖",
-      "contrarian_buy": "逆向买入",
-      "approaching_buy": "接近买点",
-      "overheated": "过热",
-      "caution_high": "高度警戒",
-      "weakening": "转弱",
+      "thesis_broken": "投资逻辑有风险",
+      "deep_value": "低估机会",
+      "oversold": "急跌信号",
+      "contrarian_buy": "反弹起点",
+      "approaching_buy": "接近入场区",
+      "overheated": "过热风险",
+      "caution_high": "风险偏高",
+      "weakening": "动能转弱",
+      "rogue_wave": "异常下跌",
       "normal": "正常"
     },
     "signal_desc": {
@@ -127,6 +128,7 @@
       "overheated": "价格偏离过大且成交放量，避免追高。",
       "caution_high": "已有风险指标升高，新增仓位请更保守。",
       "weakening": "动能正在转弱，建议持续观察。",
+      "rogue_wave": "乖离率极端且放量时出现急跌，建议避免继续增加风险仓位。",
       "normal": "目前没有明确的风险或机会信号。"
     },
     "pain_level": {
@@ -135,6 +137,19 @@
       "high": "orange",
       "panic": "red"
     }
+  },
+  "glossary": {
+    "twr": "TWR 是排除资金流入流出影响后的投资回报率。",
+    "rsi": "RSI 用 0 到 100 显示股价是否可能超卖或过热。",
+    "bias": "Bias 表示当前价格相对移动平均线的偏离百分比。",
+    "ma200": "MA200 是约 200 个交易日的平均价，用于观察长期趋势。",
+    "ma60": "MA60 是约 60 个交易日的平均价，用于观察中期趋势。",
+    "volume_ratio": "量比是今天成交量与近期平均成交量的比较值。",
+    "fear_greed": "恐惧与贪婪指数用 0 到 100 表示市场情绪。",
+    "market_sentiment": "市场情绪是对整体市场偏强、观望或偏弱的概括判断。",
+    "health_score": "健康分数是追踪股票中信号为 NORMAL 的比例。",
+    "resonance": "共鸣表示你的持仓与追踪大师持仓有重叠。",
+    "moat": "护城河是公司长期保护盈利能力的竞争优势。"
   },
   "dashboard": {
     "title": "📊 投资组合总览",
