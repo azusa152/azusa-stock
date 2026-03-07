@@ -295,7 +295,11 @@
     "sync_complete": "✅ 已同步 {guru_name} 本季 13F 报告（基准日 {report_date}）",
     "lagging_disclaimer": "⚠️ 此数据为 {days_ago} 天前的持仓快照，非实时数据",
     "report_date_label": "持仓基准日",
-    "filing_date_label": "公告日"
+    "filing_date_label": "公告日",
+    "heatmap_filing_delay_note": "⚠️ 13F 持仓基准日为 {report_date}。申报数据至少有 45 天延迟，可能已不代表当前实际持仓。",
+    "backtest_disclaimer": "此为假设性模拟，并非真实投资绩效。假设按申报日收盘价买入、交易成本为 0，且季度内不调整仓位。13F 仅覆盖美股多头仓位，不包含做空、期权和非美国持仓。历史表现不代表未来收益。",
+    "backtest_not_enough_filings": "回测至少需要 2 条申报数据。请先同步或回填大师 13F 历史数据。",
+    "backtest_benchmark_data_missing": "基准价格数据暂时不可用，请稍后重试。"
   },
   "fx": {
     "period_1d": "单日",

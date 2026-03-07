@@ -59,6 +59,14 @@ from api.schemas.guru import (  # noqa: F401
     SyncAllResponse,
     SyncResponse,
 )
+from api.schemas.guru_analytics import (  # noqa: F401
+    CumulativeSeries,
+    GuruBacktestResponse,
+    HeatmapGuruDetail,
+    HeatmapItem,
+    HeatmapResponse,
+    QuarterResult,
+)
 from api.schemas.networth import (  # noqa: F401
     NetWorthItemRequest,
     NetWorthItemResponse,

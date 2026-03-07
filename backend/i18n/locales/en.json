@@ -295,7 +295,11 @@
     "sync_complete": "✅ Synced {guru_name} 13F for this quarter (report date: {report_date})",
     "lagging_disclaimer": "⚠️ This data reflects holdings from {days_ago} days ago — not real-time",
     "report_date_label": "Report Date",
-    "filing_date_label": "Filing Date"
+    "filing_date_label": "Filing Date",
+    "heatmap_filing_delay_note": "⚠️ 13F holdings snapshot as of {report_date}. Data is published with at least a 45-day delay and may not reflect current positions.",
+    "backtest_disclaimer": "This is a hypothetical simulation, not actual investment performance. It assumes buying at filing-date close with zero trading costs and no intraperiod position changes. 13F filings cover long U.S. equity positions only; shorts, options, and non-U.S. holdings are excluded. Past performance does not guarantee future results.",
+    "backtest_not_enough_filings": "At least 2 filings are required for backtesting. Please sync or backfill guru filings first.",
+    "backtest_benchmark_data_missing": "Benchmark price data is temporarily unavailable. Please retry later."
   },
   "fx": {
     "period_1d": "1-day",

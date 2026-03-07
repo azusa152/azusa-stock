@@ -295,7 +295,11 @@
     "sync_complete": "✅ 已同步 {guru_name} 本季 13F 報告（基準日 {report_date}）",
     "lagging_disclaimer": "⚠️ 此數據為 {days_ago} 天前的持倉快照，非即時資料",
     "report_date_label": "持倉基準日",
-    "filing_date_label": "公告日"
+    "filing_date_label": "公告日",
+    "heatmap_filing_delay_note": "⚠️ 13F 持倉基準日為 {report_date}。申報資料至少有 45 天延遲，可能已不代表目前實際持倉。",
+    "backtest_disclaimer": "此為假設性模擬，非實際投資績效。假設以申報日收盤價買入、交易成本為 0，且季中不調整部位。13F 僅涵蓋美股多頭部位，不包含放空、選擇權與非美國持倉。過去績效不代表未來報酬。",
+    "backtest_not_enough_filings": "回測至少需要 2 筆申報資料。請先同步或回填大師 13F 歷史資料。",
+    "backtest_benchmark_data_missing": "基準價格資料暫時不可用，請稍後再試。"
   },
   "fx": {
     "period_1d": "單日",

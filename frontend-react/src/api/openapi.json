@@ -4921,6 +4921,163 @@
         }
       }
     },
+    "/gurus/heatmap": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "13F heat map data across tracked gurus",
+        "operationId": "get_heatmap_endpoint_gurus_heatmap_get",
+        "parameters": [
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "VALUE",
+                    "GROWTH",
+                    "MACRO",
+                    "QUANT",
+                    "ACTIVIST",
+                    "MULTI_STRATEGY"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by guru style",
+              "title": "Style"
+            },
+            "description": "Filter by guru style"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gurus/{guru_id}/backtest": {
+      "get": {
+        "tags": [
+          "smart-money"
+        ],
+        "summary": "Guru clone-portfolio backtest versus benchmark",
+        "operationId": "get_guru_backtest_endpoint_gurus__guru_id__backtest_get",
+        "parameters": [
+          {
+            "name": "guru_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Guru Id"
+            }
+          },
+          {
+            "name": "quarters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 2,
+              "default": 4,
+              "title": "Quarters"
+            }
+          },
+          {
+            "name": "benchmark",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Benchmark ticker (SPY or VT)",
+              "default": "SPY",
+              "title": "Benchmark"
+            },
+            "description": "Benchmark ticker (SPY or VT)"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuruBacktestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/gurus/{guru_id}/filing": {
       "get": {
         "tags": [
@@ -6346,6 +6503,34 @@
         ],
         "title": "CryptoSearchResult"
       },
+      "CumulativeSeries": {
+        "properties": {
+          "dates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dates"
+          },
+          "clone_returns": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Clone Returns"
+          },
+          "benchmark_returns": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Benchmark Returns"
+          }
+        },
+        "type": "object",
+        "title": "CumulativeSeries",
+        "description": "Compact chart series for cumulative return lines."
+      },
       "CurrencyBreakdown": {
         "properties": {
           "currency": {
@@ -7430,6 +7615,66 @@
         "title": "GreatMindsResponse",
         "description": "GET /resonance/great-minds \u5b8c\u6574\u56de\u61c9\u3002"
       },
+      "GuruBacktestResponse": {
+        "properties": {
+          "guru_id": {
+            "type": "integer",
+            "title": "Guru Id"
+          },
+          "guru_display_name": {
+            "type": "string",
+            "title": "Guru Display Name"
+          },
+          "benchmark": {
+            "type": "string",
+            "title": "Benchmark",
+            "description": "Benchmark ticker symbol (e.g. SPY, VT)"
+          },
+          "quarters": {
+            "items": {
+              "$ref": "#/components/schemas/QuarterResult"
+            },
+            "type": "array",
+            "title": "Quarters"
+          },
+          "cumulative_series": {
+            "$ref": "#/components/schemas/CumulativeSeries"
+          },
+          "cumulative_clone_return": {
+            "type": "number",
+            "title": "Cumulative Clone Return"
+          },
+          "cumulative_benchmark_return": {
+            "type": "number",
+            "title": "Cumulative Benchmark Return"
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha"
+          },
+          "computed_at": {
+            "type": "string",
+            "title": "Computed At"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "guru_id",
+          "guru_display_name",
+          "benchmark",
+          "cumulative_clone_return",
+          "cumulative_benchmark_return",
+          "alpha",
+          "computed_at"
+        ],
+        "title": "GuruBacktestResponse",
+        "description": "Response payload for `/gurus/{guru_id}/backtest`."
+      },
       "GuruCreate": {
         "properties": {
           "name": {
@@ -7892,6 +8137,154 @@
         ],
         "title": "HealthResponse",
         "description": "GET /health \u56de\u61c9\u3002"
+      },
+      "HeatmapGuruDetail": {
+        "properties": {
+          "guru_id": {
+            "type": "integer",
+            "title": "Guru Id"
+          },
+          "guru_display_name": {
+            "type": "string",
+            "title": "Guru Display Name"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "guru_id",
+          "guru_display_name",
+          "action",
+          "value"
+        ],
+        "title": "HeatmapGuruDetail",
+        "description": "Per-guru detail for a heat map ticker entry."
+      },
+      "HeatmapItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "guru_count": {
+            "type": "integer",
+            "title": "Guru Count"
+          },
+          "gurus": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapGuruDetail"
+            },
+            "type": "array",
+            "title": "Gurus"
+          },
+          "combined_value": {
+            "type": "number",
+            "title": "Combined Value"
+          },
+          "combined_weight_pct": {
+            "type": "number",
+            "title": "Combined Weight Pct"
+          },
+          "dominant_action": {
+            "type": "string",
+            "title": "Dominant Action"
+          },
+          "action_breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Action Breakdown"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "guru_count",
+          "combined_value",
+          "combined_weight_pct",
+          "dominant_action"
+        ],
+        "title": "HeatmapItem",
+        "description": "Single ticker aggregation for 13F heat map."
+      },
+      "HeatmapResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sectors": {
+            "items": {
+              "$ref": "#/components/schemas/SectorBreakdownItem"
+            },
+            "type": "array",
+            "title": "Sectors"
+          },
+          "report_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Date"
+          },
+          "filing_delay_note": {
+            "type": "string",
+            "title": "Filing Delay Note",
+            "default": ""
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at"
+        ],
+        "title": "HeatmapResponse",
+        "description": "Response payload for `/gurus/heatmap`."
       },
       "HoldingDetail": {
         "properties": {
@@ -9186,6 +9579,52 @@
         ],
         "title": "QoQResponse",
         "description": "GET /gurus/{guru_id}/qoq \u5b8c\u6574\u56de\u61c9\u3002"
+      },
+      "QuarterResult": {
+        "properties": {
+          "report_date": {
+            "type": "string",
+            "title": "Report Date"
+          },
+          "filing_date": {
+            "type": "string",
+            "title": "Filing Date"
+          },
+          "clone_return_pct": {
+            "type": "number",
+            "title": "Clone Return Pct"
+          },
+          "benchmark_return_pct": {
+            "type": "number",
+            "title": "Benchmark Return Pct"
+          },
+          "alpha_pct": {
+            "type": "number",
+            "title": "Alpha Pct"
+          },
+          "holdings_count": {
+            "type": "integer",
+            "title": "Holdings Count"
+          },
+          "top5_holdings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top5 Holdings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_date",
+          "filing_date",
+          "clone_return_pct",
+          "benchmark_return_pct",
+          "alpha_pct",
+          "holdings_count"
+        ],
+        "title": "QuarterResult",
+        "description": "Per-quarter return result in guru backtest."
       },
       "ReactivateRequest": {
         "properties": {

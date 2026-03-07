@@ -80,6 +80,8 @@
 - **前 N 大持倉圖表** — 互動式水平長條圖 + 明細表，以顏色標示持倉動作
 - **季度持倉對比 (QoQ)** — 跨最近 N 季快照：每檔持股顯示各季股數、比重與動作，trend 欄標示增持 ↑ / 減持 ↓ / 新建倉 ★ / 清倉 ✕
 - **大師總投資組合 (Grand Portfolio)** — 獨立分頁聚合所有追蹤大師的最新 13F，顯示各股票的跨師持倉比重（`combined_weight_pct`）、平均比重、dominant action 與產業分佈圓餅圖
+- **13F 熱力圖 (Heat Map)** — Smart Money 新分頁以 Treemap 視覺化最新 13F 聚合持倉，支援「依產業 / 依大師」檢視；方塊大小代表合併權重，顏色代表主導動作（NEW / INCREASED / DECREASED / SOLD / UNCHANGED）
+- **大師複製回測 (Guru Backtest)** — 模擬「在申報日複製大師持倉」並與基準（SPY / VT）比較，提供累積報酬折線圖、季度拆解與 Alpha 指標；內建 45 天延遲與 13F 覆蓋範圍限制提示
 - **申報後績效欄位** — 持倉異動表與前 N 大持倉表均顯示「**申報後漲跌幅**」欄，綠色顯示上漲、紅色顯示下跌、`—` 表示資料不足（加上 `?include_performance=true` 啟用；過去報告日收盤價永久磁碟快取，不重複查詢）
 - **英雄所見略同 (Great Minds Think Alike)** — 自動比對追蹤清單 / 持倉與所有大師 13F 持股，找出共鳴個股
 - **共鳴徽章** — 投資雷達頁面股票卡片自動標記 🏆×N 徽章，揭示大師持有重疊
@@ -695,6 +697,8 @@ docker compose up --build -d
 | `GET` | `/gurus/{guru_id}/top` | 取得大師前 N 大持倉（按權重排序，預設 N=10）；加上 `?include_performance=true` 回傳 `price_change_pct`（申報後漲跌幅 %） |
 | `GET` | `/gurus/{guru_id}/qoq` | 取得指定大師跨季度持倉歷史（預設 3 季），支援 `?quarters=N`；每筆含 ticker / company_name / 各季快照（shares / value / weight_pct / action）/ trend（increasing / decreasing / new / exited / stable） |
 | `GET` | `/gurus/grand-portfolio` | 跨所有大師最新 13F 聚合視圖，回傳 items（combined_weight_pct / avg_weight_pct / dominant_action / sector / guru_count）+ total_value + sector_breakdown |
+| `GET` | `/gurus/heatmap` | 13F 熱力圖資料（跨大師聚合，含 ticker/action_breakdown、sector 分布與 45 天延遲提示） |
+| `GET` | `/gurus/{guru_id}/backtest` | 大師複製回測（季度維度報酬 + 累積報酬曲線 + Alpha），支援 `?quarters=2..12&benchmark=SPY|VT` |
 | `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
 | `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
 

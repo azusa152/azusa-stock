@@ -26,6 +26,12 @@ export type QoQHoldingItem = components["schemas"]["QoQHoldingItem"]
 export type QoQResponse = components["schemas"]["QoQResponse"]
 export type GrandPortfolioItem = components["schemas"]["GrandPortfolioItem"]
 export type GrandPortfolioResponse = components["schemas"]["GrandPortfolioResponse"]
+export type HeatmapGuruDetail = components["schemas"]["HeatmapGuruDetail"]
+export type HeatmapItem = components["schemas"]["HeatmapItem"]
+export type HeatmapResponse = components["schemas"]["HeatmapResponse"]
+export type QuarterResult = components["schemas"]["QuarterResult"]
+export type CumulativeSeries = components["schemas"]["CumulativeSeries"]
+export type GuruBacktestResponse = components["schemas"]["GuruBacktestResponse"]
 
 // GreatMindsEntryResponse.gurus is list[dict] in the backend → typed as unknown[] in the generated type.
 // Provide a properly typed override for frontend rendering.

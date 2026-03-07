@@ -1198,6 +1198,7 @@ def find_grand_portfolio(session: Session, style: str | None = None) -> dict:
                 "avg_weight_pct": avg_weight_pct,
                 "combined_weight_pct": round(combined_weight_pct, 3),
                 "dominant_action": dominant_action,
+                "action_counts": dict(d["action_counts"]),
             }
         )
 

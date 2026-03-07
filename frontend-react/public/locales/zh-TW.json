@@ -1389,6 +1389,46 @@
       "combined_weight": "合計權重",
       "table_header": "全部持倉"
     },
+    "heatmap": {
+      "tab": "🧩 13F 熱力圖",
+      "empty": "目前沒有熱力圖資料。",
+      "delay_note": "⚠️ 13F 持倉基準日：{{report_date}}。資料至少延遲 45 天，可能不代表目前部位。",
+      "sop_title": "📖 熱力圖使用說明",
+      "sop_content": "### 熱力圖在看什麼\n\n每個方塊代表最新 13F 申報中的一檔股票。\n\n- **大小**：跨大師合併權重\n- **顏色**：主導動作（新建倉 / 加碼 / 減碼 / 清倉 / 持平）\n- **分組**：可切換為產業或大師檢視\n\n### 重要限制\n\n13F 是延遲揭露資料，即使解析正確，公告時也可能已落後 45 天以上。請當作研究輔助，不是即時交易訊號。",
+      "view_by_sector": "依產業檢視",
+      "view_by_guru": "依大師檢視",
+      "all_sectors": "全部產業",
+      "guru_label": "大師",
+      "unknown_guru": "未知大師",
+      "guru_view_empty": "此篩選條件下沒有可用的大師持倉資料。",
+      "uniform_action_hint": "此視圖多數持倉都標記為「{{action}}」。這可能是最新申報缺少可比較歷史資料所致。"
+    },
+    "backtest": {
+      "tab": "🧪 大師回測",
+      "disclaimer": "此為假設性模擬，非實際績效。假設以申報日收盤價買入、交易成本為 0、季中不調整部位。13F 不含放空、選擇權與非美國持倉。",
+      "sop_title": "📖 回測方法說明",
+      "sop_content": "### 計算方式\n\n回測會在每次申報日模擬複製大師持倉，持有到下一次申報日。\n\n### 主要假設\n\n- 申報日收盤價進場（非基準日）\n- 依揭露權重建倉\n- 不計交易成本與滑價\n- 季中不調整\n\n### 解讀提醒\n\n回測結果僅供教育與研究參考，不應作為唯一投資依據。",
+      "guru_label": "大師",
+      "quarters_label": "季度數",
+      "benchmark_label": "基準",
+      "run": "執行回測",
+      "run_hint": "選擇參數後點擊「執行回測」。",
+      "computing": "回測計算中... 首次執行可能需要 20 秒。",
+      "error": "讀取大師回測資料失敗。",
+      "clone_return": "複製組合報酬",
+      "benchmark_return": "基準報酬",
+      "alpha": "Alpha",
+      "clone_line": "複製組合",
+      "benchmark_line": "基準",
+      "col": {
+        "report_date": "基準日",
+        "filing_date": "申報日",
+        "clone_return": "複製組合",
+        "benchmark_return": "基準",
+        "alpha": "Alpha",
+        "holdings": "持倉數"
+      }
+    },
     "qoq": {
       "trend": "趨勢",
       "no_data": "無歷史資料",

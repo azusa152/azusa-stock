@@ -1389,6 +1389,46 @@
       "combined_weight": "Combined Weight",
       "table_header": "All Holdings"
     },
+    "heatmap": {
+      "tab": "🧩 13F Heat Map",
+      "empty": "No heat map data available.",
+      "delay_note": "⚠️ 13F holdings snapshot as of {{report_date}}. Data is delayed by at least 45 days and may not reflect current positions.",
+      "sop_title": "📖 Heat Map: How to Read",
+      "sop_content": "### What this heat map shows\n\nEach block is a stock disclosed in the latest 13F filings.\n\n- **Size**: aggregate position weight across tracked gurus\n- **Color**: dominant action (new / increased / decreased / sold / unchanged)\n- **Grouping**: switch between sector view and guru view\n\n### Important limitation\n\n13F filings are delayed disclosures. Even with accurate parsing, positions can be **45+ days stale** at publication time. Use this as contextual research, not a real-time trading signal.",
+      "view_by_sector": "View by Sector",
+      "view_by_guru": "View by Guru",
+      "all_sectors": "All Sectors",
+      "guru_label": "Guru",
+      "unknown_guru": "Unknown Guru",
+      "guru_view_empty": "No guru-level holdings available for this filter.",
+      "uniform_action_hint": "Most holdings in this view are labeled as {{action}}. This can happen when the latest filing has limited historical comparison."
+    },
+    "backtest": {
+      "tab": "🧪 Guru Backtest",
+      "disclaimer": "This is a hypothetical simulation, not actual performance. It assumes filing-date close execution, zero trading costs, and no intra-quarter position changes. 13F excludes shorts/options/non-US holdings.",
+      "sop_title": "📖 Backtest: How It Works",
+      "sop_content": "### Method\n\nThe backtest simulates cloning a guru at each filing date, then holding until the next filing date.\n\n### Key assumptions\n\n- Entry at filing-date close (not report date)\n- Value-weighted by disclosed 13F holdings\n- No transaction costs or slippage\n- No intra-quarter trades\n\n### Interpretation\n\nBacktest results are educational and should not be used as sole investment advice.",
+      "guru_label": "Guru",
+      "quarters_label": "Quarters",
+      "benchmark_label": "Benchmark",
+      "run": "Run Backtest",
+      "run_hint": "Select parameters and click Run Backtest.",
+      "computing": "Computing backtest... this may take up to 20 seconds on first run.",
+      "error": "Failed to load guru backtest.",
+      "clone_return": "Clone Return",
+      "benchmark_return": "Benchmark Return",
+      "alpha": "Alpha",
+      "clone_line": "Clone",
+      "benchmark_line": "Benchmark",
+      "col": {
+        "report_date": "Report Date",
+        "filing_date": "Filing Date",
+        "clone_return": "Clone",
+        "benchmark_return": "Benchmark",
+        "alpha": "Alpha",
+        "holdings": "Holdings"
+      }
+    },
     "qoq": {
       "trend": "Trend",
       "no_data": "No historical data available",
