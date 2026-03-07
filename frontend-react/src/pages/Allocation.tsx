@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import {
   useNetWorthHistory,
   useNetWorthItems,
@@ -117,7 +119,7 @@ export default function Allocation() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("allocation.sop.title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -198,7 +200,7 @@ export default function Allocation() {
               className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
             >
               <span>{t("net_worth.title")}</span>
-              <span className="text-muted-foreground text-xs">{netWorthSopOpen ? "▲" : "▼"}</span>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", netWorthSopOpen && "rotate-180")} />
             </button>
             {netWorthSopOpen && (
               <div className="px-4 pb-4 text-xs text-muted-foreground space-y-1">

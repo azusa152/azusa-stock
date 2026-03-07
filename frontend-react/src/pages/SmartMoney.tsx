@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -104,7 +105,7 @@ export default function SmartMoney() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.sop.title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">

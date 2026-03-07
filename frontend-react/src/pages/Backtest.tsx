@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Download } from "lucide-react"
+import { ChevronDown, Download } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -153,7 +153,7 @@ export default function Backtest() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("backtest.sop.title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
