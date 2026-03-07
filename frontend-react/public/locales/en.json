@@ -1397,7 +1397,11 @@
       "sop_content": "### What this heat map shows\n\nEach block is a stock disclosed in the latest 13F filings.\n\n- **Size**: aggregate position weight across tracked gurus\n- **Color**: dominant action (new / increased / decreased / sold / unchanged)\n- **Grouping**: switch between sector view and guru view\n\n### Important limitation\n\n13F filings are delayed disclosures. Even with accurate parsing, positions can be **45+ days stale** at publication time. Use this as contextual research, not a real-time trading signal.",
       "view_by_sector": "View by Sector",
       "view_by_guru": "View by Guru",
-      "all_sectors": "All Sectors"
+      "all_sectors": "All Sectors",
+      "guru_label": "Guru",
+      "unknown_guru": "Unknown Guru",
+      "guru_view_empty": "No guru-level holdings available for this filter.",
+      "uniform_action_hint": "Most holdings in this view are labeled as {{action}}. This can happen when the latest filing has limited historical comparison."
     },
     "backtest": {
       "tab": "🧪 Guru Backtest",
